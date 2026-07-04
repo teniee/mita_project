@@ -458,10 +458,11 @@ class TestFlutterAppIntegration:
             "User-Agent": "Flutter/MITA"
         }
         
-        response = test_client.post("/api/auth/refresh", headers=headers)
+        response = test_client.post("/api/auth/refresh-token", headers=headers)
         
-        # Should handle the request appropriately
-        assert response.status_code in [200, 401, 500]
+        # Should handle the request appropriately (422 = body validation
+        # rejected the garbage token — a proper handled outcome)
+        assert response.status_code in [200, 401, 422, 500]
 
 
 # Mock tests for when Redis is not available

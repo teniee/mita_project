@@ -90,7 +90,8 @@ def refresh_token_for_user(user: User) -> TokenOut:
     user_data = {
         "sub": str(user.id),
         "is_premium": user.is_premium,
-        "country": getattr(user, 'country', 'US')
+        "country": getattr(user, 'country', 'US'),
+        "token_version_id": getattr(user, 'token_version', None) or 1,  # Security: token revocation support
     }
     
     tokens = create_token_pair(user_data, user_role=user_role)
@@ -118,7 +119,8 @@ async def authenticate_google(data: GoogleAuthIn, db: AsyncSession) -> TokenOut:
     user_data = {
         "sub": str(user.id),
         "is_premium": user.is_premium,
-        "country": getattr(user, 'country', 'US')
+        "country": getattr(user, 'country', 'US'),
+        "token_version_id": getattr(user, 'token_version', None) or 1,  # Security: token revocation support
     }
     
     tokens = create_token_pair(user_data, user_role=user_role)
@@ -174,7 +176,8 @@ async def register_user_async(data: Union[FastRegisterIn, RegisterIn], db: Async
     user_data = {
         "sub": str(user.id),
         "is_premium": user.is_premium,
-        "country": user.country
+        "country": user.country,
+        "token_version_id": getattr(user, 'token_version', None) or 1,  # Security: token revocation support
     }
     
     tokens = create_token_pair(user_data, user_role=user_role)
@@ -211,7 +214,8 @@ async def authenticate_user_async(data: LoginIn, db: AsyncSession) -> TokenOut:
     user_data = {
         "sub": str(user.id),
         "is_premium": user.is_premium,
-        "country": user.country
+        "country": user.country,
+        "token_version_id": getattr(user, 'token_version', None) or 1,  # Security: token revocation support
     }
     
     tokens = create_token_pair(user_data, user_role=user_role)

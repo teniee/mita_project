@@ -68,3 +68,8 @@ mobile_app/firebase_config.json
 
 # === Node ===
 node_modules/
+
+# Backup/editor artifacts
+*.backup
+*.before_fix
+**/.DS_Store

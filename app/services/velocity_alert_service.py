@@ -180,8 +180,13 @@ def _run_velocity_check(
                     target_date=g.target_date,
                 )
             )
-        except Exception:
-            pass
+        except Exception as goal_err:
+            # A malformed goal must not break velocity alerts, but silently
+            # dropping it would hide data corruption — log which one failed.
+            logger.warning(
+                "velocity_alerts: skipping malformed goal %s: %s",
+                getattr(g, "id", "?"), goal_err,
+            )
 
     # ------------------------------------------------------------------
     # Run pure engine

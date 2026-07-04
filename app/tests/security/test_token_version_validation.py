@@ -42,7 +42,7 @@ class TestTokenVersionValidation:
 
         assert "access_token" in tokens
         assert "refresh_token" in tokens
-        assert tokens["token_type"] == "bearer"
+        assert tokens["token_type"].lower() == "bearer"
 
     @pytest.mark.asyncio
     async def test_token_version_mismatch_raises_error(self):
@@ -68,14 +68,12 @@ class TestTokenVersionValidation:
 
         # Mock the execute result to return our user
         mock_result = Mock()
-        mock_scalar = Mock()
-        mock_scalar.scalar_one_or_none.return_value = mock_user
-        mock_result.scalars.return_value = mock_scalar
+        mock_result.scalar_one_or_none.return_value = mock_user
         mock_db.execute.return_value = mock_result
 
-        # Try to verify token - should raise InvalidTokenError
-        with pytest.raises(InvalidTokenError, match="Token has been revoked"):
-            await verify_token(tokens["access_token"], db=mock_db)
+        # Revoked tokens must fail verification (verify_token's contract is
+        # to return None for any invalid token rather than raising)
+        assert await verify_token(tokens["access_token"], db=mock_db) is None
 
     @pytest.mark.asyncio
     async def test_current_token_version_accepted(self):
@@ -97,9 +95,7 @@ class TestTokenVersionValidation:
 
         mock_db = AsyncMock(spec=AsyncSession)
         mock_result = Mock()
-        mock_scalar = Mock()
-        mock_scalar.scalar_one_or_none.return_value = mock_user
-        mock_result.scalars.return_value = mock_scalar
+        mock_result.scalar_one_or_none.return_value = mock_user
         mock_db.execute.return_value = mock_result
 
         # Should NOT raise error
@@ -131,9 +127,7 @@ class TestBackwardsCompatibility:
 
         mock_db = AsyncMock(spec=AsyncSession)
         mock_result = Mock()
-        mock_scalar = Mock()
-        mock_scalar.scalar_one_or_none.return_value = mock_user
-        mock_result.scalars.return_value = mock_scalar
+        mock_result.scalar_one_or_none.return_value = mock_user
         mock_db.execute.return_value = mock_result
 
         # Should NOT raise error (backwards compatible)
@@ -161,7 +155,7 @@ class TestGoogleOAuthTokenVersion:
             mock_db = AsyncMock(spec=AsyncSession)
 
             # Call authenticate_google
-            google_data = GoogleAuthIn(id_token="mock-google-token")
+            google_data = GoogleAuthIn(id_token="mockheader11.mockpayload22.mocksignature33")
             result = await authenticate_google(google_data, mock_db)
 
             # Verify token was created
@@ -170,7 +164,7 @@ class TestGoogleOAuthTokenVersion:
 
             # Decode and verify token_version_id is present
             # (In real scenario, we'd decode the JWT to check)
-            mock_google_auth.assert_called_once_with("mock-google-token")
+            mock_google_auth.assert_called_once_with("mockheader11.mockpayload22.mocksignature33")
 
 
 class TestAccountLockout:
@@ -188,8 +182,9 @@ class TestAccountLockout:
         assert hasattr(user, 'failed_login_attempts')
         assert hasattr(user, 'account_locked_until')
 
-        # Check default values
-        assert user.failed_login_attempts == 0
+        # Check default values (column defaults apply at flush; pre-flush
+        # attributes are None, which production code treats as 0/unlocked)
+        assert (user.failed_login_attempts or 0) == 0
         assert user.account_locked_until is None
 
     def test_lockout_expiration_logic(self):

@@ -500,7 +500,8 @@ def create_refresh_token(data: dict, user_role: str = None) -> str:
 async def verify_token(
     token: str,
     token_type: str = "access_token",
-    required_scopes: List[str] = None
+    required_scopes: List[str] = None,
+    db=None,
 ) -> Optional[Dict[str, Any]]:
     """Verify JWT token with comprehensive security checks.
 
@@ -508,6 +509,9 @@ async def verify_token(
         token: JWT token string
         token_type: Expected token type (access_token or refresh_token)
         required_scopes: List of required OAuth 2.0 scopes
+        db: Optional AsyncSession. When provided, the token-version check runs
+            against it unconditionally (fresh-token skip only applies when the
+            session would have to be acquired here).
 
     Returns:
         Token payload if valid, None otherwise
@@ -610,7 +614,7 @@ async def verify_token(
             # Check token version against user's current token version
             # ONLY for tokens older than 30 minutes
             user_id = payload.get("sub")
-            if user_id and not is_fresh_token:
+            if user_id and (db is not None or not is_fresh_token):
                 logger.debug(f"Checking token version for user {user_id}")
                 try:
                     # Import here to avoid circular imports
@@ -618,9 +622,9 @@ async def verify_token(
                     from app.db.models import User
                     from sqlalchemy import select
 
-                    async for db in get_async_db():
+                    async def _run_version_check(session) -> None:
                         user_query = select(User).where(User.id == user_id)
-                        result = await db.execute(user_query)
+                        result = await session.execute(user_query)
                         user = result.scalar_one_or_none()
 
                         if user:
@@ -641,7 +645,13 @@ async def verify_token(
                                 raise InvalidTokenError("Token has been revoked")
                         else:
                             logger.warning(f"User not found in database during token version check: {user_id}")
-                        break
+
+                    if db is not None:
+                        await _run_version_check(db)
+                    else:
+                        async for session in get_async_db():
+                            await _run_version_check(session)
+                            break
                 except InvalidTokenError:
                     raise
                 except Exception as version_check_error:

@@ -175,7 +175,7 @@ class TokenBlacklistService:
                 token, 
                 settings.SECRET_KEY, 
                 algorithms=[settings.ALGORITHM],
-                options={"verify_exp": False}  # We just want the exp claim
+                options={"verify_exp": False, "verify_aud": False}  # We just want the exp claim
             )
             
             exp = payload.get("exp")
@@ -192,7 +192,7 @@ class TokenBlacklistService:
                         token,
                         settings.JWT_PREVIOUS_SECRET,
                         algorithms=[settings.ALGORITHM],
-                        options={"verify_exp": False}
+                        options={"verify_exp": False, "verify_aud": False}
                     )
                     exp = payload.get("exp")
                     if exp:
@@ -211,7 +211,7 @@ class TokenBlacklistService:
                 token,
                 settings.SECRET_KEY,
                 algorithms=[settings.ALGORITHM],
-                options={"verify_exp": False}
+                options={"verify_exp": False, "verify_aud": False}
             )
             
             return {
@@ -231,7 +231,7 @@ class TokenBlacklistService:
                         token,
                         settings.JWT_PREVIOUS_SECRET,
                         algorithms=[settings.ALGORITHM],
-                        options={"verify_exp": False}
+                        options={"verify_exp": False, "verify_aud": False}
                     )
                     return {
                         "jti": payload.get("jti"),
@@ -502,7 +502,8 @@ class TokenBlacklistService:
         try:
             async with self._get_redis_client() as client:
                 user_tokens_key = self._get_user_tokens_key(user_id)
-                token_jtis = await client.smembers(user_tokens_key)
+                # smembers returns a set — make it sliceable for batching
+                token_jtis = list(await client.smembers(user_tokens_key))
             
             if not token_jtis:
                 logger.info(f"No active tokens found for user {user_id}")
