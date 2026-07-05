@@ -14,7 +14,12 @@ enum InstallmentsState {
 /// Centralized installments state management provider
 /// Manages installment plans, filtering, and CRUD operations
 class InstallmentsProvider extends ChangeNotifier {
-  final InstallmentService _installmentService = InstallmentService();
+  /// The service is injectable so widget tests can drive the provider with a
+  /// mock; production callers use the default singleton.
+  InstallmentsProvider({InstallmentService? service})
+      : _installmentService = service ?? InstallmentService();
+
+  final InstallmentService _installmentService;
 
   // State
   InstallmentsState _state = InstallmentsState.initial;

@@ -379,8 +379,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                               shape: BoxShape.circle,
                             ),
                           )
-                        else if (status == 'over' &&
-                            constraints.maxWidth > 35)
+                        else if (status == 'over' && constraints.maxWidth > 35)
                           Icon(
                             Icons.warning,
                             size: 10,
@@ -422,8 +421,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                     if (constraints.maxHeight > 80)
                       Flexible(
                         child: Text(
-                          _getSimpleStatusText(
-                              status, spent, spentPercentage),
+                          _getSimpleStatusText(status, spent, spentPercentage),
                           style: TextStyle(
                             color: textColor.withValues(alpha: 0.8),
                             fontSize: constraints.maxWidth > 45 ? 8 : 7,
@@ -551,7 +549,8 @@ class _CalendarScreenState extends State<CalendarScreen>
             tooltip: 'Budget Settings',
           ),
           IconButton(
-            icon: const Icon(Icons.refresh_rounded),
+            icon: const Icon(Icons.refresh_rounded,
+                semanticLabel: 'Refresh Calendar'),
             onPressed: _initializeData,
             tooltip: 'Refresh Calendar',
           ),
@@ -645,7 +644,7 @@ class _CalendarScreenState extends State<CalendarScreen>
       floatingActionButton: FloatingActionButton.extended(
         heroTag: "calendar_fab",
         onPressed: () => Navigator.pushNamed(context, '/add_expense'),
-        icon: const Icon(Icons.add_rounded),
+        icon: const Icon(Icons.add_rounded, semanticLabel: 'Add new expense'),
         label: const Text('Add Expense'),
         backgroundColor: colorScheme.primary,
         foregroundColor: colorScheme.onPrimary,

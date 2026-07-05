@@ -2,18 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mita/screens/calendar_screen.dart';
 
+import 'helpers/test_app.dart';
+
 void main() {
+  initTestEnvironment();
+
   group('Calendar Screen Tests', () {
     testWidgets('Calendar shows loading indicator initially',
         (WidgetTester tester) async {
-      await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
+      await tester.pumpWidget(wrapWithProviders(const CalendarScreen()));
+      // initState kicks off the async load; the provider flips isLoading on
+      // its first notify, one microtask after the initial frame.
+      await tester.pump();
 
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
 
     testWidgets('Calendar shows app bar with correct title',
         (WidgetTester tester) async {
-      await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
+      await tester.pumpWidget(wrapWithProviders(const CalendarScreen()));
 
       expect(find.byType(AppBar), findsOneWidget);
       expect(find.textContaining('Calendar'), findsOneWidget);
@@ -21,28 +28,28 @@ void main() {
 
     testWidgets('Calendar shows refresh button in app bar',
         (WidgetTester tester) async {
-      await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
+      await tester.pumpWidget(wrapWithProviders(const CalendarScreen()));
 
       expect(find.byIcon(Icons.refresh_rounded), findsOneWidget);
     });
 
     testWidgets('Calendar shows settings button in app bar',
         (WidgetTester tester) async {
-      await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
+      await tester.pumpWidget(wrapWithProviders(const CalendarScreen()));
 
       expect(find.byIcon(Icons.settings), findsOneWidget);
     });
 
     testWidgets('Calendar shows floating action button',
         (WidgetTester tester) async {
-      await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
+      await tester.pumpWidget(wrapWithProviders(const CalendarScreen()));
 
       expect(find.byType(FloatingActionButton), findsOneWidget);
       expect(find.textContaining('Add Expense'), findsOneWidget);
     });
 
     testWidgets('Calendar shows status legend', (WidgetTester tester) async {
-      await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
+      await tester.pumpWidget(wrapWithProviders(const CalendarScreen()));
 
       expect(find.textContaining('Spending Status'), findsOneWidget);
       expect(find.textContaining('On Track'), findsOneWidget);
@@ -51,13 +58,13 @@ void main() {
     });
 
     testWidgets('Calendar shows pull to refresh', (WidgetTester tester) async {
-      await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
+      await tester.pumpWidget(wrapWithProviders(const CalendarScreen()));
 
       expect(find.byType(RefreshIndicator), findsOneWidget);
     });
 
     testWidgets('Calendar handles refresh action', (WidgetTester tester) async {
-      await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
+      await tester.pumpWidget(wrapWithProviders(const CalendarScreen()));
 
       // Find and tap the refresh button
       await tester.tap(find.byIcon(Icons.refresh_rounded));
@@ -69,11 +76,12 @@ void main() {
 
     testWidgets('Calendar shows weekday headers when data loads',
         (WidgetTester tester) async {
-      await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
+      await tester.pumpWidget(wrapWithProviders(const CalendarScreen()));
 
-      // Wait for initial load and potential data
+      // Wait for initial load and potential data. (Bounded pumps: the
+      // live-updates periodic timer means pumpAndSettle would never settle.)
       await tester.pump(const Duration(seconds: 1));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 2));
 
       // If data loads, should show weekday headers
       // Note: This might show error state instead if no real backend
@@ -83,11 +91,11 @@ void main() {
     group('Error State Tests', () {
       testWidgets('Calendar shows error state with retry button',
           (WidgetTester tester) async {
-        await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
+        await tester.pumpWidget(wrapWithProviders(const CalendarScreen()));
 
-        // Wait for loading to complete
+        // Wait for loading to complete (bounded pumps; see above)
         await tester.pump(const Duration(seconds: 3));
-        await tester.pumpAndSettle();
+        await tester.pump(const Duration(seconds: 3));
 
         // Should either show error state or calendar data
         // If error state is shown, verify it has retry functionality
@@ -104,11 +112,11 @@ void main() {
 
       testWidgets('Calendar shows empty state when no data',
           (WidgetTester tester) async {
-        await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
+        await tester.pumpWidget(wrapWithProviders(const CalendarScreen()));
 
-        // Wait for loading to complete
+        // Wait for loading to complete (bounded pumps; see above)
         await tester.pump(const Duration(seconds: 3));
-        await tester.pumpAndSettle();
+        await tester.pump(const Duration(seconds: 3));
 
         // Should either show empty state or calendar data
         if (find
@@ -126,16 +134,18 @@ void main() {
     group('Accessibility Tests', () {
       testWidgets('Calendar has proper semantic labels',
           (WidgetTester tester) async {
-        await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
+        await tester.pumpWidget(wrapWithProviders(const CalendarScreen()));
 
-        // Check for semantic labels on key elements
+        // Check for semantic labels on key elements. The FAB merges its
+        // icon label with the button text, so the tooltip is its stable
+        // accessibility handle.
         expect(find.bySemanticsLabel('Refresh Calendar'), findsOneWidget);
-        expect(find.bySemanticsLabel('Add new expense'), findsOneWidget);
+        expect(find.byTooltip('Add new expense'), findsOneWidget);
       });
 
       testWidgets('Calendar buttons have tooltips',
           (WidgetTester tester) async {
-        await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
+        await tester.pumpWidget(wrapWithProviders(const CalendarScreen()));
 
         // Verify tooltips exist for icon buttons
         final refreshButton = find.byIcon(Icons.refresh_rounded);
@@ -153,8 +163,8 @@ void main() {
     group('Navigation Tests', () {
       testWidgets('Settings button navigates correctly',
           (WidgetTester tester) async {
-        await tester.pumpWidget(MaterialApp(
-          home: const CalendarScreen(),
+        await tester.pumpWidget(wrapWithProviders(
+          const CalendarScreen(),
           routes: {
             '/budget_settings': (context) =>
                 const Scaffold(body: Text('Budget Settings')),
@@ -171,8 +181,8 @@ void main() {
 
       testWidgets('Add expense button navigates correctly',
           (WidgetTester tester) async {
-        await tester.pumpWidget(MaterialApp(
-          home: const CalendarScreen(),
+        await tester.pumpWidget(wrapWithProviders(
+          const CalendarScreen(),
           routes: {
             '/add_expense': (context) =>
                 const Scaffold(body: Text('Add Expense')),
@@ -191,7 +201,7 @@ void main() {
     group('Performance Tests', () {
       testWidgets('Calendar renders without performance issues',
           (WidgetTester tester) async {
-        await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
+        await tester.pumpWidget(wrapWithProviders(const CalendarScreen()));
 
         // Measure render time
         final stopwatch = Stopwatch()..start();
@@ -204,7 +214,7 @@ void main() {
 
       testWidgets('Calendar handles rapid refresh without issues',
           (WidgetTester tester) async {
-        await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
+        await tester.pumpWidget(wrapWithProviders(const CalendarScreen()));
 
         // Rapidly tap refresh multiple times
         for (int i = 0; i < 5; i++) {
@@ -220,13 +230,13 @@ void main() {
     group('Widget State Tests', () {
       testWidgets('Calendar maintains state during rebuild',
           (WidgetTester tester) async {
-        await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
+        await tester.pumpWidget(wrapWithProviders(const CalendarScreen()));
 
         // Wait for initial state
         await tester.pump(const Duration(seconds: 1));
 
         // Trigger rebuild
-        await tester.pumpWidget(const MaterialApp(home: CalendarScreen()));
+        await tester.pumpWidget(wrapWithProviders(const CalendarScreen()));
 
         // Should maintain calendar screen
         expect(find.byType(CalendarScreen), findsOneWidget);
