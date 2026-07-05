@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "0010_enhance_goals"
-down_revision = "0009_add_transaction_extended_fields"
+down_revision = "0009_add_txn_extended_fields"
 branch_labels = None
 depends_on = None
 

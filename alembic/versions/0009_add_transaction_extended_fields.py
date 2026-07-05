@@ -12,7 +12,7 @@ from sqlalchemy.dialects import postgresql
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "0009_add_transaction_extended_fields"
+revision = "0009_add_txn_extended_fields"
 down_revision = "0008_add_user_profile_fields"
 branch_labels = None
 depends_on = None
@@ -66,6 +66,22 @@ def upgrade() -> None:
     op.create_index("idx_transactions_merchant", "transactions", ["merchant"])
     op.create_index("idx_transactions_is_recurring", "transactions", ["is_recurring"])
     op.create_index("idx_transactions_updated_at", "transactions", ["updated_at"])
+
+    # Ensure the shared updated_at trigger function exists before referencing
+    # it. It is (re)defined again in 0019 with CREATE OR REPLACE; defining it
+    # here too keeps `alembic upgrade head` working from an empty database,
+    # where 0019 has not yet run.
+    op.execute(
+        """
+        CREATE OR REPLACE FUNCTION update_updated_at_column()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            NEW.updated_at = NOW();
+            RETURN NEW;
+        END;
+        $$ language 'plpgsql';
+    """
+    )
 
     # Create trigger to automatically update updated_at column on row updates
     op.execute(

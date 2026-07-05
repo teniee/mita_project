@@ -48,21 +48,18 @@ def upgrade():
                 UUID(as_uuid=True),
                 sa.ForeignKey("habits.id", ondelete="CASCADE"),
                 nullable=False,
-                index=True,
             ),
             sa.Column(
                 "user_id",
                 UUID(as_uuid=True),
                 sa.ForeignKey("users.id", ondelete="CASCADE"),
                 nullable=False,
-                index=True,
             ),
             sa.Column(
                 "completed_at",
                 sa.DateTime(timezone=True),
                 nullable=False,
                 server_default=sa.func.now(),
-                index=True,
             ),
             sa.Column("notes", sa.Text, nullable=True),
             sa.Column(
