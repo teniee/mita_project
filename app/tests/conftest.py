@@ -79,3 +79,45 @@ def _reset_async_engine_between_tests():
             engine.sync_engine.dispose(close=False)
         except Exception:
             pass
+
+    # dispose(close=False) can leave asyncpg sockets alive as
+    # "idle in transaction" until GC runs (the loop that owns them is already
+    # closed, so we cannot await their close here). Left unchecked they
+    # accumulate over a long suite and eventually exhaust the connection pool,
+    # making a late test's registration/DB write fail with a 500. Periodically
+    # sweep them at the database level to keep the run stable.
+    global _ENGINE_RESET_COUNTER
+    _ENGINE_RESET_COUNTER += 1
+    if _ENGINE_RESET_COUNTER % 40 == 0:
+        _sweep_idle_connections()
+
+
+_ENGINE_RESET_COUNTER = 0
+
+
+def _sweep_idle_connections():
+    """Terminate leaked 'idle in transaction' backends on the test database."""
+    import re as _re
+
+    url = os.environ.get("DATABASE_URL", "")
+    if "postgres" not in url:
+        return
+    try:
+        import psycopg2  # noqa: E402
+    except Exception:
+        return
+    # Normalize SQLAlchemy/async URL to a psycopg2-compatible DSN.
+    dsn = _re.sub(r"\+\w+", "", url).replace("sslmode=disable", "").rstrip("?&")
+    try:
+        conn = psycopg2.connect(dsn)
+        conn.autocommit = True
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+                "WHERE datname = current_database() "
+                "AND state = 'idle in transaction' "
+                "AND pid <> pg_backend_pid()"
+            )
+        conn.close()
+    except Exception:
+        pass
