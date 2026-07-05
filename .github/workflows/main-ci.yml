@@ -24,6 +24,43 @@ jobs:
       run:
         working-directory: .
 
+    # Real service containers — the backend test suite exercises real
+    # PostgreSQL and Redis integrations (repositories, onboarding persistence,
+    # rate limiting, token blacklist, async flows) rather than mocking them.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test_mita
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # conftest defaults point here; set explicitly so intent is clear.
+      DATABASE_URL: postgresql://test:test@localhost:5432/test_mita?sslmode=disable
+      REDIS_URL: redis://localhost:6379/1
+      SECRET_KEY: ci_test_secret_key_minimum_32_chars_long_xx
+      JWT_SECRET: ci_test_jwt_secret_minimum_32_chars_long_xx
+      ENVIRONMENT: test
+      TESTING: "true"
+      FIREBASE_JSON: "{}"
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -50,6 +87,11 @@ jobs:
 
           # Linting
           ruff check .
+
+      - name: Apply database migrations (clean DB → head)
+        run: |
+          export PYTHONPATH=.
+          python -m alembic upgrade head
 
       - name: Run tests
         run: |
