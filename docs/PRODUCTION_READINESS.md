@@ -14,10 +14,12 @@ Measured with real Postgres 16 + Redis 7. Two roots (`pytest.ini` scopes to `app
 
 | Root | Passed | Failed | Errors | Notes |
 |------|-------:|-------:|-------:|-------|
-| `app/tests` | 576–581 | 0–1 | 0–4 | Deterministic in isolation; the 1F/4E seen in one monolithic run were a connection-leak flake in `test_csrf_not_required` (passes 12/12 alone) — hardened the async-engine-reset fixture to sweep leaked idle-in-transaction connections; re-measuring. |
-| `tests/` | **287** | **0** | **0** | engine/rebalancer/calendar/velocity/scheduled-expense unit tests — fully green |
+| `app/tests` | **581** | **0** | **0** | Single clean run, 272s, against real Postgres 16 + Redis 7 (`exit=0`). |
+| `tests/` | **287** | **0** | **0** | engine/rebalancer/calendar/velocity/scheduled-expense unit tests. |
+| **Total** | **868** | **0** | **0** | Full backend suite green. |
 
 Session start baseline (2026-07-04, before this audit): **447 passed / 102 failed / 23 errors** (`app/tests`).
+Final (2026-07-05): **868 passed / 0 failed / 0 errors** across both roots.
 Latest per-file verified green this session (real DB+Redis):
 - auth-comprehensive 22/22 · token-blacklist 23/23 · token-version 11/11 · jwt-rotation 2/2
 - csrf 12/12 · api-endpoint-security 9/9 · password-security 15/15 · snapshot 1/1
@@ -109,7 +111,7 @@ Production code: `app/api/auth/{password_reset,account_management,services,token
 | Evidence | Result |
 |----------|--------|
 | Full test suite `tests/` | **287 passed, 0 failed, 0 errors** |
-| Full test suite `app/tests` | 576–581 passed (1F/4E flake isolated to a connection leak in one monolithic run; hardened) |
+| Full test suite `app/tests` | **581 passed, 0 failed, 0 errors** (single clean run, exit=0) |
 | Quality gates | black ✅ · isort ✅ · ruff ✅ · bandit ✅ (0 findings) |
 | DB migrations from empty | ✅ `alembic upgrade head` → 0033, **NO schema drift** vs ORM |
 | Backend cold start | ✅ app boots against the migration-built DB |
