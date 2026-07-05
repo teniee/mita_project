@@ -3,15 +3,16 @@ Win Notification Service
 Sends positive motivational notifications when users are on track.
 Based on behavioral economics: celebrate small wins (Thaler).
 """
-from typing import Optional, Dict, List
-from uuid import UUID
+
 from datetime import date, timedelta
 from decimal import Decimal
+from typing import Dict, List, Optional
+from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.db.models import DailyPlan, Goal, User
 from app.core.logging_config import get_logger
+from app.db.models import DailyPlan, Goal
 
 logger = get_logger(__name__)
 
@@ -22,7 +23,9 @@ class WinNotificationService:
     def __init__(self, db: Session):
         self.db = db
 
-    def check_streak_win(self, user_id: UUID, check_date: Optional[date] = None) -> Optional[Dict]:
+    def check_streak_win(
+        self, user_id: UUID, check_date: Optional[date] = None
+    ) -> Optional[Dict]:
         """
         Check if user has a spending streak (N consecutive green days).
         Returns win notification dict if streak found, None otherwise.
@@ -74,7 +77,9 @@ class WinNotificationService:
             "message": win_message,
         }
 
-    def _calculate_streak_savings(self, user_id: UUID, streak_days: List[date]) -> Decimal:
+    def _calculate_streak_savings(
+        self, user_id: UUID, streak_days: List[date]
+    ) -> Decimal:
         """Sum of (planned - spent) across streak days."""
         total_saved = Decimal("0")
         for day in streak_days:

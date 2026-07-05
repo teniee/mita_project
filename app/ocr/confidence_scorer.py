@@ -5,7 +5,7 @@ Calculates confidence levels for each extracted field based on various heuristic
 
 import re
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any, Dict
 
 
 class ConfidenceScorer:
@@ -29,7 +29,7 @@ class ConfidenceScorer:
         confidence = 0.5  # Base confidence
 
         # Check if merchant appears in first few lines (likely to be correct)
-        lines = raw_text.split('\n')[:3]
+        lines = raw_text.split("\n")[:3]
         if any(merchant.lower() in line.lower() for line in lines):
             confidence += 0.3
 
@@ -112,9 +112,9 @@ class ConfidenceScorer:
 
             # Check if date pattern exists in raw text
             date_patterns = [
-                r'\d{4}[-/]\d{1,2}[-/]\d{1,2}',
-                r'\d{1,2}[-/]\d{1,2}[-/]\d{2,4}',
-                r'(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4}'
+                r"\d{4}[-/]\d{1,2}[-/]\d{1,2}",
+                r"\d{1,2}[-/]\d{1,2}[-/]\d{2,4}",
+                r"(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4}",
             ]
             if any(re.search(pattern, raw_text.lower()) for pattern in date_patterns):
                 confidence += 0.3
@@ -125,7 +125,9 @@ class ConfidenceScorer:
         return max(0.0, min(confidence, 1.0))
 
     @staticmethod
-    def calculate_category_confidence(category: str, merchant: str, items: list) -> float:
+    def calculate_category_confidence(
+        category: str, merchant: str, items: list
+    ) -> float:
         """
         Calculate confidence for category classification.
 
@@ -179,8 +181,7 @@ class ConfidenceScorer:
 
         # Check if items have valid structure
         valid_items = [
-            item for item in items
-            if item.get("name") and item.get("price", 0) > 0
+            item for item in items if item.get("name") and item.get("price", 0) > 0
         ]
 
         if valid_items:
@@ -208,7 +209,7 @@ class ConfidenceScorer:
         amount_conf: float,
         date_conf: float,
         category_conf: float,
-        items_conf: float
+        items_conf: float,
     ) -> float:
         """
         Calculate overall confidence score.
@@ -225,19 +226,19 @@ class ConfidenceScorer:
         """
         # Weighted average (amount and merchant are most important)
         weights = {
-            'merchant': 0.25,
-            'amount': 0.30,
-            'date': 0.20,
-            'category': 0.15,
-            'items': 0.10
+            "merchant": 0.25,
+            "amount": 0.30,
+            "date": 0.20,
+            "category": 0.15,
+            "items": 0.10,
         }
 
         overall = (
-            merchant_conf * weights['merchant'] +
-            amount_conf * weights['amount'] +
-            date_conf * weights['date'] +
-            category_conf * weights['category'] +
-            items_conf * weights['items']
+            merchant_conf * weights["merchant"]
+            + amount_conf * weights["amount"]
+            + date_conf * weights["date"]
+            + category_conf * weights["category"]
+            + items_conf * weights["items"]
         )
 
         return round(overall, 2)
@@ -278,7 +279,7 @@ class ConfidenceScorer:
             "date": round(date_conf, 2),
             "category": round(category_conf, 2),
             "items": round(items_conf, 2),
-            "overall": overall_conf
+            "overall": overall_conf,
         }
 
         # Identify fields needing review (confidence < 0.6)

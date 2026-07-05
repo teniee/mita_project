@@ -11,6 +11,8 @@ Coverage:
   TestRealTimeTrigger   — check_velocity_after_transaction entry point
   TestErrorHandling     — non-blocking on errors
 """
+
+import uuid
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
@@ -20,18 +22,15 @@ import pytest
 from sqlalchemy import (
     Boolean,
     Column,
-    DateTime,
     Date,
-    ForeignKey,
+    DateTime,
     Numeric,
     String,
     Text,
     create_engine,
 )
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import declarative_base, sessionmaker
-from sqlalchemy.types import TypeDecorator, CHAR
-import uuid
+from sqlalchemy.types import CHAR, TypeDecorator
 
 # ---------------------------------------------------------------------------
 # Minimal in-memory schema (mirrors production models)
@@ -42,6 +41,7 @@ Base = declarative_base()
 
 class UUIDType(TypeDecorator):
     """Store UUID as CHAR(36) in SQLite."""
+
     impl = CHAR(36)
     cache_ok = True
 
@@ -143,6 +143,7 @@ class Notification(Base):
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def db():
     engine = create_engine("sqlite:///:memory:")
@@ -159,8 +160,9 @@ def user_id():
     return uuid4()
 
 
-def _add_daily_plans(db, user_id, category, planned, spent_per_day, days=10,
-                     year=2026, month=3):
+def _add_daily_plans(
+    db, user_id, category, planned, spent_per_day, days=10, year=2026, month=3
+):
     """Insert DailyPlan rows with the given planned and spent amounts per row."""
     for d in range(1, days + 1):
         dp = DailyPlan(
@@ -175,8 +177,9 @@ def _add_daily_plans(db, user_id, category, planned, spent_per_day, days=10,
     db.commit()
 
 
-def _add_daily_plans_at_ratio(db, user_id, category, target_ratio, days=10,
-                               year=2026, month=3):
+def _add_daily_plans_at_ratio(
+    db, user_id, category, target_ratio, days=10, year=2026, month=3
+):
     """
     Insert `days` DailyPlan rows achieving the target velocity_ratio.
 
@@ -190,6 +193,7 @@ def _add_daily_plans_at_ratio(db, user_id, category, target_ratio, days=10,
         velocity_ratio    = 10 / planned_per_day = 31 / planned_per_row = target_ratio
     """
     from decimal import ROUND_HALF_UP as _RHU
+
     planned_row = (Decimal("31") / Decimal(str(target_ratio))).quantize(
         Decimal("0.01"), _RHU
     )
@@ -224,6 +228,7 @@ def _add_notification(db, user_id, group_key, created_at=None):
 # Patches — swap production models for test models inside the service
 # ---------------------------------------------------------------------------
 
+
 def _patch_models(monkeypatch, db):
     """Redirect service imports to use in-memory test models."""
     import app.services.velocity_alert_service as svc
@@ -231,7 +236,7 @@ def _patch_models(monkeypatch, db):
     monkeypatch.setattr(svc, "DailyPlan", DailyPlan)
     monkeypatch.setattr(svc, "Goal", Goal)
     monkeypatch.setattr(svc, "Notification", Notification)
-    monkeypatch.setattr(svc, "User", User)
+    # NOTE: the service does not import User, so there is nothing to patch here.
 
 
 def _mock_notifier():
@@ -247,6 +252,7 @@ def _mock_notifier():
 # TestDeduplication
 # ---------------------------------------------------------------------------
 
+
 class TestDeduplication:
     """Cooldown window prevents duplicate alerts."""
 
@@ -260,9 +266,12 @@ class TestDeduplication:
         # Pre-insert a recent notification for this group_key
         _add_notification(db, user_id, group_key, created_at=datetime.now(timezone.utc))
 
-        with patch("app.services.velocity_alert_service.get_notification_integration",
-                   return_value=notifier):
+        with patch(
+            "app.services.velocity_alert_service.get_notification_integration",
+            return_value=notifier,
+        ):
             from app.services.velocity_alert_service import run_velocity_check_for_user
+
             run_velocity_check_for_user(db=db, user_id=user_id, today=today)
 
         notifier.notify_velocity_critical.assert_not_called()
@@ -278,9 +287,12 @@ class TestDeduplication:
         old_time = datetime.now(timezone.utc) - timedelta(hours=25)
         _add_notification(db, user_id, group_key, created_at=old_time)
 
-        with patch("app.services.velocity_alert_service.get_notification_integration",
-                   return_value=notifier):
+        with patch(
+            "app.services.velocity_alert_service.get_notification_integration",
+            return_value=notifier,
+        ):
             from app.services.velocity_alert_service import run_velocity_check_for_user
+
             run_velocity_check_for_user(db=db, user_id=user_id, today=today)
 
         notifier.notify_velocity_critical.assert_called_once()
@@ -292,9 +304,12 @@ class TestDeduplication:
         notifier = _mock_notifier()
         today = date(2026, 3, 10)
 
-        with patch("app.services.velocity_alert_service.get_notification_integration",
-                   return_value=notifier):
+        with patch(
+            "app.services.velocity_alert_service.get_notification_integration",
+            return_value=notifier,
+        ):
             from app.services.velocity_alert_service import run_velocity_check_for_user
+
             run_velocity_check_for_user(db=db, user_id=user_id, today=today)
 
         assert (
@@ -313,13 +328,17 @@ class TestDeduplication:
         today = date(2026, 3, 10)
         # Suppress dining_out
         _add_notification(
-            db, user_id,
+            db,
+            user_id,
             f"velocity_alert:{user_id}:dining_out:2026-03",
         )
 
-        with patch("app.services.velocity_alert_service.get_notification_integration",
-                   return_value=notifier):
+        with patch(
+            "app.services.velocity_alert_service.get_notification_integration",
+            return_value=notifier,
+        ):
             from app.services.velocity_alert_service import run_velocity_check_for_user
+
             run_velocity_check_for_user(db=db, user_id=user_id, today=today)
 
         # gaming should still fire
@@ -346,9 +365,12 @@ class TestDeduplication:
         group_key = f"spending_win:{user_id}:streak_7:2026-03"
         _add_notification(db, user_id, group_key)
 
-        with patch("app.services.velocity_alert_service.get_notification_integration",
-                   return_value=notifier):
+        with patch(
+            "app.services.velocity_alert_service.get_notification_integration",
+            return_value=notifier,
+        ):
             from app.services.velocity_alert_service import run_velocity_check_for_user
+
             run_velocity_check_for_user(db=db, user_id=user_id, today=today)
 
         notifier.notify_spending_win.assert_not_called()
@@ -358,22 +380,28 @@ class TestDeduplication:
 # TestNotificationLevel
 # ---------------------------------------------------------------------------
 
+
 class TestNotificationLevel:
     """Correct notifier method is called for each alert level."""
 
     def _run_at_ratio(self, db, user_id, monkeypatch, target_ratio, notifier):
         _add_daily_plans_at_ratio(db, user_id, "dining_out", target_ratio)
         today = date(2026, 3, 10)
-        with patch("app.services.velocity_alert_service.get_notification_integration",
-                   return_value=notifier):
+        with patch(
+            "app.services.velocity_alert_service.get_notification_integration",
+            return_value=notifier,
+        ):
             from app.services.velocity_alert_service import run_velocity_check_for_user
+
             run_velocity_check_for_user(db=db, user_id=user_id, today=today)
 
     def test_watch_level(self, db, user_id, monkeypatch):
         _patch_models(monkeypatch, db)
         notifier = _mock_notifier()
         # planned_per_row = 31/1.25 = 24.80 → ratio = 1.25 → WATCH
-        self._run_at_ratio(db, user_id, monkeypatch, target_ratio=1.25, notifier=notifier)
+        self._run_at_ratio(
+            db, user_id, monkeypatch, target_ratio=1.25, notifier=notifier
+        )
         notifier.notify_velocity_watch.assert_called_once()
         notifier.notify_velocity_warning.assert_not_called()
         notifier.notify_velocity_critical.assert_not_called()
@@ -382,7 +410,9 @@ class TestNotificationLevel:
         _patch_models(monkeypatch, db)
         notifier = _mock_notifier()
         # ratio = 1.60 → WARNING
-        self._run_at_ratio(db, user_id, monkeypatch, target_ratio=1.60, notifier=notifier)
+        self._run_at_ratio(
+            db, user_id, monkeypatch, target_ratio=1.60, notifier=notifier
+        )
         notifier.notify_velocity_warning.assert_called_once()
         notifier.notify_velocity_critical.assert_not_called()
 
@@ -390,14 +420,18 @@ class TestNotificationLevel:
         _patch_models(monkeypatch, db)
         notifier = _mock_notifier()
         # ratio = 2.50 → CRITICAL
-        self._run_at_ratio(db, user_id, monkeypatch, target_ratio=2.50, notifier=notifier)
+        self._run_at_ratio(
+            db, user_id, monkeypatch, target_ratio=2.50, notifier=notifier
+        )
         notifier.notify_velocity_critical.assert_called_once()
 
     def test_no_alert_when_on_track(self, db, user_id, monkeypatch):
         _patch_models(monkeypatch, db)
         notifier = _mock_notifier()
         # ratio = 0.90 → well under WATCH (1.20)
-        self._run_at_ratio(db, user_id, monkeypatch, target_ratio=0.90, notifier=notifier)
+        self._run_at_ratio(
+            db, user_id, monkeypatch, target_ratio=0.90, notifier=notifier
+        )
         notifier.notify_velocity_watch.assert_not_called()
         notifier.notify_velocity_warning.assert_not_called()
         notifier.notify_velocity_critical.assert_not_called()
@@ -406,6 +440,7 @@ class TestNotificationLevel:
 # ---------------------------------------------------------------------------
 # TestWinNotifications
 # ---------------------------------------------------------------------------
+
 
 class TestWinNotifications:
     """Win notifications are sent for genuine streaks."""
@@ -428,9 +463,12 @@ class TestWinNotifications:
         self._add_good_days(db, user_id, days=10)
         notifier = _mock_notifier()
         today = date(2026, 3, 10)
-        with patch("app.services.velocity_alert_service.get_notification_integration",
-                   return_value=notifier):
+        with patch(
+            "app.services.velocity_alert_service.get_notification_integration",
+            return_value=notifier,
+        ):
             from app.services.velocity_alert_service import run_velocity_check_for_user
+
             run_velocity_check_for_user(db=db, user_id=user_id, today=today)
         notifier.notify_spending_win.assert_called_once()
 
@@ -439,9 +477,12 @@ class TestWinNotifications:
         self._add_good_days(db, user_id, days=5)
         notifier = _mock_notifier()
         today = date(2026, 3, 5)
-        with patch("app.services.velocity_alert_service.get_notification_integration",
-                   return_value=notifier):
+        with patch(
+            "app.services.velocity_alert_service.get_notification_integration",
+            return_value=notifier,
+        ):
             from app.services.velocity_alert_service import run_velocity_check_for_user
+
             run_velocity_check_for_user(db=db, user_id=user_id, today=today)
         notifier.notify_spending_win.assert_not_called()
 
@@ -450,9 +491,14 @@ class TestWinNotifications:
         _patch_models(monkeypatch, db)
         self._add_good_days(db, user_id, days=10)
         notifier = _mock_notifier()
-        with patch("app.services.velocity_alert_service.get_notification_integration",
-                   return_value=notifier):
-            from app.services.velocity_alert_service import check_velocity_after_transaction
+        with patch(
+            "app.services.velocity_alert_service.get_notification_integration",
+            return_value=notifier,
+        ):
+            from app.services.velocity_alert_service import (
+                check_velocity_after_transaction,
+            )
+
             check_velocity_after_transaction(
                 db=db,
                 user_id=user_id,
@@ -466,6 +512,7 @@ class TestWinNotifications:
 # TestRealTimeTrigger
 # ---------------------------------------------------------------------------
 
+
 class TestRealTimeTrigger:
     """check_velocity_after_transaction is the real-time entry point."""
 
@@ -473,9 +520,14 @@ class TestRealTimeTrigger:
         _patch_models(monkeypatch, db)
         _add_daily_plans(db, user_id, "gaming", 10, 30)  # 3× CRITICAL
         notifier = _mock_notifier()
-        with patch("app.services.velocity_alert_service.get_notification_integration",
-                   return_value=notifier):
-            from app.services.velocity_alert_service import check_velocity_after_transaction
+        with patch(
+            "app.services.velocity_alert_service.get_notification_integration",
+            return_value=notifier,
+        ):
+            from app.services.velocity_alert_service import (
+                check_velocity_after_transaction,
+            )
+
             result = check_velocity_after_transaction(
                 db=db,
                 user_id=user_id,
@@ -491,9 +543,14 @@ class TestRealTimeTrigger:
         # ratio = 0.90 → under plan → no alert
         _add_daily_plans_at_ratio(db, user_id, "gaming", 0.90)
         notifier = _mock_notifier()
-        with patch("app.services.velocity_alert_service.get_notification_integration",
-                   return_value=notifier):
-            from app.services.velocity_alert_service import check_velocity_after_transaction
+        with patch(
+            "app.services.velocity_alert_service.get_notification_integration",
+            return_value=notifier,
+        ):
+            from app.services.velocity_alert_service import (
+                check_velocity_after_transaction,
+            )
+
             result = check_velocity_after_transaction(
                 db=db,
                 user_id=user_id,
@@ -507,11 +564,16 @@ class TestRealTimeTrigger:
         _patch_models(monkeypatch, db)
         # dining_out is critical but gaming is on track
         _add_daily_plans(db, user_id, "dining_out", 10, 30)  # CRITICAL
-        _add_daily_plans(db, user_id, "gaming", 10, 10)      # on track
+        _add_daily_plans(db, user_id, "gaming", 10, 10)  # on track
         notifier = _mock_notifier()
-        with patch("app.services.velocity_alert_service.get_notification_integration",
-                   return_value=notifier):
-            from app.services.velocity_alert_service import check_velocity_after_transaction
+        with patch(
+            "app.services.velocity_alert_service.get_notification_integration",
+            return_value=notifier,
+        ):
+            from app.services.velocity_alert_service import (
+                check_velocity_after_transaction,
+            )
+
             # Only check gaming — dining_out should not appear
             result = check_velocity_after_transaction(
                 db=db,
@@ -527,6 +589,7 @@ class TestRealTimeTrigger:
 # TestErrorHandling
 # ---------------------------------------------------------------------------
 
+
 class TestErrorHandling:
     """Service must be non-blocking even when notifications fail."""
 
@@ -537,9 +600,12 @@ class TestErrorHandling:
         broken_notifier = MagicMock()
         broken_notifier.notify_velocity_critical.side_effect = RuntimeError("FCM down")
 
-        with patch("app.services.velocity_alert_service.get_notification_integration",
-                   return_value=broken_notifier):
+        with patch(
+            "app.services.velocity_alert_service.get_notification_integration",
+            return_value=broken_notifier,
+        ):
             from app.services.velocity_alert_service import run_velocity_check_for_user
+
             # Must not raise
             result = run_velocity_check_for_user(
                 db=db, user_id=user_id, today=date(2026, 3, 10)
@@ -550,9 +616,14 @@ class TestErrorHandling:
     def test_realtime_trigger_non_blocking(self, db, user_id, monkeypatch):
         _patch_models(monkeypatch, db)
 
-        with patch("app.services.velocity_alert_service._run_velocity_check",
-                   side_effect=RuntimeError("DB exploded")):
-            from app.services.velocity_alert_service import check_velocity_after_transaction
+        with patch(
+            "app.services.velocity_alert_service._run_velocity_check",
+            side_effect=RuntimeError("DB exploded"),
+        ):
+            from app.services.velocity_alert_service import (
+                check_velocity_after_transaction,
+            )
+
             result = check_velocity_after_transaction(
                 db=db,
                 user_id=user_id,
@@ -568,9 +639,12 @@ class TestErrorHandling:
         notifier = _mock_notifier()
         phantom_id = uuid4()
 
-        with patch("app.services.velocity_alert_service.get_notification_integration",
-                   return_value=notifier):
+        with patch(
+            "app.services.velocity_alert_service.get_notification_integration",
+            return_value=notifier,
+        ):
             from app.services.velocity_alert_service import run_velocity_check_for_user
+
             result = run_velocity_check_for_user(
                 db=db, user_id=phantom_id, today=date(2026, 3, 10)
             )

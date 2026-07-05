@@ -25,7 +25,7 @@ def upgrade():
     # Add goal_id column
     op.add_column(
         "transactions",
-        sa.Column("goal_id", postgresql.UUID(as_uuid=True), nullable=True)
+        sa.Column("goal_id", postgresql.UUID(as_uuid=True), nullable=True),
     )
 
     # Create foreign key constraint
@@ -35,15 +35,12 @@ def upgrade():
         "goals",
         ["goal_id"],
         ["id"],
-        ondelete="SET NULL"  # If goal is deleted, don't delete transactions
+        ondelete="SET NULL",  # If goal is deleted, don't delete transactions
     )
 
     # Create index for faster goal-based queries
     op.create_index(
-        "ix_transactions_goal_id",
-        "transactions",
-        ["goal_id"],
-        unique=False
+        "ix_transactions_goal_id", "transactions", ["goal_id"], unique=False
     )
 
 

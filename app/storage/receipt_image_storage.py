@@ -29,12 +29,7 @@ class ReceiptImageStorage:
         self.base_path = Path(base_path)
         self.base_path.mkdir(parents=True, exist_ok=True)
 
-    def save_image(
-        self,
-        temp_path: str,
-        user_id: int,
-        job_id: str
-    ) -> tuple[str, str]:
+    def save_image(self, temp_path: str, user_id: int, job_id: str) -> tuple[str, str]:
         """
         Save receipt image to persistent storage.
 
@@ -138,7 +133,9 @@ class ReceiptImageStorage:
                         deleted_count += 1
                         logger.debug(f"Deleted old receipt image: {image_file}")
 
-            logger.info(f"Cleaned up {deleted_count} old receipt images (older than {days} days)")
+            logger.info(
+                f"Cleaned up {deleted_count} old receipt images (older than {days} days)"
+            )
             return deleted_count
 
         except Exception as e:
@@ -162,19 +159,23 @@ class ReceiptImageStorage:
             return []
 
         images = []
-        for image_file in sorted(user_dir.iterdir(), key=lambda f: f.stat().st_mtime, reverse=True):
+        for image_file in sorted(
+            user_dir.iterdir(), key=lambda f: f.stat().st_mtime, reverse=True
+        ):
             if not image_file.is_file():
                 continue
 
             stat = image_file.stat()
-            images.append({
-                "filename": image_file.name,
-                "path": str(image_file),
-                "url": f"/receipts/user_{user_id}/{image_file.name}",
-                "size": stat.st_size,
-                "created_at": datetime.fromtimestamp(stat.st_ctime).isoformat(),
-                "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-            })
+            images.append(
+                {
+                    "filename": image_file.name,
+                    "path": str(image_file),
+                    "url": f"/receipts/user_{user_id}/{image_file.name}",
+                    "size": stat.st_size,
+                    "created_at": datetime.fromtimestamp(stat.st_ctime).isoformat(),
+                    "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                }
+            )
 
             if len(images) >= limit:
                 break

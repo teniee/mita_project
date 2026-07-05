@@ -13,8 +13,9 @@ This catches real DB issues mocks cannot:
   - Commit/rollback correctness
   - SQLAlchemy filter_by with DateTime columns
 """
-import sys
+
 import os
+import sys
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from uuid import uuid4
@@ -96,7 +97,10 @@ def db(engine):
 # Helper: insert a DailyPlan row with UTC datetime
 # ---------------------------------------------------------------------------
 
-def _insert_plan(db, user_id, day: date, category: str, planned: float, spent: float = 0.0):
+
+def _insert_plan(
+    db, user_id, day: date, category: str, planned: float, spent: float = 0.0
+):
     dt = datetime(day.year, day.month, day.day, 12, 0, 0, tzinfo=timezone.utc)
     row = DailyPlan(
         id=uuid4(),
@@ -114,7 +118,7 @@ def _insert_plan(db, user_id, day: date, category: str, planned: float, spent: f
 
 def _get_plan(db, user_id, day: date, category: str):
     day_start = datetime(day.year, day.month, day.day, 0, 0, 0)
-    day_end   = datetime(day.year, day.month, day.day, 23, 59, 59)
+    day_end = datetime(day.year, day.month, day.day, 23, 59, 59)
     return (
         db.query(DailyPlan)
         .filter(
@@ -131,6 +135,7 @@ def _get_plan(db, user_id, day: date, category: str):
 # Integration tests
 # ---------------------------------------------------------------------------
 
+
 class TestRebalancerIntegration:
 
     def test_basic_rebalance_flow(self, db):
@@ -146,8 +151,10 @@ class TestRebalancerIntegration:
         today = date(2026, 3, 10)
         future = date(2026, 3, 25)
 
-        dining = _insert_plan(db, user_id, today,  "dining_out",   planned=25, spent=35)
-        entert = _insert_plan(db, user_id, future, "entertainment", planned=40, spent=0)
+        _dining = _insert_plan(db, user_id, today, "dining_out", planned=25, spent=35)
+        _entert = _insert_plan(
+            db, user_id, future, "entertainment", planned=40, spent=0
+        )
 
         result = check_and_rebalance(db, user_id, "dining_out", today)
 
@@ -161,13 +168,13 @@ class TestRebalancerIntegration:
         entert_after = _get_plan(db, user_id, future, "entertainment")
 
         # dining_out planned_amount should have increased
-        assert dining_after.planned_amount > Decimal("25.00"), (
-            f"dining_out planned should be > 25, got {dining_after.planned_amount}"
-        )
+        assert dining_after.planned_amount > Decimal(
+            "25.00"
+        ), f"dining_out planned should be > 25, got {dining_after.planned_amount}"
         # entertainment planned_amount should have decreased
-        assert entert_after.planned_amount < Decimal("40.00"), (
-            f"entertainment planned should be < 40, got {entert_after.planned_amount}"
-        )
+        assert entert_after.planned_amount < Decimal(
+            "40.00"
+        ), f"entertainment planned should be < 40, got {entert_after.planned_amount}"
 
     def test_no_overspend_returns_none(self, db):
         """When spent < planned, rebalance must NOT trigger."""
@@ -182,12 +189,12 @@ class TestRebalancerIntegration:
     def test_sacred_never_donates(self, db):
         """rent and savings_goal must never be used as donors."""
         user_id = uuid4()
-        today  = date(2026, 3, 10)
+        today = date(2026, 3, 10)
         future = date(2026, 3, 20)
 
-        _insert_plan(db, user_id, today,  "dining_out",  planned=20, spent=50)
-        _insert_plan(db, user_id, future, "rent",         planned=1000, spent=0)
-        _insert_plan(db, user_id, future, "savings_goal", planned=500,  spent=0)
+        _insert_plan(db, user_id, today, "dining_out", planned=20, spent=50)
+        _insert_plan(db, user_id, future, "rent", planned=1000, spent=0)
+        _insert_plan(db, user_id, future, "savings_goal", planned=500, spent=0)
 
         result = check_and_rebalance(db, user_id, "dining_out", today)
 
@@ -199,42 +206,46 @@ class TestRebalancerIntegration:
         rent_after = _get_plan(db, user_id, future, "rent")
         savings_after = _get_plan(db, user_id, future, "savings_goal")
 
-        assert rent_after.planned_amount == Decimal("1000.00"), "rent must not be touched"
-        assert savings_after.planned_amount == Decimal("500.00"), "savings must not be touched"
+        assert rent_after.planned_amount == Decimal(
+            "1000.00"
+        ), "rent must not be touched"
+        assert savings_after.planned_amount == Decimal(
+            "500.00"
+        ), "savings must not be touched"
 
     def test_discretionary_drained_before_protected(self, db):
         """entertainment (DISCRETIONARY=3) must donate before groceries (PROTECTED=1)."""
         user_id = uuid4()
-        today  = date(2026, 3, 10)
+        today = date(2026, 3, 10)
         future = date(2026, 3, 22)
 
         # $5 overspend — entertainment alone covers it
-        _insert_plan(db, user_id, today,  "dining_out",    planned=20, spent=25)
+        _insert_plan(db, user_id, today, "dining_out", planned=20, spent=25)
         _insert_plan(db, user_id, future, "entertainment", planned=30, spent=0)
-        _insert_plan(db, user_id, future, "groceries",     planned=50, spent=0)
+        _insert_plan(db, user_id, future, "groceries", planned=50, spent=0)
 
         result = check_and_rebalance(db, user_id, "dining_out", today)
         assert result is not None and result.covered > Decimal("0")
 
         db.expire_all()
-        entert_after   = _get_plan(db, user_id, future, "entertainment")
+        entert_after = _get_plan(db, user_id, future, "entertainment")
         groceries_after = _get_plan(db, user_id, future, "groceries")
 
         # entertainment must have donated
         assert entert_after.planned_amount < Decimal("30.00")
         # groceries must be untouched (entertainment covered the full $5)
-        assert groceries_after.planned_amount == Decimal("50.00"), (
-            f"groceries should be untouched, got {groceries_after.planned_amount}"
-        )
+        assert groceries_after.planned_amount == Decimal(
+            "50.00"
+        ), f"groceries should be untouched, got {groceries_after.planned_amount}"
 
     def test_partial_coverage(self, db):
         """When surplus < deficit: partial coverage, uncovered > 0."""
         user_id = uuid4()
-        today  = date(2026, 3, 10)
+        today = date(2026, 3, 10)
         future = date(2026, 3, 28)
 
         # $40 overspend
-        _insert_plan(db, user_id, today,  "dining_out",    planned=10, spent=50)
+        _insert_plan(db, user_id, today, "dining_out", planned=10, spent=50)
         # Only $10 available in entertainment (50% cap → max $5 donated)
         _insert_plan(db, user_id, future, "entertainment", planned=10, spent=0)
 
@@ -251,11 +262,11 @@ class TestRebalancerIntegration:
         """Entries from days BEFORE txn_date must not be modified."""
         user_id = uuid4()
         today = date(2026, 3, 15)
-        past  = date(2026, 3, 5)
+        past = date(2026, 3, 5)
         future = date(2026, 3, 25)
 
-        _insert_plan(db, user_id, today,  "dining_out",    planned=10, spent=30)
-        past_row   = _insert_plan(db, user_id, past,   "entertainment", planned=50, spent=0)
+        _insert_plan(db, user_id, today, "dining_out", planned=10, spent=30)
+        past_row = _insert_plan(db, user_id, past, "entertainment", planned=50, spent=0)
         _insert_plan(db, user_id, future, "entertainment", planned=50, spent=0)
 
         past_planned_before = Decimal(str(past_row.planned_amount))
@@ -273,14 +284,14 @@ class TestRebalancerIntegration:
     def test_50_percent_cap_respected_in_db(self, db):
         """50% cap per category must hold in actual DB values."""
         user_id = uuid4()
-        today  = date(2026, 3, 10)
+        today = date(2026, 3, 10)
         f1 = date(2026, 3, 20)
         f2 = date(2026, 3, 25)
 
         # entertainment has $60 total across 2 days
-        _insert_plan(db, user_id, today, "dining_out",    planned=10, spent=80)
-        _insert_plan(db, user_id, f1,   "entertainment", planned=30, spent=0)
-        _insert_plan(db, user_id, f2,   "entertainment", planned=30, spent=0)
+        _insert_plan(db, user_id, today, "dining_out", planned=10, spent=80)
+        _insert_plan(db, user_id, f1, "entertainment", planned=30, spent=0)
+        _insert_plan(db, user_id, f2, "entertainment", planned=30, spent=0)
 
         check_and_rebalance(db, user_id, "dining_out", today)
 
@@ -290,18 +301,18 @@ class TestRebalancerIntegration:
 
         total_remaining = e1.planned_amount + e2.planned_amount
         # At most 50% of $60 = $30 was taken → at least $30 remains
-        assert total_remaining >= Decimal("30.00"), (
-            f"50% cap violated: remaining={total_remaining} (expected >= 30)"
-        )
+        assert total_remaining >= Decimal(
+            "30.00"
+        ), f"50% cap violated: remaining={total_remaining} (expected >= 30)"
 
     def test_decimal_precision_preserved(self, db):
         """Financial amounts must not accumulate floating-point error."""
         user_id = uuid4()
-        today  = date(2026, 3, 10)
+        today = date(2026, 3, 10)
         future = date(2026, 3, 20)
 
         # Amounts chosen to expose float precision issues (thirds)
-        _insert_plan(db, user_id, today,  "dining_out",    planned=10.00, spent=13.33)
+        _insert_plan(db, user_id, today, "dining_out", planned=10.00, spent=13.33)
         _insert_plan(db, user_id, future, "entertainment", planned=20.00, spent=0)
 
         check_and_rebalance(db, user_id, "dining_out", today)
@@ -323,11 +334,13 @@ class TestRebalancerIntegration:
         f3 = date(2026, 3, 26)
 
         # $50 overspend
-        _insert_plan(db, user_id, today, "dining_out",  planned=10, spent=60)
+        _insert_plan(db, user_id, today, "dining_out", planned=10, spent=60)
         # gaming=DISCRETIONARY, coffee=FLEXIBLE, groceries=PROTECTED
-        _insert_plan(db, user_id, f1, "gaming",    planned=20, spent=0)   # can give max $10
-        _insert_plan(db, user_id, f2, "coffee",    planned=20, spent=0)   # can give max $10
-        _insert_plan(db, user_id, f3, "groceries", planned=60, spent=0)   # can give max $30
+        _insert_plan(db, user_id, f1, "gaming", planned=20, spent=0)  # can give max $10
+        _insert_plan(db, user_id, f2, "coffee", planned=20, spent=0)  # can give max $10
+        _insert_plan(
+            db, user_id, f3, "groceries", planned=60, spent=0
+        )  # can give max $30
 
         result = check_and_rebalance(db, user_id, "dining_out", today)
 
@@ -339,11 +352,13 @@ class TestRebalancerIntegration:
     def test_rebalance_after_overspend_direct(self, db):
         """Call rebalance_after_overspend() directly with known overspend amount."""
         user_id = uuid4()
-        today  = date(2026, 3, 8)
+        today = date(2026, 3, 8)
         future = date(2026, 3, 18)
 
-        dining  = _insert_plan(db, user_id, today,  "dining_out",    planned=20, spent=35)
-        entert  = _insert_plan(db, user_id, future, "entertainment", planned=60, spent=0)
+        _dining = _insert_plan(db, user_id, today, "dining_out", planned=20, spent=35)
+        _entert = _insert_plan(
+            db, user_id, future, "entertainment", planned=60, spent=0
+        )
 
         result = rebalance_after_overspend(
             db=db,

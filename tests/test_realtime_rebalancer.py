@@ -16,11 +16,12 @@ Coverage:
 - Dry-run mode: calculates but does not commit
 - Float precision: all amounts stored as Decimal, no float leakage
 """
-import sys
+
 import os
+import sys
 from datetime import date, datetime
 from decimal import Decimal
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -33,10 +34,10 @@ from app.services.core.engine.realtime_rebalancer import (
     rebalance_after_overspend,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers — build fake DailyPlan objects without a real DB
 # ---------------------------------------------------------------------------
+
 
 def _make_plan(category, day, planned, spent, user_id=None):
     """Create a mock DailyPlan row."""
@@ -85,6 +86,7 @@ def _make_db_with_entries(entries, overspent_entry=None):
 # RebalancePlan unit tests
 # ---------------------------------------------------------------------------
 
+
 class TestRebalancePlan:
     def test_fully_covered_true(self):
         rp = RebalancePlan()
@@ -124,6 +126,7 @@ class TestRebalancePlan:
 # rebalance_after_overspend
 # ---------------------------------------------------------------------------
 
+
 class TestRebalanceAfterOverspend:
     """Core algorithm tests using mock DB."""
 
@@ -154,9 +157,13 @@ class TestRebalanceAfterOverspend:
         """DISCRETIONARY category donates to cover overspend."""
         future_day = date(2026, 3, 15)
         # entertainment has $40 planned, $0 spent → $40 surplus
-        donor = _make_plan("entertainment", future_day, planned=40, spent=0, user_id=user_id)
+        donor = _make_plan(
+            "entertainment", future_day, planned=40, spent=0, user_id=user_id
+        )
         # overspent entry on txn_date
-        overspent = _make_plan("dining_out", txn_date, planned=25, spent=35, user_id=user_id)
+        overspent = _make_plan(
+            "dining_out", txn_date, planned=25, spent=35, user_id=user_id
+        )
 
         db = _make_db_with_entries(entries=[donor], overspent_entry=overspent)
 
@@ -181,8 +188,12 @@ class TestRebalanceAfterOverspend:
     def test_sacred_category_never_touched(self, user_id, txn_date):
         """SACRED categories (rent, savings_goal, etc.) must NOT donate."""
         future_day = date(2026, 3, 20)
-        sacred_donor = _make_plan("rent", future_day, planned=1000, spent=0, user_id=user_id)
-        savings_donor = _make_plan("savings_goal", future_day, planned=500, spent=0, user_id=user_id)
+        sacred_donor = _make_plan(
+            "rent", future_day, planned=1000, spent=0, user_id=user_id
+        )
+        savings_donor = _make_plan(
+            "savings_goal", future_day, planned=500, spent=0, user_id=user_id
+        )
 
         db = _make_db_with_entries(entries=[sacred_donor, savings_donor])
 
@@ -203,8 +214,12 @@ class TestRebalanceAfterOverspend:
         """Max 50% of any donor category can be taken."""
         future_day = date(2026, 3, 18)
         # $100 entertainment surplus
-        donor = _make_plan("entertainment", future_day, planned=100, spent=0, user_id=user_id)
-        overspent = _make_plan("dining_out", txn_date, planned=20, spent=120, user_id=user_id)
+        donor = _make_plan(
+            "entertainment", future_day, planned=100, spent=0, user_id=user_id
+        )
+        overspent = _make_plan(
+            "dining_out", txn_date, planned=20, spent=120, user_id=user_id
+        )
 
         db = _make_db_with_entries(entries=[donor], overspent_entry=overspent)
 
@@ -225,11 +240,19 @@ class TestRebalanceAfterOverspend:
         """DISCRETIONARY (priority 3) must be drained before PROTECTED (priority 1)."""
         future_day = date(2026, 3, 25)
         # entertainment = DISCRETIONARY, groceries = PROTECTED
-        entertainment = _make_plan("entertainment", future_day, planned=30, spent=0, user_id=user_id)
-        groceries = _make_plan("groceries", future_day, planned=50, spent=0, user_id=user_id)
-        overspent = _make_plan("dining_out", txn_date, planned=10, spent=20, user_id=user_id)
+        entertainment = _make_plan(
+            "entertainment", future_day, planned=30, spent=0, user_id=user_id
+        )
+        groceries = _make_plan(
+            "groceries", future_day, planned=50, spent=0, user_id=user_id
+        )
+        overspent = _make_plan(
+            "dining_out", txn_date, planned=10, spent=20, user_id=user_id
+        )
 
-        db = _make_db_with_entries(entries=[entertainment, groceries], overspent_entry=overspent)
+        db = _make_db_with_entries(
+            entries=[entertainment, groceries], overspent_entry=overspent
+        )
 
         result = rebalance_after_overspend(
             db=db,
@@ -250,8 +273,12 @@ class TestRebalanceAfterOverspend:
         """When total surplus < deficit, partially cover and report uncovered."""
         future_day = date(2026, 3, 20)
         # Only $5 available in entertainment
-        donor = _make_plan("entertainment", future_day, planned=10, spent=0, user_id=user_id)
-        overspent = _make_plan("dining_out", txn_date, planned=10, spent=60, user_id=user_id)
+        donor = _make_plan(
+            "entertainment", future_day, planned=10, spent=0, user_id=user_id
+        )
+        overspent = _make_plan(
+            "dining_out", txn_date, planned=10, spent=60, user_id=user_id
+        )
 
         db = _make_db_with_entries(entries=[donor], overspent_entry=overspent)
 
@@ -273,7 +300,9 @@ class TestRebalanceAfterOverspend:
         """dry_run=True must calculate but never call db.commit()."""
         future_day = date(2026, 3, 28)
         donor = _make_plan("gaming", future_day, planned=60, spent=0, user_id=user_id)
-        overspent = _make_plan("dining_out", txn_date, planned=20, spent=40, user_id=user_id)
+        overspent = _make_plan(
+            "dining_out", txn_date, planned=20, spent=40, user_id=user_id
+        )
 
         db = _make_db_with_entries(entries=[donor], overspent_entry=overspent)
 
@@ -292,8 +321,12 @@ class TestRebalanceAfterOverspend:
     def test_overspent_entry_planned_amount_increased(self, user_id, txn_date):
         """After rebalance, planned_amount on overspent day must increase."""
         future_day = date(2026, 3, 22)
-        donor = _make_plan("entertainment", future_day, planned=40, spent=0, user_id=user_id)
-        overspent = _make_plan("dining_out", txn_date, planned=20, spent=35, user_id=user_id)
+        donor = _make_plan(
+            "entertainment", future_day, planned=40, spent=0, user_id=user_id
+        )
+        overspent = _make_plan(
+            "dining_out", txn_date, planned=20, spent=35, user_id=user_id
+        )
 
         db = _make_db_with_entries(entries=[donor], overspent_entry=overspent)
 
@@ -316,7 +349,9 @@ class TestRebalanceAfterOverspend:
         """Verify planned_amount is set to Decimal, not float."""
         future_day = date(2026, 3, 26)
         donor = _make_plan("hobbies", future_day, planned=30, spent=0, user_id=user_id)
-        overspent = _make_plan("dining_out", txn_date, planned=10, spent=20, user_id=user_id)
+        overspent = _make_plan(
+            "dining_out", txn_date, planned=10, spent=20, user_id=user_id
+        )
 
         db = _make_db_with_entries(entries=[donor], overspent_entry=overspent)
 
@@ -331,14 +366,15 @@ class TestRebalanceAfterOverspend:
 
         # After rebalance, donor's planned_amount must be Decimal not float
         new_val = donor.planned_amount
-        assert isinstance(new_val, Decimal), (
-            f"planned_amount should be Decimal, got {type(new_val)}: {new_val}"
-        )
+        assert isinstance(
+            new_val, Decimal
+        ), f"planned_amount should be Decimal, got {type(new_val)}: {new_val}"
 
 
 # ---------------------------------------------------------------------------
 # check_and_rebalance — the public entry point
 # ---------------------------------------------------------------------------
+
 
 class TestCheckAndRebalance:
     """Tests for the check_and_rebalance wrapper."""
@@ -370,8 +406,12 @@ class TestCheckAndRebalance:
         txn_date = date(2026, 3, 10)
         future_day = date(2026, 3, 25)
 
-        overspent = _make_plan("dining_out", txn_date, planned=20, spent=35, user_id=user_id)
-        donor = _make_plan("entertainment", future_day, planned=60, spent=0, user_id=user_id)
+        overspent = _make_plan(
+            "dining_out", txn_date, planned=20, spent=35, user_id=user_id
+        )
+        donor = _make_plan(
+            "entertainment", future_day, planned=60, spent=0, user_id=user_id
+        )
 
         db = _make_db_with_entries(entries=[donor], overspent_entry=overspent)
 
@@ -396,7 +436,9 @@ class TestCheckAndRebalance:
         txn_date = date(2026, 3, 14)
         future_day = date(2026, 3, 28)
 
-        overspent = _make_plan("delivery", txn_date, planned=15, spent=30, user_id=user_id)
+        overspent = _make_plan(
+            "delivery", txn_date, planned=15, spent=30, user_id=user_id
+        )
         donor = _make_plan("gaming", future_day, planned=50, spent=0, user_id=user_id)
 
         db = _make_db_with_entries(entries=[donor], overspent_entry=overspent)

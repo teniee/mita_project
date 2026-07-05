@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from enum import Enum
 
-from sqlalchemy import Boolean, Column, DateTime, JSON, String, Text
+from sqlalchemy import JSON, Boolean, Column, DateTime, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 
 from .base import Base
@@ -10,6 +10,7 @@ from .base import Base
 
 class NotificationType(str, Enum):
     """Notification types"""
+
     ALERT = "alert"  # Critical financial alerts
     WARNING = "warning"  # Budget warnings
     INFO = "info"  # General information
@@ -21,6 +22,7 @@ class NotificationType(str, Enum):
 
 class NotificationPriority(str, Enum):
     """Notification priority levels"""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -29,6 +31,7 @@ class NotificationPriority(str, Enum):
 
 class NotificationStatus(str, Enum):
     """Notification delivery status"""
+
     PENDING = "pending"  # Scheduled but not sent yet
     SENT = "sent"  # Successfully sent
     DELIVERED = "delivered"  # Confirmed delivered to device
@@ -42,6 +45,7 @@ class Notification(Base):
     Main notification model for storing all user notifications.
     Supports rich content, scheduling, and delivery tracking.
     """
+
     __tablename__ = "notifications"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -51,7 +55,9 @@ class Notification(Base):
     title = Column(String(255), nullable=False)
     message = Column(Text, nullable=False)
     type = Column(String(50), nullable=False, default=NotificationType.INFO.value)
-    priority = Column(String(20), nullable=False, default=NotificationPriority.MEDIUM.value)
+    priority = Column(
+        String(20), nullable=False, default=NotificationPriority.MEDIUM.value
+    )
 
     # Rich content support
     image_url = Column(String(500), nullable=True)
@@ -59,7 +65,9 @@ class Notification(Base):
     data = Column(JSON, nullable=True)  # Additional structured data
 
     # Delivery tracking
-    status = Column(String(20), nullable=False, default=NotificationStatus.PENDING.value)
+    status = Column(
+        String(20), nullable=False, default=NotificationStatus.PENDING.value
+    )
     channel = Column(String(20), nullable=True)  # 'push', 'email', 'in_app'
 
     # Read tracking
@@ -76,13 +84,23 @@ class Notification(Base):
     retry_count = Column(String, default="0")
 
     # Metadata
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
     expires_at = Column(DateTime(timezone=True), nullable=True)  # Notification expiry
 
     # Grouping and categorization
-    category = Column(String(50), nullable=True)  # 'budget', 'transaction', 'goal', etc.
-    group_key = Column(String(100), nullable=True, index=True)  # For grouping related notifications
+    category = Column(
+        String(50), nullable=True
+    )  # 'budget', 'transaction', 'goal', etc.
+    group_key = Column(
+        String(100), nullable=True, index=True
+    )  # For grouping related notifications
 
     def to_dict(self):
         """Convert notification to dictionary"""
@@ -100,9 +118,13 @@ class Notification(Base):
             "channel": self.channel,
             "is_read": self.is_read,
             "read_at": self.read_at.isoformat() if self.read_at else None,
-            "scheduled_for": self.scheduled_for.isoformat() if self.scheduled_for else None,
+            "scheduled_for": (
+                self.scheduled_for.isoformat() if self.scheduled_for else None
+            ),
             "sent_at": self.sent_at.isoformat() if self.sent_at else None,
-            "delivered_at": self.delivered_at.isoformat() if self.delivered_at else None,
+            "delivered_at": (
+                self.delivered_at.isoformat() if self.delivered_at else None
+            ),
             "error_message": self.error_message,
             "retry_count": self.retry_count,
             "created_at": self.created_at.isoformat() if self.created_at else None,

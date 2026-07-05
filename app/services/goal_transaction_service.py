@@ -5,13 +5,14 @@ Automatically updates goal progress when transactions are created.
 Links spending/savings to financial goals.
 """
 
-from typing import Optional
 from decimal import Decimal
+from typing import Optional
 from uuid import UUID
+
 from sqlalchemy.orm import Session
 
-from app.db.models import Goal, Transaction
 from app.core.logging_config import get_logger
+from app.db.models import Goal, Transaction
 
 logger = get_logger(__name__)
 
@@ -21,9 +22,7 @@ class GoalTransactionService:
 
     @staticmethod
     def process_transaction_for_goal(
-        db: Session,
-        transaction: Transaction,
-        goal_id: Optional[UUID] = None
+        db: Session, transaction: Transaction, goal_id: Optional[UUID] = None
     ) -> Optional[Goal]:
         """
         Process a transaction and update the associated goal's progress.
@@ -44,18 +43,23 @@ class GoalTransactionService:
                 return None
 
             # Get the goal
-            goal = db.query(Goal).filter(
-                Goal.id == target_goal_id,
-                Goal.user_id == transaction.user_id
-            ).first()
+            goal = (
+                db.query(Goal)
+                .filter(Goal.id == target_goal_id, Goal.user_id == transaction.user_id)
+                .first()
+            )
 
             if not goal:
-                logger.warning(f"Goal {target_goal_id} not found for transaction {transaction.id}")
+                logger.warning(
+                    f"Goal {target_goal_id} not found for transaction {transaction.id}"
+                )
                 return None
 
             # Only update active goals
-            if goal.status != 'active':
-                logger.info(f"Goal {goal.id} is {goal.status}, not updating from transaction")
+            if goal.status != "active":
+                logger.info(
+                    f"Goal {goal.id} is {goal.status}, not updating from transaction"
+                )
                 return None
 
             # Add the transaction amount to savings
@@ -88,10 +92,7 @@ class GoalTransactionService:
 
     @staticmethod
     def link_transaction_to_goal(
-        db: Session,
-        transaction_id: UUID,
-        goal_id: UUID,
-        user_id: UUID
+        db: Session, transaction_id: UUID, goal_id: UUID, user_id: UUID
     ) -> bool:
         """
         Link an existing transaction to a goal and update progress.
@@ -107,20 +108,24 @@ class GoalTransactionService:
         """
         try:
             # Get transaction
-            transaction = db.query(Transaction).filter(
-                Transaction.id == transaction_id,
-                Transaction.user_id == user_id
-            ).first()
+            transaction = (
+                db.query(Transaction)
+                .filter(
+                    Transaction.id == transaction_id, Transaction.user_id == user_id
+                )
+                .first()
+            )
 
             if not transaction:
                 logger.warning(f"Transaction {transaction_id} not found")
                 return False
 
             # Verify goal belongs to user
-            goal = db.query(Goal).filter(
-                Goal.id == goal_id,
-                Goal.user_id == user_id
-            ).first()
+            goal = (
+                db.query(Goal)
+                .filter(Goal.id == goal_id, Goal.user_id == user_id)
+                .first()
+            )
 
             if not goal:
                 logger.warning(f"Goal {goal_id} not found for user {user_id}")
@@ -144,9 +149,7 @@ class GoalTransactionService:
 
     @staticmethod
     def unlink_transaction_from_goal(
-        db: Session,
-        transaction_id: UUID,
-        user_id: UUID
+        db: Session, transaction_id: UUID, user_id: UUID
     ) -> bool:
         """
         Remove transaction-goal link and recalculate goal progress.
@@ -160,10 +163,13 @@ class GoalTransactionService:
             True if successful, False otherwise
         """
         try:
-            transaction = db.query(Transaction).filter(
-                Transaction.id == transaction_id,
-                Transaction.user_id == user_id
-            ).first()
+            transaction = (
+                db.query(Transaction)
+                .filter(
+                    Transaction.id == transaction_id, Transaction.user_id == user_id
+                )
+                .first()
+            )
 
             if not transaction or not transaction.goal_id:
                 return False
@@ -178,11 +184,13 @@ class GoalTransactionService:
             # Recalculate goal progress by subtracting the amount
             goal = db.query(Goal).filter(Goal.id == goal_id).first()
             if goal:
-                goal.saved_amount = max(Decimal('0'), goal.saved_amount - amount)
+                goal.saved_amount = max(Decimal("0"), goal.saved_amount - amount)
                 goal.update_progress()
                 db.commit()
 
-                logger.info(f"Unlinked transaction {transaction_id} from goal {goal_id}, recalculated progress")
+                logger.info(
+                    f"Unlinked transaction {transaction_id} from goal {goal_id}, recalculated progress"
+                )
 
             return True
 
@@ -193,9 +201,7 @@ class GoalTransactionService:
 
     @staticmethod
     def get_goal_transactions(
-        db: Session,
-        goal_id: UUID,
-        user_id: UUID
+        db: Session, goal_id: UUID, user_id: UUID
     ) -> list[Transaction]:
         """
         Get all transactions linked to a specific goal.
@@ -209,10 +215,12 @@ class GoalTransactionService:
             List of transactions
         """
         try:
-            transactions = db.query(Transaction).filter(
-                Transaction.goal_id == goal_id,
-                Transaction.user_id == user_id
-            ).order_by(Transaction.spent_at.desc()).all()
+            transactions = (
+                db.query(Transaction)
+                .filter(Transaction.goal_id == goal_id, Transaction.user_id == user_id)
+                .order_by(Transaction.spent_at.desc())
+                .all()
+            )
 
             return transactions
 
@@ -222,9 +230,7 @@ class GoalTransactionService:
 
     @staticmethod
     def calculate_goal_progress_from_transactions(
-        db: Session,
-        goal_id: UUID,
-        user_id: UUID
+        db: Session, goal_id: UUID, user_id: UUID
     ) -> Decimal:
         """
         Calculate total saved amount from all linked transactions.
@@ -240,18 +246,17 @@ class GoalTransactionService:
         try:
             from sqlalchemy import func
 
-            total = db.query(
-                func.sum(Transaction.amount)
-            ).filter(
-                Transaction.goal_id == goal_id,
-                Transaction.user_id == user_id
-            ).scalar() or Decimal('0')
+            total = db.query(func.sum(Transaction.amount)).filter(
+                Transaction.goal_id == goal_id, Transaction.user_id == user_id
+            ).scalar() or Decimal("0")
 
             return abs(Decimal(str(total)))
 
         except Exception as e:
-            logger.error(f"Error calculating goal progress from transactions: {e}", exc_info=True)
-            return Decimal('0')
+            logger.error(
+                f"Error calculating goal progress from transactions: {e}", exc_info=True
+            )
+            return Decimal("0")
 
 
 # Singleton instance

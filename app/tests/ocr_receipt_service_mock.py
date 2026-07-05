@@ -4,6 +4,7 @@ OCRReceiptService: Service for handling receipt image processing and text extrac
 
 import os
 import random
+import tempfile
 
 
 class OCRReceiptService:
@@ -12,7 +13,7 @@ class OCRReceiptService:
     (In production, replace mock behavior with real OCR, e.g., Tesseract or Google Vision API.)
     """
 
-    def __init__(self, temp_dir: str = "/tmp"):
+    def __init__(self, temp_dir: str = tempfile.gettempdir()):
         self.temp_dir = temp_dir
 
     def process_image(self, image_path: str) -> dict:

@@ -16,8 +16,8 @@ import os
 import sys
 import types
 import uuid
-from types import SimpleNamespace
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException, status
@@ -63,26 +63,9 @@ sys.modules["firebase_admin.credentials"] = dummy.credentials
 sys.modules["firebase_admin.firestore"] = dummy.firestore
 sys.modules["firebase_admin.messaging"] = dummy.messaging
 
-# Stub OpenAI
-openai_dummy = types.ModuleType("openai")
-openai_dummy.OpenAIError = Exception
-openai_dummy.OpenAI = lambda *a, **k: types.SimpleNamespace(
-    chat=types.SimpleNamespace(
-        completions=types.SimpleNamespace(
-            create=lambda **k: types.SimpleNamespace(
-                choices=[
-                    types.SimpleNamespace(message=types.SimpleNamespace(content=""))
-                ]
-            )
-        )
-    )
-)
-openai_dummy.types = types.SimpleNamespace(
-    chat=types.SimpleNamespace(ChatCompletionMessageParam=dict)
-)
-sys.modules["openai"] = openai_dummy
-sys.modules["openai.types"] = openai_dummy.types
-sys.modules["openai.types.chat"] = openai_dummy.types.chat
+# NOTE: the real `openai` package is installed and imports without
+# network access or an API key; stubbing it in sys.modules polluted
+# every later-collected test in the suite.
 
 # Stub apns2 modules
 apns_dummy_client = types.SimpleNamespace(APNsClient=None)
@@ -92,15 +75,16 @@ sys.modules["apns2.client"] = apns_dummy_client
 sys.modules["apns2.credentials"] = apns_dummy_creds
 sys.modules["apns2.payload"] = apns_dummy_payload
 
-# Import app components after mocking
-from app.main import app
 from app.api.dependencies import get_current_user
 from app.core.session import get_db
 
+# Import app components after mocking
+from app.main import app
 
 # ============================================================================
 # FIXTURES
 # ============================================================================
+
 
 @pytest.fixture
 def client():
@@ -119,13 +103,14 @@ def mock_user():
         monthly_income=5000.0,
         has_onboarded=False,
         _token_payload={},
-        _token_scopes=[]
+        _token_scopes=[],
     )
 
 
 @pytest.fixture
 def mock_db_with_user(mock_user):
     """Mock database with user"""
+
     class DummyQuery:
         def __init__(self, item):
             self.item = item
@@ -154,7 +139,7 @@ def mock_db_with_user(mock_user):
                     user_id=self.user.id,
                     date=datetime.now(timezone.utc),
                     type="savings",
-                    text="Save more money this month"
+                    text="Save more money this month",
                 )
                 return DummyQuery(advice)
             return DummyQuery(None)
@@ -177,20 +162,24 @@ def mock_db_with_user(mock_user):
 @pytest.fixture
 def override_auth_invalid():
     """Mock dependency that raises 401 for invalid auth"""
+
     async def mock_invalid_user():
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"}
+            headers={"WWW-Authenticate": "Bearer"},
         )
+
     return mock_invalid_user
 
 
 @pytest.fixture
 def override_auth_valid(mock_user):
     """Mock dependency that returns valid user"""
+
     def mock_valid_user():
         return mock_user
+
     return mock_valid_user
 
 
@@ -204,6 +193,7 @@ def reset_overrides():
 # ============================================================================
 # AUTHENTICATION ERROR HANDLING TESTS (401 Unauthorized)
 # ============================================================================
+
 
 class TestAuthenticationErrorHandling:
     """Test that authentication errors return 401, not 500"""
@@ -225,8 +215,8 @@ class TestAuthenticationErrorHandling:
                 "to_email": "test@example.com",
                 "email_type": "welcome",
                 "variables": {},
-                "priority": "normal"
-            }
+                "priority": "normal",
+            },
         )
 
         # Assert status code
@@ -234,12 +224,15 @@ class TestAuthenticationErrorHandling:
 
         # Assert response structure (standardized error format)
         response_data = response.json()
-        assert "detail" in response_data or "error" in response_data, \
-            "Response should contain error details"
+        assert (
+            "detail" in response_data or "error" in response_data
+        ), "Response should contain error details"
 
         # Assert security headers
-        assert "WWW-Authenticate" in response.headers or "www-authenticate" in response.headers, \
-            "401 response should include WWW-Authenticate header"
+        assert (
+            "WWW-Authenticate" in response.headers
+            or "www-authenticate" in response.headers
+        ), "401 response should include WWW-Authenticate header"
 
     def test_scenario_3_ai_advice_unauthorized(self, client, override_auth_invalid):
         """
@@ -252,8 +245,7 @@ class TestAuthenticationErrorHandling:
         app.dependency_overrides[get_current_user] = override_auth_invalid
 
         response = client.get(
-            "/api/insights/",
-            headers={"Authorization": "Bearer expired_token_67890"}
+            "/api/insights/", headers={"Authorization": "Bearer expired_token_67890"}
         )
 
         # Assert status code
@@ -284,7 +276,7 @@ class TestAuthenticationErrorHandling:
         response = client.post(
             "/api/ocr/process",
             headers={"Authorization": "Bearer invalid_token_abc123"},
-            files={"file": ("receipt.jpg", test_image, "image/jpeg")}
+            files={"file": ("receipt.jpg", test_image, "image/jpeg")},
         )
 
         # Assert status code
@@ -308,17 +300,11 @@ class TestAuthenticationErrorHandling:
             "/api/onboarding/submit",
             headers={"Authorization": "Bearer invalid_onboarding_token"},
             json={
-                "income": {
-                    "monthly_income": 5000,
-                    "additional_income": 0
-                },
-                "fixed_expenses": {
-                    "rent": 1500,
-                    "utilities": 200
-                },
+                "income": {"monthly_income": 5000, "additional_income": 0},
+                "fixed_expenses": {"rent": 1500, "utilities": 200},
                 "spending_habits": {},
-                "goals": {}
-            }
+                "goals": {},
+            },
         )
 
         # Assert status code
@@ -333,10 +319,13 @@ class TestAuthenticationErrorHandling:
 # VALIDATION ERROR HANDLING TESTS (400/422 Bad Request)
 # ============================================================================
 
+
 class TestValidationErrorHandling:
     """Test that validation errors return 400/422, not 500"""
 
-    def test_scenario_5_email_send_invalid_format(self, client, override_auth_valid, mock_db_with_user):
+    def test_scenario_5_email_send_invalid_format(
+        self, client, override_auth_valid, mock_db_with_user
+    ):
         """
         TestSprite Scenario 5: Send Invalid Email
 
@@ -354,19 +343,23 @@ class TestValidationErrorHandling:
                 "to_email": "invalid_email_format",  # Invalid email format
                 "email_type": "welcome",
                 "variables": {},
-                "priority": "normal"
-            }
+                "priority": "normal",
+            },
         )
 
         # Assert status code is validation error (400 or 422)
-        assert response.status_code in [400, 422], \
-            f"Expected 400 or 422, got {response.status_code}"
+        assert response.status_code in [
+            400,
+            422,
+        ], f"Expected 400 or 422, got {response.status_code}"
 
         # Assert response contains validation error details
         response_data = response.json()
         assert "detail" in response_data or "error" in response_data
 
-    def test_scenario_6_email_send_empty_body(self, client, override_auth_valid, mock_db_with_user):
+    def test_scenario_6_email_send_empty_body(
+        self, client, override_auth_valid, mock_db_with_user
+    ):
         """
         TestSprite Scenario 6: Check Server Error for Email Sending
 
@@ -380,18 +373,22 @@ class TestValidationErrorHandling:
         response = client.post(
             "/api/email/send",
             headers={"Authorization": "Bearer valid_token_123"},
-            json={}  # Empty body
+            json={},  # Empty body
         )
 
         # Assert status code is validation error (400 or 422)
-        assert response.status_code in [400, 422], \
-            f"Expected 400 or 422, got {response.status_code}"
+        assert response.status_code in [
+            400,
+            422,
+        ], f"Expected 400 or 422, got {response.status_code}"
 
         # Assert response contains validation error details
         response_data = response.json()
         assert "detail" in response_data or "error" in response_data
 
-    def test_scenario_2_ai_advice_invalid_request(self, client, override_auth_valid, mock_db_with_user):
+    def test_scenario_2_ai_advice_invalid_request(
+        self, client, override_auth_valid, mock_db_with_user
+    ):
         """
         TestSprite Scenario 2: Invalid Request for Financial Advice
 
@@ -412,31 +409,36 @@ class TestValidationErrorHandling:
         # endpoint handles edge cases gracefully without 500 errors.
 
         response = client.get(
-            "/api/insights/",
-            headers={"Authorization": "Bearer valid_token_123"}
+            "/api/insights/", headers={"Authorization": "Bearer valid_token_123"}
         )
 
         # The endpoint should handle this gracefully, either with 200 (success with fallback)
         # or 400 (validation error), but NEVER 500
-        assert response.status_code != 500, \
-            f"Should not return 500, got {response.status_code}"
+        assert (
+            response.status_code != 500
+        ), f"Should not return 500, got {response.status_code}"
 
         # If it returns success, verify response structure
         if response.status_code == 200:
             response_data = response.json()
-            assert "success" in response_data or "data" in response_data or \
-                   isinstance(response_data, dict), \
-                   "Response should have valid structure"
+            assert (
+                "success" in response_data
+                or "data" in response_data
+                or isinstance(response_data, dict)
+            ), "Response should have valid structure"
 
 
 # ============================================================================
 # VALID REQUEST HANDLING TESTS (200 OK)
 # ============================================================================
 
+
 class TestValidRequestHandling:
     """Test that valid requests work correctly and return 200 OK"""
 
-    def test_scenario_7_ai_advice_valid_request(self, client, override_auth_valid, mock_db_with_user):
+    def test_scenario_7_ai_advice_valid_request(
+        self, client, override_auth_valid, mock_db_with_user
+    ):
         """
         TestSprite Scenario 7: Valid Request for Financial Advice
 
@@ -449,7 +451,7 @@ class TestValidRequestHandling:
 
         response = client.get(
             "/api/insights/",
-            headers={"Authorization": "Bearer valid_token_premium_user"}
+            headers={"Authorization": "Bearer valid_token_premium_user"},
         )
 
         # Assert status code is 200 OK
@@ -462,11 +464,18 @@ class TestValidRequestHandling:
         # Verify response has expected structure (success wrapper or direct data)
         if isinstance(response_data, dict):
             # Check for standardized response format or direct data
-            assert "success" in response_data or "data" in response_data or \
-                   any(key in response_data for key in ["id", "title", "content", "category"]), \
-                   "Response should contain success status or advice data"
+            assert (
+                "success" in response_data
+                or "data" in response_data
+                or any(
+                    key in response_data
+                    for key in ["id", "title", "content", "category"]
+                )
+            ), "Response should contain success status or advice data"
 
-    def test_onboarding_valid_request(self, client, override_auth_valid, mock_db_with_user):
+    def test_onboarding_valid_request(
+        self, client, override_auth_valid, mock_db_with_user
+    ):
         """
         Additional Test: Valid Onboarding Request
 
@@ -481,24 +490,15 @@ class TestValidRequestHandling:
             "/api/onboarding/submit",
             headers={"Authorization": "Bearer valid_token_123"},
             json={
-                "income": {
-                    "monthly_income": 5000,
-                    "additional_income": 500
-                },
-                "fixed_expenses": {
-                    "rent": 1500,
-                    "utilities": 200,
-                    "insurance": 150
-                },
+                "income": {"monthly_income": 5000, "additional_income": 500},
+                "fixed_expenses": {"rent": 1500, "utilities": 200, "insurance": 150},
                 "spending_habits": {
                     "dining_out_per_month": 10,
-                    "entertainment_budget": 200
+                    "entertainment_budget": 200,
                 },
-                "goals": {
-                    "savings_goal_amount_per_month": 1000
-                },
-                "region": "US"
-            }
+                "goals": {"savings_goal_amount_per_month": 1000},
+                "region": "US",
+            },
         )
 
         # Should succeed with 200
@@ -517,6 +517,7 @@ class TestValidRequestHandling:
 # EDGE CASES AND SECURITY TESTS
 # ============================================================================
 
+
 class TestErrorResponseFormat:
     """Test that error responses follow standardized format and don't leak info"""
 
@@ -525,17 +526,16 @@ class TestErrorResponseFormat:
         app.dependency_overrides[get_current_user] = override_auth_invalid
 
         response = client.get(
-            "/api/insights/",
-            headers={"Authorization": "Bearer invalid_token"}
+            "/api/insights/", headers={"Authorization": "Bearer invalid_token"}
         )
 
         response_str = response.text.lower()
 
         # Verify no sensitive information leaked
         assert "traceback" not in response_str
-        assert "file \"" not in response_str
+        assert 'file "' not in response_str
         assert "line " not in response_str
-        assert ".py\"" not in response_str
+        assert '.py"' not in response_str
         assert "exception" not in response_str.replace("httpexception", "")
 
     def test_error_response_generic_messages(self, client, override_auth_invalid):
@@ -548,8 +548,8 @@ class TestErrorResponseFormat:
             json={
                 "to_email": "test@example.com",
                 "email_type": "welcome",
-                "variables": {}
-            }
+                "variables": {},
+            },
         )
 
         response_data = response.json()
@@ -560,9 +560,14 @@ class TestErrorResponseFormat:
         assert "sql" not in response_str
         assert "jwt" not in response_str or "token" in response_str
         # Generic error messages only
-        assert any(word in response_str for word in ["unauthorized", "invalid", "expired", "token"])
+        assert any(
+            word in response_str
+            for word in ["unauthorized", "invalid", "expired", "token"]
+        )
 
-    def test_ocr_file_validation_errors(self, client, override_auth_valid, mock_db_with_user):
+    def test_ocr_file_validation_errors(
+        self, client, override_auth_valid, mock_db_with_user
+    ):
         """Test that OCR file validation returns proper 400 errors"""
         app.dependency_overrides[get_current_user] = override_auth_valid
         app.dependency_overrides[get_db] = lambda: mock_db_with_user
@@ -571,17 +576,20 @@ class TestErrorResponseFormat:
         response = client.post(
             "/api/ocr/process",
             headers={"Authorization": "Bearer valid_token"},
-            files={"file": ("test.txt", b"not an image", "text/plain")}
+            files={"file": ("test.txt", b"not an image", "text/plain")},
         )
 
         # Should return 400 for invalid file type
-        assert response.status_code == 400, \
-            f"Expected 400 for invalid file type, got {response.status_code}"
+        assert (
+            response.status_code == 400
+        ), f"Expected 400 for invalid file type, got {response.status_code}"
 
         response_data = response.json()
         assert "detail" in response_data or "error" in response_data
 
-    def test_onboarding_validation_errors(self, client, override_auth_valid, mock_db_with_user):
+    def test_onboarding_validation_errors(
+        self, client, override_auth_valid, mock_db_with_user
+    ):
         """Test that onboarding validation returns proper 400/422 errors"""
         app.dependency_overrides[get_current_user] = override_auth_valid
         app.dependency_overrides[get_db] = lambda: mock_db_with_user
@@ -593,20 +601,23 @@ class TestErrorResponseFormat:
             json={
                 "income": {
                     "monthly_income": -1000,  # Invalid: negative income
-                    "additional_income": 0
+                    "additional_income": 0,
                 },
-                "fixed_expenses": {}
-            }
+                "fixed_expenses": {},
+            },
         )
 
         # Should return validation error (422 or 400)
-        assert response.status_code in [400, 422], \
-            f"Expected 400 or 422 for negative income, got {response.status_code}"
+        assert response.status_code in [
+            400,
+            422,
+        ], f"Expected 400 or 422 for negative income, got {response.status_code}"
 
 
 # ============================================================================
 # SUMMARY TEST REPORT
 # ============================================================================
+
 
 def test_all_scenarios_summary():
     """

@@ -3,8 +3,9 @@
 When a user ignored a budget warning, remind them 3 days later.
 Based on MITA design principle: MITA is an advisor, not a judge.
 """
-from typing import List, Dict
+
 from datetime import datetime, timedelta, timezone
+from typing import Dict, List
 
 from sqlalchemy.orm import Session
 
@@ -28,15 +29,19 @@ def record_ignored_alert(
     Record that a user ignored a budget alert.
     Call this from the notification handler when user taps [Ignore].
     """
-    _ignored_alerts.append({
-        "user_id": user_id,
-        "category": category,
-        "overspend_amount": overspend_amount,
-        "goal_title": goal_title,
-        "alert_date": datetime.now(timezone.utc).isoformat(),
-        "reminded": False,
-    })
-    logger.info(f"User {user_id} ignored alert for {category} (${overspend_amount:.2f})")
+    _ignored_alerts.append(
+        {
+            "user_id": user_id,
+            "category": category,
+            "overspend_amount": overspend_amount,
+            "goal_title": goal_title,
+            "alert_date": datetime.now(timezone.utc).isoformat(),
+            "reminded": False,
+        }
+    )
+    logger.info(
+        f"User {user_id} ignored alert for {category} (${overspend_amount:.2f})"
+    )
 
 
 def run_followup_reminders(db: Session) -> List[Dict]:
@@ -62,11 +67,11 @@ def run_followup_reminders(db: Session) -> List[Dict]:
         overspend = alert["overspend_amount"]
         goal_title = alert.get("goal_title")
 
-        message = (
-            f"3 days ago you overspent ${overspend:.2f} on {category}. "
-        )
+        message = f"3 days ago you overspent ${overspend:.2f} on {category}. "
         if goal_title:
-            message += f"Your goal [{goal_title}] is still waiting. Want to get back on track?"
+            message += (
+                f"Your goal [{goal_title}] is still waiting. Want to get back on track?"
+            )
         else:
             message += "Want to review your budget?"
 
@@ -77,7 +82,11 @@ def run_followup_reminders(db: Session) -> List[Dict]:
         # Send actual push notification via NotificationIntegration
         try:
             from uuid import UUID
-            from app.services.notification_integration import get_notification_integration
+
+            from app.services.notification_integration import (
+                get_notification_integration,
+            )
+
             notifier = get_notification_integration(db)
             notifier.send_custom_notification(
                 user_id=UUID(user_id),
@@ -91,11 +100,13 @@ def run_followup_reminders(db: Session) -> List[Dict]:
             logger.warning(f"Failed to send follow-up push for user {user_id}: {e}")
 
         logger.info(f"Follow-up reminder sent to user {user_id}: {message}")
-        reminders_sent.append({
-            "user_id": user_id,
-            "category": category,
-            "message": message,
-            "original_alert_date": alert["alert_date"],
-        })
+        reminders_sent.append(
+            {
+                "user_id": user_id,
+                "category": category,
+                "message": message,
+                "original_alert_date": alert["alert_date"],
+            }
+        )
 
     return reminders_sent

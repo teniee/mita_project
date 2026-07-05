@@ -23,9 +23,12 @@ class NotificationTest(BaseModel):
 # New notification schemas
 class NotificationCreate(BaseModel):
     """Schema for creating a new notification"""
+
     title: str = Field(..., min_length=1, max_length=255)
     message: str = Field(..., min_length=1)
-    type: str = Field(default="info")  # alert, warning, info, tip, achievement, reminder, recommendation
+    type: str = Field(
+        default="info"
+    )  # alert, warning, info, tip, achievement, reminder, recommendation
     priority: str = Field(default="medium")  # low, medium, high, critical
     image_url: Optional[str] = Field(None, max_length=500)
     action_url: Optional[str] = Field(None, max_length=500)
@@ -38,6 +41,7 @@ class NotificationCreate(BaseModel):
 
 class NotificationResponse(UserOwnedResponseSchema):
     """Schema for notification response"""
+
     # id, user_id, created_at, updated_at inherited from UserOwnedResponseSchema
     title: str
     message: str
@@ -62,6 +66,7 @@ class NotificationResponse(UserOwnedResponseSchema):
 
 class NotificationListResponse(BaseModel):
     """Schema for list of notifications"""
+
     notifications: list[NotificationResponse]
     total: int
     unread_count: int
@@ -70,11 +75,13 @@ class NotificationListResponse(BaseModel):
 
 class NotificationMarkReadRequest(BaseModel):
     """Schema for marking notification as read"""
+
     notification_id: UUID
 
 
 class NotificationPreferencesUpdate(BaseModel):
     """Schema for updating notification preferences"""
+
     push_enabled: bool = True
     email_enabled: bool = True
     budget_alerts: bool = True
@@ -87,6 +94,7 @@ class NotificationPreferencesUpdate(BaseModel):
 
 class NotificationPreferencesResponse(BaseModel):
     """Schema for notification preferences response"""
+
     push_enabled: bool
     email_enabled: bool
     budget_alerts: bool

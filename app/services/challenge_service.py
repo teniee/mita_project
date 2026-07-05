@@ -14,7 +14,7 @@ DB models required (see bottom of this file).
 from __future__ import annotations
 
 from datetime import date, timedelta
-from typing import Dict, List, Union, Tuple
+from typing import Dict, List, Tuple, Union
 
 from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session

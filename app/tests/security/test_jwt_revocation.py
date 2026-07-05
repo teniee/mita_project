@@ -1,11 +1,11 @@
-from unittest.mock import patch, AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from app.services.auth_jwt_service import (
+    blacklist_token,
     create_access_token,
     create_refresh_token,
-    blacklist_token,
     verify_token,
 )
 
@@ -17,6 +17,7 @@ def _make_mock_blacklist_service(store: dict):
     async def _blacklist(token=None, **kwargs):
         if token:
             import jwt as pyjwt
+
             try:
                 payload = pyjwt.decode(token, options={"verify_signature": False})
                 jti = payload.get("jti", token)

@@ -9,9 +9,11 @@ Revision ID: 0027
 Revises: 0026
 Create Date: 2026-03-20
 """
-from alembic import op
+
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
+
+from alembic import op
 
 revision = "0027"
 down_revision = "0026"
@@ -75,9 +77,7 @@ def upgrade() -> None:
     )
 
     # status — filter pending only
-    op.create_index(
-        "ix_scheduled_expenses_status", "scheduled_expenses", ["status"]
-    )
+    op.create_index("ix_scheduled_expenses_status", "scheduled_expenses", ["status"])
 
     # Composite: main query pattern for API + cron
     # "pending expenses for user X between date A and date B"

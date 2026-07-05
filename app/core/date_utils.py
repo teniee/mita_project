@@ -8,6 +8,7 @@ which misses rows stored at any other time on that day (e.g. noon UTC).
 
 Use day_to_range() to build an inclusive range that covers the full day.
 """
+
 from datetime import date, datetime
 from typing import Tuple
 

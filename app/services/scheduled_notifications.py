@@ -3,18 +3,19 @@ Scheduled Notifications Service
 Handles periodic notifications like daily reminders, overdue goals, etc.
 Should be run as background tasks via cron or task scheduler
 """
-from datetime import datetime, date, timedelta, timezone
-from typing import Dict
+
 import logging
 import random
+from datetime import date, datetime, timedelta, timezone
+from typing import Dict
 
-from sqlalchemy.orm import Session
 from sqlalchemy import and_, func
+from sqlalchemy.orm import Session
 
 from app.db.models import Goal, User
+from app.services.core.engine.budget_tracker import BudgetTracker
 from app.services.notification_integration import get_notification_integration
 from app.services.notification_templates import FINANCIAL_TIPS
-from app.services.core.engine.budget_tracker import BudgetTracker
 
 logger = logging.getLogger(__name__)
 
@@ -45,12 +46,14 @@ class ScheduledNotificationService:
 
         try:
             # Get all active users
-            users = self.db.query(User).filter(User.is_active == True).all()
+            users = self.db.query(User).filter(User.is_active.is_(True)).all()
 
             today = date.today()
             year = today.year
             month = today.month
-            days_in_month = (date(year, month + 1, 1) - timedelta(days=1)).day if month < 12 else 31
+            days_in_month = (
+                (date(year, month + 1, 1) - timedelta(days=1)).day if month < 12 else 31
+            )
             days_left = days_in_month - today.day + 1
 
             for user in users:
@@ -62,25 +65,31 @@ class ScheduledNotificationService:
 
                     # Calculate total remaining budget
                     total_remaining = sum(
-                        amount for amount in remaining_per_category.values() if amount > 0
+                        amount
+                        for amount in remaining_per_category.values()
+                        if amount > 0
                     )
 
                     if total_remaining > 0:
                         self.notifier.notify_daily_budget_reminder(
                             user_id=user.id,
                             remaining_budget=float(total_remaining),
-                            days_left=days_left
+                            days_left=days_left,
                         )
                         stats["sent"] += 1
 
                 except Exception as e:
-                    logger.error(f"Failed to send daily reminder to user {user.id}: {e}")
+                    logger.error(
+                        f"Failed to send daily reminder to user {user.id}: {e}"
+                    )
                     stats["failed"] += 1
 
         except Exception as e:
             logger.error(f"Error in send_daily_budget_reminders: {e}")
 
-        logger.info(f"Daily budget reminders: {stats['sent']} sent, {stats['failed']} failed")
+        logger.info(
+            f"Daily budget reminders: {stats['sent']} sent, {stats['failed']} failed"
+        )
         return stats
 
     def send_motivational_tips(self, max_users: int = 100) -> Dict[str, int]:
@@ -100,7 +109,7 @@ class ScheduledNotificationService:
             # Get random active users (limit to avoid spam)
             users = (
                 self.db.query(User)
-                .filter(User.is_active == True)
+                .filter(User.is_active.is_(True))
                 .order_by(func.random())
                 .limit(max_users)
                 .all()
@@ -118,7 +127,7 @@ class ScheduledNotificationService:
                         notification_type="tip",
                         priority="low",
                         category="daily_reminders",
-                        send_push=False  # Don't push, just in-app
+                        send_push=False,  # Don't push, just in-app
                     )
                     stats["sent"] += 1
 
@@ -129,7 +138,9 @@ class ScheduledNotificationService:
         except Exception as e:
             logger.error(f"Error in send_motivational_tips: {e}")
 
-        logger.info(f"Motivational tips: {stats['sent']} sent, {stats['failed']} failed")
+        logger.info(
+            f"Motivational tips: {stats['sent']} sent, {stats['failed']} failed"
+        )
         return stats
 
     # ============================================================================
@@ -154,9 +165,9 @@ class ScheduledNotificationService:
                 self.db.query(Goal)
                 .filter(
                     and_(
-                        Goal.status == 'active',
+                        Goal.status == "active",
                         Goal.target_date < today,
-                        Goal.target_date.isnot(None)
+                        Goal.target_date.isnot(None),
                     )
                 )
                 .all()
@@ -171,18 +182,22 @@ class ScheduledNotificationService:
                         self.notifier.notify_goal_overdue(
                             user_id=goal.user_id,
                             goal_title=goal.title,
-                            days_overdue=days_overdue
+                            days_overdue=days_overdue,
                         )
                         stats["sent"] += 1
 
                 except Exception as e:
-                    logger.error(f"Failed to send overdue notification for goal {goal.id}: {e}")
+                    logger.error(
+                        f"Failed to send overdue notification for goal {goal.id}: {e}"
+                    )
                     stats["failed"] += 1
 
         except Exception as e:
             logger.error(f"Error in check_overdue_goals: {e}")
 
-        logger.info(f"Overdue goal reminders: {stats['sent']} sent, {stats['failed']} failed")
+        logger.info(
+            f"Overdue goal reminders: {stats['sent']} sent, {stats['failed']} failed"
+        )
         return stats
 
     def check_goals_due_soon(self) -> Dict[str, int]:
@@ -204,10 +219,10 @@ class ScheduledNotificationService:
                 self.db.query(Goal)
                 .filter(
                     and_(
-                        Goal.status == 'active',
+                        Goal.status == "active",
                         Goal.target_date <= week_from_now,
                         Goal.target_date >= today,
-                        Goal.target_date.isnot(None)
+                        Goal.target_date.isnot(None),
                     )
                 )
                 .all()
@@ -224,18 +239,22 @@ class ScheduledNotificationService:
                             user_id=goal.user_id,
                             goal_title=goal.title,
                             days_remaining=days_remaining,
-                            remaining_amount=remaining_amount
+                            remaining_amount=remaining_amount,
                         )
                         stats["sent"] += 1
 
                 except Exception as e:
-                    logger.error(f"Failed to send due soon notification for goal {goal.id}: {e}")
+                    logger.error(
+                        f"Failed to send due soon notification for goal {goal.id}: {e}"
+                    )
                     stats["failed"] += 1
 
         except Exception as e:
             logger.error(f"Error in check_goals_due_soon: {e}")
 
-        logger.info(f"Goals due soon reminders: {stats['sent']} sent, {stats['failed']} failed")
+        logger.info(
+            f"Goals due soon reminders: {stats['sent']} sent, {stats['failed']} failed"
+        )
         return stats
 
     # ============================================================================
@@ -257,7 +276,7 @@ class ScheduledNotificationService:
             users_with_goals = (
                 self.db.query(User.id)
                 .join(Goal, Goal.user_id == User.id)
-                .filter(User.is_active == True)
+                .filter(User.is_active.is_(True))
                 .distinct()
                 .all()
             )
@@ -272,32 +291,44 @@ class ScheduledNotificationService:
                         .filter(
                             and_(
                                 Goal.user_id == user_id,
-                                Goal.status == 'active',
-                                Goal.progress > 0
+                                Goal.status == "active",
+                                Goal.progress > 0,
                             )
                         )
-                        .scalar() or 0
+                        .scalar()
+                        or 0
                     )
 
                     # Calculate savings this week
                     # This is simplified - in production, track actual savings transactions
-                    goals = self.db.query(Goal).filter(
-                        and_(
-                            Goal.user_id == user_id,
-                            Goal.status == 'active',
-                            Goal.last_updated >= one_week_ago
+                    goals = (
+                        self.db.query(Goal)
+                        .filter(
+                            and_(
+                                Goal.user_id == user_id,
+                                Goal.status == "active",
+                                Goal.last_updated >= one_week_ago,
+                            )
                         )
-                    ).all()
+                        .all()
+                    )
 
-                    total_saved_this_week = sum(
-                        float(goal.saved_amount) for goal in goals if goal.saved_amount
-                    ) / len(goals) if goals else 0
+                    total_saved_this_week = (
+                        sum(
+                            float(goal.saved_amount)
+                            for goal in goals
+                            if goal.saved_amount
+                        )
+                        / len(goals)
+                        if goals
+                        else 0
+                    )
 
                     if goals_on_track > 0 or total_saved_this_week > 0:
                         self.notifier.notify_weekly_progress(
                             user_id=user_id,
                             goals_on_track=goals_on_track,
-                            total_saved_this_week=total_saved_this_week
+                            total_saved_this_week=total_saved_this_week,
                         )
                         stats["sent"] += 1
 
@@ -308,7 +339,9 @@ class ScheduledNotificationService:
         except Exception as e:
             logger.error(f"Error in send_weekly_progress_reports: {e}")
 
-        logger.info(f"Weekly progress reports: {stats['sent']} sent, {stats['failed']} failed")
+        logger.info(
+            f"Weekly progress reports: {stats['sent']} sent, {stats['failed']} failed"
+        )
         return stats
 
     # ============================================================================

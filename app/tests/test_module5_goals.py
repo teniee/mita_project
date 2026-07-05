@@ -2,10 +2,12 @@
 MODULE 5: Budgeting Goals - Comprehensive Tests
 Tests for Goal model, API endpoints, and business logic
 """
-import pytest
-from datetime import datetime, date, timedelta, timezone
+
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import uuid4
+
+import pytest
 
 from app.db.models import Goal
 
@@ -21,19 +23,19 @@ class TestGoalModel:
             title="Emergency Fund",
             description="Build a 6-month emergency fund",
             category="Emergency",
-            target_amount=Decimal('5000.00'),
-            saved_amount=Decimal('1000.00'),
-            status='active',
-            priority='high',
+            target_amount=Decimal("5000.00"),
+            saved_amount=Decimal("1000.00"),
+            status="active",
+            priority="high",
             created_at=datetime.now(timezone.utc),
             last_updated=datetime.now(timezone.utc),
         )
 
         assert goal.title == "Emergency Fund"
         assert goal.category == "Emergency"
-        assert goal.target_amount == Decimal('5000.00')
-        assert goal.saved_amount == Decimal('1000.00')
-        assert goal.status == 'active'
+        assert goal.target_amount == Decimal("5000.00")
+        assert goal.saved_amount == Decimal("1000.00")
+        assert goal.status == "active"
 
     def test_goal_progress_calculation(self):
         """Test progress calculation"""
@@ -41,16 +43,16 @@ class TestGoalModel:
             id=uuid4(),
             user_id=uuid4(),
             title="Test Goal",
-            target_amount=Decimal('1000.00'),
-            saved_amount=Decimal('250.00'),
-            status='active',
+            target_amount=Decimal("1000.00"),
+            saved_amount=Decimal("250.00"),
+            status="active",
             created_at=datetime.now(timezone.utc),
             last_updated=datetime.now(timezone.utc),
         )
 
         goal.update_progress()
 
-        assert goal.progress == Decimal('25.00')
+        assert goal.progress == Decimal("25.00")
 
     def test_goal_auto_completion(self):
         """Test that goal auto-completes when progress reaches 100%"""
@@ -58,17 +60,17 @@ class TestGoalModel:
             id=uuid4(),
             user_id=uuid4(),
             title="Test Goal",
-            target_amount=Decimal('1000.00'),
-            saved_amount=Decimal('1000.00'),
-            status='active',
+            target_amount=Decimal("1000.00"),
+            saved_amount=Decimal("1000.00"),
+            status="active",
             created_at=datetime.now(timezone.utc),
             last_updated=datetime.now(timezone.utc),
         )
 
         goal.update_progress()
 
-        assert goal.progress == Decimal('100.00')
-        assert goal.status == 'completed'
+        assert goal.progress == Decimal("100.00")
+        assert goal.status == "completed"
         assert goal.completed_at is not None
 
     def test_goal_add_savings(self):
@@ -77,17 +79,17 @@ class TestGoalModel:
             id=uuid4(),
             user_id=uuid4(),
             title="Test Goal",
-            target_amount=Decimal('1000.00'),
-            saved_amount=Decimal('200.00'),
-            status='active',
+            target_amount=Decimal("1000.00"),
+            saved_amount=Decimal("200.00"),
+            status="active",
             created_at=datetime.now(timezone.utc),
             last_updated=datetime.now(timezone.utc),
         )
 
-        goal.add_savings(Decimal('300.00'))
+        goal.add_savings(Decimal("300.00"))
 
-        assert goal.saved_amount == Decimal('500.00')
-        assert goal.progress == Decimal('50.00')
+        assert goal.saved_amount == Decimal("500.00")
+        assert goal.progress == Decimal("50.00")
 
     def test_goal_remaining_amount(self):
         """Test remaining amount calculation"""
@@ -95,14 +97,14 @@ class TestGoalModel:
             id=uuid4(),
             user_id=uuid4(),
             title="Test Goal",
-            target_amount=Decimal('1000.00'),
-            saved_amount=Decimal('300.00'),
-            status='active',
+            target_amount=Decimal("1000.00"),
+            saved_amount=Decimal("300.00"),
+            status="active",
             created_at=datetime.now(timezone.utc),
             last_updated=datetime.now(timezone.utc),
         )
 
-        assert goal.remaining_amount == Decimal('700.00')
+        assert goal.remaining_amount == Decimal("700.00")
 
     def test_goal_is_overdue(self):
         """Test overdue detection"""
@@ -111,30 +113,30 @@ class TestGoalModel:
             id=uuid4(),
             user_id=uuid4(),
             title="Past Goal",
-            target_amount=Decimal('1000.00'),
-            saved_amount=Decimal('500.00'),
-            status='active',
+            target_amount=Decimal("1000.00"),
+            saved_amount=Decimal("500.00"),
+            status="active",
             target_date=date.today() - timedelta(days=1),
             created_at=datetime.now(timezone.utc),
             last_updated=datetime.now(timezone.utc),
         )
 
-        assert past_goal.is_overdue == True
+        assert past_goal.is_overdue is True
 
         # Goal with future target date
         future_goal = Goal(
             id=uuid4(),
             user_id=uuid4(),
             title="Future Goal",
-            target_amount=Decimal('1000.00'),
-            saved_amount=Decimal('500.00'),
-            status='active',
+            target_amount=Decimal("1000.00"),
+            saved_amount=Decimal("500.00"),
+            status="active",
             target_date=date.today() + timedelta(days=30),
             created_at=datetime.now(timezone.utc),
             last_updated=datetime.now(timezone.utc),
         )
 
-        assert future_goal.is_overdue == False
+        assert future_goal.is_overdue is False
 
     def test_goal_is_completed(self):
         """Test completion detection"""
@@ -142,39 +144,42 @@ class TestGoalModel:
             id=uuid4(),
             user_id=uuid4(),
             title="Completed Goal",
-            target_amount=Decimal('1000.00'),
-            saved_amount=Decimal('1000.00'),
-            status='completed',
-            progress=Decimal('100.00'),
+            target_amount=Decimal("1000.00"),
+            saved_amount=Decimal("1000.00"),
+            status="completed",
+            progress=Decimal("100.00"),
             created_at=datetime.now(timezone.utc),
             last_updated=datetime.now(timezone.utc),
         )
 
-        assert completed_goal.is_completed == True
+        assert completed_goal.is_completed is True
 
         active_goal = Goal(
             id=uuid4(),
             user_id=uuid4(),
             title="Active Goal",
-            target_amount=Decimal('1000.00'),
-            saved_amount=Decimal('500.00'),
-            status='active',
-            progress=Decimal('50.00'),
+            target_amount=Decimal("1000.00"),
+            saved_amount=Decimal("500.00"),
+            status="active",
+            progress=Decimal("50.00"),
             created_at=datetime.now(timezone.utc),
             last_updated=datetime.now(timezone.utc),
         )
 
-        assert active_goal.is_completed == False
+        assert active_goal.is_completed is False
 
 
-@pytest.mark.parametrize("saved,target,expected_progress", [
-    (0, 1000, 0),
-    (250, 1000, 25),
-    (500, 1000, 50),
-    (750, 1000, 75),
-    (1000, 1000, 100),
-    (1200, 1000, 100),  # Should cap at 100
-])
+@pytest.mark.parametrize(
+    "saved,target,expected_progress",
+    [
+        (0, 1000, 0),
+        (250, 1000, 25),
+        (500, 1000, 50),
+        (750, 1000, 75),
+        (1000, 1000, 100),
+        (1200, 1000, 100),  # Should cap at 100
+    ],
+)
 def test_goal_progress_various_amounts(saved, target, expected_progress):
     """Test progress calculation with various amounts"""
     goal = Goal(
@@ -183,7 +188,7 @@ def test_goal_progress_various_amounts(saved, target, expected_progress):
         title="Test Goal",
         target_amount=Decimal(str(target)),
         saved_amount=Decimal(str(saved)),
-        status='active',
+        status="active",
         created_at=datetime.now(timezone.utc),
         last_updated=datetime.now(timezone.utc),
     )
@@ -195,8 +200,18 @@ def test_goal_progress_various_amounts(saved, target, expected_progress):
 
 def test_goal_categories():
     """Test that all category types are supported"""
-    categories = ['Savings', 'Travel', 'Emergency', 'Technology', 'Education',
-                 'Health', 'Home', 'Vehicle', 'Investment', 'Other']
+    categories = [
+        "Savings",
+        "Travel",
+        "Emergency",
+        "Technology",
+        "Education",
+        "Health",
+        "Home",
+        "Vehicle",
+        "Investment",
+        "Other",
+    ]
 
     for category in categories:
         goal = Goal(
@@ -204,9 +219,9 @@ def test_goal_categories():
             user_id=uuid4(),
             title=f"{category} Goal",
             category=category,
-            target_amount=Decimal('1000.00'),
-            saved_amount=Decimal('0.00'),
-            status='active',
+            target_amount=Decimal("1000.00"),
+            saved_amount=Decimal("0.00"),
+            status="active",
             created_at=datetime.now(timezone.utc),
             last_updated=datetime.now(timezone.utc),
         )
@@ -216,15 +231,15 @@ def test_goal_categories():
 
 def test_goal_statuses():
     """Test that all status types are supported"""
-    statuses = ['active', 'completed', 'paused', 'cancelled']
+    statuses = ["active", "completed", "paused", "cancelled"]
 
     for status in statuses:
         goal = Goal(
             id=uuid4(),
             user_id=uuid4(),
             title="Test Goal",
-            target_amount=Decimal('1000.00'),
-            saved_amount=Decimal('0.00'),
+            target_amount=Decimal("1000.00"),
+            saved_amount=Decimal("0.00"),
             status=status,
             created_at=datetime.now(timezone.utc),
             last_updated=datetime.now(timezone.utc),
@@ -235,16 +250,16 @@ def test_goal_statuses():
 
 def test_goal_priorities():
     """Test that all priority levels are supported"""
-    priorities = ['high', 'medium', 'low']
+    priorities = ["high", "medium", "low"]
 
     for priority in priorities:
         goal = Goal(
             id=uuid4(),
             user_id=uuid4(),
             title="Test Goal",
-            target_amount=Decimal('1000.00'),
-            saved_amount=Decimal('0.00'),
-            status='active',
+            target_amount=Decimal("1000.00"),
+            saved_amount=Decimal("0.00"),
+            status="active",
             priority=priority,
             created_at=datetime.now(timezone.utc),
             last_updated=datetime.now(timezone.utc),

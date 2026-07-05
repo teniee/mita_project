@@ -15,9 +15,22 @@ Reference: ADR-20251115-csrf-protection-analysis.md
 
 import pytest
 from fastapi.testclient import TestClient
+
 from app.main import app
 
 client = TestClient(app)
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _client_portal():
+    """Keep one anyio portal (event loop) for the whole module.
+
+    Without entering the client context, TestClient creates a fresh event
+    loop per request — the async DB pool from request #1 then crashes
+    request #2 with "attached to a different loop".
+    """
+    with client:
+        yield
 
 
 class TestNoSessionCookies:
@@ -30,46 +43,47 @@ class TestNoSessionCookies:
             json={
                 "email": f"test_csrf_{pytest.random_string()}@example.com",
                 "password": "SecurePass123!",
-                "country": "US"
-            }
+                "country": "US",
+            },
         )
 
         # Check response headers for any cookie setting
-        assert "set-cookie" not in [k.lower() for k in response.headers.keys()], \
-            "Registration should not set cookies"
-        assert "Set-Cookie" not in response.headers, \
-            "Registration should not set cookies (case-sensitive check)"
+        assert "set-cookie" not in [
+            k.lower() for k in response.headers.keys()
+        ], "Registration should not set cookies"
+        assert (
+            "Set-Cookie" not in response.headers
+        ), "Registration should not set cookies (case-sensitive check)"
 
     def test_no_cookies_in_login_response(self, create_test_user):
         """Login endpoint should not set any cookies"""
         user_email, user_password = create_test_user
 
         response = client.post(
-            "/api/auth/login",
-            json={
-                "email": user_email,
-                "password": user_password
-            }
+            "/api/auth/login", json={"email": user_email, "password": user_password}
         )
 
         # Check response headers for any cookie setting
-        assert "set-cookie" not in [k.lower() for k in response.headers.keys()], \
-            "Login should not set cookies"
-        assert "Set-Cookie" not in response.headers, \
-            "Login should not set cookies (case-sensitive check)"
+        assert "set-cookie" not in [
+            k.lower() for k in response.headers.keys()
+        ], "Login should not set cookies"
+        assert (
+            "Set-Cookie" not in response.headers
+        ), "Login should not set cookies (case-sensitive check)"
 
     def test_no_cookies_in_refresh_response(self, authenticated_client):
         """Token refresh should not set cookies"""
         _, refresh_token = authenticated_client
 
         response = client.post(
-            "/api/auth/refresh",
-            headers={"Authorization": f"Bearer {refresh_token}"}
+            "/api/auth/refresh-token",
+            headers={"Authorization": f"Bearer {refresh_token}"},
         )
 
         # Check response headers for any cookie setting
-        assert "set-cookie" not in [k.lower() for k in response.headers.keys()], \
-            "Token refresh should not set cookies"
+        assert "set-cookie" not in [
+            k.lower() for k in response.headers.keys()
+        ], "Token refresh should not set cookies"
 
 
 class TestAuthorizationHeaderRequired:
@@ -79,30 +93,32 @@ class TestAuthorizationHeaderRequired:
         """Protected endpoints should reject requests without Authorization header"""
         response = client.get("/api/users/me")
 
-        assert response.status_code == 401, \
-            "Protected endpoint should return 401 without Authorization header"
+        assert (
+            response.status_code == 401
+        ), "Protected endpoint should return 401 without Authorization header"
 
     def test_protected_endpoint_rejects_invalid_token(self):
         """Protected endpoints should reject invalid tokens"""
         response = client.get(
-            "/api/users/me",
-            headers={"Authorization": "Bearer invalid_token_12345"}
+            "/api/users/me", headers={"Authorization": "Bearer invalid_token_12345"}
         )
 
-        assert response.status_code == 401, \
-            "Protected endpoint should return 401 with invalid token"
+        assert (
+            response.status_code == 401
+        ), "Protected endpoint should return 401 with invalid token"
 
     def test_protected_endpoint_accepts_valid_token(self, authenticated_client):
         """Protected endpoints should accept valid Authorization header"""
         access_token, _ = authenticated_client
 
         response = client.get(
-            "/api/users/me",
-            headers={"Authorization": f"Bearer {access_token}"}
+            "/api/users/me", headers={"Authorization": f"Bearer {access_token}"}
         )
 
-        assert response.status_code in [200, 201], \
-            "Protected endpoint should accept valid Authorization header"
+        assert response.status_code in [
+            200,
+            201,
+        ], "Protected endpoint should accept valid Authorization header"
 
 
 class TestTokensInResponseBody:
@@ -115,47 +131,35 @@ class TestTokensInResponseBody:
             json={
                 "email": f"test_body_{pytest.random_string()}@example.com",
                 "password": "SecurePass123!",
-                "country": "US"
-            }
+                "country": "US",
+            },
         )
 
-        assert response.status_code in [200, 201], \
-            "Registration should succeed"
+        assert response.status_code in [200, 201], "Registration should succeed"
 
-        data = response.json()
-        assert "access_token" in data, \
-            "Response should contain access_token in body"
-        assert "refresh_token" in data, \
-            "Response should contain refresh_token in body"
-        assert "token_type" in data, \
-            "Response should contain token_type in body"
-        assert data["token_type"] == "bearer", \
-            "Token type should be 'bearer'"
+        body = response.json()
+        data = body.get("data", body)
+        assert "access_token" in data, "Response should contain access_token in body"
+        assert "refresh_token" in data, "Response should contain refresh_token in body"
+        assert "token_type" in data, "Response should contain token_type in body"
+        assert data["token_type"].lower() == "bearer", "Token type should be 'bearer'"
 
     def test_login_returns_tokens_in_body(self, create_test_user):
         """Login should return tokens in JSON response body"""
         user_email, user_password = create_test_user
 
         response = client.post(
-            "/api/auth/login",
-            json={
-                "email": user_email,
-                "password": user_password
-            }
+            "/api/auth/login", json={"email": user_email, "password": user_password}
         )
 
-        assert response.status_code == 200, \
-            "Login should succeed"
+        assert response.status_code == 200, "Login should succeed"
 
-        data = response.json()
-        assert "access_token" in data, \
-            "Response should contain access_token in body"
-        assert "refresh_token" in data, \
-            "Response should contain refresh_token in body"
-        assert "token_type" in data, \
-            "Response should contain token_type in body"
-        assert data["token_type"] == "bearer", \
-            "Token type should be 'bearer'"
+        body = response.json()
+        data = body.get("data", body)
+        assert "access_token" in data, "Response should contain access_token in body"
+        assert "refresh_token" in data, "Response should contain refresh_token in body"
+        assert "token_type" in data, "Response should contain token_type in body"
+        assert data["token_type"].lower() == "bearer", "Token type should be 'bearer'"
 
 
 class TestNoSessionMiddleware:
@@ -168,8 +172,9 @@ class TestNoSessionMiddleware:
         # Check if SessionMiddleware is in the middleware stack
         middleware_types = [type(m) for m in app.user_middleware]
 
-        assert SessionMiddleware not in middleware_types, \
-            "SessionMiddleware should not be configured in app"
+        assert (
+            SessionMiddleware not in middleware_types
+        ), "SessionMiddleware should not be configured in app"
 
     def test_no_session_in_request_state(self):
         """Request should not have session state"""
@@ -178,8 +183,9 @@ class TestNoSessionMiddleware:
         # If session middleware was present, it would add session to request
         # We can't directly check request state from client, but we can verify
         # no session-related headers are present
-        assert "session" not in [k.lower() for k in response.headers.keys()], \
-            "No session headers should be present"
+        assert "session" not in [
+            k.lower() for k in response.headers.keys()
+        ], "No session headers should be present"
 
 
 class TestCORSConfiguration:
@@ -192,13 +198,12 @@ class TestCORSConfiguration:
             headers={
                 "Origin": "http://localhost:3000",
                 "Access-Control-Request-Method": "GET",
-                "Access-Control-Request-Headers": "Authorization"
-            }
+                "Access-Control-Request-Headers": "Authorization",
+            },
         )
 
         # Should not reject the preflight request
-        assert response.status_code != 403, \
-            "CORS should allow Authorization header"
+        assert response.status_code != 403, "CORS should allow Authorization header"
 
     def test_cors_credentials_for_headers(self):
         """CORS allow_credentials should be for headers, not cookies"""
@@ -206,19 +211,22 @@ class TestCORSConfiguration:
             "/api/users/me",
             headers={
                 "Origin": "http://localhost:3000",
-                "Access-Control-Request-Method": "GET"
-            }
+                "Access-Control-Request-Method": "GET",
+            },
         )
 
         # allow_credentials=True is set for Authorization header support
         # This doesn't mean cookies are used - just that credentials (headers) are allowed
-        if "access-control-allow-credentials" in [k.lower() for k in response.headers.keys()]:
+        if "access-control-allow-credentials" in [
+            k.lower() for k in response.headers.keys()
+        ]:
             # If credentials are allowed, verify it's for headers not cookies
             # by confirming no cookies are set anywhere
             assert True, "Credentials allowed for Authorization header"
 
 
 # ---- Fixtures ----
+
 
 @pytest.fixture
 def create_test_user():
@@ -230,15 +238,10 @@ def create_test_user():
 
     response = client.post(
         "/api/auth/register",
-        json={
-            "email": email,
-            "password": password,
-            "country": "US"
-        }
+        json={"email": email, "password": password, "country": "US"},
     )
 
-    assert response.status_code in [200, 201], \
-        "Test user creation failed"
+    assert response.status_code in [200, 201], "Test user creation failed"
 
     return email, password
 
@@ -249,17 +252,13 @@ def authenticated_client(create_test_user):
     email, password = create_test_user
 
     response = client.post(
-        "/api/auth/login",
-        json={
-            "email": email,
-            "password": password
-        }
+        "/api/auth/login", json={"email": email, "password": password}
     )
 
-    assert response.status_code == 200, \
-        "Authentication failed"
+    assert response.status_code == 200, "Authentication failed"
 
-    data = response.json()
+    body = response.json()
+    data = body.get("data", body)
     return data["access_token"], data["refresh_token"]
 
 
@@ -267,11 +266,12 @@ def authenticated_client(create_test_user):
 def random_string():
     """Generate random string for unique emails"""
     import secrets
+
     return lambda: secrets.token_hex(8)
 
 
 # Inject random_string into pytest namespace
-pytest.random_string = lambda: __import__('secrets').token_hex(8)
+pytest.random_string = lambda: __import__("secrets").token_hex(8)
 
 
 if __name__ == "__main__":

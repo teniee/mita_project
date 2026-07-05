@@ -12,6 +12,7 @@ table for a recent alert with the same group_key. If one exists within the
 cooldown window (24 h for velocity alerts, 7 days for wins) the alert is
 silently suppressed.
 """
+
 from __future__ import annotations
 
 import calendar
@@ -23,7 +24,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.core.logging_config import get_logger
-from app.db.models import DailyPlan, Goal, Notification, User
+from app.db.models import DailyPlan, Goal, Notification
 from app.services.core.engine.velocity_alert_engine import (
     CategoryVelocity,
     DailyPlanData,
@@ -52,6 +53,7 @@ _GK_WIN = "spending_win"
 # Public entry points
 # ---------------------------------------------------------------------------
 
+
 def check_velocity_after_transaction(
     db: Session,
     user_id: UUID,
@@ -74,7 +76,9 @@ def check_velocity_after_transaction(
     except Exception as exc:
         logger.warning(
             "velocity check failed (non-critical): user=%s cat=%s err=%s",
-            user_id, category, exc,
+            user_id,
+            category,
+            exc,
         )
         return None
 
@@ -99,15 +103,14 @@ def run_velocity_check_for_user(
             category_filter=None,
         )
     except Exception as exc:
-        logger.warning(
-            "velocity full scan failed: user=%s err=%s", user_id, exc
-        )
+        logger.warning("velocity full scan failed: user=%s err=%s", user_id, exc)
         return None
 
 
 # ---------------------------------------------------------------------------
 # Core implementation
 # ---------------------------------------------------------------------------
+
 
 def _run_velocity_check(
     db: Session,
@@ -180,8 +183,14 @@ def _run_velocity_check(
                     target_date=g.target_date,
                 )
             )
-        except Exception:
-            pass
+        except Exception as goal_err:
+            # A malformed goal must not break velocity alerts, but silently
+            # dropping it would hide data corruption — log which one failed.
+            logger.warning(
+                "velocity_alerts: skipping malformed goal %s: %s",
+                getattr(g, "id", "?"),
+                goal_err,
+            )
 
     # ------------------------------------------------------------------
     # Run pure engine
@@ -230,6 +239,7 @@ def _run_velocity_check(
 # Notification dispatchers (with deduplication)
 # ---------------------------------------------------------------------------
 
+
 def _maybe_send_velocity_alert(
     db: Session,
     notifier,
@@ -240,10 +250,10 @@ def _maybe_send_velocity_alert(
     month: int,
 ) -> None:
     """Send a velocity alert unless a duplicate was sent in the cooldown window."""
-    group_key = (
-        f"{_GK_VELOCITY}:{user_id}:{alert.category}:{year}-{month:02d}"
+    group_key = f"{_GK_VELOCITY}:{user_id}:{alert.category}:{year}-{month:02d}"
+    cooldown_cutoff = datetime.now(timezone.utc) - timedelta(
+        hours=VELOCITY_ALERT_COOLDOWN_HOURS
     )
-    cooldown_cutoff = datetime.now(timezone.utc) - timedelta(hours=VELOCITY_ALERT_COOLDOWN_HOURS)
 
     existing = (
         db.query(Notification)
@@ -256,7 +266,9 @@ def _maybe_send_velocity_alert(
     )
     if existing:
         logger.debug(
-            "velocity alert suppressed (cooldown): user=%s cat=%s", user_id, alert.category
+            "velocity alert suppressed (cooldown): user=%s cat=%s",
+            user_id,
+            alert.category,
         )
         return
 
@@ -314,7 +326,9 @@ def _maybe_send_velocity_alert(
     except Exception as exc:
         logger.error(
             "failed to send velocity alert: user=%s cat=%s err=%s",
-            user_id, alert.category, exc,
+            user_id,
+            alert.category,
+            exc,
         )
 
 
@@ -328,7 +342,9 @@ def _maybe_send_win_notification(
 ) -> None:
     """Send win notification unless the same milestone was sent this week."""
     group_key = f"{_GK_WIN}:{user_id}:{win.win_type}:{year}-{month:02d}"
-    cooldown_cutoff = datetime.now(timezone.utc) - timedelta(days=WIN_NOTIFICATION_COOLDOWN_DAYS)
+    cooldown_cutoff = datetime.now(timezone.utc) - timedelta(
+        days=WIN_NOTIFICATION_COOLDOWN_DAYS
+    )
 
     existing = (
         db.query(Notification)
@@ -352,10 +368,15 @@ def _maybe_send_win_notification(
         )
         logger.info(
             "win notification sent: user=%s type=%s streak=%d saved=%.2f",
-            user_id, win.win_type, win.streak_days, float(win.surplus_amount),
+            user_id,
+            win.win_type,
+            win.streak_days,
+            float(win.surplus_amount),
         )
     except Exception as exc:
         logger.error(
             "failed to send win notification: user=%s type=%s err=%s",
-            user_id, win.win_type, exc,
+            user_id,
+            win.win_type,
+            exc,
         )

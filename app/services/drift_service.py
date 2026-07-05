@@ -29,7 +29,6 @@ def _get_db():
     return firestore.client()
 
 
-
 def log_cohort_drift(user_id: str, month: str, value: float) -> Dict:
     """Log or update the user's drift value in Firestore."""
     db = _get_db()

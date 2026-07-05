@@ -8,8 +8,8 @@ logger = logging.getLogger(__name__)
 
 from app.core.session import get_db
 from app.engine.calendar_engine_behavioral import build_calendar
-from app.services.core.engine.budget_logic import generate_budget_from_answers
 from app.services.calendar_service_real import save_calendar_for_user
+from app.services.core.engine.budget_logic import generate_budget_from_answers
 from app.services.user_data_service import UserDataService
 
 ONBOARDING_QUESTIONS_PATH = os.path.join(

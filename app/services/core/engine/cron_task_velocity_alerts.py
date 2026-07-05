@@ -9,6 +9,7 @@ Integrates with the existing cron infrastructure:
 - run_velocity_alerts_daily() — no-arg wrapper, called directly by rq_scheduler
 - run_velocity_alerts_batch(db, today) — testable core, accepts injected session
 """
+
 from datetime import date
 from typing import Dict, Optional
 
@@ -68,9 +69,7 @@ def run_velocity_alerts_batch(
 
         except Exception as exc:
             summary["errors"] += 1
-            logger.error(
-                "velocity cron error: user=%s err=%s", user.id, exc
-            )
+            logger.error("velocity cron error: user=%s err=%s", user.id, exc)
 
     logger.info(
         "velocity alerts cron complete: processed=%d alerts=%d wins=%d errors=%d",

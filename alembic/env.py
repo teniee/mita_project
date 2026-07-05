@@ -28,9 +28,9 @@ target_metadata = Base.metadata
 # MIGRATION_DATABASE_URL can use direct connection (port 5432) for Supabase
 # while DATABASE_URL should use session pooler (port 6543 with ?pgbouncer=true) for the app
 url = (
-    os.environ.get("MIGRATION_DATABASE_URL") or
-    os.environ.get("DATABASE_URL") or
-    config.get_main_option("sqlalchemy.url")
+    os.environ.get("MIGRATION_DATABASE_URL")
+    or os.environ.get("DATABASE_URL")
+    or config.get_main_option("sqlalchemy.url")
 )
 if not url:
     raise ValueError(
@@ -44,10 +44,14 @@ if not url:
 if "supabase.com" in url and ":6543/" in url:
     print("[Alembic] Supabase Transaction pooler detected (port 6543)")
     print("[Alembic] Using Transaction pooler for migrations")
-    print("[Alembic] Note: For long-running migrations, set MIGRATION_DATABASE_URL env var")
+    print(
+        "[Alembic] Note: For long-running migrations, set MIGRATION_DATABASE_URL env var"
+    )
 
 # Debug: Log URL structure (without password)
-print(f"[Alembic] Database URL detected: {url.split('@')[0].split(':')[0]}://***@{url.split('@')[1] if '@' in url else 'no-host'}")
+print(
+    f"[Alembic] Database URL detected: {url.split('@')[0].split(':')[0]}://***@{url.split('@')[1] if '@' in url else 'no-host'}"
+)
 
 # Simple string replacement for asyncpg -> psycopg2 WITHOUT using make_url() to avoid password encoding issues
 final_url = url
@@ -77,7 +81,9 @@ try:
             host, port = host_part.rsplit(":", 1)
         else:
             host, port = host_part, "5432"
-        db_name = final_url.split("/")[-1].split("?")[0] if "/" in final_url else "unknown"
+        db_name = (
+            final_url.split("/")[-1].split("?")[0] if "/" in final_url else "unknown"
+        )
         print(f"[Alembic] Final connection: {host}:{port} database={db_name}")
 except Exception:
     print("[Alembic] Using connection string (parsing failed for logging)")
@@ -103,6 +109,7 @@ def run_migrations_online():
     """Run migrations in 'online' mode."""
     # Create engine directly with our URL (already validated above)
     from sqlalchemy import create_engine
+
     connectable = create_engine(
         str(sync_url),
         poolclass=pool.NullPool,

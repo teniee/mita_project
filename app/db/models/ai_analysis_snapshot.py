@@ -16,6 +16,8 @@ class AIAnalysisSnapshot(Base):
     risk = Column(String)
     summary = Column(String)
     full_profile = Column(JSON)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
 
     user = relationship("User", back_populates="ai_snapshots")

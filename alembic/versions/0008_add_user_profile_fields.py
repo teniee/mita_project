@@ -15,12 +15,14 @@ This migration adds comprehensive user profile fields including:
 - monthly_income: Monthly income tracking
 - has_onboarded: Onboarding completion status
 """
-from alembic import op
+
 import sqlalchemy as sa
 
+from alembic import op
+
 # revision identifiers, used by Alembic.
-revision = '0008_add_user_profile_fields'
-down_revision = '0007_email_password_reset_fields'
+revision = "0008_add_user_profile_fields"
+down_revision = "0007_email_password_reset_fields"
 branch_labels = None
 depends_on = None
 
@@ -29,19 +31,43 @@ def upgrade() -> None:
     """Add user profile and preference columns to users table"""
 
     # Add profile fields
-    op.add_column('users', sa.Column('name', sa.String(), nullable=True))
-    op.add_column('users', sa.Column('savings_goal', sa.Numeric(), nullable=False, server_default='0'))
-    op.add_column('users', sa.Column('budget_method', sa.String(), nullable=False, server_default='50/30/20 Rule'))
-    op.add_column('users', sa.Column('currency', sa.String(length=3), nullable=False, server_default='USD'))
-    op.add_column('users', sa.Column('region', sa.String(), nullable=True))
+    op.add_column("users", sa.Column("name", sa.String(), nullable=True))
+    op.add_column(
+        "users",
+        sa.Column("savings_goal", sa.Numeric(), nullable=False, server_default="0"),
+    )
+    op.add_column(
+        "users",
+        sa.Column(
+            "budget_method", sa.String(), nullable=False, server_default="50/30/20 Rule"
+        ),
+    )
+    op.add_column(
+        "users",
+        sa.Column(
+            "currency", sa.String(length=3), nullable=False, server_default="USD"
+        ),
+    )
+    op.add_column("users", sa.Column("region", sa.String(), nullable=True))
 
     # Add preference fields
-    op.add_column('users', sa.Column('notifications_enabled', sa.Boolean(), nullable=False, server_default='true'))
-    op.add_column('users', sa.Column('dark_mode_enabled', sa.Boolean(), nullable=False, server_default='false'))
+    op.add_column(
+        "users",
+        sa.Column(
+            "notifications_enabled", sa.Boolean(), nullable=False, server_default="true"
+        ),
+    )
+    op.add_column(
+        "users",
+        sa.Column(
+            "dark_mode_enabled", sa.Boolean(), nullable=False, server_default="false"
+        ),
+    )
 
     # Add monthly income field (if not already present)
     # Note: This field may already exist in some deployments, so we use a conditional approach
-    op.execute("""
+    op.execute(
+        """
         DO $$
         BEGIN
             IF NOT EXISTS (
@@ -51,10 +77,12 @@ def upgrade() -> None:
                 ALTER TABLE users ADD COLUMN monthly_income NUMERIC DEFAULT 0;
             END IF;
         END $$;
-    """)
+    """
+    )
 
     # Add has_onboarded field (if not already present)
-    op.execute("""
+    op.execute(
+        """
         DO $$
         BEGIN
             IF NOT EXISTS (
@@ -64,32 +92,33 @@ def upgrade() -> None:
                 ALTER TABLE users ADD COLUMN has_onboarded BOOLEAN NOT NULL DEFAULT false;
             END IF;
         END $$;
-    """)
+    """
+    )
 
     # Create indexes for commonly queried fields
-    op.create_index('idx_users_currency', 'users', ['currency'])
-    op.create_index('idx_users_region', 'users', ['region'])
-    op.create_index('idx_users_has_onboarded', 'users', ['has_onboarded'])
+    op.create_index("idx_users_currency", "users", ["currency"])
+    op.create_index("idx_users_region", "users", ["region"])
+    op.create_index("idx_users_has_onboarded", "users", ["has_onboarded"])
 
 
 def downgrade() -> None:
     """Remove user profile and preference columns from users table"""
 
     # Drop indexes
-    op.drop_index('idx_users_has_onboarded', table_name='users')
-    op.drop_index('idx_users_region', table_name='users')
-    op.drop_index('idx_users_currency', table_name='users')
+    op.drop_index("idx_users_has_onboarded", table_name="users")
+    op.drop_index("idx_users_region", table_name="users")
+    op.drop_index("idx_users_currency", table_name="users")
 
     # Drop preference fields
-    op.drop_column('users', 'dark_mode_enabled')
-    op.drop_column('users', 'notifications_enabled')
+    op.drop_column("users", "dark_mode_enabled")
+    op.drop_column("users", "notifications_enabled")
 
     # Drop profile fields
-    op.drop_column('users', 'region')
-    op.drop_column('users', 'currency')
-    op.drop_column('users', 'budget_method')
-    op.drop_column('users', 'savings_goal')
-    op.drop_column('users', 'name')
+    op.drop_column("users", "region")
+    op.drop_column("users", "currency")
+    op.drop_column("users", "budget_method")
+    op.drop_column("users", "savings_goal")
+    op.drop_column("users", "name")
 
     # Note: We don't drop monthly_income and has_onboarded as they may be used elsewhere
     # and were conditionally added in upgrade()

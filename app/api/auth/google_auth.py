@@ -31,7 +31,7 @@ router = APIRouter(tags=["Authentication - Google OAuth"])
 async def google_auth(
     request: Request,
     google_data: GoogleAuthIn,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
 ):
     """
     Authenticate user with Google OAuth token.
@@ -42,13 +42,14 @@ async def google_auth(
 
         if not result:
             raise AuthenticationError(
-                "Google authentication failed",
-                ErrorCode.AUTHENTICATION_GOOGLE_FAILED
+                "Google authentication failed", ErrorCode.AUTHENTICATION_GOOGLE_FAILED
             )
 
-        log_security_event("google_auth_success", {
-            "email": google_data.email if hasattr(google_data, 'email') else None
-        }, request)
+        log_security_event(
+            "google_auth_success",
+            {"email": google_data.email if hasattr(google_data, "email") else None},
+            request,
+        )
 
         return success_response(result)
 
@@ -59,5 +60,5 @@ async def google_auth(
         raise AuthenticationError(
             "Google authentication failed",
             ErrorCode.AUTHENTICATION_GOOGLE_FAILED,
-            details={"error": str(e)}
+            details={"error": str(e)},
         )

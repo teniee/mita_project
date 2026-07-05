@@ -13,11 +13,12 @@ DESIGN PHILOSOPHY:
 - Status thresholds: warning when projected overspend < 10% of plan,
   danger when projected overspend >= 10% of plan.
 """
+
 from __future__ import annotations
 
 import logging
 from calendar import monthrange
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Dict, List, Optional
@@ -47,9 +48,11 @@ _CENT = Decimal("0.01")
 # Input data classes — DB-agnostic, set by the route layer
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class DailyPlanData:
     """One row from the daily_plan table, pre-converted by the route."""
+
     date: date
     category: str
     planned_amount: Decimal
@@ -59,6 +62,7 @@ class DailyPlanData:
 @dataclass(frozen=True)
 class GoalData:
     """One active row from the goals table, pre-converted by the route."""
+
     goal_id: str
     title: str
     target_amount: Decimal
@@ -71,16 +75,17 @@ class GoalData:
 # Output data classes
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CategoryForecast:
     """Spending projection for a single budget category."""
 
     category: str
-    monthly_planned: Decimal    # total planned for the month
-    monthly_spent: Decimal      # total spent so far this month
-    daily_pace: Decimal         # avg actual spend per calendar day elapsed
-    planned_per_day: Decimal    # monthly_planned / days_in_month
-    overspend_ratio: Decimal    # daily_pace / planned_per_day; 1.0 = on track
+    monthly_planned: Decimal  # total planned for the month
+    monthly_spent: Decimal  # total spent so far this month
+    daily_pace: Decimal  # avg actual spend per calendar day elapsed
+    planned_per_day: Decimal  # monthly_planned / days_in_month
+    overspend_ratio: Decimal  # daily_pace / planned_per_day; 1.0 = on track
     days_until_exhausted: Optional[int]  # None = no spending yet; 0 = already exhausted
 
     def to_dict(self) -> Dict:
@@ -120,7 +125,9 @@ class GoalForecast:
             "remaining": float(self.remaining),
             "target_date": self.target_date.isoformat() if self.target_date else None,
             "months_remaining": (
-                float(self.months_remaining) if self.months_remaining is not None else None
+                float(self.months_remaining)
+                if self.months_remaining is not None
+                else None
             ),
             "required_monthly_contribution": (
                 float(self.required_monthly_contribution)
@@ -128,7 +135,9 @@ class GoalForecast:
                 else None
             ),
             "projected_saved": (
-                float(self.projected_saved) if self.projected_saved is not None else None
+                float(self.projected_saved)
+                if self.projected_saved is not None
+                else None
             ),
             "on_track": self.on_track,
             "shortfall": float(self.shortfall),
@@ -142,18 +151,18 @@ class ForecastResult:
     year: int
     month: int
     days_in_month: int
-    days_elapsed: int            # calendar days from month start to today (inclusive)
-    days_remaining: int          # days_in_month - days_elapsed
-    total_planned: Decimal       # sum of all planned_amount for the month
-    total_spent: Decimal         # sum of all spent_amount so far
-    remaining_budget: Decimal    # total_planned - total_spent
+    days_elapsed: int  # calendar days from month start to today (inclusive)
+    days_remaining: int  # days_in_month - days_elapsed
+    total_planned: Decimal  # sum of all planned_amount for the month
+    total_spent: Decimal  # sum of all spent_amount so far
+    remaining_budget: Decimal  # total_planned - total_spent
     current_daily_pace: Decimal  # total_spent / days_elapsed
-    safe_daily_limit: Decimal    # remaining_budget / days_remaining
-    projected_month_end_spend: Decimal   # total_spent + pace * days_remaining
-    projected_month_end_balance: Decimal # total_planned - projected_spend
-    status: str                  # "on_track" | "warning" | "danger" | "no_data"
+    safe_daily_limit: Decimal  # remaining_budget / days_remaining
+    projected_month_end_spend: Decimal  # total_spent + pace * days_remaining
+    projected_month_end_balance: Decimal  # total_planned - projected_spend
+    status: str  # "on_track" | "warning" | "danger" | "no_data"
     categories_at_risk: List[CategoryForecast]  # sorted desc by overspend_ratio
-    all_categories: List[CategoryForecast]      # sorted desc by monthly_planned
+    all_categories: List[CategoryForecast]  # sorted desc by monthly_planned
     goals: List[GoalForecast]
 
     def to_dict(self) -> Dict:
@@ -180,6 +189,7 @@ class ForecastResult:
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _q(value: Decimal) -> Decimal:
     """Quantize Decimal to 2 decimal places (half-up rounding)."""
@@ -331,23 +341,25 @@ def _compute_category_forecasts(
         remaining_cat = monthly_planned - monthly_spent
         days_until_exhausted: Optional[int]
         if remaining_cat <= _ZERO:
-            days_until_exhausted = 0        # already exhausted
+            days_until_exhausted = 0  # already exhausted
         elif daily_pace > _ZERO:
             days_until_exhausted = int(
                 (remaining_cat / daily_pace).to_integral_value(rounding=ROUND_HALF_UP)
             )
         else:
-            days_until_exhausted = None     # no spending → not exhaustible
+            days_until_exhausted = None  # no spending → not exhaustible
 
-        forecasts.append(CategoryForecast(
-            category=cat,
-            monthly_planned=monthly_planned,
-            monthly_spent=monthly_spent,
-            daily_pace=daily_pace,
-            planned_per_day=planned_per_day,
-            overspend_ratio=overspend_ratio,
-            days_until_exhausted=days_until_exhausted,
-        ))
+        forecasts.append(
+            CategoryForecast(
+                category=cat,
+                monthly_planned=monthly_planned,
+                monthly_spent=monthly_spent,
+                daily_pace=daily_pace,
+                planned_per_day=planned_per_day,
+                overspend_ratio=overspend_ratio,
+                days_until_exhausted=days_until_exhausted,
+            )
+        )
 
     return forecasts
 
@@ -379,6 +391,7 @@ def _determine_status(
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def compute_forecast(
     daily_plans: List[DailyPlanData],
@@ -468,13 +481,13 @@ def compute_forecast(
     )
 
     # Projection: if no pace yet, projected spend = total already spent
-    projected_month_end_spend = _q(
-        total_spent + current_daily_pace * days_remaining_d
-    )
+    projected_month_end_spend = _q(total_spent + current_daily_pace * days_remaining_d)
     projected_month_end_balance = _q(total_planned - projected_month_end_spend)
 
     # ── Category-level forecasts ─────────────────────────────────────────────
-    all_categories = _compute_category_forecasts(daily_plans, days_in_month, days_elapsed)
+    all_categories = _compute_category_forecasts(
+        daily_plans, days_in_month, days_elapsed
+    )
 
     categories_at_risk = sorted(
         [c for c in all_categories if c.overspend_ratio >= RISK_PACE_RATIO],
@@ -494,7 +507,9 @@ def compute_forecast(
 
     logger.info(
         "forecast: %d-%02d status=%s pace=%.2f safe_limit=%.2f balance=%.2f at_risk=%d",
-        year, month, status,
+        year,
+        month,
+        status,
         float(current_daily_pace),
         float(safe_daily_limit),
         float(projected_month_end_balance),

@@ -34,7 +34,7 @@ class AppConfig {
   // Standard FastAPI authentication endpoints
   static const String registerEndpoint = '/api/auth/register';
   static const String loginEndpoint = '/api/auth/login';
-  static const String refreshEndpoint = '/api/auth/refresh';
+  static const String refreshEndpoint = '/api/auth/refresh-token';
   static const String healthEndpoint = '/health';
   static const String errorReportEndpoint = '/api/errors/report';
 

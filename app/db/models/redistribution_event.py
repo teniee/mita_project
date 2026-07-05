@@ -1,8 +1,6 @@
 import uuid
-from datetime import datetime, date
-from decimal import Decimal
 
-from sqlalchemy import Column, DateTime, Date, ForeignKey, Numeric, String, func
+from sqlalchemy import Column, Date, DateTime, ForeignKey, Numeric, String, func
 from sqlalchemy.dialects.postgresql import UUID
 
 from .base import Base
@@ -19,6 +17,7 @@ class RedistributionEvent(Base):
                  budget_redistributor.redistribute_budget_for_user()
     Read by:     GET /budget/redistribution_history
     """
+
     __tablename__ = "redistribution_events"
 
     id = Column(

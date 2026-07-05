@@ -33,8 +33,7 @@ def update_day_status(db: Session, user_id: UUID, day: date):
 
     # Dynamic yellow threshold: 5% of planned budget, bounded between $2 and $25
     yellow_threshold = max(
-        Decimal("2.00"),
-        min(Decimal("25.00"), total_planned * Decimal("0.05"))
+        Decimal("2.00"), min(Decimal("25.00"), total_planned * Decimal("0.05"))
     )
 
     if delta <= Decimal("0.00"):

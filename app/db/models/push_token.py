@@ -14,4 +14,6 @@ class PushToken(Base):
     user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     token = Column(String, nullable=False, unique=True)
     platform = Column(String, nullable=False, default="fcm")
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )

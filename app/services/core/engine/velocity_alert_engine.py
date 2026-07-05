@@ -18,6 +18,7 @@ Usage:
     for alert in result.alerts:
         ...
 """
+
 from __future__ import annotations
 
 import calendar
@@ -34,24 +35,25 @@ from app.core.category_priority import is_sacred
 # Constants
 # ---------------------------------------------------------------------------
 
-VELOCITY_WATCH = Decimal("1.20")           # 120 % of planned pace → heads-up
-VELOCITY_WARNING = Decimal("1.50")         # 150 % → real budget risk
-VELOCITY_CRITICAL = Decimal("2.00")        # 200 % → emergency
+VELOCITY_WATCH = Decimal("1.20")  # 120 % of planned pace → heads-up
+VELOCITY_WARNING = Decimal("1.50")  # 150 % → real budget risk
+VELOCITY_CRITICAL = Decimal("2.00")  # 200 % → emergency
 
-MIN_DAYS_FOR_VELOCITY: int = 3             # need ≥ 3 days of data before alerting
-MIN_PLANNED_FOR_ALERT = Decimal("1.00")    # skip near-zero / unplanned categories
+MIN_DAYS_FOR_VELOCITY: int = 3  # need ≥ 3 days of data before alerting
+MIN_PLANNED_FOR_ALERT = Decimal("1.00")  # skip near-zero / unplanned categories
 
-WIN_DAILY_UNDER_PCT = Decimal("0.80")      # spent < 80 % of daily planned = good day
-WIN_STREAK_MILESTONES = (30, 14, 7)        # report the highest milestone only
+WIN_DAILY_UNDER_PCT = Decimal("0.80")  # spent < 80 % of daily planned = good day
+WIN_STREAK_MILESTONES = (30, 14, 7)  # report the highest milestone only
 
 
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------
 
+
 class VelocityAlertLevel(str, Enum):
-    WATCH = "watch"        # 1.20 – 1.49 ×  informational
-    WARNING = "warning"    # 1.50 – 1.99 ×  high priority
+    WATCH = "watch"  # 1.20 – 1.49 ×  informational
+    WARNING = "warning"  # 1.50 – 1.99 ×  high priority
     CRITICAL = "critical"  # 2.00 +          critical
 
 
@@ -59,9 +61,11 @@ class VelocityAlertLevel(str, Enum):
 # Input dataclasses
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class DailyPlanData:
     """One row from the DailyPlan table (pre-fetched by the caller)."""
+
     plan_date: date
     category: str
     planned_amount: Decimal
@@ -71,6 +75,7 @@ class DailyPlanData:
 @dataclass(frozen=True)
 class GoalData:
     """One active goal (pre-fetched by the caller)."""
+
     goal_id: str
     title: str
     target_amount: Decimal
@@ -83,6 +88,7 @@ class GoalData:
 # Output dataclasses
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class CategoryVelocity:
     """Velocity metrics for a single budget category."""
@@ -92,10 +98,10 @@ class CategoryVelocity:
     monthly_spent: Decimal
     days_elapsed: int
     days_in_month: int
-    daily_pace: Decimal         # actual: monthly_spent / days_elapsed
-    planned_per_day: Decimal    # target: monthly_planned / days_in_month
-    velocity_ratio: Decimal     # daily_pace / planned_per_day
-    days_until_exhausted: Optional[Decimal]   # None if daily_pace == 0
+    daily_pace: Decimal  # actual: monthly_spent / days_elapsed
+    planned_per_day: Decimal  # target: monthly_planned / days_in_month
+    velocity_ratio: Decimal  # daily_pace / planned_per_day
+    days_until_exhausted: Optional[Decimal]  # None if daily_pace == 0
     alert_level: Optional[VelocityAlertLevel]
     is_sacred_category: bool
 
@@ -134,23 +140,26 @@ class CategoryVelocity:
 @dataclass
 class GoalImpact:
     """How current over-pace affects a savings goal timeline."""
+
     goal_id: str
     goal_title: str
-    projected_shortfall: Decimal   # how much less will be saved vs goal
-    delay_days: int                # approximate goal delay in calendar days
+    projected_shortfall: Decimal  # how much less will be saved vs goal
+    delay_days: int  # approximate goal delay in calendar days
 
 
 @dataclass
 class SpendingWin:
     """A positive spending achievement worth celebrating."""
-    win_type: str           # "streak_7" | "streak_14" | "streak_30"
-    surplus_amount: Decimal # total money saved below plan during the streak
-    streak_days: int        # length of the current good-day streak
+
+    win_type: str  # "streak_7" | "streak_14" | "streak_30"
+    surplus_amount: Decimal  # total money saved below plan during the streak
+    streak_days: int  # length of the current good-day streak
 
 
 @dataclass
 class VelocityAlertResult:
     """Full output of compute_velocity_alerts()."""
+
     year: int
     month: int
     days_elapsed: int
@@ -197,6 +206,7 @@ class VelocityAlertResult:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def compute_velocity_alerts(
     daily_plans: Sequence[DailyPlanData],
@@ -378,6 +388,7 @@ def compute_velocity_alerts(
 # Private helpers
 # ---------------------------------------------------------------------------
 
+
 def _compute_goal_impacts(
     goals: Sequence[GoalData],
     all_categories: List[CategoryVelocity],
@@ -405,8 +416,8 @@ def _compute_goal_impacts(
     days_remaining = days_in_month - days_elapsed
 
     total_daily_pace = total_spent / days_elapsed_d
-    projected_month_spend = (
-        total_spent + total_daily_pace * Decimal(str(days_remaining))
+    projected_month_spend = total_spent + total_daily_pace * Decimal(
+        str(days_remaining)
     )
     projected_deficit = projected_month_spend - total_planned
 

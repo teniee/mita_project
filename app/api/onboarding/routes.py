@@ -11,8 +11,8 @@ from app.api.onboarding.schemas import OnboardingSubmitRequest
 from app.core.session import get_db
 from app.db.models import User
 from app.engine.calendar_engine_behavioral import build_calendar
-from app.services.core.engine.budget_logic import generate_budget_from_answers
 from app.services.calendar_service_real import save_calendar_for_user
+from app.services.core.engine.budget_logic import generate_budget_from_answers
 from app.utils.response_wrapper import success_response
 
 logger = logging.getLogger(__name__)
@@ -64,12 +64,19 @@ def submit_onboarding(
     logger.info(f"Request income: {request.income.monthly_income}")
 
     # Extract validated data (FastAPI has already validated via Pydantic)
-    monthly_income = request.income.monthly_income
+    # Persist TOTAL income — the generated budget/calendar are built from
+    # monthly + additional income, so storing only the base would make every
+    # later recalculation disagree with the onboarding plan.
+    monthly_income = request.income.monthly_income + (
+        request.income.additional_income or 0
+    )
 
     # Convert request to dict for backward compatibility with existing services
     answers = request.model_dump()
 
-    logger.debug(f"Validated data for user {current_user.id}: monthly_income={monthly_income}")
+    logger.debug(
+        f"Validated data for user {current_user.id}: monthly_income={monthly_income}"
+    )
 
     # Save income to user profile
     # BUGFIX: Query user fresh in sync session to avoid async/sync session conflict
@@ -80,7 +87,7 @@ def submit_onboarding(
             logger.error(f"User {current_user.id} not found in sync session")
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail={"error": "User not found", "code": "USER_NOT_FOUND"}
+                detail={"error": "User not found", "code": "USER_NOT_FOUND"},
             )
 
         user.monthly_income = monthly_income
@@ -94,10 +101,7 @@ def submit_onboarding(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error": "Failed to update user profile",
-                "code": "DATABASE_ERROR"
-            }
+            detail={"error": "Failed to update user profile", "code": "DATABASE_ERROR"},
         )
 
     # Generate budget plan with error handling
@@ -108,14 +112,13 @@ def submit_onboarding(
         # Re-raise HTTP exceptions (auth errors, etc.) without modification
         raise
     except ValueError as e:
-        logger.warning(f"Budget generation validation error for user {current_user.id}: {e}")
+        logger.warning(
+            f"Budget generation validation error for user {current_user.id}: {e}"
+        )
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "error": str(e),
-                "code": "BUDGET_GENERATION_FAILED"
-            }
+            detail={"error": str(e), "code": "BUDGET_GENERATION_FAILED"},
         )
     except Exception as e:
         logger.error(f"Budget generation error for user {current_user.id}: {e}")
@@ -124,8 +127,8 @@ def submit_onboarding(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "error": f"Failed to generate budget: {str(e)}",
-                "code": "BUDGET_GENERATION_ERROR"
-            }
+                "code": "BUDGET_GENERATION_ERROR",
+            },
         )
 
     # Build calendar with error handling
@@ -147,19 +150,23 @@ def submit_onboarding(
         }
         calendar_data = build_calendar(calendar_config)
         save_calendar_for_user(db, current_user.id, calendar_data)
-        logger.debug(f"Built and saved calendar for user {current_user.id}: {len(calendar_data)} days")
+        logger.debug(
+            f"Built and saved calendar for user {current_user.id}: {len(calendar_data)} days"
+        )
     except HTTPException:
         # Re-raise HTTP exceptions (auth errors, etc.) without modification
         raise
     except ValueError as e:
-        logger.warning(f"Calendar build validation error for user {current_user.id}: {e}")
+        logger.warning(
+            f"Calendar build validation error for user {current_user.id}: {e}"
+        )
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
                 "error": f"Failed to build calendar: {str(e)}",
-                "code": "CALENDAR_BUILD_FAILED"
-            }
+                "code": "CALENDAR_BUILD_FAILED",
+            },
         )
     except Exception as e:
         logger.error(f"Calendar build error for user {current_user.id}: {e}")
@@ -168,8 +175,8 @@ def submit_onboarding(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail={
                 "error": f"Failed to build calendar: {str(e)}",
-                "code": "CALENDAR_BUILD_ERROR"
-            }
+                "code": "CALENDAR_BUILD_ERROR",
+            },
         )
 
     # Mark user as having completed onboarding
@@ -189,15 +196,14 @@ def submit_onboarding(
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
-                "error": "Failed to save onboarding data",
-                "code": "COMMIT_ERROR"
-            }
+            detail={"error": "Failed to save onboarding data", "code": "COMMIT_ERROR"},
         )
 
-    return success_response({
-        "status": "success",
-        "calendar_days": len(calendar_data),
-        "budget_plan": budget_plan,
-        "message": "Onboarding completed successfully"
-    })
+    return success_response(
+        {
+            "status": "success",
+            "calendar_days": len(calendar_data),
+            "budget_plan": budget_plan,
+            "message": "Onboarding completed successfully",
+        }
+    )

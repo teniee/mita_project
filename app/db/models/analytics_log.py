@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, ForeignKey, JSON, String, Boolean
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 
 from .base import Base
@@ -11,17 +11,22 @@ class FeatureUsageLog(Base):
     """
     Model for tracking feature usage analytics
     """
+
     __tablename__ = "feature_usage_logs"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
+    )
 
     feature = Column(String(100), nullable=False, index=True)
     screen = Column(String(100), nullable=True, index=True)
     action = Column(String(100), nullable=True)
 
     # Context and metadata
-    extra_data = Column(JSON, nullable=True)  # Renamed from 'metadata' (reserved keyword)
+    extra_data = Column(
+        JSON, nullable=True
+    )  # Renamed from 'metadata' (reserved keyword)
 
     # Session tracking
     session_id = Column(String(100), nullable=True, index=True)
@@ -31,17 +36,22 @@ class FeatureUsageLog(Base):
     app_version = Column(String(20), nullable=True)
 
     # Timestamps
-    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+    timestamp = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
 
 
 class FeatureAccessLog(Base):
     """
     Model for tracking premium feature access attempts (for conversion tracking)
     """
+
     __tablename__ = "feature_access_logs"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
+    )
 
     feature = Column(String(100), nullable=False, index=True)
     has_access = Column(Boolean, default=False, nullable=False)
@@ -53,20 +63,27 @@ class FeatureAccessLog(Base):
 
     # Context
     screen = Column(String(100), nullable=True)
-    extra_data = Column(JSON, nullable=True)  # Renamed from 'metadata' (reserved keyword)
+    extra_data = Column(
+        JSON, nullable=True
+    )  # Renamed from 'metadata' (reserved keyword)
 
     # Timestamps
-    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+    timestamp = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
 
 
 class PaywallImpressionLog(Base):
     """
     Model for tracking paywall impressions (for conversion funnel analysis)
     """
+
     __tablename__ = "paywall_impression_logs"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
+    )
 
     screen = Column(String(100), nullable=False, index=True)
     feature = Column(String(100), nullable=True)
@@ -76,8 +93,14 @@ class PaywallImpressionLog(Base):
     purchase_timestamp = Column(DateTime(timezone=True), nullable=True)
 
     # Context
-    impression_context = Column(String(200), nullable=True)  # what triggered the paywall
-    extra_data = Column(JSON, nullable=True)  # Renamed from 'metadata' (reserved keyword)
+    impression_context = Column(
+        String(200), nullable=True
+    )  # what triggered the paywall
+    extra_data = Column(
+        JSON, nullable=True
+    )  # Renamed from 'metadata' (reserved keyword)
 
     # Timestamps
-    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
+    timestamp = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )

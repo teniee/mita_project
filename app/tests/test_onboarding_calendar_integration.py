@@ -10,11 +10,39 @@ Bug Context:
 - But daily_plan table had 0 entries
 - Root cause: Missing UUID default on daily_plan.id column
 """
-import pytest
+
 from decimal import Decimal
 from uuid import uuid4
 
-from app.db.models import User, DailyPlan
+import pytest
+from fastapi.testclient import TestClient
+
+from app.db.models import DailyPlan, User
+
+
+@pytest.fixture
+def client():
+    from app.main import app
+
+    return TestClient(app, raise_server_exceptions=False)
+
+
+@pytest.fixture
+def db_session():
+    import app.core.session as session_module
+
+    (
+        session_module.init_db_engine()
+        if hasattr(session_module, "init_db_engine")
+        else None
+    )
+    # get_db initializes SessionLocal lazily
+    gen = session_module.get_db()
+    db = next(gen)
+    try:
+        yield db
+    finally:
+        gen.close()
 
 
 class TestOnboardingCalendarIntegration:
@@ -25,10 +53,10 @@ class TestOnboardingCalendarIntegration:
         """Create a test user in the database"""
         user = User(
             id=uuid4(),
-            email="test_calendar_integration@mita.app",
+            email=f"test_calendar_integration_{uuid4().hex[:8]}@mita.app",
             password_hash="hashed_password_123",
             has_onboarded=False,
-            monthly_income=Decimal("0.00")
+            monthly_income=Decimal("0.00"),
         )
         db_session.add(user)
         db_session.commit()
@@ -43,25 +71,18 @@ class TestOnboardingCalendarIntegration:
         """
         # Prepare onboarding data
         onboarding_data = {
-            "income": {
-                "monthly_income": 5000.0,
-                "additional_income": 500.0
-            },
-            "fixed_expenses": {
-                "rent": 1500.0,
-                "utilities": 200.0,
-                "insurance": 150.0
-            },
+            "income": {"monthly_income": 5000.0, "additional_income": 500.0},
+            "fixed_expenses": {"rent": 1500.0, "utilities": 200.0, "insurance": 150.0},
             "spending_habits": {
                 "dining_out_per_month": 10,
                 "entertainment_budget": 200.0,
-                "shopping_frequency": 5
+                "shopping_frequency": 5,
             },
             "goals": {
                 "savings_goal_amount_per_month": 1000.0,
-                "emergency_fund_target": 10000.0
+                "emergency_fund_target": 10000.0,
             },
-            "region": "US"
+            "region": "US",
         }
 
         # Login as test user (mock auth)
@@ -78,7 +99,7 @@ class TestOnboardingCalendarIntegration:
             response = client.post(
                 "/api/onboarding/submit",
                 json=onboarding_data,
-                headers={"Authorization": "Bearer test_token"}
+                headers={"Authorization": "Bearer test_token"},
             )
 
             # Should succeed
@@ -89,13 +110,17 @@ class TestOnboardingCalendarIntegration:
             assert response_data["data"]["status"] == "success"
 
             # CRITICAL VERIFICATION: Check database has calendar entries
-            calendar_entries = db_session.query(DailyPlan).filter_by(
-                user_id=test_user.id
-            ).all()
+            calendar_entries = (
+                db_session.query(DailyPlan).filter_by(user_id=test_user.id).all()
+            )
 
             # Should have created daily budget entries (at least 28 days)
-            assert len(calendar_entries) > 0, "❌ CRITICAL: No calendar entries created!"
-            assert len(calendar_entries) >= 28, f"Expected at least 28 days, got {len(calendar_entries)}"
+            assert (
+                len(calendar_entries) > 0
+            ), "❌ CRITICAL: No calendar entries created!"
+            assert (
+                len(calendar_entries) >= 28
+            ), f"Expected at least 28 days, got {len(calendar_entries)}"
 
             # Verify entries have proper data
             for entry in calendar_entries[:5]:  # Check first 5
@@ -130,7 +155,7 @@ class TestOnboardingCalendarIntegration:
         onboarding_data = {
             "income": {"monthly_income": 3000.0, "additional_income": 0},
             "fixed_expenses": {"rent": 1000.0},
-            "region": "US"
+            "region": "US",
         }
 
         from app.api.dependencies import get_current_user
@@ -145,15 +170,15 @@ class TestOnboardingCalendarIntegration:
             response = client.post(
                 "/api/onboarding/submit",
                 json=onboarding_data,
-                headers={"Authorization": "Bearer test_token"}
+                headers={"Authorization": "Bearer test_token"},
             )
 
             assert response.status_code == 200
 
             # Check UUIDs are valid and unique
-            calendar_entries = db_session.query(DailyPlan).filter_by(
-                user_id=test_user.id
-            ).all()
+            calendar_entries = (
+                db_session.query(DailyPlan).filter_by(user_id=test_user.id).all()
+            )
 
             uuids = [entry.id for entry in calendar_entries]
 
@@ -171,7 +196,9 @@ class TestOnboardingCalendarIntegration:
             db_session.query(User).filter_by(id=test_user.id).delete()
             db_session.commit()
 
-    def test_calendar_save_failure_rolls_back_user_changes(self, client, db_session, test_user):
+    def test_calendar_save_failure_rolls_back_user_changes(
+        self, client, db_session, test_user
+    ):
         """Verify that if calendar save fails, user changes are rolled back"""
         # This test ensures atomicity of the onboarding transaction
 
@@ -182,7 +209,7 @@ class TestOnboardingCalendarIntegration:
         invalid_data = {
             "income": {"monthly_income": -1000.0},  # Invalid: negative income
             "fixed_expenses": {},
-            "region": "US"
+            "region": "US",
         }
 
         from app.api.dependencies import get_current_user
@@ -197,7 +224,7 @@ class TestOnboardingCalendarIntegration:
             response = client.post(
                 "/api/onboarding/submit",
                 json=invalid_data,
-                headers={"Authorization": "Bearer test_token"}
+                headers={"Authorization": "Bearer test_token"},
             )
 
             # Should fail validation
@@ -209,9 +236,9 @@ class TestOnboardingCalendarIntegration:
             assert test_user.has_onboarded == original_onboarded
 
             # Verify no calendar entries were created
-            calendar_count = db_session.query(DailyPlan).filter_by(
-                user_id=test_user.id
-            ).count()
+            calendar_count = (
+                db_session.query(DailyPlan).filter_by(user_id=test_user.id).count()
+            )
             assert calendar_count == 0
 
             print("✅ Transaction rollback working correctly")

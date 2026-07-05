@@ -1,16 +1,17 @@
 from typing import Union
+
 from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import Session
 
 from app.api.auth.schemas import LoginIn  # noqa: E501
-from app.api.auth.schemas import GoogleAuthIn, RegisterIn, FastRegisterIn, TokenOut
+from app.api.auth.schemas import FastRegisterIn, GoogleAuthIn, RegisterIn, TokenOut
 from app.db.models import User
 from app.services.auth_jwt_service import (
     create_token_pair,
     hash_password,
-    verify_password
+    verify_password,
 )
 from app.services.resilient_google_auth_service import authenticate_google_user
 from app.utils.response_wrapper import success_response
@@ -42,15 +43,15 @@ def register_user(data: RegisterIn, db: Session) -> TokenOut:
         "sub": str(user.id),
         "is_premium": user.is_premium,
         "country": user.country,
-        "token_version_id": user.token_version  # Security: token revocation support
+        "token_version_id": user.token_version,  # Security: token revocation support
     }
 
     tokens = create_token_pair(user_data, user_role=user_role)
-    
+
     return TokenOut(
         access_token=tokens["access_token"],
         refresh_token=tokens["refresh_token"],
-        token_type=tokens["token_type"]
+        token_type=tokens["token_type"],
     )
 
 
@@ -69,15 +70,15 @@ def authenticate_user(data: LoginIn, db: Session) -> TokenOut:
         "sub": str(user.id),
         "is_premium": user.is_premium,
         "country": user.country,
-        "token_version_id": user.token_version  # Security: token revocation support
+        "token_version_id": user.token_version,  # Security: token revocation support
     }
 
     tokens = create_token_pair(user_data, user_role=user_role)
-    
+
     return TokenOut(
         access_token=tokens["access_token"],
         refresh_token=tokens["refresh_token"],
-        token_type=tokens["token_type"]
+        token_type=tokens["token_type"],
     )
 
 
@@ -90,15 +91,17 @@ def refresh_token_for_user(user: User) -> TokenOut:
     user_data = {
         "sub": str(user.id),
         "is_premium": user.is_premium,
-        "country": getattr(user, 'country', 'US')
+        "country": getattr(user, "country", "US"),
+        "token_version_id": getattr(user, "token_version", None)
+        or 1,  # Security: token revocation support
     }
-    
+
     tokens = create_token_pair(user_data, user_role=user_role)
-    
+
     return TokenOut(
         access_token=tokens["access_token"],
         refresh_token=tokens["refresh_token"],
-        token_type=tokens["token_type"]
+        token_type=tokens["token_type"],
     )
 
 
@@ -118,106 +121,120 @@ async def authenticate_google(data: GoogleAuthIn, db: AsyncSession) -> TokenOut:
     user_data = {
         "sub": str(user.id),
         "is_premium": user.is_premium,
-        "country": getattr(user, 'country', 'US')
+        "country": getattr(user, "country", "US"),
+        "token_version_id": getattr(user, "token_version", None)
+        or 1,  # Security: token revocation support
     }
-    
+
     tokens = create_token_pair(user_data, user_role=user_role)
-    
+
     return TokenOut(
         access_token=tokens["access_token"],
         refresh_token=tokens["refresh_token"],
-        token_type=tokens["token_type"]
+        token_type=tokens["token_type"],
     )
 
 
 # Simplified registration function without complex async operations
-async def register_user_async(data: Union[FastRegisterIn, RegisterIn], db: AsyncSession) -> TokenOut:
+async def register_user_async(
+    data: Union[FastRegisterIn, RegisterIn], db: AsyncSession
+) -> TokenOut:
     """SIMPLIFIED: Clean registration without complex timeout operations that cause hangs."""
-    
-    # Basic validation
-    if len(data.password) < 8:
+
+    # Enforce the full password policy (parity with the primary
+    # registration route, which validates upper/lower/digit/special).
+    from app.core.error_handler import ValidationException
+    from app.core.security import SecurityUtils
+
+    try:
+        SecurityUtils.validate_password_strength(data.password)
+    except ValidationException as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must be at least 8 characters long",
+            detail=str(exc.message if hasattr(exc, "message") else exc),
         )
-    
+
     # Simple user existence check without timeout
     existing_user = await db.scalar(
         select(User.id).where(User.email == data.email.lower())
     )
-    
+
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already exists",
         )
-    
+
     # Hash password synchronously (avoids thread pool issues)
     password_hash = hash_password(data.password)
-    
+
     # Create user
     user = User(
         email=data.email.lower(),
         password_hash=password_hash,
         country=data.country,
-        annual_income=getattr(data, 'annual_income', 0) or 0,
+        annual_income=getattr(data, "annual_income", 0) or 0,
         timezone=data.timezone,
     )
-    
+
     # Simple database transaction
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    
+
     # Create tokens
     user_role = "premium_user" if user.is_premium else "basic_user"
     user_data = {
         "sub": str(user.id),
         "is_premium": user.is_premium,
-        "country": user.country
+        "country": user.country,
+        "token_version_id": getattr(user, "token_version", None)
+        or 1,  # Security: token revocation support
     }
-    
+
     tokens = create_token_pair(user_data, user_role=user_role)
-    
+
     return TokenOut(
         access_token=tokens["access_token"],
         refresh_token=tokens["refresh_token"],
-        token_type=tokens["token_type"]
+        token_type=tokens["token_type"],
     )
 
 
 async def authenticate_user_async(data: LoginIn, db: AsyncSession) -> TokenOut:
     """SIMPLIFIED: Clean authentication without complex async operations that cause hangs."""
-    
+
     # Simple user lookup
     result = await db.execute(select(User).filter(User.email == data.email.lower()))
     user = result.scalars().first()
-    
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
         )
-    
+
     # Verify password synchronously (avoids thread pool issues)
     if not verify_password(data.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
         )
-    
+
     # Create tokens
     user_role = "premium_user" if user.is_premium else "basic_user"
     user_data = {
         "sub": str(user.id),
         "is_premium": user.is_premium,
-        "country": user.country
+        "country": user.country,
+        "token_version_id": getattr(user, "token_version", None)
+        or 1,  # Security: token revocation support
     }
-    
+
     tokens = create_token_pair(user_data, user_role=user_role)
-    
+
     return TokenOut(
         access_token=tokens["access_token"],
         refresh_token=tokens["refresh_token"],
-        token_type=tokens["token_type"]
+        token_type=tokens["token_type"],
     )

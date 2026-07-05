@@ -3,6 +3,7 @@ Daily Streak Win Cron Task
 Checks all active users for 7-day on-budget streaks and sends positive notifications.
 Based on behavioral economics: celebrate small wins (Thaler).
 """
+
 import logging
 from datetime import date
 

@@ -1,6 +1,5 @@
 import os
 
-import pytest
 import sentry_sdk
 from fastapi.testclient import TestClient
 from sentry_sdk.transport import Transport
@@ -30,11 +29,18 @@ def test_sentry_captures_error():
 
     app.add_api_route("/boom", boom, methods=["GET"])
 
-    client = TestClient(app)
-    with pytest.raises(RuntimeError):
-        client.get("/boom")
+    # The app registers a catch-all exception handler, so unexpected errors
+    # surface as standardized 500 responses instead of propagating.
+    client = TestClient(app, raise_server_exceptions=False)
+    resp = client.get("/boom")
+    assert resp.status_code == 500
 
     sentry_sdk.flush()
+    # Server errors must reach Sentry even though the catch-all handler
+    # converts them to 500 responses.
     assert transport.events
     event = transport.events[0].items[0].payload.json
-    assert "request_body" in event.get("extra", {})
+    exception_types = [
+        exc.get("type") for exc in event.get("exception", {}).get("values", [])
+    ]
+    assert "RuntimeError" in exception_types

@@ -1,14 +1,15 @@
 """OCR receipt processing using Tesseract OCR."""
 
 import os
+import tempfile
 from typing import Dict, Union
 
 import pytesseract
 from PIL import Image
 
-from app.ocr.ocr_parser import parse_receipt_details
-from app.ocr.confidence_scorer import ConfidenceScorer
 from app.core.logger import get_logger
+from app.ocr.confidence_scorer import ConfidenceScorer
+from app.ocr.ocr_parser import parse_receipt_details
 
 logger = get_logger(__name__)
 
@@ -16,7 +17,7 @@ logger = get_logger(__name__)
 class OCRReceiptService:
     """Simple OCR service backed by Tesseract."""
 
-    def __init__(self, temp_dir: str = "/tmp"):
+    def __init__(self, temp_dir: str = tempfile.gettempdir()):
         self.temp_dir = temp_dir
 
     def process_image(self, image_path: str) -> Dict[str, Union[str, float]]:

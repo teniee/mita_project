@@ -3,36 +3,59 @@ Prometheus Metrics Configuration for MITA Finance API
 Provides comprehensive monitoring metrics for production observability
 """
 
-from prometheus_client import Counter, Histogram, Gauge, Info, generate_latest, CONTENT_TYPE_LATEST  # noqa: F401
-from prometheus_client import REGISTRY
+import os
 import time
 from typing import Callable
-from fastapi import Request, Response
-from starlette.middleware.base import BaseHTTPMiddleware
+
 import psutil
-import os
+from fastapi import Request, Response
+from prometheus_client import (  # noqa: F401
+    CONTENT_TYPE_LATEST,
+    REGISTRY,
+    Counter,
+    Gauge,
+    Histogram,
+    Info,
+    generate_latest,
+)
+from starlette.middleware.base import BaseHTTPMiddleware
 
 # ============================================================================
 # HTTP Metrics
 # ============================================================================
 
 http_requests_total = Counter(
-    'mita_http_requests_total',
-    'Total HTTP requests by method, endpoint, and status code',
-    ['method', 'endpoint', 'status_code']
+    "mita_http_requests_total",
+    "Total HTTP requests by method, endpoint, and status code",
+    ["method", "endpoint", "status_code"],
 )
 
 http_request_duration_seconds = Histogram(
-    'mita_http_request_duration_seconds',
-    'HTTP request latency in seconds by method and endpoint',
-    ['method', 'endpoint'],
-    buckets=(0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.75, 1.0, 2.5, 5.0, 7.5, 10.0, float('inf'))
+    "mita_http_request_duration_seconds",
+    "HTTP request latency in seconds by method and endpoint",
+    ["method", "endpoint"],
+    buckets=(
+        0.01,
+        0.025,
+        0.05,
+        0.075,
+        0.1,
+        0.25,
+        0.5,
+        0.75,
+        1.0,
+        2.5,
+        5.0,
+        7.5,
+        10.0,
+        float("inf"),
+    ),
 )
 
 http_requests_in_progress = Gauge(
-    'mita_http_requests_in_progress',
-    'Number of HTTP requests currently being processed',
-    ['method', 'endpoint']
+    "mita_http_requests_in_progress",
+    "Number of HTTP requests currently being processed",
+    ["method", "endpoint"],
 )
 
 # ============================================================================
@@ -40,37 +63,37 @@ http_requests_in_progress = Gauge(
 # ============================================================================
 
 budget_calculations_total = Counter(
-    'mita_budget_calculations_total',
-    'Total number of budget redistribution calculations performed'
+    "mita_budget_calculations_total",
+    "Total number of budget redistribution calculations performed",
 )
 
 budget_calculation_duration_seconds = Histogram(
-    'mita_budget_calculation_duration_seconds',
-    'Budget calculation processing time in seconds',
-    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, float('inf'))
+    "mita_budget_calculation_duration_seconds",
+    "Budget calculation processing time in seconds",
+    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, float("inf")),
 )
 
 ocr_processing_total = Counter(
-    'mita_ocr_processing_total',
-    'Total number of OCR processing requests',
-    ['status']  # success, failure
+    "mita_ocr_processing_total",
+    "Total number of OCR processing requests",
+    ["status"],  # success, failure
 )
 
 ocr_processing_duration_seconds = Histogram(
-    'mita_ocr_processing_duration_seconds',
-    'OCR processing time in seconds',
-    buckets=(0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 30.0, 60.0, float('inf'))
+    "mita_ocr_processing_duration_seconds",
+    "OCR processing time in seconds",
+    buckets=(0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 30.0, 60.0, float("inf")),
 )
 
 transaction_amount_usd = Histogram(
-    'mita_transaction_amount_usd',
-    'Transaction amounts in USD',
-    buckets=(1, 5, 10, 25, 50, 100, 250, 500, 1000, 5000, 10000, float('inf'))
+    "mita_transaction_amount_usd",
+    "Transaction amounts in USD",
+    buckets=(1, 5, 10, 25, 50, 100, 250, 500, 1000, 5000, 10000, float("inf")),
 )
 
 active_users_gauge = Gauge(
-    'mita_active_users',
-    'Number of currently active users (authenticated in last 5 minutes)'
+    "mita_active_users",
+    "Number of currently active users (authenticated in last 5 minutes)",
 )
 
 # ============================================================================
@@ -78,26 +101,35 @@ active_users_gauge = Gauge(
 # ============================================================================
 
 database_connections_active = Gauge(
-    'mita_database_connections_active',
-    'Number of active database connections'
+    "mita_database_connections_active", "Number of active database connections"
 )
 
 database_connections_max = Gauge(
-    'mita_database_connections_max',
-    'Maximum number of database connections allowed'
+    "mita_database_connections_max", "Maximum number of database connections allowed"
 )
 
 database_query_duration_seconds = Histogram(
-    'mita_database_query_duration_seconds',
-    'Database query execution time',
-    ['query_type', 'table'],
-    buckets=(0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, float('inf'))
+    "mita_database_query_duration_seconds",
+    "Database query execution time",
+    ["query_type", "table"],
+    buckets=(
+        0.001,
+        0.005,
+        0.01,
+        0.025,
+        0.05,
+        0.1,
+        0.25,
+        0.5,
+        1.0,
+        2.5,
+        5.0,
+        float("inf"),
+    ),
 )
 
 database_errors_total = Counter(
-    'mita_database_errors_total',
-    'Total number of database errors',
-    ['error_type']
+    "mita_database_errors_total", "Total number of database errors", ["error_type"]
 )
 
 # ============================================================================
@@ -105,22 +137,25 @@ database_errors_total = Counter(
 # ============================================================================
 
 external_api_requests_total = Counter(
-    'mita_external_api_requests_total',
-    'Total requests to external APIs',
-    ['service', 'status']  # service: openai, google_vision, etc.; status: success, failure
+    "mita_external_api_requests_total",
+    "Total requests to external APIs",
+    [
+        "service",
+        "status",
+    ],  # service: openai, google_vision, etc.; status: success, failure
 )
 
 external_api_duration_seconds = Histogram(
-    'mita_external_api_duration_seconds',
-    'External API request duration',
-    ['service'],
-    buckets=(0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, float('inf'))
+    "mita_external_api_duration_seconds",
+    "External API request duration",
+    ["service"],
+    buckets=(0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, float("inf")),
 )
 
 circuit_breaker_state = Gauge(
-    'mita_circuit_breaker_state',
-    'Circuit breaker state (0=closed, 1=open, 2=half_open)',
-    ['service']
+    "mita_circuit_breaker_state",
+    "Circuit breaker state (0=closed, 1=open, 2=half_open)",
+    ["service"],
 )
 
 # ============================================================================
@@ -128,39 +163,36 @@ circuit_breaker_state = Gauge(
 # ============================================================================
 
 system_cpu_usage_percent = Gauge(
-    'mita_system_cpu_usage_percent',
-    'System CPU usage percentage'
+    "mita_system_cpu_usage_percent", "System CPU usage percentage"
 )
 
 system_memory_usage_percent = Gauge(
-    'mita_system_memory_usage_percent',
-    'System memory usage percentage'
+    "mita_system_memory_usage_percent", "System memory usage percentage"
 )
 
 system_memory_available_bytes = Gauge(
-    'mita_system_memory_available_bytes',
-    'Available system memory in bytes'
+    "mita_system_memory_available_bytes", "Available system memory in bytes"
 )
 
 # ============================================================================
 # Application Info
 # ============================================================================
 
-app_info = Info(
-    'mita_application',
-    'MITA Finance application information'
-)
+app_info = Info("mita_application", "MITA Finance application information")
 
 # Set application info
-app_info.info({
-    'version': '1.0.0',
-    'environment': os.getenv('ENVIRONMENT', 'unknown'),
-    'service': 'mita-finance-api'
-})
+app_info.info(
+    {
+        "version": "1.0.0",
+        "environment": os.getenv("ENVIRONMENT", "unknown"),
+        "service": "mita-finance-api",
+    }
+)
 
 # ============================================================================
 # Prometheus Middleware
 # ============================================================================
+
 
 class PrometheusMiddleware(BaseHTTPMiddleware):
     """
@@ -169,7 +201,7 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         # Skip metrics endpoint itself
-        if request.url.path == '/metrics':
+        if request.url.path == "/metrics":
             return await call_next(request)
 
         # Normalize endpoint path (remove IDs for better grouping)
@@ -198,14 +230,11 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
 
             # Record metrics
             http_requests_total.labels(
-                method=method,
-                endpoint=endpoint,
-                status_code=status_code
+                method=method, endpoint=endpoint, status_code=status_code
             ).inc()
 
             http_request_duration_seconds.labels(
-                method=method,
-                endpoint=endpoint
+                method=method, endpoint=endpoint
             ).observe(duration)
 
             http_requests_in_progress.labels(method=method, endpoint=endpoint).dec()
@@ -220,16 +249,23 @@ class PrometheusMiddleware(BaseHTTPMiddleware):
         import re
 
         # Replace UUIDs
-        path = re.sub(r'/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', '/{id}', path, flags=re.IGNORECASE)
+        path = re.sub(
+            r"/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+            "/{id}",
+            path,
+            flags=re.IGNORECASE,
+        )
 
         # Replace numeric IDs
-        path = re.sub(r'/\d+', '/{id}', path)
+        path = re.sub(r"/\d+", "/{id}", path)
 
         return path
+
 
 # ============================================================================
 # System Metrics Collector
 # ============================================================================
+
 
 def update_system_metrics():
     """
@@ -250,9 +286,11 @@ def update_system_metrics():
         # Silently fail - don't crash app if metrics collection fails
         pass
 
+
 # ============================================================================
 # Metrics Export
 # ============================================================================
+
 
 def get_metrics() -> bytes:
     """

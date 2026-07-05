@@ -1,8 +1,9 @@
 import logging
-from typing import Dict, Any
 from decimal import Decimal
-from fastapi import APIRouter, Depends, Body
-from sqlalchemy import and_, select, func, extract
+from typing import Any, Dict
+
+from fastapi import APIRouter, Body, Depends
+from sqlalchemy import and_, extract, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
@@ -16,6 +17,12 @@ from app.api.analytics.schemas import (
 )
 from app.api.dependencies import get_current_user
 from app.core.async_session import get_async_db
+from app.core.simple_rate_limiter import (
+    check_aggregate_rate_limit,
+    check_anomalies_rate_limit,
+    check_behavioral_insights_rate_limit,
+    check_seasonal_patterns_rate_limit,
+)
 from app.db.models.user import User
 from app.services.analytics_service import (
     analyze_aggregate,
@@ -24,19 +31,14 @@ from app.services.analytics_service import (
     get_monthly_trend,
 )
 from app.utils.response_wrapper import success_response
-from app.core.simple_rate_limiter import (
-    check_behavioral_insights_rate_limit,
-    check_seasonal_patterns_rate_limit,
-    check_aggregate_rate_limit,
-    check_anomalies_rate_limit,
-)
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 
 @router.get("/monthly", response_model=MonthlyAnalyticsOut)
 async def monthly(
-    user=Depends(get_current_user), db: AsyncSession = Depends(get_async_db)  # noqa: B008
+    user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     result = await get_monthly_category_totals(user.id, db)
     return success_response({"categories": result})
@@ -44,7 +46,8 @@ async def monthly(
 
 @router.get("/trend", response_model=TrendOut)
 async def trend(
-    user=Depends(get_current_user), db: AsyncSession = Depends(get_async_db)  # noqa: B008
+    user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     result = await get_monthly_trend(user.id, db)
     return success_response({"trend": result})
@@ -53,7 +56,7 @@ async def trend(
 @router.post(
     "/aggregate",
     response_model=AggregateResult,
-    dependencies=[Depends(check_aggregate_rate_limit)]
+    dependencies=[Depends(check_aggregate_rate_limit)],
 )
 async def aggregate(payload: CalendarPayload):
     return success_response(analyze_aggregate(payload.calendar))
@@ -62,7 +65,7 @@ async def aggregate(payload: CalendarPayload):
 @router.post(
     "/anomalies",
     response_model=AnomalyResult,
-    dependencies=[Depends(check_anomalies_rate_limit)]
+    dependencies=[Depends(check_anomalies_rate_limit)],
 )
 async def anomalies(payload: CalendarPayload):
     return success_response(analyze_anomalies(payload.calendar))
@@ -70,17 +73,18 @@ async def anomalies(payload: CalendarPayload):
 
 # NEW ENDPOINTS for mobile app integration
 
+
 @router.get(
-    "/behavioral-insights",
-    dependencies=[Depends(check_behavioral_insights_rate_limit)]
+    "/behavioral-insights", dependencies=[Depends(check_behavioral_insights_rate_limit)]
 )
 async def get_behavioral_insights(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_db),
 ):
     """Get behavioral insights from analytics"""
-    from app.db.models import Transaction
     from datetime import datetime, timedelta, timezone
+
+    from app.db.models import Transaction
 
     # Calculate behavioral insights from real transaction data
     thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
@@ -89,40 +93,59 @@ async def get_behavioral_insights(
     result = await db.execute(
         select(Transaction).filter(
             and_(
-                Transaction.user_id == user.id,
-                Transaction.spent_at >= thirty_days_ago
+                Transaction.user_id == user.id, Transaction.spent_at >= thirty_days_ago
             )
         )
     )
     transactions = result.scalars().all()
 
     if not transactions:
-        return success_response({
-            "spending_behavior": "consistent",
-            "risk_score": 0.0,
-            "impulse_buying_tendency": "low",
-            "budget_adherence": 0.0,
-            "saving_discipline": 0.0,
-            "insights": ["Not enough data for behavioral analysis. Continue tracking expenses."],
-            "recommendations": ["Track your daily expenses for personalized insights"]
-        })
+        return success_response(
+            {
+                "spending_behavior": "consistent",
+                "risk_score": 0.0,
+                "impulse_buying_tendency": "low",
+                "budget_adherence": 0.0,
+                "saving_discipline": 0.0,
+                "insights": [
+                    "Not enough data for behavioral analysis. Continue tracking expenses."
+                ],
+                "recommendations": [
+                    "Track your daily expenses for personalized insights"
+                ],
+            }
+        )
 
     # Calculate insights from real data
-    total_spending = sum(t.amount for t in transactions if t.amount is not None) or Decimal('0')
+    total_spending = sum(
+        t.amount for t in transactions if t.amount is not None
+    ) or Decimal("0")
     transaction_count = len(transactions)
-    avg_transaction = total_spending / transaction_count if transaction_count > 0 else Decimal('0')
+    avg_transaction = (
+        total_spending / transaction_count if transaction_count > 0 else Decimal("0")
+    )
 
     # Weekend vs weekday spending
-    weekend_spending = sum(t.amount for t in transactions if t.spent_at.weekday() >= 5 and t.amount is not None) or Decimal('0')
+    weekend_spending = sum(
+        t.amount
+        for t in transactions
+        if t.spent_at.weekday() >= 5 and t.amount is not None
+    ) or Decimal("0")
     weekday_spending = total_spending - weekend_spending
 
     # Category analysis
     category_spending = {}
     for t in transactions:
         if t.amount is not None:
-            category_spending[t.category] = category_spending.get(t.category, Decimal('0')) + t.amount
+            category_spending[t.category] = (
+                category_spending.get(t.category, Decimal("0")) + t.amount
+            )
 
-    top_category = max(category_spending.items(), key=lambda x: x[1])[0] if category_spending else "other"
+    top_category = (
+        max(category_spending.items(), key=lambda x: x[1])[0]
+        if category_spending
+        else "other"
+    )
 
     # Generate insights
     insights = []
@@ -139,18 +162,30 @@ async def get_behavioral_insights(
     # Risk score based on spending volatility (using float for statistical calculations)
     amounts = [float(t.amount) for t in transactions if t.amount is not None]
     avg_amount = sum(amounts) / len(amounts) if amounts else 0
-    variance = sum((x - avg_amount) ** 2 for x in amounts) / len(amounts) if amounts else 0
-    risk_score = min(1.0, variance / (avg_amount ** 2) if avg_amount > 0 else 0)
+    variance = (
+        sum((x - avg_amount) ** 2 for x in amounts) / len(amounts) if amounts else 0
+    )
+    risk_score = min(1.0, variance / (avg_amount**2) if avg_amount > 0 else 0)
 
-    return success_response({
-        "spending_behavior": "consistent" if risk_score < 0.5 else "variable",
-        "risk_score": round(risk_score, 2),
-        "impulse_buying_tendency": "low" if avg_transaction < 50 else "medium",
-        "budget_adherence": 0.85,
-        "saving_discipline": 0.75,
-        "insights": insights if insights else ["Your spending patterns are relatively stable"],
-        "recommendations": recommendations if recommendations else ["Continue tracking expenses for more insights"]
-    })
+    return success_response(
+        {
+            "spending_behavior": "consistent" if risk_score < 0.5 else "variable",
+            "risk_score": round(risk_score, 2),
+            "impulse_buying_tendency": "low" if avg_transaction < 50 else "medium",
+            "budget_adherence": 0.85,
+            "saving_discipline": 0.75,
+            "insights": (
+                insights
+                if insights
+                else ["Your spending patterns are relatively stable"]
+            ),
+            "recommendations": (
+                recommendations
+                if recommendations
+                else ["Continue tracking expenses for more insights"]
+            ),
+        }
+    )
 
 
 @router.post("/feature-usage")
@@ -161,6 +196,7 @@ async def log_feature_usage(
 ):
     """Log feature usage for analytics"""
     from datetime import datetime, timezone
+
     from app.db.models import FeatureUsageLog
 
     feature = data.get("feature")
@@ -175,10 +211,12 @@ async def log_feature_usage(
     # Parse timestamp or use current time
     if timestamp_str:
         try:
-            timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+            timestamp = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
         except (ValueError, AttributeError) as e:
             # Invalid timestamp format, fall back to current time
-            logger.warning(f"Invalid timestamp format '{timestamp_str}': {e}, using current time")
+            logger.warning(
+                f"Invalid timestamp format '{timestamp_str}': {e}, using current time"
+            )
             timestamp = datetime.now(timezone.utc)
     else:
         timestamp = datetime.now(timezone.utc)
@@ -193,18 +231,20 @@ async def log_feature_usage(
         session_id=session_id,
         platform=platform,
         app_version=app_version,
-        timestamp=timestamp
+        timestamp=timestamp,
     )
 
     db.add(usage_log)
     await db.commit()
 
-    return success_response({
-        "logged": True,
-        "feature": feature,
-        "user_id": str(user.id),
-        "timestamp": timestamp.isoformat()
-    })
+    return success_response(
+        {
+            "logged": True,
+            "feature": feature,
+            "user_id": str(user.id),
+            "timestamp": timestamp.isoformat(),
+        }
+    )
 
 
 @router.post("/feature-access-attempt")
@@ -215,6 +255,7 @@ async def log_feature_access_attempt(
 ):
     """Log when user attempts to access premium features"""
     from datetime import datetime, timezone
+
     from app.db.models import FeatureAccessLog
 
     feature = data.get("feature")
@@ -231,18 +272,20 @@ async def log_feature_access_attempt(
         is_premium_feature=is_premium_feature,
         screen=screen,
         extra_data=metadata,
-        timestamp=datetime.now(timezone.utc)
+        timestamp=datetime.now(timezone.utc),
     )
 
     db.add(access_log)
     await db.commit()
 
-    return success_response({
-        "logged": True,
-        "feature": feature,
-        "user_id": str(user.id),
-        "has_access": has_access
-    })
+    return success_response(
+        {
+            "logged": True,
+            "feature": feature,
+            "user_id": str(user.id),
+            "has_access": has_access,
+        }
+    )
 
 
 @router.post("/paywall-impression")
@@ -253,6 +296,7 @@ async def log_paywall_impression(
 ):
     """Log paywall impressions for conversion tracking"""
     from datetime import datetime, timezone
+
     from app.db.models import PaywallImpressionLog
 
     screen = data.get("screen")
@@ -264,10 +308,12 @@ async def log_paywall_impression(
     # Parse timestamp or use current time
     if timestamp_str:
         try:
-            timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+            timestamp = datetime.fromisoformat(timestamp_str.replace("Z", "+00:00"))
         except (ValueError, AttributeError) as e:
             # Invalid timestamp format, fall back to current time
-            logger.warning(f"Invalid timestamp format '{timestamp_str}': {e}, using current time")
+            logger.warning(
+                f"Invalid timestamp format '{timestamp_str}': {e}, using current time"
+            )
             timestamp = datetime.now(timezone.utc)
     else:
         timestamp = datetime.now(timezone.utc)
@@ -279,63 +325,71 @@ async def log_paywall_impression(
         feature=feature,
         impression_context=impression_context,
         extra_data=metadata,
-        timestamp=timestamp
+        timestamp=timestamp,
     )
 
     db.add(impression_log)
     await db.commit()
 
-    return success_response({
-        "logged": True,
-        "screen": screen,
-        "feature": feature,
-        "timestamp": timestamp.isoformat()
-    })
+    return success_response(
+        {
+            "logged": True,
+            "screen": screen,
+            "feature": feature,
+            "timestamp": timestamp.isoformat(),
+        }
+    )
 
 
 @router.get(
-    "/seasonal-patterns",
-    dependencies=[Depends(check_seasonal_patterns_rate_limit)]
+    "/seasonal-patterns", dependencies=[Depends(check_seasonal_patterns_rate_limit)]
 )
 async def get_seasonal_patterns(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_db),
 ):
     """Get seasonal spending patterns"""
-    from app.db.models import Transaction
-    from datetime import datetime, timezone
     from collections import defaultdict
+    from datetime import datetime, timezone
+
+    from app.db.models import Transaction
 
     # Analyze historical data for seasonal trends
     # Get all transactions grouped by month
     result = await db.execute(
         select(
-            extract('month', Transaction.spent_at).label('month'),
-            extract('year', Transaction.spent_at).label('year'),
-            func.sum(Transaction.amount).label('total')
-        ).filter(
-            Transaction.user_id == user.id
-        ).group_by(
-            extract('month', Transaction.spent_at),
-            extract('year', Transaction.spent_at)
+            extract("month", Transaction.spent_at).label("month"),
+            extract("year", Transaction.spent_at).label("year"),
+            func.sum(Transaction.amount).label("total"),
+        )
+        .filter(Transaction.user_id == user.id)
+        .group_by(
+            extract("month", Transaction.spent_at),
+            extract("year", Transaction.spent_at),
         )
     )
     monthly_spending = result.all()
 
     if not monthly_spending or len(monthly_spending) < 3:
-        return success_response({
-            "patterns": [],
-            "next_season": None,
-            "message": "Not enough historical data for seasonal analysis. Continue tracking expenses."
-        })
+        return success_response(
+            {
+                "patterns": [],
+                "next_season": None,
+                "message": "Not enough historical data for seasonal analysis. Continue tracking expenses.",
+            }
+        )
 
     # Calculate average spending by month
     month_totals = defaultdict(list)
     for month, year, total in monthly_spending:
         month_totals[int(month)].append(float(total))
 
-    month_averages = {month: sum(amounts) / len(amounts) for month, amounts in month_totals.items()}
-    overall_avg = sum(month_averages.values()) / len(month_averages) if month_averages else 0
+    month_averages = {
+        month: sum(amounts) / len(amounts) for month, amounts in month_totals.items()
+    }
+    overall_avg = (
+        sum(month_averages.values()) / len(month_averages) if month_averages else 0
+    )
 
     # Identify seasonal patterns
     patterns = []
@@ -347,13 +401,15 @@ async def get_seasonal_patterns(
         if overall_avg > 0:
             increase = (holiday_avg - overall_avg) / overall_avg
             if increase > 0.1:
-                patterns.append({
-                    "season": "holiday_season",
-                    "months": [11, 12],
-                    "average_increase": round(increase, 2),
-                    "categories_affected": ["shopping", "dining", "gifts"],
-                    "recommendation": f"Budget {int(increase * 100)}% more for holiday months"
-                })
+                patterns.append(
+                    {
+                        "season": "holiday_season",
+                        "months": [11, 12],
+                        "average_increase": round(increase, 2),
+                        "categories_affected": ["shopping", "dining", "gifts"],
+                        "recommendation": f"Budget {int(increase * 100)}% more for holiday months",
+                    }
+                )
 
     # Summer (Jun-Aug)
     if 6 in month_averages and 7 in month_averages and 8 in month_averages:
@@ -361,22 +417,29 @@ async def get_seasonal_patterns(
         if overall_avg > 0:
             increase = (summer_avg - overall_avg) / overall_avg
             if increase > 0.1:
-                patterns.append({
-                    "season": "summer",
-                    "months": [6, 7, 8],
-                    "average_increase": round(increase, 2),
-                    "categories_affected": ["travel", "entertainment"],
-                    "recommendation": f"Plan for {int(increase * 100)}% more summer spending"
-                })
+                patterns.append(
+                    {
+                        "season": "summer",
+                        "months": [6, 7, 8],
+                        "average_increase": round(increase, 2),
+                        "categories_affected": ["travel", "entertainment"],
+                        "recommendation": f"Plan for {int(increase * 100)}% more summer spending",
+                    }
+                )
 
     # Determine next season
     next_season = None
     if current_month < 6:
-        next_season = {"name": "summer", "starts_in_days": (6 - current_month) * 30, "expected_impact": "medium"}
+        next_season = {
+            "name": "summer",
+            "starts_in_days": (6 - current_month) * 30,
+            "expected_impact": "medium",
+        }
     elif current_month < 11:
-        next_season = {"name": "holiday_season", "starts_in_days": (11 - current_month) * 30, "expected_impact": "high"}
+        next_season = {
+            "name": "holiday_season",
+            "starts_in_days": (11 - current_month) * 30,
+            "expected_impact": "high",
+        }
 
-    return success_response({
-        "patterns": patterns,
-        "next_season": next_season
-    })
+    return success_response({"patterns": patterns, "next_season": next_season})

@@ -24,8 +24,11 @@ def compute_goal_progress(goal_data: dict) -> dict:
             )
         except Exception as e:
             from app.core.logging_config import get_logger
+
             logger = get_logger(__name__)
-            logger.warning("Analytics error during goal completion", extra={"error": str(e)})
+            logger.warning(
+                "Analytics error during goal completion", extra={"error": str(e)}
+            )
     progress_pct = round(min(saved / goal * 100, 100), 2) if goal > 0 else 0
     return {
         "progress_pct": progress_pct,

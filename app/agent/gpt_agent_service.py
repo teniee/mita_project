@@ -2,6 +2,7 @@
 
 import logging
 from typing import Optional
+
 from openai import OpenAI, OpenAIError
 from openai.types.chat import ChatCompletionMessageParam
 

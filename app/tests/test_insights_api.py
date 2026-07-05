@@ -26,25 +26,9 @@ sys.modules["firebase_admin.firestore"] = dummy.firestore
 sys.modules["firebase_admin.messaging"] = dummy.messaging
 
 # Stub OpenAI to avoid heavy dependencies during tests
-openai_dummy = types.ModuleType("openai")
-openai_dummy.OpenAIError = Exception
-openai_dummy.OpenAI = lambda *a, **k: types.SimpleNamespace(
-    chat=types.SimpleNamespace(
-        completions=types.SimpleNamespace(
-            create=lambda **k: types.SimpleNamespace(
-                choices=[
-                    types.SimpleNamespace(message=types.SimpleNamespace(content=""))
-                ]
-            )
-        )
-    )
-)
-openai_dummy.types = types.SimpleNamespace(
-    chat=types.SimpleNamespace(ChatCompletionMessageParam=dict)
-)
-sys.modules["openai"] = openai_dummy
-sys.modules["openai.types"] = openai_dummy.types
-sys.modules["openai.types.chat"] = openai_dummy.types.chat
+# NOTE: the real `openai` package is installed and imports without
+# network access or an API key; stubbing it in sys.modules polluted
+# every later-collected test in the suite.
 
 # Stub apns2 modules used by push_service
 apns_dummy_client = types.SimpleNamespace(APNsClient=None)

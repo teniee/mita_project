@@ -12,6 +12,7 @@ Design:
 • float appears only in to_dict() for JSON serialisation.
 • Computation anchor is injected via `today` parameter — trivially testable.
 """
+
 from __future__ import annotations
 
 import calendar
@@ -19,7 +20,6 @@ from dataclasses import dataclass, field
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Dict, List, Optional
-
 
 # ─── Input dataclasses ───────────────────────────────────────────────────────
 
@@ -151,7 +151,8 @@ def compute_scheduled_impact(
 
     # ── Filter: only THIS month's pending expenses ≥ today ───────────────────
     this_month = [
-        e for e in pending_expenses
+        e
+        for e in pending_expenses
         if e.scheduled_date >= today
         and e.scheduled_date.year == year
         and e.scheduled_date.month == month
@@ -161,9 +162,7 @@ def compute_scheduled_impact(
 
     # adjusted remaining = remaining minus what is already earmarked
     adjusted_remaining = _q(max(remaining_budget - total_committed, Decimal("0")))
-    adjusted_safe_daily_limit = _q(
-        adjusted_remaining / Decimal(str(days_remaining))
-    )
+    adjusted_safe_daily_limit = _q(adjusted_remaining / Decimal(str(days_remaining)))
 
     # ── Per-category lookup: date → DailyBudgetData ──────────────────────────
     # cat_by_date[category][date] = DailyBudgetData
@@ -181,7 +180,9 @@ def compute_scheduled_impact(
         # Budget already allocated on the scheduled day for this category
         same_day_planned = Decimal("0")
         if cat in cat_by_date and expense.scheduled_date in cat_by_date[cat]:
-            same_day_planned = _d(cat_by_date[cat][expense.scheduled_date].planned_amount)
+            same_day_planned = _d(
+                cat_by_date[cat][expense.scheduled_date].planned_amount
+            )
 
         # Category budget remaining between today and the scheduled date (inclusive)
         cat_planned_window = Decimal("0")
@@ -192,7 +193,9 @@ def compute_scheduled_impact(
                     cat_planned_window += _d(entry.planned_amount)
                     cat_spent_window += _d(entry.spent_amount)
 
-        category_remaining = _q(max(cat_planned_window - cat_spent_window, Decimal("0")))
+        category_remaining = _q(
+            max(cat_planned_window - cat_spent_window, Decimal("0"))
+        )
         category_can_cover = category_remaining >= amount
 
         # How much per day the user must "save" to cover this expense

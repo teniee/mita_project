@@ -1,5 +1,9 @@
 from typing import Dict
-from app.services.core.income_classification_service import classify_income, get_tier_string
+
+from app.services.core.income_classification_service import (
+    classify_income,
+    get_tier_string,
+)
 
 
 class CohortAnalyzer:
@@ -8,7 +12,7 @@ class CohortAnalyzer:
         behavior = profile.get("behavior", "neutral")
         categories = profile.get("categories", [])
         region = profile.get("region", "US-CA")
-        
+
         # Use centralized income classification service
         income_tier = classify_income(income, region)
         income_band = get_tier_string(income_tier)

@@ -42,7 +42,7 @@ router = APIRouter(tags=["Authentication - Registration"])
 async def register_user_standardized(
     request: Request,
     registration_data: RegisterIn,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
 ):
     """
     Register a new user account with comprehensive error handling and validation.
@@ -69,6 +69,7 @@ async def register_user_standardized(
 
     # Check if user already exists
     from sqlalchemy import select
+
     existing_user_query = select(User).where(User.email == validated_email)
     result = await db.execute(existing_user_query)
     existing_user = result.scalar_one_or_none()
@@ -79,12 +80,12 @@ async def register_user_standardized(
             event_type="registration_attempt_duplicate_email",
             user_id=None,
             request=request,
-            details={"email": validated_email}
+            details={"email": validated_email},
         )
         raise BusinessLogicError(
             "An account with this email address already exists",
             ErrorCode.RESOURCE_ALREADY_EXISTS,
-            details={"email": validated_email}
+            details={"email": validated_email},
         )
 
     # Hash password securely
@@ -113,7 +114,7 @@ async def register_user_standardized(
         monthly_income=0,
         savings_goal=0,
         budget_method="50/30/20 Rule",
-        currency="USD"
+        currency="USD",
     )
 
     try:
@@ -126,7 +127,7 @@ async def register_user_standardized(
             event_type="user_registration_success",
             user_id=str(new_user.id),
             request=request,
-            details={"email": validated_email, "country": registration_data.country}
+            details={"email": validated_email, "country": registration_data.country},
         )
 
         # Create secure token pair
@@ -135,7 +136,7 @@ async def register_user_standardized(
             "sub": str(new_user.id),
             "is_premium": new_user.is_premium,
             "country": new_user.country,
-            "token_version_id": new_user.token_version  # Security: track token version for revocation
+            "token_version_id": new_user.token_version,  # Security: track token version for revocation
         }
 
         tokens = create_token_pair(user_data, user_role=user_role)
@@ -146,7 +147,7 @@ async def register_user_standardized(
             "email": new_user.email,
             "country": new_user.country,
             "is_premium": new_user.is_premium,
-            "created_at": new_user.created_at.isoformat() + "Z"
+            "created_at": new_user.created_at.isoformat() + "Z",
         }
 
         return AuthResponseHelper.registration_success(
@@ -154,8 +155,8 @@ async def register_user_standardized(
             user_data=user_response_data,
             welcome_info={
                 "onboarding_required": True,
-                "features_unlocked": ["basic_budgeting", "expense_tracking"]
-            }
+                "features_unlocked": ["basic_budgeting", "expense_tracking"],
+            },
         )
 
     except Exception as e:
@@ -164,6 +165,6 @@ async def register_user_standardized(
             event_type="user_registration_failure",
             user_id=None,
             request=request,
-            details={"email": validated_email, "error": str(e)}
+            details={"email": validated_email, "error": str(e)},
         )
         raise

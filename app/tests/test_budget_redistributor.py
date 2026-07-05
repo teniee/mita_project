@@ -58,7 +58,14 @@ class DummyDB:
 
 def test_redistribute_sums_transfers(monkeypatch):
     monkeypatch.setitem(
-        sys.modules, "app.db.models", SimpleNamespace(DailyPlan=DummyModel)
+        sys.modules,
+        "app.db.models",
+        SimpleNamespace(DailyPlan=DummyModel, RedistributionEvent=DummyModel),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "app.db.models.redistribution_event",
+        SimpleNamespace(RedistributionEvent=DummyModel),
     )
     mod = importlib.import_module("app.services.budget_redistributor")
 

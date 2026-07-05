@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "0010_enhance_goals"
-down_revision = "0009_add_transaction_extended_fields"
+down_revision = "0009_add_txn_extended_fields"
 branch_labels = None
 depends_on = None
 
@@ -21,69 +21,56 @@ def upgrade():
     """Add new fields to goals table for comprehensive goal tracking"""
 
     # Add description field
-    op.add_column(
-        "goals",
-        sa.Column("description", sa.Text(), nullable=True)
-    )
+    op.add_column("goals", sa.Column("description", sa.Text(), nullable=True))
 
     # Add category field with index
-    op.add_column(
-        "goals",
-        sa.Column("category", sa.String(50), nullable=True)
-    )
-    op.create_index(
-        "ix_goals_category",
-        "goals",
-        ["category"],
-        unique=False
-    )
+    op.add_column("goals", sa.Column("category", sa.String(50), nullable=True))
+    op.create_index("ix_goals_category", "goals", ["category"], unique=False)
 
     # Add monthly_contribution field
     op.add_column(
         "goals",
-        sa.Column("monthly_contribution", sa.Numeric(precision=10, scale=2), nullable=True)
+        sa.Column(
+            "monthly_contribution", sa.Numeric(precision=10, scale=2), nullable=True
+        ),
     )
 
     # Add status field with index and default value
     op.add_column(
         "goals",
-        sa.Column("status", sa.String(20), nullable=False, server_default="active")
+        sa.Column("status", sa.String(20), nullable=False, server_default="active"),
     )
-    op.create_index(
-        "ix_goals_status",
-        "goals",
-        ["status"],
-        unique=False
-    )
+    op.create_index("ix_goals_status", "goals", ["status"], unique=False)
 
     # Add progress field with default value
     op.add_column(
         "goals",
-        sa.Column("progress", sa.Numeric(precision=5, scale=2), nullable=False, server_default="0")
+        sa.Column(
+            "progress",
+            sa.Numeric(precision=5, scale=2),
+            nullable=False,
+            server_default="0",
+        ),
     )
 
     # Add target_date field
-    op.add_column(
-        "goals",
-        sa.Column("target_date", sa.Date(), nullable=True)
-    )
+    op.add_column("goals", sa.Column("target_date", sa.Date(), nullable=True))
 
     # Add last_updated field with default
     op.add_column(
         "goals",
-        sa.Column("last_updated", sa.DateTime(), nullable=False, server_default=sa.func.now())
+        sa.Column(
+            "last_updated", sa.DateTime(), nullable=False, server_default=sa.func.now()
+        ),
     )
 
     # Add completed_at field
-    op.add_column(
-        "goals",
-        sa.Column("completed_at", sa.DateTime(), nullable=True)
-    )
+    op.add_column("goals", sa.Column("completed_at", sa.DateTime(), nullable=True))
 
     # Add priority field with default
     op.add_column(
         "goals",
-        sa.Column("priority", sa.String(10), nullable=True, server_default="medium")
+        sa.Column("priority", sa.String(10), nullable=True, server_default="medium"),
     )
 
     # Update precision for existing numeric fields
@@ -92,7 +79,7 @@ def upgrade():
         "target_amount",
         existing_type=sa.Numeric(),
         type_=sa.Numeric(precision=10, scale=2),
-        nullable=False
+        nullable=False,
     )
 
     op.alter_column(
@@ -101,7 +88,7 @@ def upgrade():
         existing_type=sa.Numeric(),
         type_=sa.Numeric(precision=10, scale=2),
         nullable=False,
-        server_default="0"
+        server_default="0",
     )
 
     # Update title with max length
@@ -110,7 +97,7 @@ def upgrade():
         "title",
         existing_type=sa.String(),
         type_=sa.String(200),
-        nullable=False
+        nullable=False,
     )
 
 
@@ -138,7 +125,7 @@ def downgrade():
         "title",
         existing_type=sa.String(200),
         type_=sa.String(),
-        nullable=False
+        nullable=False,
     )
 
     op.alter_column(
@@ -146,7 +133,7 @@ def downgrade():
         "saved_amount",
         existing_type=sa.Numeric(precision=10, scale=2),
         type_=sa.Numeric(),
-        nullable=False
+        nullable=False,
     )
 
     op.alter_column(
@@ -154,5 +141,5 @@ def downgrade():
         "target_amount",
         existing_type=sa.Numeric(precision=10, scale=2),
         type_=sa.Numeric(),
-        nullable=False
+        nullable=False,
     )

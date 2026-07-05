@@ -40,9 +40,7 @@ router = APIRouter(tags=["Authentication - Login"])
 @router.post("/login", response_model=TokenOut, summary="Authenticate user login")
 @handle_auth_errors
 async def login_user_standardized(
-    request: Request,
-    login_data: LoginIn,
-    db: AsyncSession = Depends(get_async_db)
+    request: Request, login_data: LoginIn, db: AsyncSession = Depends(get_async_db)
 ):
     """
     Authenticate user login with comprehensive security and error handling.
@@ -67,6 +65,7 @@ async def login_user_standardized(
 
     # Find user
     from sqlalchemy import select
+
     user_query = select(User).where(User.email == validated_email)
     result = await db.execute(user_query)
     user = result.scalar_one_or_none()
@@ -77,28 +76,34 @@ async def login_user_standardized(
             event_type="login_attempt_user_not_found",
             user_id=None,
             request=request,
-            details={"email": validated_email}
+            details={"email": validated_email},
         )
         raise AuthenticationError(
-            "Invalid email or password",
-            ErrorCode.AUTH_INVALID_CREDENTIALS
+            "Invalid email or password", ErrorCode.AUTH_INVALID_CREDENTIALS
         )
 
     # Check if account is locked (migration 0017_add_account_security_fields)
-    if user.account_locked_until and user.account_locked_until > datetime.now(timezone.utc):
+    if user.account_locked_until and user.account_locked_until > datetime.now(
+        timezone.utc
+    ):
         await log_security_event_async(
             event_type="login_attempt_account_locked",
             user_id=str(user.id),
             request=request,
-            details={"email": validated_email, "locked_until": user.account_locked_until.isoformat()}
+            details={
+                "email": validated_email,
+                "locked_until": user.account_locked_until.isoformat(),
+            },
         )
         raise AuthenticationError(
             "Account temporarily locked due to too many failed login attempts. Please try again later.",
-            ErrorCode.AUTH_ACCOUNT_LOCKED
+            ErrorCode.AUTH_ACCOUNT_LOCKED,
         )
 
     # Verify password
-    password_valid = await verify_password_async(login_data.password, user.password_hash)
+    password_valid = await verify_password_async(
+        login_data.password, user.password_hash
+    )
     if not password_valid:
         # Increment failed login attempts (migration 0017_add_account_security_fields)
         user.failed_login_attempts += 1
@@ -106,12 +111,18 @@ async def login_user_standardized(
         # Lock account after 5 failed attempts
         if user.failed_login_attempts >= 5:
             from datetime import timedelta
-            user.account_locked_until = datetime.now(timezone.utc) + timedelta(minutes=30)
+
+            user.account_locked_until = datetime.now(timezone.utc) + timedelta(
+                minutes=30
+            )
             await log_security_event_async(
                 event_type="account_locked_too_many_attempts",
                 user_id=str(user.id),
                 request=request,
-                details={"email": validated_email, "failed_attempts": user.failed_login_attempts}
+                details={
+                    "email": validated_email,
+                    "failed_attempts": user.failed_login_attempts,
+                },
             )
 
         await db.commit()
@@ -121,25 +132,24 @@ async def login_user_standardized(
             event_type="login_attempt_invalid_password",
             user_id=str(user.id),
             request=request,
-            details={"email": validated_email, "failed_attempts": user.failed_login_attempts}
+            details={
+                "email": validated_email,
+                "failed_attempts": user.failed_login_attempts,
+            },
         )
         raise AuthenticationError(
-            "Invalid email or password",
-            ErrorCode.AUTH_INVALID_CREDENTIALS
+            "Invalid email or password", ErrorCode.AUTH_INVALID_CREDENTIALS
         )
 
     # Check if account is active (add account status checks here if needed)
-    if hasattr(user, 'is_active') and not user.is_active:
+    if hasattr(user, "is_active") and not user.is_active:
         await log_security_event_async(
             event_type="login_attempt_inactive_account",
             user_id=str(user.id),
             request=request,
-            details={"email": validated_email}
+            details={"email": validated_email},
         )
-        raise AuthenticationError(
-            "Account is inactive",
-            ErrorCode.AUTH_ACCOUNT_LOCKED
-        )
+        raise AuthenticationError("Account is inactive", ErrorCode.AUTH_ACCOUNT_LOCKED)
 
     # Generate tokens
     user_role = "premium_user" if user.is_premium else "basic_user"
@@ -147,7 +157,7 @@ async def login_user_standardized(
         "sub": str(user.id),
         "is_premium": user.is_premium,
         "country": user.country,
-        "token_version_id": user.token_version  # Include for revocation tracking
+        "token_version_id": user.token_version,  # Include for revocation tracking
     }
 
     tokens = create_token_pair(user_data, user_role=user_role)
@@ -163,7 +173,10 @@ async def login_user_standardized(
         event_type="user_login_success",
         user_id=str(user.id),
         request=request,
-        details={"email": validated_email, "user_agent": request.headers.get("user-agent", "")}
+        details={
+            "email": validated_email,
+            "user_agent": request.headers.get("user-agent", ""),
+        },
     )
 
     # Prepare response data
@@ -172,7 +185,7 @@ async def login_user_standardized(
         "email": user.email,
         "country": user.country,
         "is_premium": user.is_premium,
-        "last_login": user.updated_at.isoformat() + "Z" if user.updated_at else None
+        "last_login": user.updated_at.isoformat() + "Z" if user.updated_at else None,
     }
 
     # Update last login timestamp
@@ -184,7 +197,7 @@ async def login_user_standardized(
         user_data=user_response_data,
         login_info={
             "login_time": datetime.now(timezone.utc).isoformat() + "Z",
-            "client_ip": request.client.host if request.client else 'unknown',
-            "requires_password_change": False  # Add logic for password expiry if needed
-        }
+            "client_ip": request.client.host if request.client else "unknown",
+            "requires_password_change": False,  # Add logic for password expiry if needed
+        },
     )

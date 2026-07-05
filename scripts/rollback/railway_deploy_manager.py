@@ -23,6 +23,7 @@ logger = structlog.get_logger()
 
 class DeploymentStatus(Enum):
     """Railway deployment status"""
+
     BUILDING = "BUILDING"
     DEPLOYING = "DEPLOYING"
     SUCCESS = "SUCCESS"
@@ -34,6 +35,7 @@ class DeploymentStatus(Enum):
 @dataclass
 class Deployment:
     """Railway deployment metadata"""
+
     id: str
     status: DeploymentStatus
     created_at: datetime
@@ -55,7 +57,9 @@ class RailwayDeploymentManager:
     - Verify deployment status
     """
 
-    def __init__(self, service_id: Optional[str] = None, project_id: Optional[str] = None):
+    def __init__(
+        self, service_id: Optional[str] = None, project_id: Optional[str] = None
+    ):
         self.service_id = service_id or self._get_service_id()
         self.project_id = project_id or self._get_project_id()
         self.history_file = Path(__file__).parent / "deployment_history.json"
@@ -63,10 +67,7 @@ class RailwayDeploymentManager:
     def _get_service_id(self) -> str:
         """Get Railway service ID from environment or config"""
         result = subprocess.run(
-            ["railway", "service"],
-            capture_output=True,
-            text=True,
-            timeout=10
+            ["railway", "service"], capture_output=True, text=True, timeout=10
         )
 
         if result.returncode != 0:
@@ -79,10 +80,7 @@ class RailwayDeploymentManager:
     def _get_project_id(self) -> str:
         """Get Railway project ID from environment or config"""
         result = subprocess.run(
-            ["railway", "environment"],
-            capture_output=True,
-            text=True,
-            timeout=10
+            ["railway", "environment"], capture_output=True, text=True, timeout=10
         )
 
         if result.returncode != 0:
@@ -105,16 +103,15 @@ class RailwayDeploymentManager:
 
         try:
             process = await asyncio.create_subprocess_exec(
-                "railway", "deployment", "list",
+                "railway",
+                "deployment",
+                "list",
                 "--json",
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                stderr=asyncio.subprocess.PIPE,
             )
 
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(),
-                timeout=30.0
-            )
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=30.0)
 
             if process.returncode != 0:
                 logger.error("Failed to list deployments", stderr=stderr.decode())
@@ -129,10 +126,12 @@ class RailwayDeploymentManager:
                 deployment = Deployment(
                     id=data["id"],
                     status=DeploymentStatus(data["status"]),
-                    created_at=datetime.fromisoformat(data["createdAt"].replace("Z", "+00:00")),
+                    created_at=datetime.fromisoformat(
+                        data["createdAt"].replace("Z", "+00:00")
+                    ),
                     git_sha=data.get("meta", {}).get("commitSha", "unknown"),
                     git_branch=data.get("meta", {}).get("branch", "unknown"),
-                    image_tag=data.get("meta", {}).get("imageTag")
+                    image_tag=data.get("meta", {}).get("imageTag"),
                 )
                 deployments.append(deployment)
 
@@ -160,29 +159,33 @@ class RailwayDeploymentManager:
 
         try:
             process = await asyncio.create_subprocess_exec(
-                "railway", "deployment", "get", deployment_id,
+                "railway",
+                "deployment",
+                "get",
+                deployment_id,
                 "--json",
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                stderr=asyncio.subprocess.PIPE,
             )
 
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(),
-                timeout=10.0
-            )
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=10.0)
 
             if process.returncode != 0:
-                logger.error("Failed to get deployment status",
-                           deployment_id=deployment_id,
-                           stderr=stderr.decode())
+                logger.error(
+                    "Failed to get deployment status",
+                    deployment_id=deployment_id,
+                    stderr=stderr.decode(),
+                )
                 raise RuntimeError(f"Railway deployment get failed: {stderr.decode()}")
 
             data = json.loads(stdout.decode())
             status = DeploymentStatus(data["status"])
 
-            logger.info("Deployment status retrieved",
-                       deployment_id=deployment_id,
-                       status=status.value)
+            logger.info(
+                "Deployment status retrieved",
+                deployment_id=deployment_id,
+                status=status.value,
+            )
             return status
 
         except asyncio.TimeoutError:
@@ -205,8 +208,7 @@ class RailwayDeploymentManager:
             # Verify target deployment exists and is valid
             deployments = await self.list_deployments()
             target_deployment = next(
-                (d for d in deployments if d.id == deployment_id),
-                None
+                (d for d in deployments if d.id == deployment_id), None
             )
 
             if not target_deployment:
@@ -214,38 +216,47 @@ class RailwayDeploymentManager:
                 return False
 
             if target_deployment.status not in [DeploymentStatus.SUCCESS]:
-                logger.error("Target deployment was not successful",
-                           deployment_id=deployment_id,
-                           status=target_deployment.status.value)
+                logger.error(
+                    "Target deployment was not successful",
+                    deployment_id=deployment_id,
+                    status=target_deployment.status.value,
+                )
                 return False
 
             # Execute Railway rollback (redeploy previous deployment)
-            logger.info("Executing Railway rollback",
-                       deployment_id=deployment_id,
-                       git_sha=target_deployment.git_sha)
+            logger.info(
+                "Executing Railway rollback",
+                deployment_id=deployment_id,
+                git_sha=target_deployment.git_sha,
+            )
 
             process = await asyncio.create_subprocess_exec(
-                "railway", "redeploy",
-                "--service", self.service_id,
-                "--deployment", deployment_id,
+                "railway",
+                "redeploy",
+                "--service",
+                self.service_id,
+                "--deployment",
+                deployment_id,
                 "--yes",  # Skip confirmation
                 stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE
+                stderr=asyncio.subprocess.PIPE,
             )
 
             stdout, stderr = await asyncio.wait_for(
-                process.communicate(),
-                timeout=120.0  # 2 minutes timeout
+                process.communicate(), timeout=120.0  # 2 minutes timeout
             )
 
             if process.returncode != 0:
-                logger.error("Railway rollback failed",
-                           stderr=stderr.decode(),
-                           stdout=stdout.decode())
+                logger.error(
+                    "Railway rollback failed",
+                    stderr=stderr.decode(),
+                    stdout=stdout.decode(),
+                )
                 return False
 
-            logger.info("Railway rollback initiated successfully",
-                       deployment_id=deployment_id)
+            logger.info(
+                "Railway rollback initiated successfully", deployment_id=deployment_id
+            )
 
             # Save rollback event to history
             await self._save_rollback_event(deployment_id, target_deployment)
@@ -260,9 +271,7 @@ class RailwayDeploymentManager:
             return False
 
     async def wait_for_deployment_success(
-        self,
-        deployment_id: str,
-        timeout: int = 300
+        self, deployment_id: str, timeout: int = 300
     ) -> bool:
         """
         Wait for deployment to reach SUCCESS status
@@ -274,9 +283,11 @@ class RailwayDeploymentManager:
         Returns:
             True if deployment succeeded, False if failed or timed out
         """
-        logger.info("Waiting for deployment success",
-                   deployment_id=deployment_id,
-                   timeout=timeout)
+        logger.info(
+            "Waiting for deployment success",
+            deployment_id=deployment_id,
+            timeout=timeout,
+        )
 
         start_time = datetime.now()
         check_interval = 5  # Check every 5 seconds
@@ -289,24 +300,28 @@ class RailwayDeploymentManager:
                     logger.info("Deployment succeeded", deployment_id=deployment_id)
                     return True
                 elif status in [DeploymentStatus.FAILED, DeploymentStatus.CRASHED]:
-                    logger.error("Deployment failed",
-                               deployment_id=deployment_id,
-                               status=status.value)
+                    logger.error(
+                        "Deployment failed",
+                        deployment_id=deployment_id,
+                        status=status.value,
+                    )
                     return False
 
                 # Still building/deploying, wait and retry
-                logger.debug("Deployment in progress",
-                           deployment_id=deployment_id,
-                           status=status.value)
+                logger.debug(
+                    "Deployment in progress",
+                    deployment_id=deployment_id,
+                    status=status.value,
+                )
                 await asyncio.sleep(check_interval)
 
             except Exception as e:
                 logger.warning("Error checking deployment status", error=str(e))
                 await asyncio.sleep(check_interval)
 
-        logger.error("Deployment timed out",
-                    deployment_id=deployment_id,
-                    timeout=timeout)
+        logger.error(
+            "Deployment timed out", deployment_id=deployment_id, timeout=timeout
+        )
         return False
 
     async def get_previous_successful_deployment(self) -> Optional[Deployment]:
@@ -324,20 +339,18 @@ class RailwayDeploymentManager:
                 continue  # Skip current deployment
 
             if deployment.status == DeploymentStatus.SUCCESS:
-                logger.info("Found previous successful deployment",
-                          deployment_id=deployment.id,
-                          git_sha=deployment.git_sha,
-                          created_at=deployment.created_at)
+                logger.info(
+                    "Found previous successful deployment",
+                    deployment_id=deployment.id,
+                    git_sha=deployment.git_sha,
+                    created_at=deployment.created_at,
+                )
                 return deployment
 
         logger.warning("No previous successful deployment found")
         return None
 
-    async def _save_rollback_event(
-        self,
-        deployment_id: str,
-        deployment: Deployment
-    ):
+    async def _save_rollback_event(self, deployment_id: str, deployment: Deployment):
         """Save rollback event to deployment history"""
         try:
             history = self._load_history()
@@ -348,7 +361,7 @@ class RailwayDeploymentManager:
                 "target_deployment_id": deployment_id,
                 "git_sha": deployment.git_sha,
                 "git_branch": deployment.git_branch,
-                "alembic_revision": deployment.alembic_revision
+                "alembic_revision": deployment.alembic_revision,
             }
 
             history["events"].append(event)
@@ -366,12 +379,12 @@ class RailwayDeploymentManager:
         if not self.history_file.exists():
             return {"events": [], "last_known_good": None}
 
-        with open(self.history_file, 'r') as f:
+        with open(self.history_file, "r") as f:
             return json.load(f)
 
     def _save_history(self, history: Dict):
         """Save deployment history to JSON file"""
-        with open(self.history_file, 'w') as f:
+        with open(self.history_file, "w") as f:
             json.dump(history, f, indent=2)
 
     async def mark_deployment_as_good(self, deployment_id: str):
@@ -379,7 +392,7 @@ class RailwayDeploymentManager:
         history = self._load_history()
         history["last_known_good"] = {
             "deployment_id": deployment_id,
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         self._save_history(history)
         logger.info("Marked deployment as last known good", deployment_id=deployment_id)
@@ -404,8 +417,10 @@ async def main():
             print("\nRecent Deployments:")
             print("-" * 100)
             for d in deployments:
-                print(f"{d.id[:8]} | {d.status.value:10} | {d.git_sha[:7]} | "
-                      f"{d.created_at.strftime('%Y-%m-%d %H:%M:%S')}")
+                print(
+                    f"{d.id[:8]} | {d.status.value:10} | {d.git_sha[:7]} | "
+                    f"{d.created_at.strftime('%Y-%m-%d %H:%M:%S')}"
+                )
             print("-" * 100)
 
         elif args.command == "rollback":
@@ -418,7 +433,9 @@ async def main():
                 print(f"✅ Rollback initiated to deployment {args.deployment_id}")
 
                 # Wait for rollback to complete
-                new_deployment_id = args.deployment_id  # Railway creates new deployment ID
+                new_deployment_id = (
+                    args.deployment_id
+                )  # Railway creates new deployment ID
                 success = await manager.wait_for_deployment_success(new_deployment_id)
 
                 if success:

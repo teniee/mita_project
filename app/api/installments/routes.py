@@ -7,39 +7,39 @@ installment tracking, calendar integration, and achievement tracking.
 """
 
 import logging
+from calendar import monthrange
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Optional
 from uuid import UUID
-from decimal import Decimal
-from calendar import monthrange
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
 
-from app.core.async_session import get_async_db
 from app.api.dependencies import get_current_user
-from app.db.models.user import User
-from app.db.models.installment import (
-    Installment,
-    UserFinancialProfile,
-    InstallmentAchievement,
-    InstallmentStatus,
-)
 from app.api.installments.schemas import (
+    InstallmentAchievementOut,
     InstallmentCalculatorInput,
     InstallmentCalculatorOutput,
-    UserFinancialProfileCreate,
-    UserFinancialProfileOut,
+    InstallmentCalendarEvent,
     InstallmentCreate,
-    InstallmentUpdate,
     InstallmentOut,
     InstallmentsSummary,
-    InstallmentAchievementOut,
+    InstallmentUpdate,
     MonthlyInstallmentsCalendar,
-    InstallmentCalendarEvent,
+    UserFinancialProfileCreate,
+    UserFinancialProfileOut,
 )
 from app.api.installments.services import calculate_installment_risk
+from app.core.async_session import get_async_db
+from app.db.models.installment import (
+    Installment,
+    InstallmentAchievement,
+    InstallmentStatus,
+    UserFinancialProfile,
+)
+from app.db.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +47,7 @@ router = APIRouter(prefix="/installments", tags=["installments"])
 
 
 # ===== INSTALLMENT CALCULATOR ENDPOINT =====
+
 
 @router.post("/calculator", response_model=InstallmentCalculatorOutput)
 async def calculate_installment(
@@ -69,28 +70,30 @@ async def calculate_installment(
     """
     try:
         result = await calculate_installment_risk(
-            db=db,
-            user_id=user.id,
-            calculator_input=calculator_input
+            db=db, user_id=user.id, calculator_input=calculator_input
         )
         return result
     except ValueError as e:
-        logger.warning(f"Validation error in installment calculation for user {user.id}: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
+        logger.warning(
+            f"Validation error in installment calculation for user {user.id}: {str(e)}"
         )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         logger.error(f"Error calculating installment risk for user {user.id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to calculate installment risk"
+            detail="Failed to calculate installment risk",
         )
 
 
 # ===== FINANCIAL PROFILE ENDPOINTS =====
 
-@router.post("/profile", response_model=UserFinancialProfileOut, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/profile",
+    response_model=UserFinancialProfileOut,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_or_update_financial_profile(
     profile_data: UserFinancialProfileCreate,
     user: User = Depends(get_current_user),
@@ -105,9 +108,7 @@ async def create_or_update_financial_profile(
     try:
         # Check if profile already exists
         result = await db.execute(
-            select(UserFinancialProfile).where(
-                UserFinancialProfile.user_id == user.id
-            )
+            select(UserFinancialProfile).where(UserFinancialProfile.user_id == user.id)
         )
         profile = result.scalar_one_or_none()
 
@@ -149,10 +150,12 @@ async def create_or_update_financial_profile(
 
     except Exception as e:
         await db.rollback()
-        logger.error(f"Error creating/updating financial profile for user {user.id}: {str(e)}")
+        logger.error(
+            f"Error creating/updating financial profile for user {user.id}: {str(e)}"
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create/update financial profile"
+            detail="Failed to create/update financial profile",
         )
 
 
@@ -168,22 +171,21 @@ async def get_financial_profile(
     If no profile exists, returns 404.
     """
     result = await db.execute(
-        select(UserFinancialProfile).where(
-            UserFinancialProfile.user_id == user.id
-        )
+        select(UserFinancialProfile).where(UserFinancialProfile.user_id == user.id)
     )
     profile = result.scalar_one_or_none()
 
     if not profile:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Financial profile not found. Please create one first."
+            detail="Financial profile not found. Please create one first.",
         )
 
     return profile
 
 
 # ===== INSTALLMENT CRUD ENDPOINTS =====
+
 
 @router.post("/", response_model=InstallmentOut, status_code=status.HTTP_201_CREATED)
 async def create_installment(
@@ -199,15 +201,23 @@ async def create_installment(
     """
     try:
         # Calculate final payment date based on frequency and total payments
-        payments_remaining = installment_data.total_payments - installment_data.payments_made
+        payments_remaining = (
+            installment_data.total_payments - installment_data.payments_made
+        )
 
         if installment_data.payment_frequency == "monthly":
-            final_date = installment_data.next_payment_date + timedelta(days=30 * payments_remaining)
+            final_date = installment_data.next_payment_date + timedelta(
+                days=30 * payments_remaining
+            )
         elif installment_data.payment_frequency == "biweekly":
-            final_date = installment_data.next_payment_date + timedelta(days=14 * payments_remaining)
+            final_date = installment_data.next_payment_date + timedelta(
+                days=14 * payments_remaining
+            )
         else:
             # Default to monthly
-            final_date = installment_data.next_payment_date + timedelta(days=30 * payments_remaining)
+            final_date = installment_data.next_payment_date + timedelta(
+                days=30 * payments_remaining
+            )
 
         # Create installment
         installment = Installment(
@@ -237,11 +247,16 @@ async def create_installment(
         installment_out = InstallmentOut.from_orm(installment)
         installment_out.progress_percentage = (
             (installment_data.payments_made / installment_data.total_payments * 100)
-            if installment_data.total_payments > 0 else 0
+            if installment_data.total_payments > 0
+            else 0
         )
         installment_out.remaining_payments = payments_remaining
-        installment_out.total_paid = installment_data.payment_amount * installment_data.payments_made
-        installment_out.remaining_balance = installment_data.total_amount - installment_out.total_paid
+        installment_out.total_paid = (
+            installment_data.payment_amount * installment_data.payments_made
+        )
+        installment_out.remaining_balance = (
+            installment_data.total_amount - installment_out.total_paid
+        )
 
         return installment_out
 
@@ -250,13 +265,15 @@ async def create_installment(
         logger.error(f"Error creating installment for user {user.id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to create installment"
+            detail="Failed to create installment",
         )
 
 
 @router.get("/", response_model=InstallmentsSummary)
 async def get_all_installments(
-    status_filter: Optional[InstallmentStatus] = Query(None, description="Filter by status"),
+    status_filter: Optional[InstallmentStatus] = Query(
+        None, description="Filter by status"
+    ),
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_async_db),
 ):
@@ -275,7 +292,7 @@ async def get_all_installments(
         query = select(Installment).where(
             and_(
                 Installment.user_id == user.id,
-                Installment.deleted_at.is_(None)  # Only non-deleted installments
+                Installment.deleted_at.is_(None),  # Only non-deleted installments
             )
         )
 
@@ -288,27 +305,33 @@ async def get_all_installments(
         installments = result.scalars().all()
 
         # Calculate summary statistics
-        active_installments = [i for i in installments if i.status == InstallmentStatus.ACTIVE]
-        completed_installments = [i for i in installments if i.status == InstallmentStatus.COMPLETED]
+        active_installments = [
+            i for i in installments if i.status == InstallmentStatus.ACTIVE
+        ]
+        completed_installments = [
+            i for i in installments if i.status == InstallmentStatus.COMPLETED
+        ]
 
         total_active = len(active_installments)
         total_completed = len(completed_installments)
 
         # Calculate total monthly payment
-        total_monthly_payment = Decimal('0.00')
+        total_monthly_payment = Decimal("0.00")
         for installment in active_installments:
             if installment.payment_frequency == "monthly":
                 total_monthly_payment += installment.payment_amount
             elif installment.payment_frequency == "biweekly":
                 # Convert biweekly to monthly (multiply by 26/12)
-                total_monthly_payment += installment.payment_amount * Decimal('2.17')
+                total_monthly_payment += installment.payment_amount * Decimal("2.17")
 
         # Find next payment
         next_payment_date = None
         next_payment_amount = None
 
         if active_installments:
-            next_installment = min(active_installments, key=lambda x: x.next_payment_date)
+            next_installment = min(
+                active_installments, key=lambda x: x.next_payment_date
+            )
             next_payment_date = next_installment.next_payment_date
             next_payment_amount = next_installment.payment_amount
 
@@ -332,14 +355,12 @@ async def get_all_installments(
         # Check monthly payment burden
         # Get user's financial profile if available
         profile_result = await db.execute(
-            select(UserFinancialProfile).where(
-                UserFinancialProfile.user_id == user.id
-            )
+            select(UserFinancialProfile).where(UserFinancialProfile.user_id == user.id)
         )
         profile = profile_result.scalar_one_or_none()
 
         if profile and total_monthly_payment > 0:
-            payment_ratio = (total_monthly_payment / profile.monthly_income * 100)
+            payment_ratio = total_monthly_payment / profile.monthly_income * 100
             if payment_ratio > 10:
                 load_level = "critical"
                 load_message = f"Your installments are {float(payment_ratio):.1f}% of income - this is dangerously high"
@@ -353,7 +374,8 @@ async def get_all_installments(
             inst_out = InstallmentOut.from_orm(inst)
             inst_out.progress_percentage = (
                 (inst.payments_made / inst.total_payments * 100)
-                if inst.total_payments > 0 else 0
+                if inst.total_payments > 0
+                else 0
             )
             inst_out.remaining_payments = inst.total_payments - inst.payments_made
             inst_out.total_paid = inst.payment_amount * inst.payments_made
@@ -375,7 +397,7 @@ async def get_all_installments(
         logger.error(f"Error fetching installments for user {user.id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to fetch installments"
+            detail="Failed to fetch installments",
         )
 
 
@@ -395,7 +417,7 @@ async def get_installment(
             and_(
                 Installment.id == installment_id,
                 Installment.user_id == user.id,
-                Installment.deleted_at.is_(None)  # Only non-deleted installments
+                Installment.deleted_at.is_(None),  # Only non-deleted installments
             )
         )
     )
@@ -403,19 +425,23 @@ async def get_installment(
 
     if not installment:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Installment not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Installment not found"
         )
 
     # Add calculated fields
     installment_out = InstallmentOut.from_orm(installment)
     installment_out.progress_percentage = (
         (installment.payments_made / installment.total_payments * 100)
-        if installment.total_payments > 0 else 0
+        if installment.total_payments > 0
+        else 0
     )
-    installment_out.remaining_payments = installment.total_payments - installment.payments_made
+    installment_out.remaining_payments = (
+        installment.total_payments - installment.payments_made
+    )
     installment_out.total_paid = installment.payment_amount * installment.payments_made
-    installment_out.remaining_balance = installment.total_amount - installment_out.total_paid
+    installment_out.remaining_balance = (
+        installment.total_amount - installment_out.total_paid
+    )
 
     return installment_out
 
@@ -444,7 +470,7 @@ async def update_installment(
                 and_(
                     Installment.id == installment_id,
                     Installment.user_id == user.id,
-                    Installment.deleted_at.is_(None)  # Only non-deleted installments
+                    Installment.deleted_at.is_(None),  # Only non-deleted installments
                 )
             )
         )
@@ -452,8 +478,7 @@ async def update_installment(
 
         if not installment:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Installment not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Installment not found"
             )
 
         # Update fields if provided
@@ -485,11 +510,18 @@ async def update_installment(
         installment_out = InstallmentOut.from_orm(installment)
         installment_out.progress_percentage = (
             (installment.payments_made / installment.total_payments * 100)
-            if installment.total_payments > 0 else 0
+            if installment.total_payments > 0
+            else 0
         )
-        installment_out.remaining_payments = installment.total_payments - installment.payments_made
-        installment_out.total_paid = installment.payment_amount * installment.payments_made
-        installment_out.remaining_balance = installment.total_amount - installment_out.total_paid
+        installment_out.remaining_payments = (
+            installment.total_payments - installment.payments_made
+        )
+        installment_out.total_paid = (
+            installment.payment_amount * installment.payments_made
+        )
+        installment_out.remaining_balance = (
+            installment.total_amount - installment_out.total_paid
+        )
 
         return installment_out
 
@@ -500,7 +532,7 @@ async def update_installment(
         logger.error(f"Error updating installment {installment_id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update installment"
+            detail="Failed to update installment",
         )
 
 
@@ -522,7 +554,9 @@ async def delete_installment(
                 and_(
                     Installment.id == installment_id,
                     Installment.user_id == user.id,
-                    Installment.deleted_at.is_(None)  # Only get non-deleted installments
+                    Installment.deleted_at.is_(
+                        None
+                    ),  # Only get non-deleted installments
                 )
             )
         )
@@ -530,12 +564,12 @@ async def delete_installment(
 
         if not installment:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Installment not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Installment not found"
             )
 
         # Soft delete - set deleted_at timestamp
         from datetime import datetime
+
         installment.deleted_at = datetime.now(timezone.utc)
         await db.commit()
 
@@ -550,11 +584,12 @@ async def delete_installment(
         logger.error(f"Error deleting installment {installment_id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to delete installment"
+            detail="Failed to delete installment",
         )
 
 
 # ===== CALENDAR INTEGRATION ENDPOINT =====
+
 
 @router.get("/calendar/{year}/{month}", response_model=MonthlyInstallmentsCalendar)
 async def get_monthly_calendar(
@@ -578,13 +613,13 @@ async def get_monthly_calendar(
         if month < 1 or month > 12:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Month must be between 1 and 12"
+                detail="Month must be between 1 and 12",
             )
 
         if year < 2000 or year > 2100:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Year must be between 2000 and 2100"
+                detail="Year must be between 2000 and 2100",
             )
 
         # Get month boundaries
@@ -597,7 +632,7 @@ async def get_monthly_calendar(
             select(Installment).where(
                 and_(
                     Installment.user_id == user.id,
-                    Installment.status == InstallmentStatus.ACTIVE
+                    Installment.status == InstallmentStatus.ACTIVE,
                 )
             )
         )
@@ -605,7 +640,7 @@ async def get_monthly_calendar(
 
         # Build calendar events
         payment_events = []
-        total_payments = Decimal('0.00')
+        total_payments = Decimal("0.00")
         today = datetime.now(timezone.utc)
 
         for installment in installments:
@@ -656,16 +691,14 @@ async def get_monthly_calendar(
         # Calculate available funds after installments
         # Get user's financial profile
         profile_result = await db.execute(
-            select(UserFinancialProfile).where(
-                UserFinancialProfile.user_id == user.id
-            )
+            select(UserFinancialProfile).where(UserFinancialProfile.user_id == user.id)
         )
         profile = profile_result.scalar_one_or_none()
 
         if profile:
             available_after = profile.current_balance - total_payments
         else:
-            available_after = Decimal('0.00')
+            available_after = Decimal("0.00")
 
         return MonthlyInstallmentsCalendar(
             year=year,
@@ -681,11 +714,12 @@ async def get_monthly_calendar(
         logger.error(f"Error generating calendar for user {user.id}: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to generate calendar"
+            detail="Failed to generate calendar",
         )
 
 
 # ===== ACHIEVEMENTS ENDPOINT =====
+
 
 @router.get("/achievements", response_model=InstallmentAchievementOut)
 async def get_achievements(
@@ -704,9 +738,7 @@ async def get_achievements(
     - Achievement level (Beginner, Cautious, Wise, Master)
     """
     result = await db.execute(
-        select(InstallmentAchievement).where(
-            InstallmentAchievement.user_id == user.id
-        )
+        select(InstallmentAchievement).where(InstallmentAchievement.user_id == user.id)
     )
     achievement = result.scalar_one_or_none()
 
@@ -719,7 +751,7 @@ async def get_achievements(
             calculations_declined=0,
             days_without_new_installment=0,
             max_days_streak=0,
-            interest_saved=Decimal('0.00'),
+            interest_saved=Decimal("0.00"),
             achievement_level="beginner",
         )
         db.add(achievement)

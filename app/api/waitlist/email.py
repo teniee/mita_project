@@ -4,16 +4,19 @@ Uses the existing EmailService — falls back to logging if not configured.
 """
 
 import logging
-from sqlalchemy.ext.asyncio import AsyncSession
+
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
 
-async def send_waitlist_confirmation(entry, referral_link: str, position: int, total: int):
+async def send_waitlist_confirmation(
+    entry, referral_link: str, position: int, total: int
+):
     """Send confirmation + referral email to new waitlist member."""
     try:
-        from app.services.email_service import get_email_service, EmailType
+        from app.services.email_service import get_email_service
 
         svc = get_email_service()
         subject = f"You're #{position} on the Mita waitlist 🎉"
@@ -54,11 +57,13 @@ async def send_waitlist_confirmation(entry, referral_link: str, position: int, t
 async def send_referrer_notification(ref_code: str, db: AsyncSession):
     """Tell the referrer someone used their link."""
     try:
+        from app.api.waitlist.service import build_referral_link, effective_position
         from app.db.models.waitlist import WaitlistEntry
         from app.services.email_service import get_email_service
-        from app.api.waitlist.service import effective_position, build_referral_link
 
-        res = await db.execute(select(WaitlistEntry).where(WaitlistEntry.ref_code == ref_code.upper()))
+        res = await db.execute(
+            select(WaitlistEntry).where(WaitlistEntry.ref_code == ref_code.upper())
+        )
         referrer = res.scalar_one_or_none()
         if not referrer:
             return

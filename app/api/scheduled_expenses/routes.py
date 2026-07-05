@@ -13,6 +13,7 @@ Endpoints:
   GET    /scheduled-expenses/{id}          single expense
   DELETE /scheduled-expenses/{id}          cancel (soft) + return updated impact
 """
+
 from __future__ import annotations
 
 import logging
@@ -35,7 +36,6 @@ from app.services.scheduled_expense_service import (
     get_expense_by_id,
     get_impact,
 )
-from app.services.core.engine.scheduled_expense_engine import ScheduledExpenseData
 from app.utils.response_wrapper import success_response
 
 logger = logging.getLogger(__name__)
@@ -151,7 +151,9 @@ async def budget_impact(
     m = month or now.month
 
     if not (2020 <= y <= 2030):
-        raise HTTPException(status_code=422, detail="year must be between 2020 and 2030")
+        raise HTTPException(
+            status_code=422, detail="year must be between 2020 and 2030"
+        )
     if not (1 <= m <= 12):
         raise HTTPException(status_code=422, detail="month must be between 1 and 12")
 
@@ -212,18 +214,14 @@ def _to_dict(expense) -> dict:
         "category": expense.category,
         "amount": float(expense.amount),
         "scheduled_date": (
-            expense.scheduled_date.isoformat()
-            if expense.scheduled_date
-            else None
+            expense.scheduled_date.isoformat() if expense.scheduled_date else None
         ),
         "description": expense.description,
         "merchant": expense.merchant,
         "recurrence": expense.recurrence,
         "status": expense.status,
         "reminder_sent_at": (
-            expense.reminder_sent_at.isoformat()
-            if expense.reminder_sent_at
-            else None
+            expense.reminder_sent_at.isoformat() if expense.reminder_sent_at else None
         ),
         "processed_at": (
             expense.processed_at.isoformat() if expense.processed_at else None
@@ -231,7 +229,5 @@ def _to_dict(expense) -> dict:
         "transaction_id": (
             str(expense.transaction_id) if expense.transaction_id else None
         ),
-        "created_at": (
-            expense.created_at.isoformat() if expense.created_at else None
-        ),
+        "created_at": (expense.created_at.isoformat() if expense.created_at else None),
     }

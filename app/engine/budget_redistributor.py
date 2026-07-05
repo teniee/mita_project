@@ -12,6 +12,7 @@ For DB-backed real-time rebalancing (the actual budget changes), use:
 NOTE: This class operates at the day level and is not category-aware.
 Category priority (SACRED/DISCRETIONARY) is enforced at the service layer.
 """
+
 from __future__ import annotations
 
 from decimal import ROUND_HALF_UP, Decimal, getcontext

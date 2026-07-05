@@ -12,8 +12,8 @@ from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
-from app.core.audit_logging import log_security_event_async
 from app.core.async_session import get_async_db
+from app.core.audit_logging import log_security_event_async
 from app.db.models import User
 
 logger = logging.getLogger(__name__)
@@ -33,15 +33,15 @@ def log_security_event(event_type, details, request=None, user_id=None):
     """
     try:
         # Create task for async logging without blocking
-        asyncio.create_task(log_security_event_async(event_type, user_id, request, details))
+        asyncio.create_task(
+            log_security_event_async(event_type, user_id, request, details)
+        )
     except Exception as e:
         logger.warning(f"Failed to log security event: {e}")
 
 
 async def revoke_user_tokens(
-    user_id: str,
-    reason: str = "admin_action",
-    revoked_by: Optional[str] = None
+    user_id: str, reason: str = "admin_action", revoked_by: Optional[str] = None
 ) -> int:
     """
     Revoke all active tokens for a user by incrementing token_version.
@@ -67,9 +67,7 @@ async def revoke_user_tokens(
         # Get async database session
         async for db in get_async_db():
             # Find user and increment token_version
-            result = await db.execute(
-                select(User).where(User.id == user_uuid)
-            )
+            result = await db.execute(select(User).where(User.id == user_uuid))
             user = result.scalar_one_or_none()
 
             if not user:
@@ -94,8 +92,8 @@ async def revoke_user_tokens(
                     "revoked_by": revoked_by,
                     "old_token_version": old_version,
                     "new_token_version": user.token_version,
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                }
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                },
             )
 
             logger.info(

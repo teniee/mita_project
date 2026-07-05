@@ -11,8 +11,9 @@ Verifies that:
 - limit parameter is respected
 - Different users see only their own events
 """
-import sys
+
 import os
+import sys
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from uuid import uuid4
@@ -83,6 +84,7 @@ def fresh_db(engine):
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 class TestRecordRedistributionEvent:
 
@@ -245,6 +247,7 @@ class TestRecordRedistributionEvent:
     def test_multiple_events_ordered_newest_first(self, db):
         """History must be ordered newest → oldest."""
         import time
+
         user_id = uuid4()
 
         for category in ["entertainment", "gaming", "hobbies"]:
@@ -298,14 +301,20 @@ class TestGetRedistributionHistory:
         user_b = uuid4()
 
         record_redistribution_event(
-            db=db, user_id=user_a,
-            from_category="gaming", to_category="dining_out",
-            amount=Decimal("10.00"), reason="realtime_rebalance",
+            db=db,
+            user_id=user_a,
+            from_category="gaming",
+            to_category="dining_out",
+            amount=Decimal("10.00"),
+            reason="realtime_rebalance",
         )
         record_redistribution_event(
-            db=db, user_id=user_b,
-            from_category="clothing", to_category="groceries",
-            amount=Decimal("5.00"), reason="budget_redistribution",
+            db=db,
+            user_id=user_b,
+            from_category="clothing",
+            to_category="groceries",
+            amount=Decimal("5.00"),
+            reason="budget_redistribution",
         )
         db.commit()
 
@@ -322,9 +331,12 @@ class TestGetRedistributionHistory:
         """Each history entry must have all expected keys."""
         user_id = uuid4()
         record_redistribution_event(
-            db=db, user_id=user_id,
-            from_category="entertainment", to_category="dining_out",
-            amount=Decimal("9.99"), reason="realtime_rebalance",
+            db=db,
+            user_id=user_id,
+            from_category="entertainment",
+            to_category="dining_out",
+            amount=Decimal("9.99"),
+            reason="realtime_rebalance",
             from_day=date(2026, 3, 15),
         )
         db.commit()
@@ -332,11 +344,18 @@ class TestGetRedistributionHistory:
         history = get_redistribution_history(db=db, user_id=user_id)
         entry = history[0]
 
-        required_keys = {"id", "timestamp", "from_category", "to_category",
-                         "amount", "reason", "from_day"}
-        assert required_keys.issubset(entry.keys()), (
-            f"Missing keys: {required_keys - entry.keys()}"
-        )
+        required_keys = {
+            "id",
+            "timestamp",
+            "from_category",
+            "to_category",
+            "amount",
+            "reason",
+            "from_day",
+        }
+        assert required_keys.issubset(
+            entry.keys()
+        ), f"Missing keys: {required_keys - entry.keys()}"
 
 
 class TestClearUserAuditLog:
@@ -348,9 +367,12 @@ class TestClearUserAuditLog:
 
         for uid in (user_a, user_b):
             record_redistribution_event(
-                db=db, user_id=uid,
-                from_category="entertainment", to_category="dining_out",
-                amount=Decimal("5.00"), reason="realtime_rebalance",
+                db=db,
+                user_id=uid,
+                from_category="entertainment",
+                to_category="dining_out",
+                amount=Decimal("5.00"),
+                reason="realtime_rebalance",
             )
         db.commit()
 
@@ -370,9 +392,12 @@ class TestClearUserAuditLog:
         user_id = uuid4()
         for i in range(5):
             record_redistribution_event(
-                db=db, user_id=user_id,
-                from_category="gaming", to_category="dining_out",
-                amount=Decimal(str(i + 1)), reason="realtime_rebalance",
+                db=db,
+                user_id=user_id,
+                from_category="gaming",
+                to_category="dining_out",
+                amount=Decimal(str(i + 1)),
+                reason="realtime_rebalance",
             )
         db.commit()
 

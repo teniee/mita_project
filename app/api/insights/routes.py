@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
-from typing import Optional
-from sqlalchemy.orm import Session
 import logging
+from typing import Optional
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.core.session import get_db
@@ -24,7 +25,9 @@ def latest_insight(
     try:
         # Check if user is premium for full insights
         if not user.is_premium:
-            logger.info(f"Non-premium user {user.id} accessing insights - providing basic advice")
+            logger.info(
+                f"Non-premium user {user.id} accessing insights - providing basic advice"
+            )
             # Return basic insight for non-premium users
             basic_advice = {
                 "id": "basic-001",
@@ -32,7 +35,7 @@ def latest_insight(
                 "content": "Continue logging your expenses to unlock personalized insights with premium.",
                 "category": "general",
                 "priority": "medium",
-                "date": "2025-01-29"
+                "date": "2025-01-29",
             }
             return success_response(basic_advice)
 
@@ -63,7 +66,7 @@ def latest_insight(
             "content": "Continue logging your expenses to receive personalized insights.",
             "category": "general",
             "priority": "low",
-            "date": "2025-01-29"
+            "date": "2025-01-29",
         }
         return success_response(fallback_advice)
 
@@ -84,7 +87,7 @@ def insight_history(
                 "content": "Upgrade to premium to view your complete insight history and personalized financial advice.",
                 "category": "upgrade",
                 "priority": "high",
-                "date": "2025-01-29"
+                "date": "2025-01-29",
             }
             return success_response([upgrade_prompt])
 
@@ -97,7 +100,9 @@ def insight_history(
         )
 
         if items:
-            data = [AdviceOut.model_validate(it).model_dump(mode="json") for it in items]
+            data = [
+                AdviceOut.model_validate(it).model_dump(mode="json") for it in items
+            ]
             return success_response(data)
         else:
             # No history available yet
@@ -124,54 +129,60 @@ def get_income_based_tips(
 
     # Income-specific tips
     if monthly_income < 2000:
-        tips.extend([
-            {
-                "category": "budgeting",
-                "tip": "Focus on the 50/30/20 rule: 50% needs, 30% wants, 20% savings",
-                "priority": "high"
-            },
-            {
-                "category": "savings",
-                "tip": "Start with a $500 emergency fund, then build to $1000",
-                "priority": "high"
-            }
-        ])
+        tips.extend(
+            [
+                {
+                    "category": "budgeting",
+                    "tip": "Focus on the 50/30/20 rule: 50% needs, 30% wants, 20% savings",
+                    "priority": "high",
+                },
+                {
+                    "category": "savings",
+                    "tip": "Start with a $500 emergency fund, then build to $1000",
+                    "priority": "high",
+                },
+            ]
+        )
     elif monthly_income < 5000:
-        tips.extend([
-            {
-                "category": "savings",
-                "tip": "Aim to save at least 15-20% of your income",
-                "priority": "high"
-            },
-            {
-                "category": "investment",
-                "tip": "Consider starting a retirement account with employer matching",
-                "priority": "medium"
-            }
-        ])
+        tips.extend(
+            [
+                {
+                    "category": "savings",
+                    "tip": "Aim to save at least 15-20% of your income",
+                    "priority": "high",
+                },
+                {
+                    "category": "investment",
+                    "tip": "Consider starting a retirement account with employer matching",
+                    "priority": "medium",
+                },
+            ]
+        )
     else:
-        tips.extend([
-            {
-                "category": "investment",
-                "tip": "Maximize retirement contributions and consider index funds",
-                "priority": "high"
-            },
-            {
-                "category": "tax",
-                "tip": "Explore tax-advantaged investment accounts",
-                "priority": "medium"
-            }
-        ])
+        tips.extend(
+            [
+                {
+                    "category": "investment",
+                    "tip": "Maximize retirement contributions and consider index funds",
+                    "priority": "high",
+                },
+                {
+                    "category": "tax",
+                    "tip": "Explore tax-advantaged investment accounts",
+                    "priority": "medium",
+                },
+            ]
+        )
 
     # Universal tips
-    tips.append({
-        "category": "tracking",
-        "tip": "Track every expense to identify spending patterns",
-        "priority": "high"
-    })
+    tips.append(
+        {
+            "category": "tracking",
+            "tip": "Track every expense to identify spending patterns",
+            "priority": "high",
+        }
+    )
 
-    return success_response({
-        "tips": tips,
-        "monthly_income": float(monthly_income),
-        "personalized": True
-    })
+    return success_response(
+        {"tips": tips, "monthly_income": float(monthly_income), "personalized": True}
+    )

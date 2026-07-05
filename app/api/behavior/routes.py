@@ -2,11 +2,12 @@
 Behavioral Analysis API Router
 Connects powerful behavioral analysis services to mobile app
 """
+
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, Body, Query
+from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.behavior.schemas import BehaviorPayload
@@ -14,12 +15,12 @@ from app.api.behavior.services import generate_behavior
 from app.api.dependencies import get_current_user
 from app.core.session import get_db
 from app.db.models.user import User
-from app.utils.response_wrapper import success_response
+from app.engine.behavior.spending_pattern_extractor import extract_patterns
 
 # Import behavioral services
 from app.services.core.behavior.behavior_service import analyze_user_behavior
 from app.services.core.engine.user_behavior_predictor import predict_spending_behavior
-from app.engine.behavior.spending_pattern_extractor import extract_patterns
+from app.utils.response_wrapper import success_response
 
 router = APIRouter(prefix="/behavior", tags=["behavior"])
 
@@ -38,21 +39,20 @@ def get_behavioral_analysis(
 
     try:
         # Use real behavioral analysis service
-        analysis = analyze_user_behavior(
-            user_id=user.id,
-            db=db,
-            year=year,
-            month=month
-        )
+        analysis = analyze_user_behavior(user_id=user.id, db=db, year=year, month=month)
         return success_response(analysis)
     except Exception:
         # Fallback response
-        return success_response({
-            "spending_patterns": [],
-            "behavioral_score": 0.5,
-            "insights": ["Complete more transactions to enable detailed behavioral analysis"],
-            "period": f"{year}-{month:02d}"
-        })
+        return success_response(
+            {
+                "spending_patterns": [],
+                "behavioral_score": 0.5,
+                "insights": [
+                    "Complete more transactions to enable detailed behavioral analysis"
+                ],
+                "period": f"{year}-{month:02d}",
+            }
+        )
 
 
 @router.get("/patterns")
@@ -71,11 +71,9 @@ def get_spending_pattern_analysis(
         patterns = extract_patterns(str(user.id), year, month)
         return success_response(patterns)
     except Exception:
-        return success_response({
-            "patterns": [],
-            "dominant_pattern": "balanced",
-            "confidence": 0.0
-        })
+        return success_response(
+            {"patterns": [], "dominant_pattern": "balanced", "confidence": 0.0}
+        )
 
 
 @router.get("/predictions")
@@ -85,18 +83,19 @@ def get_behavioral_predictions(
 ):
     """Get spending behavior predictions"""
     try:
-        predictions = predict_spending_behavior(
-            user_id=user.id,
-            db=db
-        )
+        predictions = predict_spending_behavior(user_id=user.id, db=db)
         return success_response(predictions)
     except Exception:
-        return success_response({
-            "next_week_spending": 0.0,
-            "next_month_spending": 0.0,
-            "confidence": 0.0,
-            "insights": ["More transaction history needed for accurate predictions"]
-        })
+        return success_response(
+            {
+                "next_week_spending": 0.0,
+                "next_month_spending": 0.0,
+                "confidence": 0.0,
+                "insights": [
+                    "More transaction history needed for accurate predictions"
+                ],
+            }
+        )
 
 
 @router.get("/anomalies")
@@ -107,9 +106,10 @@ def get_behavioral_anomalies(
     db: Session = Depends(get_db),
 ):
     """Get spending anomalies and unusual patterns"""
-    from app.db.models import Transaction
-    from datetime import datetime
     import statistics
+    from datetime import datetime
+
+    from app.db.models import Transaction
 
     now = datetime.now(timezone.utc)
     year = year or now.year
@@ -122,19 +122,25 @@ def get_behavioral_anomalies(
     else:
         end_date = datetime(year, month + 1, 1)
 
-    transactions = db.query(Transaction).filter(
-        Transaction.user_id == user.id,
-        Transaction.spent_at >= start_date,
-        Transaction.spent_at < end_date
-    ).all()
+    transactions = (
+        db.query(Transaction)
+        .filter(
+            Transaction.user_id == user.id,
+            Transaction.spent_at >= start_date,
+            Transaction.spent_at < end_date,
+        )
+        .all()
+    )
 
     if len(transactions) < 5:
-        return success_response({
-            "anomalies": [],
-            "unusual_transactions": [],
-            "alerts": [],
-            "note": "Need at least 5 transactions to detect anomalies"
-        })
+        return success_response(
+            {
+                "anomalies": [],
+                "unusual_transactions": [],
+                "alerts": [],
+                "note": "Need at least 5 transactions to detect anomalies",
+            }
+        )
 
     # Calculate statistical anomalies (using float for statistics)
     amounts = [float(t.amount) for t in transactions if t.amount is not None]
@@ -150,38 +156,46 @@ def get_behavioral_anomalies(
             continue
         amount = float(txn.amount)
         if amount > threshold:
-            anomalies.append({
-                "type": "high_spending",
-                "severity": "warning" if amount < threshold * 1.5 else "critical",
-                "amount": amount,
-                "category": txn.category or "uncategorized",
-                "date": txn.spent_at.isoformat(),
-                "description": f"Spending {amount:.2f} is {((amount/mean_amount - 1) * 100):.0f}% above your average"
-            })
-            unusual_transactions.append({
-                "id": str(txn.id),
-                "amount": amount,
-                "category": txn.category,
-                "merchant": txn.merchant_name,
-                "date": txn.spent_at.isoformat()
-            })
+            anomalies.append(
+                {
+                    "type": "high_spending",
+                    "severity": "warning" if amount < threshold * 1.5 else "critical",
+                    "amount": amount,
+                    "category": txn.category or "uncategorized",
+                    "date": txn.spent_at.isoformat(),
+                    "description": f"Spending {amount:.2f} is {((amount/mean_amount - 1) * 100):.0f}% above your average",
+                }
+            )
+            unusual_transactions.append(
+                {
+                    "id": str(txn.id),
+                    "amount": amount,
+                    "category": txn.category,
+                    "merchant": txn.merchant_name,
+                    "date": txn.spent_at.isoformat(),
+                }
+            )
 
     # Generate alerts
     alerts = []
     if len(anomalies) > 3:
-        alerts.append({
-            "type": "spending_spike",
-            "message": f"Detected {len(anomalies)} unusual transactions this month",
-            "severity": "warning"
-        })
+        alerts.append(
+            {
+                "type": "spending_spike",
+                "message": f"Detected {len(anomalies)} unusual transactions this month",
+                "severity": "warning",
+            }
+        )
 
-    return success_response({
-        "anomalies": anomalies,
-        "unusual_transactions": unusual_transactions,
-        "alerts": alerts,
-        "threshold": round(threshold, 2),
-        "average": round(mean_amount, 2)
-    })
+    return success_response(
+        {
+            "anomalies": anomalies,
+            "unusual_transactions": unusual_transactions,
+            "alerts": alerts,
+            "threshold": round(threshold, 2),
+            "average": round(mean_amount, 2),
+        }
+    )
 
 
 @router.get("/recommendations")
@@ -190,31 +204,35 @@ def get_adaptive_behavior_recommendations(
     db: Session = Depends(get_db),
 ):
     """Get personalized recommendations based on behavior"""
-    from app.db.models import Transaction
-    from datetime import datetime, timedelta
     from collections import defaultdict
+    from datetime import datetime, timedelta
+
+    from app.db.models import Transaction
 
     # Analyze last 60 days of transactions
     sixty_days_ago = datetime.now(timezone.utc) - timedelta(days=60)
-    transactions = db.query(Transaction).filter(
-        Transaction.user_id == user.id,
-        Transaction.spent_at >= sixty_days_ago
-    ).all()
+    transactions = (
+        db.query(Transaction)
+        .filter(Transaction.user_id == user.id, Transaction.spent_at >= sixty_days_ago)
+        .all()
+    )
 
     if len(transactions) < 5:
-        return success_response({
-            "recommendations": [
-                {
-                    "type": "getting_started",
-                    "message": "Add more transactions to get personalized recommendations",
-                    "priority": "low"
-                }
-            ],
-            "action_items": []
-        })
+        return success_response(
+            {
+                "recommendations": [
+                    {
+                        "type": "getting_started",
+                        "message": "Add more transactions to get personalized recommendations",
+                        "priority": "low",
+                    }
+                ],
+                "action_items": [],
+            }
+        )
 
     # Analyze spending by category
-    category_spending = defaultdict(lambda: {"amount": Decimal('0'), "count": 0})
+    category_spending = defaultdict(lambda: {"amount": Decimal("0"), "count": 0})
     for txn in transactions:
         if txn.amount is not None:
             cat = txn.category or "uncategorized"
@@ -229,40 +247,50 @@ def get_adaptive_behavior_recommendations(
     for cat, data in category_spending.items():
         if data["count"] > 10:  # More than 10 transactions in 60 days
             avg_per_txn = float(data["amount"]) / data["count"]
-            recommendations.append({
-                "type": "spending_pattern",
-                "category": cat,
-                "message": f"You spend frequently on {cat} (${avg_per_txn:.2f} per transaction). Consider setting a monthly budget.",
-                "priority": "medium"
-            })
+            recommendations.append(
+                {
+                    "type": "spending_pattern",
+                    "category": cat,
+                    "message": f"You spend frequently on {cat} (${avg_per_txn:.2f} per transaction). Consider setting a monthly budget.",
+                    "priority": "medium",
+                }
+            )
 
     # Check for large one-time expenses
-    total_spent = sum(t.amount for t in transactions if t.amount is not None) or Decimal('0')
+    total_spent = sum(
+        t.amount for t in transactions if t.amount is not None
+    ) or Decimal("0")
     avg_transaction = float(total_spent) / len(transactions) if transactions else 0
 
     for txn in transactions:
         if txn.amount and float(txn.amount) > avg_transaction * 3:
-            recommendations.append({
-                "type": "large_expense",
-                "category": txn.category,
-                "message": f"Large expense detected: ${float(txn.amount):.2f} on {txn.category}. Plan ahead for similar expenses.",
-                "priority": "high"
-            })
+            recommendations.append(
+                {
+                    "type": "large_expense",
+                    "category": txn.category,
+                    "message": f"Large expense detected: ${float(txn.amount):.2f} on {txn.category}. Plan ahead for similar expenses.",
+                    "priority": "high",
+                }
+            )
 
     # Generate action items
     if len(recommendations) > 2:
-        action_items.append({
-            "action": "set_category_budgets",
-            "description": "Set monthly budgets for your top spending categories",
-            "categories": list(category_spending.keys())[:3]
-        })
+        action_items.append(
+            {
+                "action": "set_category_budgets",
+                "description": "Set monthly budgets for your top spending categories",
+                "categories": list(category_spending.keys())[:3],
+            }
+        )
 
-    return success_response({
-        "recommendations": recommendations[:5],  # Limit to top 5
-        "action_items": action_items,
-        "analysis_period_days": 60,
-        "transactions_analyzed": len(transactions)
-    })
+    return success_response(
+        {
+            "recommendations": recommendations[:5],  # Limit to top 5
+            "action_items": action_items,
+            "analysis_period_days": 60,
+            "transactions_analyzed": len(transactions),
+        }
+    )
 
 
 @router.get("/triggers")
@@ -273,9 +301,10 @@ def get_spending_triggers(
     db: Session = Depends(get_db),
 ):
     """Get spending triggers and behavioral insights"""
-    from app.db.models import Transaction
-    from datetime import datetime
     from collections import defaultdict
+    from datetime import datetime
+
+    from app.db.models import Transaction
 
     now = datetime.now(timezone.utc)
     year = year or now.year
@@ -288,15 +317,19 @@ def get_spending_triggers(
     else:
         end_date = datetime(year, month + 1, 1)
 
-    transactions = db.query(Transaction).filter(
-        Transaction.user_id == user.id,
-        Transaction.spent_at >= start_date,
-        Transaction.spent_at < end_date
-    ).all()
+    transactions = (
+        db.query(Transaction)
+        .filter(
+            Transaction.user_id == user.id,
+            Transaction.spent_at >= start_date,
+            Transaction.spent_at < end_date,
+        )
+        .all()
+    )
 
     # Analyze temporal patterns
-    day_of_week_spending = defaultdict(lambda: {"amount": Decimal('0'), "count": 0})
-    hour_of_day_spending = defaultdict(lambda: {"amount": Decimal('0'), "count": 0})
+    day_of_week_spending = defaultdict(lambda: {"amount": Decimal("0"), "count": 0})
+    hour_of_day_spending = defaultdict(lambda: {"amount": Decimal("0"), "count": 0})
 
     for txn in transactions:
         if txn.amount is not None:
@@ -314,43 +347,51 @@ def get_spending_triggers(
     for day, data in day_of_week_spending.items():
         if data["count"] > 2:  # Significant pattern
             avg = data["amount"] / data["count"]
-            temporal_triggers.append({
-                "type": "day_of_week",
-                "trigger": day,
-                "average_spending": round(avg, 2),
-                "frequency": data["count"],
-                "insight": f"You tend to spend ${avg:.2f} on {day}s"
-            })
+            temporal_triggers.append(
+                {
+                    "type": "day_of_week",
+                    "trigger": day,
+                    "average_spending": round(avg, 2),
+                    "frequency": data["count"],
+                    "insight": f"You tend to spend ${avg:.2f} on {day}s",
+                }
+            )
 
     # Find peak spending hours
     if hour_of_day_spending:
         peak_hour = max(hour_of_day_spending.items(), key=lambda x: x[1]["amount"])
-        temporal_triggers.append({
-            "type": "time_of_day",
-            "trigger": f"{peak_hour[0]}:00",
-            "total_spending": round(peak_hour[1]["amount"], 2),
-            "insight": f"Most spending occurs around {peak_hour[0]}:00"
-        })
+        temporal_triggers.append(
+            {
+                "type": "time_of_day",
+                "trigger": f"{peak_hour[0]}:00",
+                "total_spending": round(peak_hour[1]["amount"], 2),
+                "insight": f"Most spending occurs around {peak_hour[0]}:00",
+            }
+        )
 
     # Generate insights
     insights = []
     if len(transactions) > 5:
         avg_per_day = len(transactions) / 30  # Approximate
         if avg_per_day > 3:
-            insights.append({
-                "type": "frequency",
-                "message": f"High transaction frequency: {avg_per_day:.1f} transactions per day",
-                "recommendation": "Consider batch shopping to reduce impulse purchases"
-            })
+            insights.append(
+                {
+                    "type": "frequency",
+                    "message": f"High transaction frequency: {avg_per_day:.1f} transactions per day",
+                    "recommendation": "Consider batch shopping to reduce impulse purchases",
+                }
+            )
 
-    return success_response({
-        "emotional_triggers": [],  # Would need mood data for this
-        "temporal_triggers": temporal_triggers,
-        "location_triggers": [],  # Would need merchant location data
-        "insights": insights,
-        "analysis_period": f"{year}-{month:02d}",
-        "transactions_analyzed": len(transactions)
-    })
+    return success_response(
+        {
+            "emotional_triggers": [],  # Would need mood data for this
+            "temporal_triggers": temporal_triggers,
+            "location_triggers": [],  # Would need merchant location data
+            "insights": insights,
+            "analysis_period": f"{year}-{month:02d}",
+            "transactions_analyzed": len(transactions),
+        }
+    )
 
 
 @router.post("/calendar", response_model=dict)
@@ -393,57 +434,61 @@ def get_behavioral_cluster(
                 "characteristics": [
                     "Frequent unplanned purchases",
                     "Variable spending patterns",
-                    "High discretionary spending"
-                ]
+                    "High discretionary spending",
+                ],
             },
             "balanced_spender": {
                 "name": "Balanced Spender",
                 "characteristics": [
                     "Consistent spending patterns",
                     "Good budget adherence",
-                    "Moderate risk profile"
-                ]
+                    "Moderate risk profile",
+                ],
             },
             "conservative_saver": {
                 "name": "Conservative Saver",
                 "characteristics": [
                     "Low discretionary spending",
                     "High savings rate",
-                    "Planned purchases only"
-                ]
+                    "Planned purchases only",
+                ],
             },
             "lifestyle_spender": {
                 "name": "Lifestyle Spender",
                 "characteristics": [
                     "High category-specific spending",
                     "Regular entertainment expenses",
-                    "Premium preferences"
-                ]
-            }
+                    "Premium preferences",
+                ],
+            },
         }
 
         info = cluster_info.get(cluster_label, cluster_info["balanced_spender"])
 
-        return success_response({
-            "cluster_id": cluster_label,
-            "cluster_name": info["name"],
-            "characteristics": info["characteristics"],
-            "peer_count": 0,  # Would need cluster assignments table
-            "note": "Cluster determined by spending behavior analysis"
-        })
+        return success_response(
+            {
+                "cluster_id": cluster_label,
+                "cluster_name": info["name"],
+                "characteristics": info["characteristics"],
+                "peer_count": 0,  # Would need cluster assignments table
+                "note": "Cluster determined by spending behavior analysis",
+            }
+        )
 
     except Exception:
         # Fallback if clustering not trained yet
-        return success_response({
-            "cluster_id": "unclustered",
-            "cluster_name": "Analyzing...",
-            "characteristics": [
-                "Building your spending profile",
-                "More data needed for classification"
-            ],
-            "peer_count": 0,
-            "note": "Cluster analysis requires more transaction history"
-        })
+        return success_response(
+            {
+                "cluster_id": "unclustered",
+                "cluster_name": "Analyzing...",
+                "characteristics": [
+                    "Building your spending profile",
+                    "More data needed for classification",
+                ],
+                "peer_count": 0,
+                "note": "Cluster analysis requires more transaction history",
+            }
+        )
 
 
 @router.patch("/preferences")
@@ -456,9 +501,9 @@ def update_behavioral_preferences(
     from app.db.models import UserPreference
 
     # Get or create user preference record
-    user_pref = db.query(UserPreference).filter(
-        UserPreference.user_id == user.id
-    ).first()
+    user_pref = (
+        db.query(UserPreference).filter(UserPreference.user_id == user.id).first()
+    )
 
     if not user_pref:
         user_pref = UserPreference(user_id=user.id)
@@ -475,8 +520,17 @@ def update_behavioral_preferences(
         user_pref.peer_comparison = preferences["peer_comparison"]
 
     # Store any additional preferences in JSON field
-    additional = {k: v for k, v in preferences.items()
-                  if k not in ["auto_insights", "anomaly_detection", "predictive_alerts", "peer_comparison"]}
+    additional = {
+        k: v
+        for k, v in preferences.items()
+        if k
+        not in [
+            "auto_insights",
+            "anomaly_detection",
+            "predictive_alerts",
+            "peer_comparison",
+        ]
+    }
     if additional:
         user_pref.additional_preferences = additional
 
@@ -494,9 +548,9 @@ def get_behavioral_preferences(
     from app.db.models import UserPreference
 
     # Query user preferences
-    user_pref = db.query(UserPreference).filter(
-        UserPreference.user_id == user.id
-    ).first()
+    user_pref = (
+        db.query(UserPreference).filter(UserPreference.user_id == user.id).first()
+    )
 
     if not user_pref:
         # Return default preferences if not set
@@ -504,7 +558,7 @@ def get_behavioral_preferences(
             "auto_insights": True,
             "anomaly_detection": True,
             "predictive_alerts": True,
-            "peer_comparison": False
+            "peer_comparison": False,
         }
         return success_response(default_preferences)
 
@@ -512,7 +566,7 @@ def get_behavioral_preferences(
         "auto_insights": user_pref.auto_insights,
         "anomaly_detection": user_pref.anomaly_detection,
         "predictive_alerts": user_pref.predictive_alerts,
-        "peer_comparison": user_pref.peer_comparison
+        "peer_comparison": user_pref.peer_comparison,
     }
 
     # Add any additional preferences
@@ -529,31 +583,41 @@ def get_behavioral_progress(
     db: Session = Depends(get_db),
 ):
     """Get behavioral improvement progress over time"""
-    from app.db.models import Transaction
-    from datetime import datetime, timedelta
     from collections import defaultdict
+    from datetime import datetime, timedelta
+
+    from app.db.models import Transaction
 
     # Analyze transactions over the requested months
     end_date = datetime.now(timezone.utc)
     start_date = end_date - timedelta(days=months * 30)
 
-    transactions = db.query(Transaction).filter(
-        Transaction.user_id == user.id,
-        Transaction.spent_at >= start_date,
-        Transaction.spent_at <= end_date
-    ).order_by(Transaction.spent_at).all()
+    transactions = (
+        db.query(Transaction)
+        .filter(
+            Transaction.user_id == user.id,
+            Transaction.spent_at >= start_date,
+            Transaction.spent_at <= end_date,
+        )
+        .order_by(Transaction.spent_at)
+        .all()
+    )
 
     if not transactions:
-        return success_response({
-            "months_tracked": months,
-            "improvement_score": 0.0,
-            "milestones": [],
-            "trends": [],
-            "note": "No transaction data available for analysis"
-        })
+        return success_response(
+            {
+                "months_tracked": months,
+                "improvement_score": 0.0,
+                "milestones": [],
+                "trends": [],
+                "note": "No transaction data available for analysis",
+            }
+        )
 
     # Group transactions by month
-    monthly_data = defaultdict(lambda: {"total": Decimal('0'), "count": 0, "categories": set()})
+    monthly_data = defaultdict(
+        lambda: {"total": Decimal("0"), "count": 0, "categories": set()}
+    )
 
     for txn in transactions:
         if txn.amount is not None:
@@ -572,22 +636,30 @@ def get_behavioral_progress(
         last_month = monthly_data[month_keys[-1]]
 
         # Spending trend
-        spending_change = ((last_month["total"] - first_month["total"]) / first_month["total"] * 100) if first_month["total"] > 0 else 0
-        trends.append({
-            "metric": "total_spending",
-            "change_percent": round(spending_change, 1),
-            "direction": "decreased" if spending_change < 0 else "increased",
-            "is_improvement": spending_change < 0
-        })
+        spending_change = (
+            ((last_month["total"] - first_month["total"]) / first_month["total"] * 100)
+            if first_month["total"] > 0
+            else 0
+        )
+        trends.append(
+            {
+                "metric": "total_spending",
+                "change_percent": round(spending_change, 1),
+                "direction": "decreased" if spending_change < 0 else "increased",
+                "is_improvement": spending_change < 0,
+            }
+        )
 
         # Transaction frequency trend
         freq_change = last_month["count"] - first_month["count"]
-        trends.append({
-            "metric": "transaction_frequency",
-            "change": freq_change,
-            "direction": "decreased" if freq_change < 0 else "increased",
-            "is_improvement": freq_change < 5  # Lower frequency can be good
-        })
+        trends.append(
+            {
+                "metric": "transaction_frequency",
+                "change": freq_change,
+                "direction": "decreased" if freq_change < 0 else "increased",
+                "is_improvement": freq_change < 5,  # Lower frequency can be good
+            }
+        )
 
     # Calculate improvement score (0-100)
     improvement_score = 50.0  # Baseline
@@ -599,27 +671,31 @@ def get_behavioral_progress(
     # Generate milestones
     milestones = []
     if len(transactions) >= 30:
-        milestones.append({
-            "type": "data_collection",
-            "message": "Tracked 30+ transactions",
-            "achieved_at": transactions[29].spent_at.isoformat()
-        })
-
-    return success_response({
-        "months_tracked": months,
-        "improvement_score": round(min(100, max(0, improvement_score)), 1),
-        "milestones": milestones,
-        "trends": trends,
-        "monthly_breakdown": [
+        milestones.append(
             {
-                "month": month,
-                "total_spent": round(data["total"], 2),
-                "transaction_count": data["count"],
-                "unique_categories": len(data["categories"])
+                "type": "data_collection",
+                "message": "Tracked 30+ transactions",
+                "achieved_at": transactions[29].spent_at.isoformat(),
             }
-            for month, data in sorted(monthly_data.items())
-        ]
-    })
+        )
+
+    return success_response(
+        {
+            "months_tracked": months,
+            "improvement_score": round(min(100, max(0, improvement_score)), 1),
+            "milestones": milestones,
+            "trends": trends,
+            "monthly_breakdown": [
+                {
+                    "month": month,
+                    "total_spent": round(data["total"], 2),
+                    "transaction_count": data["count"],
+                    "unique_categories": len(data["categories"]),
+                }
+                for month, data in sorted(monthly_data.items())
+            ],
+        }
+    )
 
 
 @router.get("/category/{category}")
@@ -631,8 +707,9 @@ def get_category_behavioral_insights(
     db: Session = Depends(get_db),
 ):
     """Get behavioral insights for specific category"""
-    from app.db.models import Transaction
     from datetime import datetime, timedelta
+
+    from app.db.models import Transaction
 
     # Default to last 90 days if no year/month specified
     if year and month:
@@ -646,45 +723,59 @@ def get_category_behavioral_insights(
         start_date = end_date - timedelta(days=90)
 
     # Query transactions for this category
-    transactions = db.query(Transaction).filter(
-        Transaction.user_id == user.id,
-        Transaction.category == category,
-        Transaction.spent_at >= start_date,
-        Transaction.spent_at < end_date
-    ).all()
+    transactions = (
+        db.query(Transaction)
+        .filter(
+            Transaction.user_id == user.id,
+            Transaction.category == category,
+            Transaction.spent_at >= start_date,
+            Transaction.spent_at < end_date,
+        )
+        .all()
+    )
 
     if not transactions:
-        return success_response({
-            "category": category,
-            "average_spending": 0.0,
-            "frequency": 0,
-            "patterns": [],
-            "recommendations": [],
-            "note": f"No transactions found for category '{category}'"
-        })
+        return success_response(
+            {
+                "category": category,
+                "average_spending": 0.0,
+                "frequency": 0,
+                "patterns": [],
+                "recommendations": [],
+                "note": f"No transactions found for category '{category}'",
+            }
+        )
 
-    total_spent = sum(t.amount for t in transactions if t.amount is not None) or Decimal('0')
+    total_spent = sum(
+        t.amount for t in transactions if t.amount is not None
+    ) or Decimal("0")
     avg_spending = float(total_spent) / len(transactions) if transactions else 0.0
 
-    return success_response({
-        "category": category,
-        "average_spending": round(avg_spending, 2),
-        "total_spent": round(float(total_spent), 2),
-        "frequency": len(transactions),
-        "patterns": [
-            {
-                "type": "frequency",
-                "value": len(transactions),
-                "description": f"{len(transactions)} transactions in the period"
-            }
-        ],
-        "recommendations": [
-            {
-                "message": f"Consider budgeting ${round(total_spent * 1.1, 2)} for {category} next month",
-                "type": "budgeting"
-            }
-        ] if len(transactions) > 5 else []
-    })
+    return success_response(
+        {
+            "category": category,
+            "average_spending": round(avg_spending, 2),
+            "total_spent": round(float(total_spent), 2),
+            "frequency": len(transactions),
+            "patterns": [
+                {
+                    "type": "frequency",
+                    "value": len(transactions),
+                    "description": f"{len(transactions)} transactions in the period",
+                }
+            ],
+            "recommendations": (
+                [
+                    {
+                        "message": f"Consider budgeting ${round(total_spent * 1.1, 2)} for {category} next month",
+                        "type": "budgeting",
+                    }
+                ]
+                if len(transactions) > 5
+                else []
+            ),
+        }
+    )
 
 
 @router.get("/warnings")
@@ -695,9 +786,10 @@ def get_behavioral_warnings(
     db: Session = Depends(get_db),
 ):
     """Get behavioral warnings and alerts"""
-    from app.db.models import Transaction
-    from datetime import datetime
     import statistics
+    from datetime import datetime
+
+    from app.db.models import Transaction
 
     now = datetime.now(timezone.utc)
     year = year or now.year
@@ -710,11 +802,15 @@ def get_behavioral_warnings(
     else:
         end_date = datetime(year, month + 1, 1)
 
-    transactions = db.query(Transaction).filter(
-        Transaction.user_id == user.id,
-        Transaction.spent_at >= start_date,
-        Transaction.spent_at < end_date
-    ).all()
+    transactions = (
+        db.query(Transaction)
+        .filter(
+            Transaction.user_id == user.id,
+            Transaction.spent_at >= start_date,
+            Transaction.spent_at < end_date,
+        )
+        .all()
+    )
 
     warnings = []
     critical_alerts = []
@@ -728,33 +824,38 @@ def get_behavioral_warnings(
 
         # High spending warning
         if total > 5000:  # Arbitrary threshold, should be based on user income
-            warnings.append({
-                "type": "high_total_spending",
-                "severity": "medium",
-                "message": f"Total spending this month: ${total:.2f}",
-                "threshold": 5000
-            })
+            warnings.append(
+                {
+                    "type": "high_total_spending",
+                    "severity": "medium",
+                    "message": f"Total spending this month: ${total:.2f}",
+                    "threshold": 5000,
+                }
+            )
 
         # Frequent small transactions warning
         if len(transactions) > 30 and avg < 20:
-            warnings.append({
-                "type": "frequent_small_transactions",
-                "severity": "low",
-                "message": f"{len(transactions)} small transactions detected - consider batch shopping",
-                "average_amount": round(avg, 2)
-            })
+            warnings.append(
+                {
+                    "type": "frequent_small_transactions",
+                    "severity": "low",
+                    "message": f"{len(transactions)} small transactions detected - consider batch shopping",
+                    "average_amount": round(avg, 2),
+                }
+            )
 
-        suggestions.append({
-            "type": "tracking",
-            "message": "Great job tracking your expenses!"
-        })
+        suggestions.append(
+            {"type": "tracking", "message": "Great job tracking your expenses!"}
+        )
 
-    return success_response({
-        "warnings": warnings,
-        "critical_alerts": critical_alerts,
-        "suggestions": suggestions,
-        "transactions_analyzed": len(transactions)
-    })
+    return success_response(
+        {
+            "warnings": warnings,
+            "critical_alerts": critical_alerts,
+            "suggestions": suggestions,
+            "transactions_analyzed": len(transactions),
+        }
+    )
 
 
 @router.post("/expense_suggestions")
@@ -764,28 +865,32 @@ def get_behavioral_expense_suggestions(
     db: Session = Depends(get_db),
 ):
     """Get smart expense suggestions based on behavioral patterns"""
-    from app.db.models import Transaction
-    from datetime import datetime, timedelta
     from collections import Counter
+    from datetime import datetime, timedelta
+
+    from app.db.models import Transaction
 
     category = data.get("category")
     amount = data.get("amount")
 
     # Analyze past transactions to suggest category
     sixty_days_ago = datetime.now(timezone.utc) - timedelta(days=60)
-    past_transactions = db.query(Transaction).filter(
-        Transaction.user_id == user.id,
-        Transaction.spent_at >= sixty_days_ago
-    ).all()
+    past_transactions = (
+        db.query(Transaction)
+        .filter(Transaction.user_id == user.id, Transaction.spent_at >= sixty_days_ago)
+        .all()
+    )
 
     if not past_transactions:
-        return success_response({
-            "suggested_category": category or "general",
-            "suggested_amount": amount or 0.0,
-            "confidence": 0.0,
-            "alternatives": [],
-            "note": "Not enough transaction history for suggestions"
-        })
+        return success_response(
+            {
+                "suggested_category": category or "general",
+                "suggested_amount": amount or 0.0,
+                "confidence": 0.0,
+                "alternatives": [],
+                "note": "Not enough transaction history for suggestions",
+            }
+        )
 
     # Find most common categories
     categories = [t.category for t in past_transactions if t.category]
@@ -805,9 +910,14 @@ def get_behavioral_expense_suggestions(
 
     # Suggest amount based on category history
     if suggested_cat and not amount:
-        cat_transactions = [float(t.amount) for t in past_transactions if t.category == suggested_cat and t.amount is not None]
+        cat_transactions = [
+            float(t.amount)
+            for t in past_transactions
+            if t.category == suggested_cat and t.amount is not None
+        ]
         if cat_transactions:
             import statistics
+
             suggested_amt = statistics.median(cat_transactions)
         else:
             suggested_amt = 0.0
@@ -816,13 +926,15 @@ def get_behavioral_expense_suggestions(
 
     confidence = min(1.0, len(past_transactions) / 50.0)
 
-    return success_response({
-        "suggested_category": suggested_cat,
-        "suggested_amount": round(suggested_amt, 2) if suggested_amt else None,
-        "confidence": round(confidence, 2),
-        "alternatives": alternatives[:3],
-        "based_on_transactions": len(past_transactions)
-    })
+    return success_response(
+        {
+            "suggested_category": suggested_cat,
+            "suggested_amount": round(suggested_amt, 2) if suggested_amt else None,
+            "confidence": round(confidence, 2),
+            "alternatives": alternatives[:3],
+            "based_on_transactions": len(past_transactions),
+        }
+    )
 
 
 @router.patch("/notification_settings")
@@ -835,9 +947,9 @@ def update_behavioral_notification_settings(
     from app.db.models import UserPreference
 
     # Get or create user preference record
-    user_pref = db.query(UserPreference).filter(
-        UserPreference.user_id == user.id
-    ).first()
+    user_pref = (
+        db.query(UserPreference).filter(UserPreference.user_id == user.id).first()
+    )
 
     if not user_pref:
         user_pref = UserPreference(user_id=user.id)
@@ -867,9 +979,9 @@ def get_behavioral_notification_settings(
     from app.db.models import UserPreference
 
     # Query user preferences
-    user_pref = db.query(UserPreference).filter(
-        UserPreference.user_id == user.id
-    ).first()
+    user_pref = (
+        db.query(UserPreference).filter(UserPreference.user_id == user.id).first()
+    )
 
     if not user_pref:
         # Return default settings if not set
@@ -877,7 +989,7 @@ def get_behavioral_notification_settings(
             "anomaly_alerts": True,
             "pattern_insights": True,
             "weekly_summary": True,
-            "spending_warnings": True
+            "spending_warnings": True,
         }
         return success_response(default_settings)
 
@@ -885,7 +997,7 @@ def get_behavioral_notification_settings(
         "anomaly_alerts": user_pref.anomaly_alerts,
         "pattern_insights": user_pref.pattern_insights,
         "weekly_summary": user_pref.weekly_summary,
-        "spending_warnings": user_pref.spending_warnings
+        "spending_warnings": user_pref.spending_warnings,
     }
 
     return success_response(settings)

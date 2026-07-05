@@ -1,21 +1,35 @@
+from types import SimpleNamespace
 
-from app import tasks
+import app.core.task_queue as tq_mod
+import app.services.task_manager as tm_mod
+from app import legacy_tasks
 
 
 def test_enqueue_jobs(monkeypatch):
     calls = []
 
-    class DummyQueue:
-        def enqueue(self, func):
-            calls.append(func.__name__)
+    class DummyTaskManager:
+        def submit_daily_advice_batch(self):
+            calls.append("daily_advice_batch")
+            return SimpleNamespace(task_id="t1")
 
-    monkeypatch.setattr(tasks, "queue", DummyQueue())
-    tasks.enqueue_daily_advice()
-    tasks.enqueue_monthly_redistribution()
-    tasks.enqueue_subscription_refresh()
+        def submit_monthly_redistribution_batch(self):
+            calls.append("monthly_redistribution_batch")
+            return SimpleNamespace(task_id="t2")
+
+    def dummy_enqueue_task(func, *args, **kwargs):
+        calls.append(func.__name__)
+        return SimpleNamespace(id="j1")
+
+    monkeypatch.setattr(tm_mod, "task_manager", DummyTaskManager())
+    monkeypatch.setattr(tq_mod, "enqueue_task", dummy_enqueue_task)
+
+    legacy_tasks.enqueue_daily_advice()
+    legacy_tasks.enqueue_monthly_redistribution()
+    legacy_tasks.enqueue_subscription_refresh()
 
     assert calls == [
-        "run_ai_advice_batch",
-        "run_budget_redistribution_batch",
+        "daily_advice_batch",
+        "monthly_redistribution_batch",
         "refresh_premium_status",
     ]

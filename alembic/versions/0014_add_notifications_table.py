@@ -28,13 +28,17 @@ def upgrade() -> None:
         sa.Column("title", sa.String(length=255), nullable=False),
         sa.Column("message", sa.Text(), nullable=False),
         sa.Column("type", sa.String(length=50), nullable=False, server_default="info"),
-        sa.Column("priority", sa.String(length=20), nullable=False, server_default="medium"),
+        sa.Column(
+            "priority", sa.String(length=20), nullable=False, server_default="medium"
+        ),
         # Rich content
         sa.Column("image_url", sa.String(length=500), nullable=True),
         sa.Column("action_url", sa.String(length=500), nullable=True),
         sa.Column("data", sa.JSON(), nullable=True),
         # Delivery tracking
-        sa.Column("status", sa.String(length=20), nullable=False, server_default="pending"),
+        sa.Column(
+            "status", sa.String(length=20), nullable=False, server_default="pending"
+        ),
         sa.Column("channel", sa.String(length=20), nullable=True),
         # Read tracking
         sa.Column("is_read", sa.Boolean(), nullable=False, server_default="false"),
@@ -47,8 +51,18 @@ def upgrade() -> None:
         sa.Column("error_message", sa.Text(), nullable=True),
         sa.Column("retry_count", sa.String(), nullable=False, server_default="0"),
         # Metadata
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=True, server_default=sa.text("now()")),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True, server_default=sa.text("now()")),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            nullable=True,
+            server_default=sa.text("now()"),
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            nullable=True,
+            server_default=sa.text("now()"),
+        ),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=True),
         # Grouping
         sa.Column("category", sa.String(length=50), nullable=True),
@@ -99,7 +113,9 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     # Drop indexes
-    op.drop_index("ix_notifications_user_id_is_read_created_at", table_name="notifications")
+    op.drop_index(
+        "ix_notifications_user_id_is_read_created_at", table_name="notifications"
+    )
     op.drop_index(op.f("ix_notifications_group_key"), table_name="notifications")
     op.drop_index(op.f("ix_notifications_created_at"), table_name="notifications")
     op.drop_index(op.f("ix_notifications_scheduled_for"), table_name="notifications")

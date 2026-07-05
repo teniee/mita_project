@@ -21,6 +21,7 @@ logger = structlog.get_logger()
 
 class HealthStatus(Enum):
     """Health check status"""
+
     HEALTHY = "healthy"
     DEGRADED = "degraded"
     UNHEALTHY = "unhealthy"
@@ -31,6 +32,7 @@ class HealthStatus(Enum):
 @dataclass
 class HealthCheckResult:
     """Result of a health check"""
+
     endpoint: str
     status: HealthStatus
     response_time_ms: float
@@ -59,7 +61,7 @@ class RollbackValidator:
             base_url: Application base URL (e.g., https://api.mita.finance)
             timeout: Default HTTP timeout in seconds
         """
-        self.base_url = base_url.rstrip('/')
+        self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self.http_client = httpx.AsyncClient(timeout=timeout)
         self.results: List[HealthCheckResult] = []
@@ -96,12 +98,15 @@ class RollbackValidator:
             logger.info("Phase 4: External dependencies")
             external_ok = await self._phase4_external_dependencies()
             if not external_ok:
-                logger.warning("Phase 4 degraded - external dependencies (non-critical)")
+                logger.warning(
+                    "Phase 4 degraded - external dependencies (non-critical)"
+                )
                 # External dependencies can be degraded, don't fail rollback
 
             # All critical checks passed
-            logger.info("Rollback validation successful",
-                       total_checks=len(self.results))
+            logger.info(
+                "Rollback validation successful", total_checks=len(self.results)
+            )
             await self._print_summary()
             return True
 
@@ -121,9 +126,7 @@ class RollbackValidator:
         """
         # Check 1: Root health endpoint
         result = await self._check_endpoint(
-            endpoint="/",
-            expected_status=200,
-            timeout=2.0
+            endpoint="/", expected_status=200, timeout=2.0
         )
         self.results.append(result)
 
@@ -133,9 +136,7 @@ class RollbackValidator:
 
         # Check 2: Simple health endpoint
         result = await self._check_endpoint(
-            endpoint="/health",
-            expected_status=200,
-            timeout=3.0
+            endpoint="/health", expected_status=200, timeout=3.0
         )
         self.results.append(result)
 
@@ -143,7 +144,10 @@ class RollbackValidator:
             logger.error("Simple health check failed")
             return False
 
-        logger.info("Phase 1 passed", duration_ms=sum(r.response_time_ms for r in self.results[-2:]))
+        logger.info(
+            "Phase 1 passed",
+            duration_ms=sum(r.response_time_ms for r in self.results[-2:]),
+        )
         return True
 
     async def _phase2_core_functionality(self) -> bool:
@@ -156,9 +160,7 @@ class RollbackValidator:
         """
         # Check 1: Production health check
         result = await self._check_endpoint(
-            endpoint="/health/production",
-            expected_status=200,
-            timeout=5.0
+            endpoint="/health/production", expected_status=200, timeout=5.0
         )
         self.results.append(result)
 
@@ -174,9 +176,7 @@ class RollbackValidator:
         # Check 2: Critical services (if endpoint exists)
         try:
             result = await self._check_endpoint(
-                endpoint="/health/critical-services",
-                expected_status=200,
-                timeout=3.0
+                endpoint="/health/critical-services", expected_status=200, timeout=3.0
             )
             self.results.append(result)
 
@@ -200,9 +200,7 @@ class RollbackValidator:
         """
         # Check 1: Performance health (timeout risk detection)
         result = await self._check_endpoint(
-            endpoint="/health/performance",
-            expected_status=200,
-            timeout=8.0
+            endpoint="/health/performance", expected_status=200, timeout=8.0
         )
         self.results.append(result)
 
@@ -215,23 +213,25 @@ class RollbackValidator:
         components_over_5s = perf_summary.get("components_over_5s", 0)
 
         if components_over_5s > 0:
-            logger.error("CRITICAL: Components exceed 5-second response time",
-                        count=components_over_5s,
-                        timeout_risks=perf_summary.get("timeout_risks", []))
+            logger.error(
+                "CRITICAL: Components exceed 5-second response time",
+                count=components_over_5s,
+                timeout_risks=perf_summary.get("timeout_risks", []),
+            )
             return False
 
         # Check for components approaching timeout (>2s)
         components_over_2s = perf_summary.get("components_over_2s", 0)
         if components_over_2s > 0:
-            logger.warning("WARNING: Components exceed 2-second response time",
-                          count=components_over_2s)
+            logger.warning(
+                "WARNING: Components exceed 2-second response time",
+                count=components_over_2s,
+            )
             # Continue - warning only, not critical yet
 
         # Check 2: Comprehensive middleware health
         result = await self._check_endpoint(
-            endpoint="/health/comprehensive",
-            expected_status=200,
-            timeout=8.0
+            endpoint="/health/comprehensive", expected_status=200, timeout=8.0
         )
         self.results.append(result)
 
@@ -258,9 +258,7 @@ class RollbackValidator:
         """
         # Check 1: External services
         result = await self._check_endpoint(
-            endpoint="/health/external-services",
-            expected_status=200,
-            timeout=5.0
+            endpoint="/health/external-services", expected_status=200, timeout=5.0
         )
         self.results.append(result)
 
@@ -281,23 +279,24 @@ class RollbackValidator:
             health_percentage = (healthy_services / enabled_services) * 100
 
             if health_percentage < 50:
-                logger.warning("Less than 50% of external services healthy",
-                             percentage=health_percentage)
+                logger.warning(
+                    "Less than 50% of external services healthy",
+                    percentage=health_percentage,
+                )
                 external_healthy = False
 
         # Check 2: Circuit breakers
         try:
             result = await self._check_endpoint(
-                endpoint="/health/circuit-breakers",
-                expected_status=200,
-                timeout=3.0
+                endpoint="/health/circuit-breakers", expected_status=200, timeout=3.0
             )
             self.results.append(result)
 
             # Check for open circuit breakers
             circuit_breakers = result.details.get("circuit_breakers", {})
             open_breakers = [
-                name for name, data in circuit_breakers.items()
+                name
+                for name, data in circuit_breakers.items()
                 if data.get("state") == "open"
             ]
 
@@ -312,10 +311,7 @@ class RollbackValidator:
         return external_healthy
 
     async def _check_endpoint(
-        self,
-        endpoint: str,
-        expected_status: int = 200,
-        timeout: float = 5.0
+        self, endpoint: str, expected_status: int = 200, timeout: float = 5.0
     ) -> HealthCheckResult:
         """
         Check a single health endpoint
@@ -363,13 +359,15 @@ class RollbackValidator:
                 status=status,
                 response_time_ms=duration,
                 details=details,
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             )
 
-            logger.debug("Endpoint check complete",
-                        endpoint=endpoint,
-                        status=status.value,
-                        response_time_ms=duration)
+            logger.debug(
+                "Endpoint check complete",
+                endpoint=endpoint,
+                status=status.value,
+                response_time_ms=duration,
+            )
 
             return result
 
@@ -383,7 +381,7 @@ class RollbackValidator:
                 status=HealthStatus.TIMEOUT,
                 response_time_ms=duration,
                 details={"error": "timeout", "timeout_seconds": timeout},
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             )
 
         except Exception as e:
@@ -396,7 +394,7 @@ class RollbackValidator:
                 status=HealthStatus.ERROR,
                 response_time_ms=duration,
                 details={"error": str(e)},
-                timestamp=datetime.now()
+                timestamp=datetime.now(),
             )
 
     async def _print_summary(self):
@@ -419,38 +417,57 @@ class RollbackValidator:
         print("\nPhase 1: Quick Verification")
         for r in phase1:
             status_icon = "✅" if r.status == HealthStatus.HEALTHY else "❌"
-            print(f"  {status_icon} {r.endpoint:30} {r.response_time_ms:6.0f}ms  {r.status.value}")
+            print(
+                f"  {status_icon} {r.endpoint:30} {r.response_time_ms:6.0f}ms  {r.status.value}"
+            )
 
         if phase2:
             print("\nPhase 2: Core Functionality")
             for r in phase2:
-                status_icon = "✅" if r.status in [HealthStatus.HEALTHY, HealthStatus.DEGRADED] else "❌"
-                print(f"  {status_icon} {r.endpoint:30} {r.response_time_ms:6.0f}ms  {r.status.value}")
+                status_icon = (
+                    "✅"
+                    if r.status in [HealthStatus.HEALTHY, HealthStatus.DEGRADED]
+                    else "❌"
+                )
+                print(
+                    f"  {status_icon} {r.endpoint:30} {r.response_time_ms:6.0f}ms  {r.status.value}"
+                )
 
         if phase3:
             print("\nPhase 3: Performance Validation")
             for r in phase3:
-                status_icon = "✅" if r.status in [HealthStatus.HEALTHY, HealthStatus.DEGRADED] else "❌"
-                print(f"  {status_icon} {r.endpoint:30} {r.response_time_ms:6.0f}ms  {r.status.value}")
+                status_icon = (
+                    "✅"
+                    if r.status in [HealthStatus.HEALTHY, HealthStatus.DEGRADED]
+                    else "❌"
+                )
+                print(
+                    f"  {status_icon} {r.endpoint:30} {r.response_time_ms:6.0f}ms  {r.status.value}"
+                )
 
         if phase4:
             print("\nPhase 4: External Dependencies")
             for r in phase4:
-                status_icon = "✅" if r.status in [HealthStatus.HEALTHY, HealthStatus.DEGRADED] else "⚠️"
-                print(f"  {status_icon} {r.endpoint:30} {r.response_time_ms:6.0f}ms  {r.status.value}")
+                status_icon = (
+                    "✅"
+                    if r.status in [HealthStatus.HEALTHY, HealthStatus.DEGRADED]
+                    else "⚠️"
+                )
+                print(
+                    f"  {status_icon} {r.endpoint:30} {r.response_time_ms:6.0f}ms  {r.status.value}"
+                )
 
         print("\n" + "=" * 80)
 
         # Check for timeout risks
-        timeout_risks = [
-            r for r in self.results
-            if r.response_time_ms > 5000
-        ]
+        timeout_risks = [r for r in self.results if r.response_time_ms > 5000]
 
         if timeout_risks:
             print("\n⚠️  WARNING: Timeout risks detected:")
             for r in timeout_risks:
-                print(f"    {r.endpoint}: {r.response_time_ms:.0f}ms (>5000ms threshold)")
+                print(
+                    f"    {r.endpoint}: {r.response_time_ms:.0f}ms (>5000ms threshold)"
+                )
 
         print()
 
@@ -460,17 +477,15 @@ async def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Rollback Validation")
-    parser.add_argument("--base-url",
-                       default="http://localhost:8000",
-                       help="Application base URL")
-    parser.add_argument("--timeout",
-                       type=int,
-                       default=10,
-                       help="HTTP timeout in seconds")
-    parser.add_argument("--wait",
-                       type=int,
-                       default=10,
-                       help="Wait N seconds before starting validation")
+    parser.add_argument(
+        "--base-url", default="http://localhost:8000", help="Application base URL"
+    )
+    parser.add_argument(
+        "--timeout", type=int, default=10, help="HTTP timeout in seconds"
+    )
+    parser.add_argument(
+        "--wait", type=int, default=10, help="Wait N seconds before starting validation"
+    )
 
     args = parser.parse_args()
 
@@ -479,10 +494,7 @@ async def main():
         print(f"Waiting {args.wait} seconds for application to stabilize...")
         await asyncio.sleep(args.wait)
 
-    validator = RollbackValidator(
-        base_url=args.base_url,
-        timeout=args.timeout
-    )
+    validator = RollbackValidator(base_url=args.base_url, timeout=args.timeout)
 
     success = await validator.validate_rollback()
 

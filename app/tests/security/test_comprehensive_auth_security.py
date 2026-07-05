@@ -20,26 +20,23 @@ import asyncio
 import time
 import uuid
 from datetime import timedelta
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import AsyncMock, Mock, patch
 
 import jwt as pyjwt
 import pytest
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.auth.schemas import LoginIn
+from app.core.error_handler import RateLimitException
+from app.core.security import AdvancedRateLimiter, rate_limit_memory
 from app.services.auth_jwt_service import (
+    blacklist_token,
     create_access_token,
     create_refresh_token,
+    get_token_info,
     verify_token,
-    blacklist_token,
-    get_token_info
 )
-from app.api.auth.schemas import LoginIn
-from app.core.security import (
-    AdvancedRateLimiter,
-    rate_limit_memory
-)
-from app.core.error_handler import RateLimitException
 
 
 def _make_mock_blacklist_service(blacklist_store):
@@ -85,7 +82,10 @@ class TestTokenBlacklistFunctionality:
         async def mock_get_blacklist_service():
             return mock_service
 
-        with patch('app.services.token_blacklist_service.get_blacklist_service', mock_get_blacklist_service):
+        with patch(
+            "app.services.token_blacklist_service.get_blacklist_service",
+            mock_get_blacklist_service,
+        ):
             # Token should be valid before blacklisting
             payload = await verify_token(token)
             assert payload is not None
@@ -113,7 +113,10 @@ class TestTokenBlacklistFunctionality:
         async def mock_get_blacklist_service():
             return mock_service
 
-        with patch('app.services.token_blacklist_service.get_blacklist_service', mock_get_blacklist_service):
+        with patch(
+            "app.services.token_blacklist_service.get_blacklist_service",
+            mock_get_blacklist_service,
+        ):
             # Blacklist token
             success = await blacklist_token(token)
             assert success is True
@@ -126,17 +129,16 @@ class TestTokenBlacklistFunctionality:
     @pytest.mark.asyncio
     async def test_token_blacklist_ttl_calculation(self, blacklist_store):
         """Test proper TTL calculation for blacklisted tokens"""
-        from app.services.token_blacklist_service import TokenBlacklistService
-
         # Create tokens directly with jwt.encode (without aud claim) since
         # _calculate_ttl's jwt.decode doesn't pass audience parameter
         from app.core.config import settings as app_settings
+        from app.services.token_blacklist_service import TokenBlacklistService
 
         test_cases = [
-            (300, 300),       # 5 minutes
-            (3600, 3600),     # 1 hour
-            (86400, 86400),   # 1 day
-            (604800, 604800)  # 7 days (max)
+            (300, 300),  # 5 minutes
+            (3600, 3600),  # 1 hour
+            (86400, 86400),  # 1 day
+            (604800, 604800),  # 7 days (max)
         ]
 
         service = TokenBlacklistService.__new__(TokenBlacklistService)
@@ -146,27 +148,33 @@ class TestTokenBlacklistFunctionality:
             token = pyjwt.encode(
                 {"sub": "ttl_test_user", "exp": exp, "jti": str(uuid.uuid4())},
                 app_settings.SECRET_KEY,
-                algorithm=app_settings.ALGORITHM
+                algorithm=app_settings.ALGORITHM,
             )
 
             actual_ttl = service._calculate_ttl(token)
             # TTL should match token expiration (within 5 second tolerance)
-            assert abs(actual_ttl - expected_ttl) <= 5, \
-                f"Expected TTL ~{expected_ttl}, got {actual_ttl}"
+            assert (
+                abs(actual_ttl - expected_ttl) <= 5
+            ), f"Expected TTL ~{expected_ttl}, got {actual_ttl}"
 
     @pytest.mark.asyncio
     async def test_token_blacklist_with_expired_tokens(self, blacklist_store):
         """Test blacklisting already expired tokens"""
         # Create expired token
         expired_token_data = {"sub": "expired_user", "exp": time.time() - 3600}
-        expired_token = create_access_token(expired_token_data, timedelta(seconds=-3600))
+        expired_token = create_access_token(
+            expired_token_data, timedelta(seconds=-3600)
+        )
 
         mock_service = _make_mock_blacklist_service(blacklist_store)
 
         async def mock_get_blacklist_service():
             return mock_service
 
-        with patch('app.services.token_blacklist_service.get_blacklist_service', mock_get_blacklist_service):
+        with patch(
+            "app.services.token_blacklist_service.get_blacklist_service",
+            mock_get_blacklist_service,
+        ):
             # blacklist_token should handle expired tokens gracefully
             success = await blacklist_token(expired_token)
             # The service should still attempt to process it (returns True or False)
@@ -185,7 +193,11 @@ class TestTokenBlacklistFunctionality:
         for invalid_token in test_cases:
             # blacklist_token should handle gracefully
             if invalid_token is None or invalid_token == "":
-                success = await blacklist_token(invalid_token) if invalid_token is not None else await blacklist_token("")
+                success = (
+                    await blacklist_token(invalid_token)
+                    if invalid_token is not None
+                    else await blacklist_token("")
+                )
                 assert success is False
             else:
                 success = await blacklist_token(invalid_token)
@@ -198,12 +210,17 @@ class TestTokenBlacklistFunctionality:
         token = create_access_token(token_data)
 
         mock_service = AsyncMock()
-        mock_service.blacklist_token = AsyncMock(side_effect=Exception("Connection failed"))
+        mock_service.blacklist_token = AsyncMock(
+            side_effect=Exception("Connection failed")
+        )
 
         async def mock_get_blacklist_service():
             return mock_service
 
-        with patch('app.services.token_blacklist_service.get_blacklist_service', mock_get_blacklist_service):
+        with patch(
+            "app.services.token_blacklist_service.get_blacklist_service",
+            mock_get_blacklist_service,
+        ):
             # blacklist_token catches exceptions and returns False
             result = await blacklist_token(token)
             assert result is False
@@ -219,7 +236,10 @@ class TestTokenBlacklistFunctionality:
         async def mock_get_blacklist_service():
             return mock_service
 
-        with patch('app.services.token_blacklist_service.get_blacklist_service', mock_get_blacklist_service):
+        with patch(
+            "app.services.token_blacklist_service.get_blacklist_service",
+            mock_get_blacklist_service,
+        ):
             # Simulate concurrent blacklisting
             tasks = [blacklist_token(token) for _ in range(5)]
             results = await asyncio.gather(*tasks)
@@ -238,8 +258,10 @@ class TestTokenBlacklistFunctionality:
         async def mock_get_blacklist_service():
             return mock_service
 
-        with patch('app.services.token_blacklist_service.get_blacklist_service', mock_get_blacklist_service), \
-             patch('app.services.auth_jwt_service.log_security_event') as mock_log:
+        with patch(
+            "app.services.token_blacklist_service.get_blacklist_service",
+            mock_get_blacklist_service,
+        ), patch("app.services.auth_jwt_service.log_security_event") as mock_log:
 
             # Create token inside patch so log_security_event captures the
             # "access_token_created" event from create_access_token
@@ -274,13 +296,18 @@ class TestRefreshTokenRotation:
         async def mock_get_blacklist_service():
             return mock_service
 
-        with patch('app.services.token_blacklist_service.get_blacklist_service', mock_get_blacklist_service):
+        with patch(
+            "app.services.token_blacklist_service.get_blacklist_service",
+            mock_get_blacklist_service,
+        ):
             # Create initial refresh token
             user_data = {"sub": "rotation_user_123"}
             old_refresh_token = create_refresh_token(user_data)
 
             # Verify old token is valid
-            old_payload = await verify_token(old_refresh_token, token_type="refresh_token")
+            old_payload = await verify_token(
+                old_refresh_token, token_type="refresh_token"
+            )
             assert old_payload is not None
 
             # Simulate refresh operation (blacklist old token)
@@ -296,7 +323,9 @@ class TestRefreshTokenRotation:
             assert await mock_service.is_token_blacklisted(old_jti) is True
 
             # New token should be valid
-            new_payload = await verify_token(new_refresh_token, token_type="refresh_token")
+            new_payload = await verify_token(
+                new_refresh_token, token_type="refresh_token"
+            )
             assert new_payload is not None
             assert new_payload["sub"] == "rotation_user_123"
 
@@ -309,7 +338,10 @@ class TestRefreshTokenRotation:
         async def mock_get_blacklist_service():
             return mock_service
 
-        with patch('app.services.token_blacklist_service.get_blacklist_service', mock_get_blacklist_service):
+        with patch(
+            "app.services.token_blacklist_service.get_blacklist_service",
+            mock_get_blacklist_service,
+        ):
             # Create refresh token
             user_data = {"sub": "reuse_test_user"}
             refresh_tok = create_refresh_token(user_data)
@@ -334,7 +366,10 @@ class TestRefreshTokenRotation:
         async def mock_get_blacklist_service():
             return mock_service
 
-        with patch('app.services.token_blacklist_service.get_blacklist_service', mock_get_blacklist_service):
+        with patch(
+            "app.services.token_blacklist_service.get_blacklist_service",
+            mock_get_blacklist_service,
+        ):
             # Create initial refresh token
             user_data = {"sub": "endpoint_test_user"}
             initial_refresh = create_refresh_token(user_data)
@@ -368,7 +403,10 @@ class TestRefreshTokenRotation:
         async def mock_get_blacklist_service():
             return mock_service
 
-        with patch('app.services.token_blacklist_service.get_blacklist_service', mock_get_blacklist_service):
+        with patch(
+            "app.services.token_blacklist_service.get_blacklist_service",
+            mock_get_blacklist_service,
+        ):
             # Create tokens in same family
             user_data = {"sub": "family_test_user", "token_family": token_family}
 
@@ -413,10 +451,7 @@ class TestRateLimitingAuthEndpoints:
         """Create mock request for rate limiting tests"""
         request = Mock(spec=Request)
         request.client.host = "192.168.1.100"
-        request.headers = {
-            'User-Agent': 'MITA-Test/1.0',
-            'X-Forwarded-For': '10.0.0.1'
-        }
+        request.headers = {"User-Agent": "MITA-Test/1.0", "X-Forwarded-For": "10.0.0.1"}
         request.url.path = "/auth/login"
         request.method = "POST"
         return request
@@ -448,7 +483,11 @@ class TestRateLimitingAuthEndpoints:
                 # Increment a counter per key
                 key = "default"
                 if pipe.zremrangebyscore.call_args:
-                    key = pipe.zremrangebyscore.call_args[0][0] if pipe.zremrangebyscore.call_args[0] else "default"
+                    key = (
+                        pipe.zremrangebyscore.call_args[0][0]
+                        if pipe.zremrangebyscore.call_args[0]
+                        else "default"
+                    )
                 state["counts"].setdefault(key, 0)
                 state["counts"][key] += 1
                 return [0, 1, state["counts"][key], True]
@@ -462,13 +501,17 @@ class TestRateLimitingAuthEndpoints:
         limiter = AdvancedRateLimiter(redis_client=mock_redis)
         return limiter, mock_redis, state
 
-    def test_auth_endpoint_rate_limiting_basic(self, mock_request, rate_limiter_with_redis):
+    def test_auth_endpoint_rate_limiting_basic(
+        self, mock_request, rate_limiter_with_redis
+    ):
         """Test basic rate limiting on authentication endpoints"""
         rate_limiter, mock_redis, state = rate_limiter_with_redis
 
         # First few requests should succeed (login limit is 8 per 15 min)
         for i in range(3):
-            rate_limiter.check_auth_rate_limit(mock_request, "test@example.com", "login")
+            rate_limiter.check_auth_rate_limit(
+                mock_request, "test@example.com", "login"
+            )
 
         # Now force the counts to exceed the limit
         for key in state["counts"]:
@@ -476,7 +519,9 @@ class TestRateLimitingAuthEndpoints:
 
         # Should raise rate limit exception
         with pytest.raises(RateLimitException):
-            rate_limiter.check_auth_rate_limit(mock_request, "test@example.com", "login")
+            rate_limiter.check_auth_rate_limit(
+                mock_request, "test@example.com", "login"
+            )
 
     def test_progressive_penalty_system(self, mock_request):
         """Test progressive penalties for repeat offenders"""
@@ -490,11 +535,11 @@ class TestRateLimitingAuthEndpoints:
         #   >= 3  -> 1.5
         #   else  -> 1.0
         test_cases = [
-            (0, 1.0),    # No violations, no penalty
-            (2, 1.0),    # Under threshold, no penalty
-            (3, 1.5),    # First penalty tier (>= 3)
-            (8, 2.5),    # Second penalty tier (>= 8)
-            (15, 4.0),   # Maximum penalty (>= 15)
+            (0, 1.0),  # No violations, no penalty
+            (2, 1.0),  # Under threshold, no penalty
+            (3, 1.5),  # First penalty tier (>= 3)
+            (8, 2.5),  # Second penalty tier (>= 8)
+            (15, 4.0),  # Maximum penalty (>= 15)
         ]
 
         for violation_count, expected_penalty in test_cases:
@@ -503,7 +548,9 @@ class TestRateLimitingAuthEndpoints:
             client_id = rate_limiter._get_client_identifier(mock_request)
             penalty = rate_limiter._check_progressive_penalties(client_id, "login")
 
-            assert penalty == expected_penalty, f"Violation count {violation_count} should have penalty {expected_penalty}, got {penalty}"
+            assert (
+                penalty == expected_penalty
+            ), f"Violation count {violation_count} should have penalty {expected_penalty}, got {penalty}"
 
     def test_auth_rate_limiting_by_email(self, mock_request, rate_limiter_with_redis):
         """Test rate limiting by email address"""
@@ -524,7 +571,10 @@ class TestRateLimitingAuthEndpoints:
             rate_limiter.check_auth_rate_limit(mock_request, email, "login")
 
         # The error message pattern is "Too many {endpoint_type} attempts. Try again in {minutes} minutes."
-        assert "login" in str(exc_info.value).lower() or "too many" in str(exc_info.value).lower()
+        assert (
+            "login" in str(exc_info.value).lower()
+            or "too many" in str(exc_info.value).lower()
+        )
 
     def test_auth_rate_limiting_by_ip(self, mock_request, rate_limiter_with_redis):
         """Test rate limiting by IP address triggers rate limit exception"""
@@ -532,7 +582,9 @@ class TestRateLimitingAuthEndpoints:
 
         # Make initial calls to populate state keys
         for i in range(3):
-            rate_limiter.check_auth_rate_limit(mock_request, "test@example.com", "login")
+            rate_limiter.check_auth_rate_limit(
+                mock_request, "test@example.com", "login"
+            )
 
         # Force counters to exceed
         for key in list(state["counts"].keys()):
@@ -540,10 +592,15 @@ class TestRateLimitingAuthEndpoints:
 
         # Should raise exception due to rate limit
         with pytest.raises(RateLimitException) as exc_info:
-            rate_limiter.check_auth_rate_limit(mock_request, "test@example.com", "login")
+            rate_limiter.check_auth_rate_limit(
+                mock_request, "test@example.com", "login"
+            )
 
         # Verify the exception message contains rate limit info
-        assert "too many" in str(exc_info.value).lower() or "try again" in str(exc_info.value).lower()
+        assert (
+            "too many" in str(exc_info.value).lower()
+            or "try again" in str(exc_info.value).lower()
+        )
 
     def test_suspicious_authentication_patterns(self, mock_request):
         """Test detection of suspicious authentication patterns"""
@@ -593,7 +650,9 @@ class TestRateLimitingAuthEndpoints:
             rate_limiter = AdvancedRateLimiter(redis_client=mock_redis)
 
             # Make request to endpoint - should not raise
-            rate_limiter.check_auth_rate_limit(mock_request, "test@example.com", endpoint)
+            rate_limiter.check_auth_rate_limit(
+                mock_request, "test@example.com", endpoint
+            )
 
             # Verify rate limiting was applied (pipeline was used)
             assert mock_redis.pipeline.called
@@ -636,7 +695,7 @@ class TestRateLimitingAuthEndpoints:
         mock_request = Mock()
         mock_request.client = Mock()
         mock_request.client.host = "127.0.0.1"
-        mock_request.headers = {'User-Agent': 'TestClient', 'user-agent': 'TestClient'}
+        mock_request.headers = {"User-Agent": "TestClient", "user-agent": "TestClient"}
 
         # Create login payload
         login_data = LoginIn(email="test@example.com", password="testpassword")
@@ -645,10 +704,15 @@ class TestRateLimitingAuthEndpoints:
         mock_db = AsyncMock()
 
         # Mock the rate limiting to pass
-        with patch('app.api.auth.login.check_login_rate_limit', new_callable=AsyncMock) as mock_rate_limit, \
-             patch('app.api.auth.login.validate_required_fields'), \
-             patch('app.api.auth.login.validate_email', return_value="test@example.com"), \
-             patch('app.api.auth.login.log_security_event_async', new_callable=AsyncMock):
+        with patch(
+            "app.api.auth.login.check_login_rate_limit", new_callable=AsyncMock
+        ) as mock_rate_limit, patch(
+            "app.api.auth.login.validate_required_fields"
+        ), patch(
+            "app.api.auth.login.validate_email", return_value="test@example.com"
+        ), patch(
+            "app.api.auth.login.log_security_event_async", new_callable=AsyncMock
+        ):
 
             # Mock user query result - user not found scenario
             mock_result = Mock()
@@ -659,9 +723,7 @@ class TestRateLimitingAuthEndpoints:
             # The @handle_auth_errors decorator catches AuthenticationError
             # and returns a response instead of raising, so check the response.
             await login_user_standardized(
-                request=mock_request,
-                login_data=login_data,
-                db=mock_db
+                request=mock_request, login_data=login_data, db=mock_db
             )
 
             # Verify rate limiting was checked

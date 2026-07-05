@@ -2,22 +2,23 @@
 Budget Alert Service
 Monitors spending and sends alerts when budgets are at risk or exceeded
 """
+
+import logging
+from decimal import Decimal
 from typing import Dict, List, Optional
 from uuid import UUID
-from decimal import Decimal
-import logging
 
 from sqlalchemy.orm import Session
 
-from app.services.core.engine.budget_tracker import BudgetTracker
-from app.services.notification_integration import get_notification_integration
 from app.core.budget_thresholds import (
-    THRESHOLD_WARNING,
     THRESHOLD_DANGER,
     THRESHOLD_EXCEEDED,
     THRESHOLD_MODERATE,
+    THRESHOLD_WARNING,
 )
 from app.db.models import Goal
+from app.services.core.engine.budget_tracker import BudgetTracker
+from app.services.notification_integration import get_notification_integration
 
 logger = logging.getLogger(__name__)
 
@@ -28,20 +29,16 @@ class BudgetAlertService:
     """
 
     # Thresholds for sending alerts (sourced from app.core.budget_thresholds)
-    WARNING_THRESHOLD = THRESHOLD_WARNING        # 80% — first warning push
-    DANGER_ALERT_THRESHOLD = THRESHOLD_DANGER    # 90% — danger push
-    EXCEEDED_THRESHOLD = THRESHOLD_EXCEEDED      # 100% — exceeded push
+    WARNING_THRESHOLD = THRESHOLD_WARNING  # 80% — first warning push
+    DANGER_ALERT_THRESHOLD = THRESHOLD_DANGER  # 90% — danger push
+    EXCEEDED_THRESHOLD = THRESHOLD_EXCEEDED  # 100% — exceeded push
 
     def __init__(self, db: Session):
         self.db = db
         self.notifier = get_notification_integration(db)
 
     def check_budget_alerts(
-        self,
-        user_id: UUID,
-        year: int,
-        month: int,
-        category_budgets: Dict[str, Decimal]
+        self, user_id: UUID, year: int, month: int, category_budgets: Dict[str, Decimal]
     ) -> List[Dict]:
         """
         Check all category budgets and send alerts if needed
@@ -65,7 +62,7 @@ class BudgetAlertService:
                 if budget_limit <= 0:
                     continue  # Skip categories with no budget
 
-                spent = spent_amounts.get(category, Decimal('0.00'))
+                spent = spent_amounts.get(category, Decimal("0.00"))
                 percentage = float(spent / budget_limit)
 
                 # Check if we should send an alert
@@ -74,7 +71,7 @@ class BudgetAlertService:
                     category=category,
                     spent=float(spent),
                     limit=float(budget_limit),
-                    percentage=percentage
+                    percentage=percentage,
                 )
 
                 if alert:
@@ -86,9 +83,7 @@ class BudgetAlertService:
         return alerts_sent
 
     def _get_user_goal_context(
-        self,
-        user_id: UUID,
-        overspend_amount: float
+        self, user_id: UUID, overspend_amount: float
     ) -> Optional[Dict]:
         """
         Get goal context for alert messages.
@@ -126,7 +121,7 @@ class BudgetAlertService:
         category: str,
         spent: float,
         limit: float,
-        percentage: float
+        percentage: float,
     ) -> Dict:
         """
         Check if an alert should be sent for a specific category
@@ -164,7 +159,9 @@ class BudgetAlertService:
                         f"{goal_context['delay_days']} days."
                     )
                 else:
-                    logger.info(f"Budget exceeded alert sent for user {user_id}, category {category}")
+                    logger.info(
+                        f"Budget exceeded alert sent for user {user_id}, category {category}"
+                    )
 
                 result = {
                     "type": "exceeded",
@@ -200,7 +197,9 @@ class BudgetAlertService:
                         f"{goal_context['delay_days']} days."
                     )
                 else:
-                    logger.info(f"Budget danger alert sent for user {user_id}, category {category}")
+                    logger.info(
+                        f"Budget danger alert sent for user {user_id}, category {category}"
+                    )
 
                 result = {
                     "type": "danger",
@@ -247,7 +246,9 @@ class BudgetAlertService:
                         f"{goal_context['delay_days']} days."
                     )
                 else:
-                    logger.info(f"Budget warning sent for user {user_id}, category {category}")
+                    logger.info(
+                        f"Budget warning sent for user {user_id}, category {category}"
+                    )
 
                 result = {
                     "type": "warning",
@@ -270,11 +271,7 @@ class BudgetAlertService:
         return None
 
     def check_single_category(
-        self,
-        user_id: UUID,
-        category: str,
-        spent_amount: Decimal,
-        budget_limit: Decimal
+        self, user_id: UUID, category: str, spent_amount: Decimal, budget_limit: Decimal
     ) -> bool:
         """
         Check a single category immediately after a transaction
@@ -290,17 +287,13 @@ class BudgetAlertService:
             category=category,
             spent=float(spent_amount),
             limit=float(budget_limit),
-            percentage=percentage
+            percentage=percentage,
         )
 
         return alert is not None
 
     def send_monthly_summary(
-        self,
-        user_id: UUID,
-        year: int,
-        month: int,
-        category_budgets: Dict[str, Decimal]
+        self, user_id: UUID, year: int, month: int, category_budgets: Dict[str, Decimal]
     ) -> bool:
         """
         Send end-of-month budget summary
@@ -317,7 +310,7 @@ class BudgetAlertService:
             categories_over = 0
             for category, budget_limit in category_budgets.items():
                 if budget_limit > 0:
-                    spent = spent_amounts.get(category, Decimal('0.00'))
+                    spent = spent_amounts.get(category, Decimal("0.00"))
                     if spent > budget_limit:
                         categories_over += 1
 
@@ -325,7 +318,7 @@ class BudgetAlertService:
                 user_id=user_id,
                 total_spent=float(total_spent),
                 total_budget=float(total_budget),
-                categories_over=categories_over
+                categories_over=categories_over,
             )
 
             logger.info(f"Monthly budget summary sent to user {user_id}")
@@ -336,11 +329,7 @@ class BudgetAlertService:
             return False
 
     def get_budget_status(
-        self,
-        user_id: UUID,
-        year: int,
-        month: int,
-        category_budgets: Dict[str, Decimal]
+        self, user_id: UUID, year: int, month: int, category_budgets: Dict[str, Decimal]
     ) -> Dict[str, Dict]:
         """
         Get current budget status for all categories
@@ -356,7 +345,7 @@ class BudgetAlertService:
             spent_amounts = tracker.get_spent()
 
             for category, budget_limit in category_budgets.items():
-                spent = spent_amounts.get(category, Decimal('0.00'))
+                spent = spent_amounts.get(category, Decimal("0.00"))
                 percentage = float(spent / budget_limit) if budget_limit > 0 else 0
 
                 # Determine status (thresholds from app.core.budget_thresholds)
@@ -376,7 +365,7 @@ class BudgetAlertService:
                     "limit": float(budget_limit),
                     "remaining": float(budget_limit - spent),
                     "percentage": percentage,
-                    "status": budget_status
+                    "status": budget_status,
                 }
 
         except Exception as e:

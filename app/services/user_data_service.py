@@ -27,10 +27,14 @@ class UserDataService:
             try:
                 answers[row.question_key] = json.loads(row.answer_json)
             except (json.JSONDecodeError, TypeError) as e:
-                logger.warning(f"Failed to parse JSON for user {user_id}, question {row.question_key}: {str(e)}")
+                logger.warning(
+                    f"Failed to parse JSON for user {user_id}, question {row.question_key}: {str(e)}"
+                )
                 answers[row.question_key] = row.answer_json
             except Exception as e:
-                logger.error(f"Unexpected error parsing answer for user {user_id}, question {row.question_key}: {str(e)}")
+                logger.error(
+                    f"Unexpected error parsing answer for user {user_id}, question {row.question_key}: {str(e)}"
+                )
                 answers[row.question_key] = row.answer_json
         return answers
 
@@ -68,5 +72,7 @@ class UserDataService:
                 return profile.data
             return None
         except Exception as e:
-            logger.error(f"Failed to get user financial profile for user {user_id}: {str(e)}")
+            logger.error(
+                f"Failed to get user financial profile for user {user_id}: {str(e)}"
+            )
             return None

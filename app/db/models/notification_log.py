@@ -15,4 +15,6 @@ class NotificationLog(Base):
     channel = Column(String, nullable=False)  # 'push' or 'email'
     message = Column(String, nullable=False)
     success = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
