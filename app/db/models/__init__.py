@@ -8,6 +8,7 @@ from .daily_plan import DailyPlan
 from .expense import Expense
 from .goal import Goal
 from .habit import Habit, HabitCompletion
+from .iap_event import IAPEvent
 from .ignored_alert import IgnoredAlert
 from .installment import (
     AgeGroup,
@@ -80,4 +81,5 @@ __all__ = [
     "WaitlistEntry",
     "RedistributionEvent",
     "ScheduledExpense",
+    "IAPEvent",
 ]
