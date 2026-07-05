@@ -2,12 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mita/screens/onboarding_location_screen.dart';
 import 'package:mita/services/onboarding_state.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  // OnboardingState persists via SharedPreferences; without a mock the
+  // platform channel is missing and every reset()/save() throws.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('Onboarding Integration Tests', () {
-    setUp(() {
+    setUp(() async {
+      SharedPreferences.setMockInitialValues(<String, Object>{});
       // Reset onboarding state before each test
-      OnboardingState.instance.reset();
+      await OnboardingState.instance.reset();
     });
 
     testWidgets('Complete location selection flow',
