@@ -82,19 +82,22 @@ def initialize_database() -> None:
             "pool_use_lifo": True,  # Use LIFO for better connection reuse
         }
 
-        # SQLite fallback
+        # SQLite fallback — StaticPool accepts none of the Postgres pool kwargs
         if "sqlite" in database_url:
-            engine_kwargs["poolclass"] = StaticPool
+            engine_kwargs = {"echo": False, "poolclass": StaticPool}
 
         # Prepare connection arguments with correct types for asyncpg
         # CRITICAL for PgBouncer transaction mode
-        connect_args = {
-            "statement_cache_size": 0,  # Disable client-side statement cache
-            "prepared_statement_cache_size": 0,  # Disable prepared statements completely
-            "server_settings": {
-                "jit": "off",  # Disable JIT compilation for better compatibility
-            },
-        }
+        if "sqlite" in database_url:
+            connect_args = {}
+        else:
+            connect_args = {
+                "statement_cache_size": 0,  # Disable client-side statement cache
+                "prepared_statement_cache_size": 0,  # Disable prepared statements completely
+                "server_settings": {
+                    "jit": "off",  # Disable JIT compilation for better compatibility
+                },
+            }
 
         async_engine_local = create_async_engine(
             database_url,

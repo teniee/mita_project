@@ -9,6 +9,7 @@ os.environ.setdefault(
 )
 os.environ.setdefault("SECRET_KEY", "test_secret_key_for_testing_only")
 os.environ.setdefault("ENVIRONMENT", "test")
+os.environ.setdefault("TESTING", "true")
 os.environ.setdefault("FIREBASE_JSON", "{}")
 
 # SMTP Configuration for tests (prevent validation errors)
@@ -49,3 +50,32 @@ dummy.messaging = types.SimpleNamespace(
 sys.modules.setdefault("firebase_admin", dummy)
 sys.modules.setdefault("firebase_admin.credentials", dummy.credentials)
 sys.modules.setdefault("firebase_admin.firestore", dummy.firestore)
+
+
+# ---------------------------------------------------------------------------
+# Async engine lifecycle between tests
+#
+# pytest-asyncio gives every test its own event loop, and each TestClient
+# instance runs requests on its own portal loop. asyncpg connections are
+# bound to the loop that created them, so a pool initialized in one test
+# breaks DB access in the next ("attached to a different loop"). Dropping
+# the engine reference after each test forces a fresh pool per loop.
+# ---------------------------------------------------------------------------
+import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _reset_async_engine_between_tests():
+    yield
+    from app.core import async_session
+
+    engine = async_session.async_engine
+    async_session.async_engine = None
+    async_session.AsyncSessionLocal = None
+    if engine is not None:
+        try:
+            # Drop pool references without touching loop-bound connections;
+            # asyncpg closes the underlying sockets on garbage collection.
+            engine.sync_engine.dispose(close=False)
+        except Exception:
+            pass

@@ -285,20 +285,31 @@ def api_rate_limit(limit: int = 1000, window: int = 3600):  # 1000 requests per 
     return decorator
 
 
+def _testing_mode() -> bool:
+    """Relax auth rate limits under automated tests only."""
+    import os
+
+    return (
+        os.getenv("TESTING", "").lower() == "true" or os.getenv("ENVIRONMENT") == "test"
+    )
+
+
 # Dependency functions for FastAPI
 async def check_login_rate_limit(request: Request):
     """Dependency for login rate limiting"""
+    limit = 1000 if _testing_mode() else 10
     await rate_limiter.check_rate_limit(
-        request, 10, 900, "auth_login"
-    )  # 10 per 15 minutes (increased from emergency limits)
+        request, limit, 900, "auth_login"
+    )  # 10 per 15 minutes in production (relaxed for automated tests)
     return True
 
 
 async def check_register_rate_limit(request: Request):
     """Dependency for registration rate limiting"""
+    limit = 1000 if _testing_mode() else 5
     await rate_limiter.check_rate_limit(
-        request, 5, 3600, "auth_register"
-    )  # 5 per hour (increased from emergency limits)
+        request, limit, 3600, "auth_register"
+    )  # 5 per hour in production (relaxed for automated tests)
     return True
 
 

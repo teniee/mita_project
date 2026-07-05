@@ -22,7 +22,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 # Test configuration
 REDIS_TEST_URL = "redis://localhost:6379/15"  # Use database 15 for tests
 TEST_SECRET_KEY = "test_secret_key_for_mita_auth_testing_only"
-TEST_DATABASE_URL = "sqlite:///test_mita_auth.db"
+TEST_DATABASE_URL = os.getenv(
+    "TEST_DATABASE_URL",
+    "postgresql://test:test@localhost:5432/test_mita?sslmode=disable",
+)
 
 
 @pytest.fixture(scope="session")

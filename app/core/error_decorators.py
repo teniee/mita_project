@@ -102,6 +102,14 @@ def handle_errors(
                 if isinstance(e, HTTPException):
                     return StandardizedErrorHandler.create_response(e, request, user_id)
 
+                # Legacy MITA exceptions (RateLimitException etc.) carry their
+                # own status codes and have dedicated app-level handlers —
+                # re-raise instead of collapsing them into a 500.
+                from app.core.error_handler import MITAException as _MITAException
+
+                if isinstance(e, _MITAException):
+                    raise
+
                 # Handle all other exceptions as internal server errors
                 import traceback as _tb
 
@@ -175,6 +183,14 @@ def handle_errors(
                 # Handle FastAPI HTTPExceptions
                 if isinstance(e, HTTPException):
                     return StandardizedErrorHandler.create_response(e, request, user_id)
+
+                # Legacy MITA exceptions (RateLimitException etc.) carry their
+                # own status codes and have dedicated app-level handlers —
+                # re-raise instead of collapsing them into a 500.
+                from app.core.error_handler import MITAException as _MITAException
+
+                if isinstance(e, _MITAException):
+                    raise
 
                 # Handle all other exceptions as internal server errors
                 internal_error = StandardizedAPIException(

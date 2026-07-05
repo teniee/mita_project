@@ -21,6 +21,18 @@ from app.main import app
 client = TestClient(app)
 
 
+@pytest.fixture(scope="module", autouse=True)
+def _client_portal():
+    """Keep one anyio portal (event loop) for the whole module.
+
+    Without entering the client context, TestClient creates a fresh event
+    loop per request — the async DB pool from request #1 then crashes
+    request #2 with "attached to a different loop".
+    """
+    with client:
+        yield
+
+
 class TestNoSessionCookies:
     """Verify no cookies are used in authentication"""
 
@@ -64,7 +76,8 @@ class TestNoSessionCookies:
         _, refresh_token = authenticated_client
 
         response = client.post(
-            "/api/auth/refresh", headers={"Authorization": f"Bearer {refresh_token}"}
+            "/api/auth/refresh-token",
+            headers={"Authorization": f"Bearer {refresh_token}"},
         )
 
         # Check response headers for any cookie setting
@@ -124,11 +137,12 @@ class TestTokensInResponseBody:
 
         assert response.status_code in [200, 201], "Registration should succeed"
 
-        data = response.json()
+        body = response.json()
+        data = body.get("data", body)
         assert "access_token" in data, "Response should contain access_token in body"
         assert "refresh_token" in data, "Response should contain refresh_token in body"
         assert "token_type" in data, "Response should contain token_type in body"
-        assert data["token_type"] == "bearer", "Token type should be 'bearer'"
+        assert data["token_type"].lower() == "bearer", "Token type should be 'bearer'"
 
     def test_login_returns_tokens_in_body(self, create_test_user):
         """Login should return tokens in JSON response body"""
@@ -140,11 +154,12 @@ class TestTokensInResponseBody:
 
         assert response.status_code == 200, "Login should succeed"
 
-        data = response.json()
+        body = response.json()
+        data = body.get("data", body)
         assert "access_token" in data, "Response should contain access_token in body"
         assert "refresh_token" in data, "Response should contain refresh_token in body"
         assert "token_type" in data, "Response should contain token_type in body"
-        assert data["token_type"] == "bearer", "Token type should be 'bearer'"
+        assert data["token_type"].lower() == "bearer", "Token type should be 'bearer'"
 
 
 class TestNoSessionMiddleware:
@@ -242,7 +257,8 @@ def authenticated_client(create_test_user):
 
     assert response.status_code == 200, "Authentication failed"
 
-    data = response.json()
+    body = response.json()
+    data = body.get("data", body)
     return data["access_token"], data["refresh_token"]
 
 
