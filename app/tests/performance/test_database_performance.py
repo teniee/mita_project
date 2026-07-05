@@ -704,11 +704,14 @@ class DatabasePerformanceTests:
 
 
 @pytest.mark.asyncio
-async def test_cleanup_performance_test_data(async_session_factory):
+async def test_cleanup_performance_test_data():
     """
     Clean up performance test data after tests complete.
     Prevents test data from affecting subsequent runs.
     """
+    # This is a module-level test; the async_session_factory fixture is
+    # class-scoped and not visible here, so build the factory directly.
+    async_session_factory = get_async_session_factory()
     async with async_session_factory() as session:
         # Delete test transactions
         await session.execute(

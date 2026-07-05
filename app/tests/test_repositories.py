@@ -33,9 +33,7 @@ async def _isolated_db():
 
     async def _truncate(db):
         await db.execute(text("SET LOCAL lock_timeout = '3s'"))
-        await db.execute(
-            text("TRUNCATE users, transactions, expenses, goals CASCADE")
-        )
+        await db.execute(text("TRUNCATE users, transactions, expenses, goals CASCADE"))
 
     try:
         async with get_async_db_context() as db:

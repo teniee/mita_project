@@ -497,7 +497,6 @@ class TestAuthEndpointSecurity:
         # real register limiter until it trips.
         import os as _os
 
-
         _os.environ["TESTING"] = "false"
         _prev_environment = _os.environ.get("ENVIRONMENT")
         _os.environ["ENVIRONMENT"] = "development"  # _testing_mode checks both

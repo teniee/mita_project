@@ -401,6 +401,9 @@ class TestPerformanceAndScalability:
         mock_redis.side_effect = Exception("Redis unavailable")
 
         limiter = AdvancedRateLimiter()
+        # memory_store is a process-global shared across every limiter/test;
+        # start from a clean slate so the <=1000 bound reflects THIS test only.
+        limiter.memory_store.clear()
         mock_request = Mock(spec=Request)
         mock_request.client.host = "192.168.1.100"
         mock_request.headers = {"User-Agent": "TestClient"}
