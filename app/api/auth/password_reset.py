@@ -197,7 +197,8 @@ async def confirm_password_reset(
 
     # Validate inputs
     validate_required_fields(
-        {"email": email, "token": token, "new_password": new_password}
+        {"email": email, "token": token, "new_password": new_password},
+        ["email", "token", "new_password"],
     )
     validated_email = validate_email(email.lower().strip())
     validate_password(new_password)

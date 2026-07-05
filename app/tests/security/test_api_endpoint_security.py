@@ -21,12 +21,10 @@ Critical for financial application API security and compliance.
 from unittest.mock import Mock, patch
 
 import pytest
-from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 
-from app.api.auth.routes import router as auth_router
 from app.api.auth.schemas import TokenOut
-from app.services.auth_jwt_service import create_access_token, create_refresh_token
+from app.services.auth_jwt_service import create_access_token
 
 
 class TestAuthEndpointSecurity:
@@ -499,7 +497,6 @@ class TestAuthEndpointSecurity:
         # real register limiter until it trips.
         import os as _os
 
-        from app.core.error_handler import RateLimitException
 
         _os.environ["TESTING"] = "false"
         _prev_environment = _os.environ.get("ENVIRONMENT")

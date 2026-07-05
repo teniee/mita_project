@@ -72,7 +72,8 @@ async def change_password(
     try:
         # Validate inputs
         validate_required_fields(
-            {"current_password": current_password, "new_password": new_password}
+            {"current_password": current_password, "new_password": new_password},
+            ["current_password", "new_password"],
         )
         validate_password(new_password)
 

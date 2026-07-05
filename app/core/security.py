@@ -189,6 +189,7 @@ class SecurityConfig:
     SQL_INJECTION_PATTERNS = [
         r"(\b(union|select|insert|update|delete|drop|create|alter|exec|execute)\b)",
         r"(\b(or|and)\b\s+\d+\s*=\s*\d+)",
+        r"(\b(or|and)\b\s*'?[^'\s]*'?\s*=\s*'?[^'\s]*'?)",  # tautology: ' OR '1'='1 / OR 1=1
         r"(--|#|/\*|\*/)",
         r"(\bxp_cmdshell\b)",
         r"(\bsp_executesql\b)",
@@ -383,7 +384,12 @@ class AdvancedRateLimiter:
     """Production-grade rate limiting with sliding window algorithm and comprehensive security"""
 
     def __init__(self, redis_client=None):
-        self.redis = redis_client  # Use 'redis' to match _sliding_window_counter check on line 356
+        # Fall back to the module-level client (set on app startup) when a
+        # caller constructs the limiter without one, so direct instantiation
+        # picks up Redis just like get_rate_limiter().
+        self.redis = (
+            redis_client if redis_client is not None else globals().get("redis_client")
+        )
         self.memory_store = rate_limit_memory
         self.fail_secure_mode = getattr(
             settings, "RATE_LIMIT_FAIL_SECURE", False
@@ -428,6 +434,16 @@ class AdvancedRateLimiter:
         self, key: str, window_seconds: int, limit: int
     ) -> tuple[int, int, bool]:
         """Implement sliding window rate limiting with Redis sorted sets"""
+        if not self.redis and self.fail_secure_mode:
+            # Fail secure: with no rate-limit backend at all, deny rather than
+            # silently degrade to per-process memory counting.
+            logger.error(
+                f"Rate limiting backend unavailable - failing secure for key: {key[:20]}..."
+            )
+            raise RateLimitException(
+                "Service temporarily unavailable. Please try again later."
+            )
+
         if self.redis:
             try:
                 now = datetime.now(timezone.utc).timestamp()

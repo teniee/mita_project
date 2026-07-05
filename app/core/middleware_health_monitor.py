@@ -942,10 +942,7 @@ class MiddlewareHealthMonitor:
             )
 
             # Store in history
-            with self._lock:
-                self.health_history.append(report)
-                if len(self.health_history) > self.max_history_size:
-                    self.health_history = self.health_history[-self.max_history_size :]
+            self._store_health_history(report)
 
             return report
 
@@ -966,6 +963,13 @@ class MiddlewareHealthMonitor:
                 issues_detected=[f"Health monitoring system error: {str(e)}"],
                 recommendations=["Investigate health monitoring system immediately"],
             )
+
+    def _store_health_history(self, report: MiddlewareHealthReport) -> None:
+        """Append a report to bounded in-memory history (thread-safe)."""
+        with self._lock:
+            self.health_history.append(report)
+            if len(self.health_history) > self.max_history_size:
+                self.health_history = self.health_history[-self.max_history_size :]
 
     def get_health_history(self, limit: int = 100) -> List[MiddlewareHealthReport]:
         """Get recent health check history"""

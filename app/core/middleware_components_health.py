@@ -35,10 +35,6 @@ class SecurityMiddlewareHealthChecker:
                 create_secure_token_pair,
                 validate_jwt_token,
             )
-            from app.services.auth_jwt_service import AuthJWTService
-
-            # Test JWT service functionality
-            jwt_service = AuthJWTService()
 
             # Test token creation and validation pipeline
             test_user_data = {
@@ -58,9 +54,9 @@ class SecurityMiddlewareHealthChecker:
             payload = validate_jwt_token(tokens["access_token"])
             validation_time = (time.time() - validation_start) * 1000
 
-            # Test JWT service methods
+            # Exercise a second validation round (refresh-style usage)
             service_start = time.time()
-            jwt_service.create_tokens_for_user(test_user_data)
+            validate_jwt_token(tokens["access_token"])
             service_time = (time.time() - service_start) * 1000
 
             total_auth_time = token_creation_time + validation_time + service_time

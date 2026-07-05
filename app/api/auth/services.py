@@ -141,11 +141,17 @@ async def register_user_async(
 ) -> TokenOut:
     """SIMPLIFIED: Clean registration without complex timeout operations that cause hangs."""
 
-    # Basic validation
-    if len(data.password) < 8:
+    # Enforce the full password policy (parity with the primary
+    # registration route, which validates upper/lower/digit/special).
+    from app.core.error_handler import ValidationException
+    from app.core.security import SecurityUtils
+
+    try:
+        SecurityUtils.validate_password_strength(data.password)
+    except ValidationException as exc:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password must be at least 8 characters long",
+            detail=str(exc.message if hasattr(exc, "message") else exc),
         )
 
     # Simple user existence check without timeout

@@ -14,7 +14,6 @@ from typing import Any, Dict, Optional
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-import redis
 
 # Add parent directories to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
@@ -42,7 +41,9 @@ def mock_redis_client():
     Mock Redis client for testing rate limiting and blacklist functionality.
     Provides consistent Redis mock across all tests.
     """
-    mock_client = Mock(spec=redis.Redis)
+    mock_client = (
+        Mock()
+    )  # unspec'd: pipeline methods (execute) live on the pipeline, not Redis
 
     # Mock basic Redis operations
     mock_client.ping.return_value = True
@@ -54,12 +55,13 @@ def mock_redis_client():
 
     # Mock pipeline operations
     mock_client.pipeline.return_value = mock_client
-    mock_client.execute.return_value = [1, 300]  # Default rate limit response
+    mock_client.execute.return_value = [0, 1, 1, True]  # [zrem, zadd, zcard, expire]
 
     # Mock sorted set operations (for rate limiting)
     mock_client.zremrangebyscore.return_value = 0
     mock_client.zadd.return_value = 1
     mock_client.zcard.return_value = 1
+    mock_client.zrange.return_value = [(b"1", 1.0)]
 
     # Mock counter operations
     mock_client.incr.return_value = 1
