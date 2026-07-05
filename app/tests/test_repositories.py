@@ -24,9 +24,36 @@ async def _isolated_db():
     The engine/pool binds to the current event loop; pytest-asyncio creates a
     new loop per test, so the engine must be recreated each time. Truncation
     keeps unique-constraint fixtures (emails) from colliding between tests.
+
+    TRUNCATE needs an ACCESS EXCLUSIVE lock; if an earlier test leaked a
+    connection that is still "idle in transaction" it would block forever.
+    We bound the wait with a short lock_timeout and, on contention, terminate
+    the idle-in-transaction backends holding the lock, then retry once.
     """
-    async with get_async_db_context() as db:
-        await db.execute(text("TRUNCATE users, transactions, expenses, goals CASCADE"))
+
+    async def _truncate(db):
+        await db.execute(text("SET LOCAL lock_timeout = '3s'"))
+        await db.execute(
+            text("TRUNCATE users, transactions, expenses, goals CASCADE")
+        )
+
+    try:
+        async with get_async_db_context() as db:
+            await _truncate(db)
+    except Exception:
+        # Clear any leaked idle-in-transaction backends, then retry once.
+        async with get_async_db_context() as db:
+            await db.execute(
+                text(
+                    "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+                    "WHERE datname = current_database() "
+                    "AND state = 'idle in transaction' "
+                    "AND pid <> pg_backend_pid()"
+                )
+            )
+        async with get_async_db_context() as db:
+            await _truncate(db)
+
     yield
     await close_database()
 
