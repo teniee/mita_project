@@ -236,7 +236,7 @@ def _patch_models(monkeypatch, db):
     monkeypatch.setattr(svc, "DailyPlan", DailyPlan)
     monkeypatch.setattr(svc, "Goal", Goal)
     monkeypatch.setattr(svc, "Notification", Notification)
-    monkeypatch.setattr(svc, "User", User)
+    # NOTE: the service does not import User, so there is nothing to patch here.
 
 
 def _mock_notifier():

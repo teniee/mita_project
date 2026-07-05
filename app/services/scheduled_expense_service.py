@@ -194,7 +194,7 @@ async def get_impact(
     Returns:
         ScheduledImpactResult with adjusted_safe_daily_limit and per-expense breakdown.
     """
-    today = date.today()
+    real_today = date.today()
     last_day = monthrange(year, month)[1]
     month_start = date(year, month, 1)
     month_end = date(year, month, last_day)
@@ -240,4 +240,18 @@ async def get_impact(
         for p in plans_orm
     ]
 
-    return compute_scheduled_impact(expense_data, plan_data, today)
+    # Anchor the engine's "today" INSIDE the requested month. The engine derives
+    # its year/month (and the pending-expense filter) from this anchor, so
+    # passing the real calendar date while viewing another month made it compute
+    # for the wrong month and drop every pending expense (total_committed == 0).
+    #  - current month  -> the real date (normal "days remaining from today")
+    #  - future month   -> the 1st (the whole month is ahead)
+    #  - past month     -> the earliest budgeted day (what's left of that month)
+    if (year, month) == (real_today.year, real_today.month):
+        anchor = real_today
+    elif (year, month) > (real_today.year, real_today.month):
+        anchor = month_start
+    else:
+        anchor = min((p.date for p in plan_data), default=month_start)
+
+    return compute_scheduled_impact(expense_data, plan_data, anchor)
