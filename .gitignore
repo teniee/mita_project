@@ -73,3 +73,7 @@ node_modules/
 *.backup
 *.before_fix
 **/.DS_Store
+
+# Redis runtime dump (created when running a local redis-server in-repo)
+dump.rdb
+*.rdb
