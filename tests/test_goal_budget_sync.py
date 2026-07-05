@@ -16,32 +16,31 @@ Coverage:
 
 Total: 36 tests
 """
+
 from __future__ import annotations
 
 import asyncio
 import calendar
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, call, patch
-
-import pytest
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.services.core.engine.goal_budget_sync import (
-    GOAL_SAVINGS_CATEGORY,
     _INACTIVE_STATUSES,
+    GOAL_SAVINGS_CATEGORY,
     calculate_daily_savings_amount,
     calculate_required_monthly_contribution,
     remove_goal_daily_plan_rows,
     sync_goal_to_daily_plan,
 )
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _run(coro):
     """Run an async coroutine in tests without requiring pytest-asyncio."""
@@ -86,13 +85,16 @@ def _make_async_db(existing_row=None):
 # calculate_required_monthly_contribution
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestCalculateRequiredMonthlyContribution:
 
     TODAY = date(2026, 3, 19)
 
     def test_standard_case(self):
         """$500 needed by June 30 with nothing saved yet."""
-        goal = _make_goal(target_amount=500, saved_amount=0, target_date=date(2026, 6, 30))
+        goal = _make_goal(
+            target_amount=500, saved_amount=0, target_date=date(2026, 6, 30)
+        )
         result = calculate_required_monthly_contribution(goal, self.TODAY)
         # (500 - 0) / months_remaining; months > 0, result > 0
         assert result > Decimal("0")
@@ -100,8 +102,12 @@ class TestCalculateRequiredMonthlyContribution:
 
     def test_partial_savings_reduces_monthly_contribution(self):
         """Partially funded goal needs less per month."""
-        full = _make_goal(target_amount=1200, saved_amount=0, target_date=date(2026, 9, 30))
-        partial = _make_goal(target_amount=1200, saved_amount=600, target_date=date(2026, 9, 30))
+        full = _make_goal(
+            target_amount=1200, saved_amount=0, target_date=date(2026, 9, 30)
+        )
+        partial = _make_goal(
+            target_amount=1200, saved_amount=600, target_date=date(2026, 9, 30)
+        )
         full_monthly = calculate_required_monthly_contribution(full, self.TODAY)
         partial_monthly = calculate_required_monthly_contribution(partial, self.TODAY)
         assert partial_monthly < full_monthly
@@ -140,12 +146,16 @@ class TestCalculateRequiredMonthlyContribution:
         assert calculate_required_monthly_contribution(goal, self.TODAY) == Decimal("0")
 
     def test_returns_decimal_not_float(self):
-        goal = _make_goal(target_amount=300, saved_amount=0, target_date=date(2026, 6, 1))
+        goal = _make_goal(
+            target_amount=300, saved_amount=0, target_date=date(2026, 6, 1)
+        )
         result = calculate_required_monthly_contribution(goal, self.TODAY)
         assert isinstance(result, Decimal)
 
     def test_result_has_2_decimal_places(self):
-        goal = _make_goal(target_amount=100, saved_amount=0, target_date=date(2026, 7, 1))
+        goal = _make_goal(
+            target_amount=100, saved_amount=0, target_date=date(2026, 7, 1)
+        )
         result = calculate_required_monthly_contribution(goal, self.TODAY)
         # str(result) should not have more than 2 decimal digits
         assert result == result.quantize(Decimal("0.01"))
@@ -154,6 +164,7 @@ class TestCalculateRequiredMonthlyContribution:
 # ─────────────────────────────────────────────────────────────────────────────
 # calculate_daily_savings_amount
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestCalculateDailySavingsAmount:
 
@@ -190,6 +201,7 @@ class TestCalculateDailySavingsAmount:
 # ─────────────────────────────────────────────────────────────────────────────
 # sync_goal_to_daily_plan — mock-based
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestSyncGoalToDailyPlan:
 
@@ -243,7 +255,9 @@ class TestSyncGoalToDailyPlan:
         """planned_amount = monthly_contribution / days_in_month."""
         db = _make_async_db(existing_row=None)
         # target $310 by June 30 ≈ 3.4 months → ~$91/month → ~$2.93/day in March
-        goal = _make_goal(target_amount=310, saved_amount=0, target_date=date(2026, 6, 30))
+        goal = _make_goal(
+            target_amount=310, saved_amount=0, target_date=date(2026, 6, 30)
+        )
 
         _run(sync_goal_to_daily_plan(db, goal, self.USER_ID, today=self.TODAY))
 
@@ -319,7 +333,9 @@ class TestSyncGoalToDailyPlan:
         """Goal already reached target: no more daily reservations needed."""
         db = _make_async_db()
         db.execute.return_value.rowcount = 3
-        goal = _make_goal(target_amount=500, saved_amount=500, target_date=date(2026, 6, 30))
+        goal = _make_goal(
+            target_amount=500, saved_amount=500, target_date=date(2026, 6, 30)
+        )
 
         upserted, removed = _run(
             sync_goal_to_daily_plan(db, goal, self.USER_ID, today=self.TODAY)
@@ -341,6 +357,7 @@ class TestSyncGoalToDailyPlan:
 # remove_goal_daily_plan_rows — mock-based
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestRemoveGoalDailyPlanRows:
 
     USER_ID = uuid.uuid4()
@@ -351,7 +368,9 @@ class TestRemoveGoalDailyPlanRows:
         db.execute.return_value.rowcount = 7
 
         result = _run(
-            remove_goal_daily_plan_rows(db, self.GOAL_ID, self.USER_ID, from_date=date(2026, 3, 19))
+            remove_goal_daily_plan_rows(
+                db, self.GOAL_ID, self.USER_ID, from_date=date(2026, 3, 19)
+            )
         )
         assert result == 7
 
@@ -359,9 +378,7 @@ class TestRemoveGoalDailyPlanRows:
         db = _make_async_db()
         db.execute.return_value.rowcount = 0
 
-        with patch(
-            "app.services.core.engine.goal_budget_sync.date"
-        ) as mock_date:
+        with patch("app.services.core.engine.goal_budget_sync.date") as mock_date:
             mock_date.today.return_value = date(2026, 3, 19)
             mock_date.side_effect = lambda *a, **kw: date(*a, **kw)
             _run(remove_goal_daily_plan_rows(db, self.GOAL_ID, self.USER_ID))
@@ -373,20 +390,22 @@ class TestRemoveGoalDailyPlanRows:
         db.execute.return_value.rowcount = 0
 
         result = _run(
-            remove_goal_daily_plan_rows(db, self.GOAL_ID, self.USER_ID, from_date=date(2026, 3, 19))
+            remove_goal_daily_plan_rows(
+                db, self.GOAL_ID, self.USER_ID, from_date=date(2026, 3, 19)
+            )
         )
         assert result == 0
 
     def test_executes_delete_statement(self):
         """Verify that a DELETE is executed (not just a SELECT)."""
-        from sqlalchemy import delete as sa_delete
-        from app.db.models.daily_plan import DailyPlan
 
         db = _make_async_db()
         db.execute.return_value.rowcount = 3
 
         _run(
-            remove_goal_daily_plan_rows(db, self.GOAL_ID, self.USER_ID, from_date=date(2026, 3, 19))
+            remove_goal_daily_plan_rows(
+                db, self.GOAL_ID, self.USER_ID, from_date=date(2026, 3, 19)
+            )
         )
         # execute was called exactly once with a DML delete statement
         assert db.execute.call_count == 1
@@ -396,15 +415,18 @@ class TestRemoveGoalDailyPlanRows:
 # Category priority — confirm goal_savings is SACRED
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestGoalSavingsCategoryIsSacred:
 
     def test_goal_savings_is_sacred(self):
         from app.core.category_priority import is_sacred
+
         assert is_sacred(GOAL_SAVINGS_CATEGORY) is True
 
     def test_goal_savings_not_donor(self):
         """Rebalancer must never take from goal_savings rows."""
-        from app.core.category_priority import get_category_level, CategoryLevel
+        from app.core.category_priority import CategoryLevel, get_category_level
+
         level = get_category_level(GOAL_SAVINGS_CATEGORY)
         assert level == CategoryLevel.SACRED
 
@@ -419,6 +441,7 @@ class TestGoalSavingsCategoryIsSacred:
 # ─────────────────────────────────────────────────────────────────────────────
 # Edge cases and precision
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestEdgeCasesAndPrecision:
 

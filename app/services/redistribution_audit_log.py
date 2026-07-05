@@ -13,6 +13,7 @@ Public API (unchanged signatures, db param added):
     get_redistribution_history(db, user_id, limit=50)
     clear_user_audit_log(db, user_id)
 """
+
 from __future__ import annotations
 
 import uuid
@@ -40,7 +41,9 @@ def _parse_day(from_day: Optional[Union[str, date, datetime]]) -> Optional[date]
     try:
         return datetime.fromisoformat(str(from_day)).date()
     except ValueError:
-        logger.warning("redistribution_audit_log: could not parse from_day=%r", from_day)
+        logger.warning(
+            "redistribution_audit_log: could not parse from_day=%r", from_day
+        )
         return None
 
 
@@ -92,12 +95,19 @@ def record_redistribution_event(
 
     logger.info(
         "Redistribution recorded: %s → %s $%.2f (%s)",
-        from_category, to_category, float(amount), reason,
+        from_category,
+        to_category,
+        float(amount),
+        reason,
     )
 
     return {
         "id": str(event_id),
-        "timestamp": event.created_at.isoformat() if event.created_at else datetime.now(timezone.utc).isoformat(),
+        "timestamp": (
+            event.created_at.isoformat()
+            if event.created_at
+            else datetime.now(timezone.utc).isoformat()
+        ),
         "user_id": str(user_id),
         "from_category": from_category,
         "to_category": to_category,

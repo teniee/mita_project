@@ -1,8 +1,11 @@
 from sqlalchemy.orm import Session
+
 from app.services.user_data_service import UserDataService
 
 
-def can_user_afford_installment(user_id: int, price: float, months: int, db: Session) -> dict:
+def can_user_afford_installment(
+    user_id: int, price: float, months: int, db: Session
+) -> dict:
     user_data_service = UserDataService()
     profile = user_data_service.get_user_financial_profile(user_id, db)
     if not profile:

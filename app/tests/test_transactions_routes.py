@@ -4,8 +4,8 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, create_autospec
 
 import pytest
-from starlette.datastructures import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.datastructures import UploadFile
 
 from app.api.transactions.routes import create_transaction_standardized, process_receipt
 from app.api.transactions.schemas import TxnIn
@@ -22,7 +22,9 @@ async def test_create_transaction_updates_plan(monkeypatch):
 
     # Mock add_transaction (called via db.run_sync)
     dummy_result = {"id": "t123", "category": "food", "amount": 12.5}
-    monkeypatch.setattr(txn_routes, "add_transaction", lambda user, txn, session: dummy_result)
+    monkeypatch.setattr(
+        txn_routes, "add_transaction", lambda user, txn, session: dummy_result
+    )
 
     db = create_autospec(AsyncSession, instance=True)
     # run_sync calls the lambda with a sync session

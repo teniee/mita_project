@@ -1,6 +1,7 @@
 """Simple persistent store for user moods."""
 
 from typing import Optional
+
 from sqlalchemy.orm import Session
 
 from app.core.session import get_db

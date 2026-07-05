@@ -2,9 +2,10 @@
 Notification Integration Helper
 Simplifies sending notifications from any module
 """
-from typing import Optional, Dict, Any
-from uuid import UUID
+
 import logging
+from typing import Any, Dict, Optional
+from uuid import UUID
 
 from sqlalchemy.orm import Session
 
@@ -34,9 +35,7 @@ class NotificationIntegration:
         try:
             template = self.templates.goal_created(goal_title, target_amount)
             notification = self.service.create_notification(
-                user_id=user_id,
-                send_immediately=True,
-                **template
+                user_id=user_id, send_immediately=True, **template
             )
             logger.info(f"Goal created notification sent to user {user_id}")
             return notification
@@ -50,7 +49,7 @@ class NotificationIntegration:
         goal_title: str,
         progress: float,
         saved_amount: float,
-        target_amount: float
+        target_amount: float,
     ):
         """
         Send notification for goal progress milestones (25%, 50%, 75%, 90%)
@@ -59,7 +58,9 @@ class NotificationIntegration:
         try:
             # Check if this is a milestone worth notifying
             milestone_thresholds = [25, 50, 75, 90]
-            is_milestone = any(abs(progress - threshold) < 1 for threshold in milestone_thresholds)
+            is_milestone = any(
+                abs(progress - threshold) < 1 for threshold in milestone_thresholds
+            )
 
             if not is_milestone:
                 return None
@@ -68,11 +69,11 @@ class NotificationIntegration:
                 goal_title, progress, saved_amount, target_amount
             )
             notification = self.service.create_notification(
-                user_id=user_id,
-                send_immediately=True,
-                **template
+                user_id=user_id, send_immediately=True, **template
             )
-            logger.info(f"Goal progress ({progress}%) notification sent to user {user_id}")
+            logger.info(
+                f"Goal progress ({progress}%) notification sent to user {user_id}"
+            )
             return notification
         except Exception as e:
             logger.error(f"Failed to send goal progress notification: {e}")
@@ -83,15 +84,15 @@ class NotificationIntegration:
         user_id: UUID,
         goal_title: str,
         final_amount: float,
-        days_taken: Optional[int] = None
+        days_taken: Optional[int] = None,
     ):
         """Send celebration notification when goal is completed"""
         try:
-            template = self.templates.goal_completed(goal_title, final_amount, days_taken)
+            template = self.templates.goal_completed(
+                goal_title, final_amount, days_taken
+            )
             notification = self.service.create_notification(
-                user_id=user_id,
-                send_immediately=True,
-                **template
+                user_id=user_id, send_immediately=True, **template
             )
             logger.info(f"Goal completed notification sent to user {user_id}")
             return notification
@@ -104,9 +105,7 @@ class NotificationIntegration:
         try:
             template = self.templates.goal_overdue(goal_title, days_overdue)
             notification = self.service.create_notification(
-                user_id=user_id,
-                send_immediately=True,
-                **template
+                user_id=user_id, send_immediately=True, **template
             )
             logger.info(f"Goal overdue notification sent to user {user_id}")
             return notification
@@ -119,15 +118,15 @@ class NotificationIntegration:
         user_id: UUID,
         goal_title: str,
         days_remaining: int,
-        remaining_amount: float
+        remaining_amount: float,
     ):
         """Send reminder when goal deadline is approaching"""
         try:
-            template = self.templates.goal_due_soon(goal_title, days_remaining, remaining_amount)
+            template = self.templates.goal_due_soon(
+                goal_title, days_remaining, remaining_amount
+            )
             notification = self.service.create_notification(
-                user_id=user_id,
-                send_immediately=True,
-                **template
+                user_id=user_id, send_immediately=True, **template
             )
             logger.info(f"Goal due soon notification sent to user {user_id}")
             return notification
@@ -145,17 +144,17 @@ class NotificationIntegration:
         category: str,
         spent: float,
         limit: float,
-        percentage: float
+        percentage: float,
     ):
         """Send warning when budget reaches 80%"""
         try:
             template = self.templates.budget_warning(category, spent, limit, percentage)
             notification = self.service.create_notification(
-                user_id=user_id,
-                send_immediately=True,
-                **template
+                user_id=user_id, send_immediately=True, **template
             )
-            logger.info(f"Budget warning notification sent to user {user_id} for {category}")
+            logger.info(
+                f"Budget warning notification sent to user {user_id} for {category}"
+            )
             return notification
         except Exception as e:
             logger.error(f"Failed to send budget warning notification: {e}")
@@ -167,39 +166,34 @@ class NotificationIntegration:
         category: str,
         spent: float,
         limit: float,
-        percentage: float
+        percentage: float,
     ):
         """Send alert when budget reaches 90%"""
         try:
             template = self.templates.budget_danger(category, spent, limit, percentage)
             notification = self.service.create_notification(
-                user_id=user_id,
-                send_immediately=True,
-                **template
+                user_id=user_id, send_immediately=True, **template
             )
-            logger.info(f"Budget danger notification sent to user {user_id} for {category}")
+            logger.info(
+                f"Budget danger notification sent to user {user_id} for {category}"
+            )
             return notification
         except Exception as e:
             logger.error(f"Failed to send budget danger notification: {e}")
             return None
 
     def notify_budget_exceeded(
-        self,
-        user_id: UUID,
-        category: str,
-        spent: float,
-        limit: float,
-        overage: float
+        self, user_id: UUID, category: str, spent: float, limit: float, overage: float
     ):
         """Send alert when budget is exceeded"""
         try:
             template = self.templates.budget_exceeded(category, spent, limit, overage)
             notification = self.service.create_notification(
-                user_id=user_id,
-                send_immediately=True,
-                **template
+                user_id=user_id, send_immediately=True, **template
             )
-            logger.info(f"Budget exceeded notification sent to user {user_id} for {category}")
+            logger.info(
+                f"Budget exceeded notification sent to user {user_id} for {category}"
+            )
             return notification
         except Exception as e:
             logger.error(f"Failed to send budget exceeded notification: {e}")
@@ -210,7 +204,7 @@ class NotificationIntegration:
         user_id: UUID,
         total_spent: float,
         total_budget: float,
-        categories_over: int
+        categories_over: int,
     ):
         """Send end of month budget summary"""
         try:
@@ -218,9 +212,7 @@ class NotificationIntegration:
                 total_spent, total_budget, categories_over
             )
             notification = self.service.create_notification(
-                user_id=user_id,
-                send_immediately=True,
-                **template
+                user_id=user_id, send_immediately=True, **template
             )
             logger.info(f"Monthly budget summary sent to user {user_id}")
             return notification
@@ -237,15 +229,13 @@ class NotificationIntegration:
         user_id: UUID,
         amount: float,
         category: str,
-        merchant: Optional[str] = None
+        merchant: Optional[str] = None,
     ):
         """Send notification for large transactions"""
         try:
             template = self.templates.large_transaction(amount, category, merchant)
             notification = self.service.create_notification(
-                user_id=user_id,
-                send_immediately=True,
-                **template
+                user_id=user_id, send_immediately=True, **template
             )
             logger.info(f"Large transaction notification sent to user {user_id}")
             return notification
@@ -254,19 +244,15 @@ class NotificationIntegration:
             return None
 
     def notify_transaction_added_to_goal(
-        self,
-        user_id: UUID,
-        amount: float,
-        goal_title: str,
-        new_progress: float
+        self, user_id: UUID, amount: float, goal_title: str, new_progress: float
     ):
         """Send notification when transaction is linked to goal"""
         try:
-            template = self.templates.transaction_added_to_goal(amount, goal_title, new_progress)
+            template = self.templates.transaction_added_to_goal(
+                amount, goal_title, new_progress
+            )
             notification = self.service.create_notification(
-                user_id=user_id,
-                send_immediately=True,
-                **template
+                user_id=user_id, send_immediately=True, **template
             )
             logger.info(f"Transaction goal link notification sent to user {user_id}")
             return notification
@@ -282,15 +268,15 @@ class NotificationIntegration:
         self,
         user_id: UUID,
         recommendation: str,
-        potential_savings: Optional[float] = None
+        potential_savings: Optional[float] = None,
     ):
         """Send AI-generated recommendation"""
         try:
-            template = self.templates.ai_recommendation(recommendation, potential_savings)
+            template = self.templates.ai_recommendation(
+                recommendation, potential_savings
+            )
             notification = self.service.create_notification(
-                user_id=user_id,
-                send_immediately=True,
-                **template
+                user_id=user_id, send_immediately=True, **template
             )
             logger.info(f"AI recommendation sent to user {user_id}")
             return notification
@@ -298,19 +284,12 @@ class NotificationIntegration:
             logger.error(f"Failed to send AI recommendation: {e}")
             return None
 
-    def notify_savings_opportunity(
-        self,
-        user_id: UUID,
-        category: str,
-        amount: float
-    ):
+    def notify_savings_opportunity(self, user_id: UUID, category: str, amount: float):
         """Send notification about savings opportunity"""
         try:
             template = self.templates.savings_opportunity(category, amount)
             notification = self.service.create_notification(
-                user_id=user_id,
-                send_immediately=True,
-                **template
+                user_id=user_id, send_immediately=True, **template
             )
             logger.info(f"Savings opportunity notification sent to user {user_id}")
             return notification
@@ -323,18 +302,13 @@ class NotificationIntegration:
     # ============================================================================
 
     def notify_daily_budget_reminder(
-        self,
-        user_id: UUID,
-        remaining_budget: float,
-        days_left: int
+        self, user_id: UUID, remaining_budget: float, days_left: int
     ):
         """Send daily budget reminder"""
         try:
             template = self.templates.daily_budget_reminder(remaining_budget, days_left)
             notification = self.service.create_notification(
-                user_id=user_id,
-                send_immediately=True,
-                **template
+                user_id=user_id, send_immediately=True, **template
             )
             logger.info(f"Daily budget reminder sent to user {user_id}")
             return notification
@@ -343,18 +317,15 @@ class NotificationIntegration:
             return None
 
     def notify_weekly_progress(
-        self,
-        user_id: UUID,
-        goals_on_track: int,
-        total_saved_this_week: float
+        self, user_id: UUID, goals_on_track: int, total_saved_this_week: float
     ):
         """Send weekly progress report"""
         try:
-            template = self.templates.weekly_progress_report(goals_on_track, total_saved_this_week)
+            template = self.templates.weekly_progress_report(
+                goals_on_track, total_saved_this_week
+            )
             notification = self.service.create_notification(
-                user_id=user_id,
-                send_immediately=True,
-                **template
+                user_id=user_id, send_immediately=True, **template
             )
             logger.info(f"Weekly progress report sent to user {user_id}")
             return notification
@@ -396,7 +367,9 @@ class NotificationIntegration:
         except Exception as exc:
             logger.error(
                 "failed to send velocity_watch: user=%s cat=%s err=%s",
-                user_id, category, exc,
+                user_id,
+                category,
+                exc,
             )
             return None
 
@@ -435,7 +408,9 @@ class NotificationIntegration:
         except Exception as exc:
             logger.error(
                 "failed to send velocity_warning: user=%s cat=%s err=%s",
-                user_id, category, exc,
+                user_id,
+                category,
+                exc,
             )
             return None
 
@@ -474,7 +449,9 @@ class NotificationIntegration:
         except Exception as exc:
             logger.error(
                 "failed to send velocity_critical: user=%s cat=%s err=%s",
-                user_id, category, exc,
+                user_id,
+                category,
+                exc,
             )
             return None
 
@@ -501,13 +478,17 @@ class NotificationIntegration:
             )
             logger.info(
                 "spending_win notification sent: user=%s type=%s streak=%d",
-                user_id, win_type, streak_days,
+                user_id,
+                win_type,
+                streak_days,
             )
             return notification
         except Exception as exc:
             logger.error(
                 "failed to send spending_win: user=%s type=%s err=%s",
-                user_id, win_type, exc,
+                user_id,
+                win_type,
+                exc,
             )
             return None
 
@@ -611,7 +592,7 @@ class NotificationIntegration:
         image_url: Optional[str] = None,
         action_url: Optional[str] = None,
         data: Optional[Dict[str, Any]] = None,
-        send_push: bool = True
+        send_push: bool = True,
     ):
         """
         Send a custom notification with full control
@@ -628,7 +609,7 @@ class NotificationIntegration:
                 image_url=image_url,
                 action_url=action_url,
                 data=data,
-                send_immediately=send_push
+                send_immediately=send_push,
             )
             logger.info(f"Custom notification sent to user {user_id}")
             return notification

@@ -11,12 +11,12 @@ Integrates with the sync cron infrastructure (same pattern as velocity alerts):
   • run_scheduled_expenses_daily() — no-arg wrapper for rq_scheduler
   • run_scheduled_expenses_batch(db, today) — testable core, accepts injected session
 """
+
 from __future__ import annotations
 
 import calendar
 import logging
 from datetime import date, datetime, timedelta, timezone
-from decimal import Decimal
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -91,9 +91,7 @@ def _process_due_expenses(db: Session, today: date, summary: dict) -> None:
         .all()
     )
 
-    logger.info(
-        "scheduled_expense cron: %d expenses due on %s", len(due), today
-    )
+    logger.info("scheduled_expense cron: %d expenses due on %s", len(due), today)
 
     for expense in due:
         try:
@@ -185,9 +183,7 @@ def _send_reminders(db: Session, today: date, summary: dict) -> None:
         .all()
     )
 
-    logger.info(
-        "scheduled_expense cron: %d reminders to send", len(upcoming)
-    )
+    logger.info("scheduled_expense cron: %d reminders to send", len(upcoming))
 
     notif = NotificationIntegration(db)
 

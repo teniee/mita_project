@@ -3,24 +3,27 @@ Tests for resilient service implementations
 Tests GPT service and Google Auth service with circuit breaker protection
 """
 
-import pytest
 from unittest.mock import AsyncMock, Mock, patch
+
 import httpx
 import openai
+import pytest
 from fastapi import HTTPException
 
-from app.services.resilient_gpt_service import ResilientGPTService, get_gpt_service
+from app.core.circuit_breaker import CircuitBreakerState
 from app.services.resilient_google_auth_service import (
     ResilientGoogleAuthService,
+    authenticate_google_user,
     get_google_auth_service,
-    authenticate_google_user
 )
-from app.core.circuit_breaker import CircuitBreakerState
+from app.services.resilient_gpt_service import ResilientGPTService, get_gpt_service
 
 
 def _make_mock_request():
     """Create a mock httpx.Request for OpenAI exception constructors"""
-    return httpx.Request(method="POST", url="https://api.openai.com/v1/chat/completions")
+    return httpx.Request(
+        method="POST", url="https://api.openai.com/v1/chat/completions"
+    )
 
 
 def _make_mock_response(status_code=429):
@@ -35,7 +38,7 @@ class TestResilientGPTService:
     @pytest.fixture
     def gpt_service(self):
         """Create a GPT service with mocked OpenAI client"""
-        with patch('app.services.resilient_gpt_service.AsyncOpenAI') as mock_openai:
+        with patch("app.services.resilient_gpt_service.AsyncOpenAI") as mock_openai:
             service = ResilientGPTService("test_api_key", "gpt-4")
             service.client = mock_openai.return_value
             return service
@@ -48,7 +51,9 @@ class TestResilientGPTService:
         mock_response.choices = [Mock()]
         mock_response.choices[0].message.content = "Great financial advice here!"
 
-        gpt_service.client.chat.completions.create = AsyncMock(return_value=mock_response)
+        gpt_service.client.chat.completions.create = AsyncMock(
+            return_value=mock_response
+        )
 
         messages = [{"role": "user", "content": "How can I save money?"}]
         result = await gpt_service.ask_financial_advice(messages)
@@ -62,9 +67,7 @@ class TestResilientGPTService:
         mock_response = _make_mock_response(status_code=429)
         gpt_service.client.chat.completions.create = AsyncMock(
             side_effect=openai.RateLimitError(
-                "Rate limit exceeded",
-                response=mock_response,
-                body=None
+                "Rate limit exceeded", response=mock_response, body=None
             )
         )
 
@@ -80,8 +83,7 @@ class TestResilientGPTService:
         mock_request = _make_mock_request()
         gpt_service.client.chat.completions.create = AsyncMock(
             side_effect=openai.APIConnectionError(
-                message="Connection failed",
-                request=mock_request
+                message="Connection failed", request=mock_request
             )
         )
 
@@ -89,7 +91,7 @@ class TestResilientGPTService:
         result = await gpt_service.ask_financial_advice(messages)
 
         # Should return one of the configured fallback responses
-        assert result in gpt_service.fallback_responses['financial_advice']
+        assert result in gpt_service.fallback_responses["financial_advice"]
 
     @pytest.mark.asyncio
     async def test_budget_analysis(self, gpt_service):
@@ -98,11 +100,13 @@ class TestResilientGPTService:
         mock_response.choices = [Mock()]
         mock_response.choices[0].message.content = "Your budget analysis shows..."
 
-        gpt_service.client.chat.completions.create = AsyncMock(return_value=mock_response)
+        gpt_service.client.chat.completions.create = AsyncMock(
+            return_value=mock_response
+        )
 
         spending_data = {
             "total_spent": 1500,
-            "categories": {"food": 500, "transport": 300}
+            "categories": {"food": 500, "transport": 300},
         }
 
         result = await gpt_service.analyze_budget(spending_data)
@@ -111,8 +115,8 @@ class TestResilientGPTService:
 
         # Verify correct system prompt was used
         call_args = gpt_service.client.chat.completions.create.call_args
-        messages = call_args[1]['messages']
-        assert any("budget analyst" in msg['content'].lower() for msg in messages)
+        messages = call_args[1]["messages"]
+        assert any("budget analyst" in msg["content"].lower() for msg in messages)
 
     @pytest.mark.asyncio
     async def test_expense_categorization(self, gpt_service):
@@ -122,14 +126,18 @@ class TestResilientGPTService:
         mock_response.choices = [Mock()]
         mock_response.choices[0].message.content = "Category: Food, Confidence: 90%"
 
-        gpt_service.client.chat.completions.create = AsyncMock(return_value=mock_response)
+        gpt_service.client.chat.completions.create = AsyncMock(
+            return_value=mock_response
+        )
 
-        result = await gpt_service.categorize_expense("McDonald's lunch", 12.50, "McDonald's")
+        result = await gpt_service.categorize_expense(
+            "McDonald's lunch", 12.50, "McDonald's"
+        )
 
         assert isinstance(result, dict)
-        assert 'category' in result
-        assert 'confidence' in result
-        assert 'reasoning' in result
+        assert "category" in result
+        assert "confidence" in result
+        assert "reasoning" in result
 
     @pytest.mark.asyncio
     async def test_expense_categorization_fallback(self, gpt_service):
@@ -137,16 +145,15 @@ class TestResilientGPTService:
         mock_request = _make_mock_request()
         gpt_service.client.chat.completions.create = AsyncMock(
             side_effect=openai.APIConnectionError(
-                message="Connection failed",
-                request=mock_request
+                message="Connection failed", request=mock_request
             )
         )
 
         result = await gpt_service.categorize_expense("Test expense", 10.0)
 
-        assert result['category'] == 'Other'
-        assert result['confidence'] == 50
-        assert 'unavailable' in result['reasoning']
+        assert result["category"] == "Other"
+        assert result["confidence"] == 50
+        assert "unavailable" in result["reasoning"]
 
     @pytest.mark.asyncio
     async def test_authentication_error(self, gpt_service):
@@ -154,9 +161,7 @@ class TestResilientGPTService:
         mock_response = _make_mock_response(status_code=401)
         gpt_service.client.chat.completions.create = AsyncMock(
             side_effect=openai.AuthenticationError(
-                "Invalid API key",
-                response=mock_response,
-                body=None
+                "Invalid API key", response=mock_response, body=None
             )
         )
 
@@ -178,22 +183,24 @@ class TestResilientGPTService:
 
         # The circuit breaker retries and may catch this as a connection-type error,
         # so the response may come from the timeout handler OR the connection fallback
-        assert (result in gpt_service.fallback_responses['financial_advice'] or
-                "longer than usual" in result.lower() or
-                "try again" in result.lower())
+        assert (
+            result in gpt_service.fallback_responses["financial_advice"]
+            or "longer than usual" in result.lower()
+            or "try again" in result.lower()
+        )
 
     @pytest.mark.asyncio
     async def test_service_health_check(self, gpt_service):
         """Test service health status"""
         health = await gpt_service.get_service_health()
 
-        assert 'service_name' in health
-        assert 'status' in health
-        assert 'circuit_breaker_state' in health
-        assert 'available_features' in health
+        assert "service_name" in health
+        assert "status" in health
+        assert "circuit_breaker_state" in health
+        assert "available_features" in health
 
-        assert health['service_name'] == 'resilient_gpt_service'
-        assert len(health['available_features']) == 3
+        assert health["service_name"] == "resilient_gpt_service"
+        assert len(health["available_features"]) == 3
 
     @pytest.mark.asyncio
     async def test_connection_test(self, gpt_service):
@@ -203,7 +210,9 @@ class TestResilientGPTService:
         mock_response.choices = [Mock()]
         mock_response.choices[0].message.content = "Hello, I'm working fine!"
 
-        gpt_service.client.chat.completions.create = AsyncMock(return_value=mock_response)
+        gpt_service.client.chat.completions.create = AsyncMock(
+            return_value=mock_response
+        )
 
         result = await gpt_service.test_connection()
         assert result is True
@@ -212,8 +221,7 @@ class TestResilientGPTService:
         mock_request = _make_mock_request()
         gpt_service.client.chat.completions.create = AsyncMock(
             side_effect=openai.APIConnectionError(
-                message="Connection failed",
-                request=mock_request
+                message="Connection failed", request=mock_request
             )
         )
 
@@ -222,13 +230,16 @@ class TestResilientGPTService:
 
     def test_singleton_pattern(self):
         """Test GPT service singleton pattern"""
-        with patch('app.services.resilient_gpt_service.AsyncOpenAI'):
+        with patch("app.services.resilient_gpt_service.AsyncOpenAI"):
             # Reset global singleton before testing
             import app.services.resilient_gpt_service as gpt_module
+
             gpt_module._gpt_service = None
 
             service1 = get_gpt_service("test_key_1")
-            service2 = get_gpt_service("test_key_2")  # Different key, but should return same instance
+            service2 = get_gpt_service(
+                "test_key_2"
+            )  # Different key, but should return same instance
 
             assert service1 is service2
 
@@ -260,7 +271,7 @@ class TestResilientGoogleAuthService:
             "aud": "796406677497-kgkd6q7t75bpcsn343baokpuli8p5gad.apps.googleusercontent.com",
             "email": "test@example.com",
             "name": "Test User",
-            "locale": "en_US"
+            "locale": "en_US",
         }
 
         # Mock existing user
@@ -270,11 +281,15 @@ class TestResilientGoogleAuthService:
         mock_user_repository.get_by_email.return_value = mock_user
         mock_user_repository.update_last_login.return_value = True
 
-        with patch.object(auth_service, '_verify_google_token', return_value=mock_payload):
+        with patch.object(
+            auth_service, "_verify_google_token", return_value=mock_payload
+        ):
             result = await auth_service.authenticate_google_user("valid_token")
 
             assert result is mock_user
-            mock_user_repository.get_by_email.assert_called_once_with("test@example.com")
+            mock_user_repository.get_by_email.assert_called_once_with(
+                "test@example.com"
+            )
             mock_user_repository.update_last_login.assert_called_once()
 
     @pytest.mark.asyncio
@@ -284,7 +299,7 @@ class TestResilientGoogleAuthService:
             "aud": "796406677497-kgkd6q7t75bpcsn343baokpuli8p5gad.apps.googleusercontent.com",
             "email": "newuser@example.com",
             "name": "New User",
-            "locale": "en_GB"
+            "locale": "en_GB",
         }
 
         # Mock no existing user, then new user creation
@@ -293,7 +308,9 @@ class TestResilientGoogleAuthService:
         mock_new_user.email = "newuser@example.com"
         mock_user_repository.create_user.return_value = mock_new_user
 
-        with patch.object(auth_service, '_verify_google_token', return_value=mock_payload):
+        with patch.object(
+            auth_service, "_verify_google_token", return_value=mock_payload
+        ):
             result = await auth_service.authenticate_google_user("valid_token")
 
             assert result is mock_new_user
@@ -301,18 +318,17 @@ class TestResilientGoogleAuthService:
 
             # Check user data passed to create_user
             call_args = mock_user_repository.create_user.call_args[0][0]
-            assert call_args['email'] == 'newuser@example.com'
-            assert call_args['country'] == 'GB'  # Extracted from locale
+            assert call_args["email"] == "newuser@example.com"
+            assert call_args["country"] == "GB"  # Extracted from locale
 
     @pytest.mark.asyncio
     async def test_invalid_client_id(self, auth_service):
         """Test invalid client ID rejection"""
-        mock_payload = {
-            "aud": "invalid_client_id",
-            "email": "test@example.com"
-        }
+        mock_payload = {"aud": "invalid_client_id", "email": "test@example.com"}
 
-        with patch.object(auth_service, '_verify_google_token', return_value=mock_payload):
+        with patch.object(
+            auth_service, "_verify_google_token", return_value=mock_payload
+        ):
             with pytest.raises(HTTPException) as exc_info:
                 await auth_service.authenticate_google_user("invalid_token")
 
@@ -324,11 +340,13 @@ class TestResilientGoogleAuthService:
         """Test missing email in token"""
         mock_payload = {
             "aud": "796406677497-kgkd6q7t75bpcsn343baokpuli8p5gad.apps.googleusercontent.com",
-            "name": "Test User"
+            "name": "Test User",
             # Missing email
         }
 
-        with patch.object(auth_service, '_verify_google_token', return_value=mock_payload):
+        with patch.object(
+            auth_service, "_verify_google_token", return_value=mock_payload
+        ):
             with pytest.raises(HTTPException) as exc_info:
                 await auth_service.authenticate_google_user("token_without_email")
 
@@ -338,9 +356,11 @@ class TestResilientGoogleAuthService:
     @pytest.mark.asyncio
     async def test_google_api_connection_error(self, auth_service):
         """Test Google API connection error"""
-        with patch('httpx.AsyncClient') as mock_client:
+        with patch("httpx.AsyncClient") as mock_client:
             mock_client_instance = mock_client.return_value.__aenter__.return_value
-            mock_client_instance.get.side_effect = httpx.RequestError("Connection failed")
+            mock_client_instance.get.side_effect = httpx.RequestError(
+                "Connection failed"
+            )
 
             with pytest.raises(HTTPException) as exc_info:
                 await auth_service.authenticate_google_user("test_token")
@@ -351,7 +371,7 @@ class TestResilientGoogleAuthService:
     @pytest.mark.asyncio
     async def test_google_api_timeout(self, auth_service):
         """Test Google API timeout"""
-        with patch('httpx.AsyncClient') as mock_client:
+        with patch("httpx.AsyncClient") as mock_client:
             mock_client_instance = mock_client.return_value.__aenter__.return_value
             mock_client_instance.get.side_effect = httpx.TimeoutException("Timeout")
 
@@ -364,7 +384,7 @@ class TestResilientGoogleAuthService:
     @pytest.mark.asyncio
     async def test_google_api_rate_limit(self, auth_service):
         """Test Google API rate limiting"""
-        with patch('httpx.AsyncClient') as mock_client:
+        with patch("httpx.AsyncClient") as mock_client:
             mock_response = Mock()
             mock_response.status_code = 429
             mock_client_instance = mock_client.return_value.__aenter__.return_value
@@ -379,7 +399,7 @@ class TestResilientGoogleAuthService:
     @pytest.mark.asyncio
     async def test_invalid_token_response(self, auth_service):
         """Test invalid token response from Google"""
-        with patch('httpx.AsyncClient') as mock_client:
+        with patch("httpx.AsyncClient") as mock_client:
             mock_response = Mock()
             mock_response.status_code = 400
             mock_client_instance = mock_client.return_value.__aenter__.return_value
@@ -396,18 +416,18 @@ class TestResilientGoogleAuthService:
         """Test service health status"""
         health = await auth_service.get_service_health()
 
-        assert 'service_name' in health
-        assert 'status' in health
-        assert 'circuit_breaker_state' in health
-        assert 'allowed_client_ids' in health
+        assert "service_name" in health
+        assert "status" in health
+        assert "circuit_breaker_state" in health
+        assert "allowed_client_ids" in health
 
-        assert health['service_name'] == 'google_auth_service'
-        assert health['allowed_client_ids'] == 3
+        assert health["service_name"] == "google_auth_service"
+        assert health["allowed_client_ids"] == 3
 
     @pytest.mark.asyncio
     async def test_connection_test(self, auth_service):
         """Test connection testing"""
-        with patch('httpx.AsyncClient') as mock_client:
+        with patch("httpx.AsyncClient") as mock_client:
             mock_response = Mock()
             mock_response.status_code = 200
             mock_client_instance = mock_client.return_value.__aenter__.return_value
@@ -450,7 +470,9 @@ class TestResilientGoogleAuthService:
         """Test convenience authentication function"""
         mock_user = Mock()
 
-        with patch('app.services.resilient_google_auth_service.get_google_auth_service') as mock_get_service:
+        with patch(
+            "app.services.resilient_google_auth_service.get_google_auth_service"
+        ) as mock_get_service:
             mock_auth_service = AsyncMock()
             mock_auth_service.authenticate_google_user.return_value = mock_user
             mock_get_service.return_value = mock_auth_service
@@ -458,7 +480,9 @@ class TestResilientGoogleAuthService:
             result = await authenticate_google_user("test_token")
 
             assert result is mock_user
-            mock_auth_service.authenticate_google_user.assert_called_once_with("test_token")
+            mock_auth_service.authenticate_google_user.assert_called_once_with(
+                "test_token"
+            )
 
 
 class TestResilientServicesIntegration:
@@ -467,14 +491,14 @@ class TestResilientServicesIntegration:
     @pytest.mark.asyncio
     async def test_circuit_breaker_integration(self):
         """Test that services properly integrate with circuit breaker"""
-        with patch('app.services.resilient_gpt_service.AsyncOpenAI'):
+        with patch("app.services.resilient_gpt_service.AsyncOpenAI"):
             gpt_service = ResilientGPTService("test_key")
 
         # Get circuit breaker
         cb_manager = gpt_service.circuit_breaker_manager
-        openai_cb = cb_manager.get_circuit_breaker('openai_chat')
+        openai_cb = cb_manager.get_circuit_breaker("openai_chat")
 
-        assert openai_cb.name == 'openai_chat'
+        assert openai_cb.name == "openai_chat"
         assert openai_cb.state == CircuitBreakerState.CLOSED
 
         # Verify configuration
@@ -484,12 +508,14 @@ class TestResilientServicesIntegration:
     @pytest.mark.asyncio
     async def test_service_isolation(self):
         """Test that different services have isolated circuit breakers"""
-        with patch('app.services.resilient_gpt_service.AsyncOpenAI'):
+        with patch("app.services.resilient_gpt_service.AsyncOpenAI"):
             gpt_service = ResilientGPTService("test_key")
         auth_service = ResilientGoogleAuthService()
 
-        gpt_cb = gpt_service.circuit_breaker_manager.get_circuit_breaker('openai_chat')
-        auth_cb = auth_service.circuit_breaker_manager.get_circuit_breaker('google_oauth_verify')
+        gpt_cb = gpt_service.circuit_breaker_manager.get_circuit_breaker("openai_chat")
+        auth_cb = auth_service.circuit_breaker_manager.get_circuit_breaker(
+            "google_oauth_verify"
+        )
 
         assert gpt_cb is not auth_cb
         assert gpt_cb.name != auth_cb.name

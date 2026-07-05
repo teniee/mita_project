@@ -1,7 +1,8 @@
+import logging
+
 from sqlalchemy import create_engine
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import sessionmaker
-import logging
 
 from app.core.config import get_settings
 
@@ -11,6 +12,7 @@ settings = get_settings()
 # Lazy initialization to prevent crash if DATABASE_URL not set
 engine = None
 SessionLocal = None
+
 
 def _initialize_sync_session():
     """Initialize synchronous database session (lazy)"""
@@ -29,7 +31,9 @@ def _initialize_sync_session():
 
         # Remove ssl= parameter if present (psycopg2 only supports sslmode in connect_args)
         if "ssl=require" in database_url:
-            database_url = database_url.replace("?ssl=require", "").replace("&ssl=require", "")
+            database_url = database_url.replace("?ssl=require", "").replace(
+                "&ssl=require", ""
+            )
 
         # Parse the URL to extract components
         parsed = make_url(database_url)
@@ -46,9 +50,9 @@ def _initialize_sync_session():
 
         # Pass credentials via connect_args (bypasses psycopg2 URL parsing)
         connect_args = {
-            "user": parsed.username,      # Username with dot will be preserved
+            "user": parsed.username,  # Username with dot will be preserved
             "password": parsed.password,  # Password passed separately
-            "sslmode": "require",         # Force SSL for Supabase
+            "sslmode": "require",  # Force SSL for Supabase
         }
 
         sync_url = make_url(sync_database_url)
@@ -72,7 +76,9 @@ def _initialize_sync_session():
         # but it's less critical for sync sessions
 
         SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
-        logger.info("✅ Sync database session initialized with SSL and PgBouncer compatibility")
+        logger.info(
+            "✅ Sync database session initialized with SSL and PgBouncer compatibility"
+        )
 
     except Exception as e:
         logger.error(f"Failed to initialize sync database session: {e}")
@@ -84,7 +90,9 @@ def get_db():
     _initialize_sync_session()
 
     if SessionLocal is None:
-        raise RuntimeError("Database session not initialized - DATABASE_URL may be missing")
+        raise RuntimeError(
+            "Database session not initialized - DATABASE_URL may be missing"
+        )
 
     db = SessionLocal()
     try:

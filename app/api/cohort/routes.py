@@ -1,13 +1,14 @@
 from decimal import Decimal
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.cohort.schemas import CohortOut, DriftOut, DriftRequest, ProfileRequest
 from app.api.dependencies import get_current_user
-from app.services.cohort_service import assign_user_cohort, get_user_drift
-from app.utils.response_wrapper import success_response
 from app.core.session import get_db
 from app.db.models.user import User
+from app.services.cohort_service import assign_user_cohort, get_user_drift
+from app.utils.response_wrapper import success_response
 
 router = APIRouter(prefix="/cohort", tags=["cohort"])
 
@@ -29,28 +30,35 @@ def drift(payload: DriftRequest, user=Depends(get_current_user)):  # noqa: B008
 @router.get("/insights")
 def cohort_insights(
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db)  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
 ):
     """Get cohort-based insights for the user"""
-    from app.db.models import Transaction, User as UserModel
-    from datetime import datetime, timedelta, timezone
     from collections import defaultdict
+    from datetime import datetime, timedelta, timezone
+
+    from app.db.models import Transaction
+    from app.db.models import User as UserModel
 
     # Get user's monthly income for cohort classification
     user_data = db.query(UserModel).filter(UserModel.id == user.id).first()
-    user_income = float(user_data.monthly_income) if user_data and user_data.monthly_income else 0
+    user_income = (
+        float(user_data.monthly_income) if user_data and user_data.monthly_income else 0
+    )
 
     # Calculate user's actual spending (last 30 days)
     thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
-    user_transactions = db.query(Transaction).filter(
-        Transaction.user_id == user.id,
-        Transaction.spent_at >= thirty_days_ago
-    ).all()
+    user_transactions = (
+        db.query(Transaction)
+        .filter(Transaction.user_id == user.id, Transaction.spent_at >= thirty_days_ago)
+        .all()
+    )
 
-    user_total_spending = sum(t.amount for t in user_transactions if t.amount is not None) or Decimal('0')
+    user_total_spending = sum(
+        t.amount for t in user_transactions if t.amount is not None
+    ) or Decimal("0")
 
     # Get spending by category
-    category_spending = defaultdict(lambda: Decimal('0'))
+    category_spending = defaultdict(lambda: Decimal("0"))
     for txn in user_transactions:
         if txn.amount is not None:
             cat = txn.category or "other"
@@ -77,55 +85,81 @@ def cohort_insights(
     # Generate insights based on real data
     insights_list = []
     if user_income > 0:
-        diff_percent = ((user_total_spending - estimated_peer_spending) / estimated_peer_spending * 100)
+        diff_percent = (
+            (user_total_spending - estimated_peer_spending)
+            / estimated_peer_spending
+            * 100
+        )
         if diff_percent < -10:
-            insights_list.append(f"You spend {abs(diff_percent):.0f}% less than estimated peers in your income bracket")
+            insights_list.append(
+                f"You spend {abs(diff_percent):.0f}% less than estimated peers in your income bracket"
+            )
         elif diff_percent > 10:
-            insights_list.append(f"You spend {diff_percent:.0f}% more than estimated peers in your income bracket")
+            insights_list.append(
+                f"You spend {diff_percent:.0f}% more than estimated peers in your income bracket"
+            )
         else:
             insights_list.append("Your spending is aligned with your income bracket")
 
     # Category-specific insights
     if category_spending:
         top_category = max(category_spending.items(), key=lambda x: x[1])
-        insights_list.append(f"Your highest spending category is {top_category[0]} at ${top_category[1]:.2f}")
+        insights_list.append(
+            f"Your highest spending category is {top_category[0]} at ${top_category[1]:.2f}"
+        )
 
     # Recommendations based on actual data
     recommendations_list = []
     if user_income > 0 and user_total_spending > user_income * 0.9:
-        recommendations_list.append("Consider reducing discretionary spending to build emergency fund")
+        recommendations_list.append(
+            "Consider reducing discretionary spending to build emergency fund"
+        )
     if len(user_transactions) > 50:
-        recommendations_list.append("High transaction frequency - consider consolidating purchases")
+        recommendations_list.append(
+            "High transaction frequency - consider consolidating purchases"
+        )
     if not recommendations_list:
-        recommendations_list.append("Keep tracking expenses for personalized recommendations")
+        recommendations_list.append(
+            "Keep tracking expenses for personalized recommendations"
+        )
 
-    return success_response({
-        "cohort_type": cohort_type,
-        "peer_comparison": {
-            "estimated_peer_spending": round(estimated_peer_spending, 2),
-            "user_spending": round(user_total_spending, 2),
-            "percentile": 50  # Would need actual peer data to calculate
-        },
-        "insights": insights_list if insights_list else ["Continue tracking to generate insights"],
-        "recommendations": recommendations_list,
-        "based_on_income": user_income,
-        "analysis_period_days": 30
-    })
+    return success_response(
+        {
+            "cohort_type": cohort_type,
+            "peer_comparison": {
+                "estimated_peer_spending": round(estimated_peer_spending, 2),
+                "user_spending": round(user_total_spending, 2),
+                "percentile": 50,  # Would need actual peer data to calculate
+            },
+            "insights": (
+                insights_list
+                if insights_list
+                else ["Continue tracking to generate insights"]
+            ),
+            "recommendations": recommendations_list,
+            "based_on_income": user_income,
+            "analysis_period_days": 30,
+        }
+    )
 
 
 @router.get("/income_classification")
 def income_classification(
     user=Depends(get_current_user),  # noqa: B008
-    db: Session = Depends(get_db)  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
 ):
     """Get income classification analysis for the user"""
-    from app.db.models import Transaction, User as UserModel
-    from datetime import datetime, timedelta, timezone
     from collections import defaultdict
+    from datetime import datetime, timedelta, timezone
+
+    from app.db.models import Transaction
+    from app.db.models import User as UserModel
 
     # Get user's actual monthly income from profile
     user_data = db.query(UserModel).filter(UserModel.id == user.id).first()
-    monthly_income = float(user_data.monthly_income) if user_data and user_data.monthly_income else 0
+    monthly_income = (
+        float(user_data.monthly_income) if user_data and user_data.monthly_income else 0
+    )
 
     # Classify income tier
     if monthly_income == 0:
@@ -149,14 +183,15 @@ def income_classification(
 
     # Analyze spending patterns from last 90 days
     ninety_days_ago = datetime.now(timezone.utc) - timedelta(days=90)
-    transactions = db.query(Transaction).filter(
-        Transaction.user_id == user.id,
-        Transaction.spent_at >= ninety_days_ago
-    ).all()
+    transactions = (
+        db.query(Transaction)
+        .filter(Transaction.user_id == user.id, Transaction.spent_at >= ninety_days_ago)
+        .all()
+    )
 
     # Calculate category distribution
-    category_totals = defaultdict(lambda: Decimal('0'))
-    total_spending = Decimal('0')
+    category_totals = defaultdict(lambda: Decimal("0"))
+    total_spending = Decimal("0")
 
     for txn in transactions:
         if txn.amount is not None:
@@ -169,7 +204,9 @@ def income_classification(
     category_percentages = {}
     if total_spending > 0:
         for cat, amount in category_totals.items():
-            category_percentages[cat] = round((float(amount) / float(total_spending)) * 100, 1)
+            category_percentages[cat] = round(
+                (float(amount) / float(total_spending)) * 100, 1
+            )
 
     # Determine spending pattern consistency
     if len(transactions) < 10:
@@ -199,30 +236,38 @@ def income_classification(
     recommendations = []
     if monthly_income > 0:
         if savings_rate < 10:
-            recommendations.append(f"Current savings rate: {savings_rate:.1f}%. Aim for at least 20% savings")
+            recommendations.append(
+                f"Current savings rate: {savings_rate:.1f}%. Aim for at least 20% savings"
+            )
         elif savings_rate >= 20:
             recommendations.append(f"Excellent savings rate of {savings_rate:.1f}%!")
 
         if total_spending / 3 > monthly_income * 0.9:
-            recommendations.append("Spending exceeds 90% of income - consider budget review")
+            recommendations.append(
+                "Spending exceeds 90% of income - consider budget review"
+            )
 
     if not recommendations:
         recommendations.append("Continue tracking for personalized recommendations")
 
-    return success_response({
-        "income_tier": income_tier,
-        "annual_income": monthly_income * 12 if monthly_income > 0 else None,
-        "classification_confidence": confidence,
-        "factors": {
-            "spending_patterns": spending_pattern,
-            "savings_rate": savings_rate_label,
-            "savings_rate_percent": round(savings_rate, 1) if monthly_income > 0 else None
-        },
-        "spending_distribution": category_percentages,
-        "recommendations": recommendations,
-        "analysis_period_days": 90,
-        "transactions_analyzed": len(transactions)
-    })
+    return success_response(
+        {
+            "income_tier": income_tier,
+            "annual_income": monthly_income * 12 if monthly_income > 0 else None,
+            "classification_confidence": confidence,
+            "factors": {
+                "spending_patterns": spending_pattern,
+                "savings_rate": savings_rate_label,
+                "savings_rate_percent": (
+                    round(savings_rate, 1) if monthly_income > 0 else None
+                ),
+            },
+            "spending_distribution": category_percentages,
+            "recommendations": recommendations,
+            "analysis_period_days": 90,
+            "transactions_analyzed": len(transactions),
+        }
+    )
 
 
 @router.get("/peer_comparison")
@@ -231,21 +276,27 @@ def get_peer_comparison(
     db: Session = Depends(get_db),
 ):
     """Get peer comparison data based on user's cohort"""
-    from app.db.models.transaction import Transaction
-    from app.db.models import User as UserModel
     from datetime import datetime, timedelta, timezone
+
     from sqlalchemy import func
+
+    from app.db.models import User as UserModel
+    from app.db.models.transaction import Transaction
 
     # Get user's monthly income for cohort determination
     user_data = db.query(UserModel).filter(UserModel.id == user.id).first()
-    user_income = float(user_data.monthly_income) if user_data and user_data.monthly_income else 0
+    user_income = (
+        float(user_data.monthly_income) if user_data and user_data.monthly_income else 0
+    )
 
     # Get user's spending for last 30 days
     thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
-    user_spending = db.query(func.sum(Transaction.amount)).filter(
-        Transaction.user_id == user.id,
-        Transaction.spent_at >= thirty_days_ago
-    ).scalar() or 0.0
+    user_spending = (
+        db.query(func.sum(Transaction.amount))
+        .filter(Transaction.user_id == user.id, Transaction.spent_at >= thirty_days_ago)
+        .scalar()
+        or 0.0
+    )
     user_spending = float(user_spending)
 
     # Get all users in similar income bracket (within 20%)
@@ -254,20 +305,29 @@ def get_peer_comparison(
         upper_bound = user_income * 1.2
 
         # Find users in same income bracket
-        peer_users = db.query(UserModel.id).filter(
-            UserModel.id != user.id,
-            UserModel.monthly_income >= lower_bound,
-            UserModel.monthly_income <= upper_bound
-        ).all()
+        peer_users = (
+            db.query(UserModel.id)
+            .filter(
+                UserModel.id != user.id,
+                UserModel.monthly_income >= lower_bound,
+                UserModel.monthly_income <= upper_bound,
+            )
+            .all()
+        )
 
         peer_user_ids = [p.id for p in peer_users]
 
         if peer_user_ids:
             # Calculate actual peer spending
-            peer_spending_data = db.query(func.sum(Transaction.amount)).filter(
-                Transaction.user_id.in_(peer_user_ids),
-                Transaction.spent_at >= thirty_days_ago
-            ).group_by(Transaction.user_id).all()
+            peer_spending_data = (
+                db.query(func.sum(Transaction.amount))
+                .filter(
+                    Transaction.user_id.in_(peer_user_ids),
+                    Transaction.spent_at >= thirty_days_ago,
+                )
+                .group_by(Transaction.user_id)
+                .all()
+            )
 
             if peer_spending_data:
                 peer_amounts = [float(s) for s in peer_spending_data if s]
@@ -277,7 +337,11 @@ def get_peer_comparison(
 
                     # Calculate user's percentile
                     below_user = sum(1 for amt in peer_amounts if amt < user_spending)
-                    percentile = int((below_user / len(peer_amounts)) * 100) if peer_amounts else 50
+                    percentile = (
+                        int((below_user / len(peer_amounts)) * 100)
+                        if peer_amounts
+                        else 50
+                    )
 
                     # Determine comparison
                     if user_spending < peer_median * 0.9:
@@ -297,26 +361,34 @@ def get_peer_comparison(
                     else:
                         savings_potential = 0
 
-                    return success_response({
-                        "your_spending": round(user_spending, 2),
-                        "peer_average": round(peer_average, 2),
-                        "peer_median": round(peer_median, 2),
-                        "percentile": percentile,
-                        "comparison": comparison,
-                        "savings_potential": round(savings_potential, 2),
-                        "peer_count": len(peer_user_ids),
-                        "income_bracket": f"${lower_bound:.0f} - ${upper_bound:.0f}",
-                        "analysis_period_days": 30
-                    })
+                    return success_response(
+                        {
+                            "your_spending": round(user_spending, 2),
+                            "peer_average": round(peer_average, 2),
+                            "peer_median": round(peer_median, 2),
+                            "percentile": percentile,
+                            "comparison": comparison,
+                            "savings_potential": round(savings_potential, 2),
+                            "peer_count": len(peer_user_ids),
+                            "income_bracket": f"${lower_bound:.0f} - ${upper_bound:.0f}",
+                            "analysis_period_days": 30,
+                        }
+                    )
 
     # Fallback if no peers or no income data
-    return success_response({
-        "your_spending": round(user_spending, 2),
-        "peer_average": None,
-        "peer_median": None,
-        "percentile": None,
-        "comparison": "insufficient_peer_data",
-        "savings_potential": 0,
-        "peer_count": 0,
-        "note": "Need more users in database for peer comparison" if user_income > 0 else "Set monthly income for peer comparison"
-    })
+    return success_response(
+        {
+            "your_spending": round(user_spending, 2),
+            "peer_average": None,
+            "peer_median": None,
+            "percentile": None,
+            "comparison": "insufficient_peer_data",
+            "savings_potential": 0,
+            "peer_count": 0,
+            "note": (
+                "Need more users in database for peer comparison"
+                if user_income > 0
+                else "Set monthly income for peer comparison"
+            ),
+        }
+    )

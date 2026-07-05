@@ -11,6 +11,7 @@ PHILOSOPHY:
 - Take from DISCRETIONARY (dining, entertainment) first.
 - Never wipe out any category — max 50% cut per category per rebalance.
 """
+
 from __future__ import annotations
 
 import logging
@@ -94,7 +95,9 @@ def rebalance_after_overspend(
         transaction_date.year,
         transaction_date.month,
         transaction_date.day,
-        23, 59, 59,
+        23,
+        59,
+        59,
     )
     month_end_dt = datetime(month_end.year, month_end.month, month_end.day, 23, 59, 59)
 
@@ -203,13 +206,17 @@ def rebalance_after_overspend(
             transaction_date.year,
             transaction_date.month,
             transaction_date.day,
-            0, 0, 0,
+            0,
+            0,
+            0,
         )
         day_end_credit = datetime(
             transaction_date.year,
             transaction_date.month,
             transaction_date.day,
-            23, 59, 59,
+            23,
+            59,
+            59,
         )
         overspent_entry: Optional[DailyPlan] = (
             db.query(DailyPlan)
@@ -227,7 +234,9 @@ def rebalance_after_overspend(
             )
             logger.debug(
                 "rebalance: credited $%.2f to %s on %s",
-                float(plan.covered), overspent_category, transaction_date,
+                float(plan.covered),
+                overspent_category,
+                transaction_date,
             )
 
     if not dry_run and plan.covered > Decimal("0.01"):
@@ -260,8 +269,12 @@ def check_and_rebalance(
     Call this after recording a transaction. Returns None if no overspend.
     """
     # DailyPlan.date is DateTime — match by date range covering the full day
-    day_start = datetime(transaction_date.year, transaction_date.month, transaction_date.day, 0, 0, 0)
-    day_end = datetime(transaction_date.year, transaction_date.month, transaction_date.day, 23, 59, 59)
+    day_start = datetime(
+        transaction_date.year, transaction_date.month, transaction_date.day, 0, 0, 0
+    )
+    day_end = datetime(
+        transaction_date.year, transaction_date.month, transaction_date.day, 23, 59, 59
+    )
 
     entry: Optional[DailyPlan] = (
         db.query(DailyPlan)

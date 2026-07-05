@@ -20,39 +20,39 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.installment import (
-    UserFinancialProfile,
-    InstallmentCalculation,
-    InstallmentAchievement,
-    InstallmentCategory,
-    AgeGroup,
-    RiskLevel
-)
 from app.api.installments.schemas import (
+    AlternativeRecommendation,
     InstallmentCalculatorInput,
     InstallmentCalculatorOutput,
     RiskFactor,
-    AlternativeRecommendation
+)
+from app.db.models.installment import (
+    AgeGroup,
+    InstallmentAchievement,
+    InstallmentCalculation,
+    InstallmentCategory,
+    RiskLevel,
+    UserFinancialProfile,
 )
 
-
 # ===== CONSTANTS BASED ON US FINANCIAL RESEARCH =====
+
 
 class InstallmentConstants:
     """Research-based financial thresholds for US consumers"""
 
     # CRITICAL THRESHOLDS (from BNPL research)
-    SAFE_PAYMENT_RATIO = Decimal('5.0')  # Max 5% of monthly income
-    CRITICAL_PAYMENT_RATIO = Decimal('3.0')  # 3-5% is moderate risk
-    IDEAL_PAYMENT_RATIO = Decimal('2.0')  # <2% is ideal
+    SAFE_PAYMENT_RATIO = Decimal("5.0")  # Max 5% of monthly income
+    CRITICAL_PAYMENT_RATIO = Decimal("3.0")  # 3-5% is moderate risk
+    IDEAL_PAYMENT_RATIO = Decimal("2.0")  # <2% is ideal
 
-    MIN_SAFE_BALANCE = Decimal('2500.00')  # Minimum $2,500 balance
-    COMFORTABLE_BALANCE = Decimal('3500.00')  # $3,500+ is comfortable
-    STRONG_BALANCE = Decimal('5000.00')  # $5,000+ is strong
+    MIN_SAFE_BALANCE = Decimal("2500.00")  # Minimum $2,500 balance
+    COMFORTABLE_BALANCE = Decimal("3500.00")  # $3,500+ is comfortable
+    STRONG_BALANCE = Decimal("5000.00")  # $5,000+ is strong
 
-    SAFE_DTI = Decimal('25.0')  # <25% DTI is safe
-    MODERATE_DTI = Decimal('35.0')  # 25-35% is moderate
-    CRITICAL_DTI = Decimal('43.0')  # >43% is critical (FHA limit)
+    SAFE_DTI = Decimal("25.0")  # <25% DTI is safe
+    MODERATE_DTI = Decimal("35.0")  # 25-35% is moderate
+    CRITICAL_DTI = Decimal("43.0")  # >43% is critical (FHA limit)
 
     # INSTALLMENT LIMITS
     MAX_SAFE_INSTALLMENTS = 1  # 0-1 is safe
@@ -63,16 +63,16 @@ class InstallmentConstants:
     YOUNG_AGE_INSTALLMENT_LIMIT = 1  # Young adults should limit to 1
 
     # INTEREST RATE THRESHOLDS
-    ZERO_INTEREST = Decimal('0.0')
-    LOW_INTEREST = Decimal('10.0')
-    MODERATE_INTEREST = Decimal('15.0')
-    HIGH_INTEREST = Decimal('20.0')
-    PREDATORY_INTEREST = Decimal('30.0')
+    ZERO_INTEREST = Decimal("0.0")
+    LOW_INTEREST = Decimal("10.0")
+    MODERATE_INTEREST = Decimal("15.0")
+    HIGH_INTEREST = Decimal("20.0")
+    PREDATORY_INTEREST = Decimal("30.0")
 
     # EMERGENCY FUND
-    MIN_EMERGENCY_BUFFER = Decimal('300.00')  # After payment
-    SAFE_EMERGENCY_BUFFER = Decimal('500.00')
-    STRONG_EMERGENCY_BUFFER = Decimal('1000.00')
+    MIN_EMERGENCY_BUFFER = Decimal("300.00")  # After payment
+    SAFE_EMERGENCY_BUFFER = Decimal("500.00")
+    STRONG_EMERGENCY_BUFFER = Decimal("1000.00")
 
 
 class InstallmentRiskEngine:
@@ -86,7 +86,7 @@ class InstallmentRiskEngine:
         principal: Decimal,
         num_payments: int,
         annual_interest_rate: Decimal,
-        frequency: str = "monthly"
+        frequency: str = "monthly",
     ) -> Tuple[Decimal, Decimal, List[Dict]]:
         """
         Calculate payment schedule using standard amortization formula
@@ -95,17 +95,19 @@ class InstallmentRiskEngine:
         if annual_interest_rate == 0:
             # Simple division for 0% interest
             payment = principal / num_payments
-            total_interest = Decimal('0.00')
+            total_interest = Decimal("0.00")
 
             schedule = []
             for i in range(1, num_payments + 1):
-                schedule.append({
-                    "payment_number": i,
-                    "payment_amount": float(payment),
-                    "principal": float(payment),
-                    "interest": 0.0,
-                    "remaining_balance": float(principal - (payment * i))
-                })
+                schedule.append(
+                    {
+                        "payment_number": i,
+                        "payment_amount": float(payment),
+                        "principal": float(payment),
+                        "interest": 0.0,
+                        "remaining_balance": float(principal - (payment * i)),
+                    }
+                )
 
             return payment, total_interest, schedule
 
@@ -114,10 +116,10 @@ class InstallmentRiskEngine:
 
         # Standard amortization formula: M = P * [r(1+r)^n] / [(1+r)^n - 1]
         if monthly_rate > 0:
-            monthly_payment = principal * (
-                monthly_rate * ((1 + monthly_rate) ** num_payments)
-            ) / (
-                ((1 + monthly_rate) ** num_payments) - 1
+            monthly_payment = (
+                principal
+                * (monthly_rate * ((1 + monthly_rate) ** num_payments))
+                / (((1 + monthly_rate) ** num_payments) - 1)
             )
         else:
             monthly_payment = principal / num_payments
@@ -128,7 +130,7 @@ class InstallmentRiskEngine:
         # Generate amortization schedule
         schedule = []
         remaining_balance = principal
-        total_interest_paid = Decimal('0.00')
+        total_interest_paid = Decimal("0.00")
 
         for i in range(1, num_payments + 1):
             interest_payment = remaining_balance * monthly_rate
@@ -139,15 +141,17 @@ class InstallmentRiskEngine:
             # Adjust last payment for rounding
             if i == num_payments:
                 principal_payment += remaining_balance
-                remaining_balance = Decimal('0.00')
+                remaining_balance = Decimal("0.00")
 
-            schedule.append({
-                "payment_number": i,
-                "payment_amount": float(monthly_payment),
-                "principal": float(round(principal_payment, 2)),
-                "interest": float(round(interest_payment, 2)),
-                "remaining_balance": float(round(max(remaining_balance, 0), 2))
-            })
+            schedule.append(
+                {
+                    "payment_number": i,
+                    "payment_amount": float(monthly_payment),
+                    "principal": float(round(principal_payment, 2)),
+                    "interest": float(round(interest_payment, 2)),
+                    "remaining_balance": float(round(max(remaining_balance, 0), 2)),
+                }
+            )
 
         return monthly_payment, total_interest_paid, schedule
 
@@ -164,7 +168,7 @@ class InstallmentRiskEngine:
         other_monthly_obligations: Decimal,
         planning_mortgage: bool,
         interest_rate: Decimal,
-        num_payments: int
+        num_payments: int,
     ) -> Tuple[RiskLevel, int, List[RiskFactor]]:
         """
         Comprehensive risk assessment based on multiple factors
@@ -176,12 +180,20 @@ class InstallmentRiskEngine:
         yellow_flags = 0
 
         # Calculate key ratios
-        payment_ratio = (monthly_payment / monthly_income * 100) if monthly_income > 0 else Decimal('100.0')
+        payment_ratio = (
+            (monthly_payment / monthly_income * 100)
+            if monthly_income > 0
+            else Decimal("100.0")
+        )
 
         total_monthly_debt = (
             monthly_payment + active_installments_monthly + other_monthly_obligations
         )
-        dti_ratio = (total_monthly_debt / monthly_income * 100) if monthly_income > 0 else Decimal('100.0')
+        dti_ratio = (
+            (total_monthly_debt / monthly_income * 100)
+            if monthly_income > 0
+            else Decimal("100.0")
+        )
 
         balance_after_payment = current_balance - monthly_payment
 
@@ -190,216 +202,290 @@ class InstallmentRiskEngine:
         # 1. Payment >5% of income
         if payment_ratio > InstallmentConstants.SAFE_PAYMENT_RATIO:
             red_flags += 1
-            risk_factors.append(RiskFactor(
-                factor="high_payment_ratio",
-                severity="high",
-                message=f"This payment is {float(payment_ratio):.1f}% of your income (safe limit: 5%)",
-                stat="Research shows payments >5% of income have high default rates"
-            ))
+            risk_factors.append(
+                RiskFactor(
+                    factor="high_payment_ratio",
+                    severity="high",
+                    message=f"This payment is {float(payment_ratio):.1f}% of your income (safe limit: 5%)",
+                    stat="Research shows payments >5% of income have high default rates",
+                )
+            )
 
         # 2. Balance <$2,500
         if current_balance < InstallmentConstants.MIN_SAFE_BALANCE:
             red_flags += 1
-            risk_factors.append(RiskFactor(
-                factor="low_balance",
-                severity="high",
-                message=f"Your balance (${float(current_balance):.2f}) is below the safe minimum of $2,500",
-                stat="77% of BNPL users with balances <$2,500 struggle with payments"
-            ))
+            risk_factors.append(
+                RiskFactor(
+                    factor="low_balance",
+                    severity="high",
+                    message=f"Your balance (${float(current_balance):.2f}) is below the safe minimum of $2,500",
+                    stat="77% of BNPL users with balances <$2,500 struggle with payments",
+                )
+            )
 
         # 3. DTI >43% (FHA limit)
         if dti_ratio > InstallmentConstants.CRITICAL_DTI:
             red_flags += 1
-            risk_factors.append(RiskFactor(
-                factor="critical_dti",
-                severity="high",
-                message=f"Your debt-to-income ratio ({float(dti_ratio):.1f}%) exceeds 43% (FHA limit)",
-                stat="DTI >43% indicates severe debt overload - lenders won't approve new credit"
-            ))
+            risk_factors.append(
+                RiskFactor(
+                    factor="critical_dti",
+                    severity="high",
+                    message=f"Your debt-to-income ratio ({float(dti_ratio):.1f}%) exceeds 43% (FHA limit)",
+                    stat="DTI >43% indicates severe debt overload - lenders won't approve new credit",
+                )
+            )
 
         # 4. Credit card debt present
         if credit_card_debt:
             red_flags += 1
-            risk_factors.append(RiskFactor(
-                factor="credit_card_debt",
-                severity="high",
-                message="You have existing credit card debt",
-                stat="71% of people with credit card debt can't manage additional installments"
-            ))
+            risk_factors.append(
+                RiskFactor(
+                    factor="credit_card_debt",
+                    severity="high",
+                    message="You have existing credit card debt",
+                    stat="71% of people with credit card debt can't manage additional installments",
+                )
+            )
 
         # 5. Dangerous categories (groceries, utilities)
         if category in [InstallmentCategory.GROCERIES, InstallmentCategory.UTILITIES]:
             red_flags += 1
-            risk_factors.append(RiskFactor(
-                factor="dangerous_category",
-                severity="high",
-                message=f"Taking installments for {category.value} indicates financial distress",
-                stat="Installment payments for essentials like food/utilities signal critical cash flow problems"
-            ))
+            risk_factors.append(
+                RiskFactor(
+                    factor="dangerous_category",
+                    severity="high",
+                    message=f"Taking installments for {category.value} indicates financial distress",
+                    stat="Installment payments for essentials like food/utilities signal critical cash flow problems",
+                )
+            )
 
         # 6. 3+ active installments
         if active_installments_count >= InstallmentConstants.CRITICAL_INSTALLMENTS:
             red_flags += 1
-            risk_factors.append(RiskFactor(
-                factor="too_many_installments",
-                severity="high",
-                message=f"You already have {active_installments_count} active installments",
-                stat="66% of people with 3+ installments face financial difficulties"
-            ))
+            risk_factors.append(
+                RiskFactor(
+                    factor="too_many_installments",
+                    severity="high",
+                    message=f"You already have {active_installments_count} active installments",
+                    stat="66% of people with 3+ installments face financial difficulties",
+                )
+            )
 
         # 7. Planning mortgage + any installment
         if planning_mortgage:
             red_flags += 1
-            risk_factors.append(RiskFactor(
-                factor="mortgage_planning",
-                severity="high",
-                message="You're planning to apply for a mortgage within 6 months",
-                stat="Mortgage lenders scrutinize ALL installments - even paid ones stay on your report for 2 years"
-            ))
+            risk_factors.append(
+                RiskFactor(
+                    factor="mortgage_planning",
+                    severity="high",
+                    message="You're planning to apply for a mortgage within 6 months",
+                    stat="Mortgage lenders scrutinize ALL installments - even paid ones stay on your report for 2 years",
+                )
+            )
 
         # 8. Balance after payment <$300
         if balance_after_payment < InstallmentConstants.MIN_EMERGENCY_BUFFER:
             red_flags += 1
-            risk_factors.append(RiskFactor(
-                factor="no_emergency_buffer",
-                severity="high",
-                message=f"After first payment, you'd have only ${float(balance_after_payment):.2f} left",
-                stat="No emergency buffer means one unexpected expense could trigger overdrafts and late fees"
-            ))
+            risk_factors.append(
+                RiskFactor(
+                    factor="no_emergency_buffer",
+                    severity="high",
+                    message=f"After first payment, you'd have only ${float(balance_after_payment):.2f} left",
+                    stat="No emergency buffer means one unexpected expense could trigger overdrafts and late fees",
+                )
+            )
 
         # === ORANGE FLAG CHECKS (2+ triggers = ORANGE) ===
 
         # Payment 3-5% of income
-        if InstallmentConstants.CRITICAL_PAYMENT_RATIO < payment_ratio <= InstallmentConstants.SAFE_PAYMENT_RATIO:
+        if (
+            InstallmentConstants.CRITICAL_PAYMENT_RATIO
+            < payment_ratio
+            <= InstallmentConstants.SAFE_PAYMENT_RATIO
+        ):
             orange_flags += 1
-            risk_factors.append(RiskFactor(
-                factor="moderate_payment_ratio",
-                severity="medium",
-                message=f"Payment is {float(payment_ratio):.1f}% of your income (moderate risk zone)",
-                stat="Payments 3-5% of income are manageable but leave little room for error"
-            ))
+            risk_factors.append(
+                RiskFactor(
+                    factor="moderate_payment_ratio",
+                    severity="medium",
+                    message=f"Payment is {float(payment_ratio):.1f}% of your income (moderate risk zone)",
+                    stat="Payments 3-5% of income are manageable but leave little room for error",
+                )
+            )
 
         # Balance $2,500-$3,500
-        if InstallmentConstants.MIN_SAFE_BALANCE <= current_balance < InstallmentConstants.COMFORTABLE_BALANCE:
+        if (
+            InstallmentConstants.MIN_SAFE_BALANCE
+            <= current_balance
+            < InstallmentConstants.COMFORTABLE_BALANCE
+        ):
             orange_flags += 1
-            risk_factors.append(RiskFactor(
-                factor="moderate_balance",
-                severity="medium",
-                message=f"Your balance (${float(current_balance):.2f}) provides minimal cushion",
-                stat="Balance between $2,500-$3,500 offers limited protection against emergencies"
-            ))
+            risk_factors.append(
+                RiskFactor(
+                    factor="moderate_balance",
+                    severity="medium",
+                    message=f"Your balance (${float(current_balance):.2f}) provides minimal cushion",
+                    stat="Balance between $2,500-$3,500 offers limited protection against emergencies",
+                )
+            )
 
         # DTI 36-43%
-        if InstallmentConstants.MODERATE_DTI < dti_ratio <= InstallmentConstants.CRITICAL_DTI:
+        if (
+            InstallmentConstants.MODERATE_DTI
+            < dti_ratio
+            <= InstallmentConstants.CRITICAL_DTI
+        ):
             orange_flags += 1
-            risk_factors.append(RiskFactor(
-                factor="high_dti",
-                severity="medium",
-                message=f"Your DTI ratio ({float(dti_ratio):.1f}%) is in the risky zone (36-43%)",
-                stat="DTI 36-43% limits your ability to handle unexpected expenses"
-            ))
+            risk_factors.append(
+                RiskFactor(
+                    factor="high_dti",
+                    severity="medium",
+                    message=f"Your DTI ratio ({float(dti_ratio):.1f}%) is in the risky zone (36-43%)",
+                    stat="DTI 36-43% limits your ability to handle unexpected expenses",
+                )
+            )
 
         # 2 active installments
         if active_installments_count == InstallmentConstants.MODERATE_INSTALLMENTS:
             orange_flags += 1
-            risk_factors.append(RiskFactor(
-                factor="multiple_installments",
-                severity="medium",
-                message=f"You already have {active_installments_count} active installments",
-                stat="Having 2 installments doubles your risk of missing payments"
-            ))
+            risk_factors.append(
+                RiskFactor(
+                    factor="multiple_installments",
+                    severity="medium",
+                    message=f"You already have {active_installments_count} active installments",
+                    stat="Having 2 installments doubles your risk of missing payments",
+                )
+            )
 
         # Age 18-24 + any installment
         if age_group == AgeGroup.AGE_18_24 and active_installments_count >= 1:
             orange_flags += 1
-            risk_factors.append(RiskFactor(
-                factor="young_age_risk",
-                severity="medium",
-                message="You're in the 18-24 age group with existing installments",
-                stat="51% of 18-24 year-olds with multiple installments experience late payments"
-            ))
+            risk_factors.append(
+                RiskFactor(
+                    factor="young_age_risk",
+                    severity="medium",
+                    message="You're in the 18-24 age group with existing installments",
+                    stat="51% of 18-24 year-olds with multiple installments experience late payments",
+                )
+            )
 
         # Balance after payment $300-$500
-        if InstallmentConstants.MIN_EMERGENCY_BUFFER <= balance_after_payment < InstallmentConstants.SAFE_EMERGENCY_BUFFER:
+        if (
+            InstallmentConstants.MIN_EMERGENCY_BUFFER
+            <= balance_after_payment
+            < InstallmentConstants.SAFE_EMERGENCY_BUFFER
+        ):
             orange_flags += 1
-            risk_factors.append(RiskFactor(
-                factor="tight_emergency_buffer",
-                severity="medium",
-                message=f"After first payment, you'd have ${float(balance_after_payment):.2f} left",
-                stat="Minimal emergency buffer increases risk of overdrafts if unexpected expenses arise"
-            ))
+            risk_factors.append(
+                RiskFactor(
+                    factor="tight_emergency_buffer",
+                    severity="medium",
+                    message=f"After first payment, you'd have ${float(balance_after_payment):.2f} left",
+                    stat="Minimal emergency buffer increases risk of overdrafts if unexpected expenses arise",
+                )
+            )
 
         # Long term with interest >0%
         if num_payments > 12 and interest_rate > InstallmentConstants.ZERO_INTEREST:
             orange_flags += 1
-            risk_factors.append(RiskFactor(
-                factor="long_term_interest",
-                severity="medium",
-                message=f"12+ month term with {float(interest_rate)}% interest compounds costs",
-                stat="Longer terms with interest significantly increase total cost"
-            ))
+            risk_factors.append(
+                RiskFactor(
+                    factor="long_term_interest",
+                    severity="medium",
+                    message=f"12+ month term with {float(interest_rate)}% interest compounds costs",
+                    stat="Longer terms with interest significantly increase total cost",
+                )
+            )
 
         # === YELLOW FLAG CHECKS (2+ triggers = YELLOW) ===
 
         # Payment 2-3% of income
-        if InstallmentConstants.IDEAL_PAYMENT_RATIO < payment_ratio <= InstallmentConstants.CRITICAL_PAYMENT_RATIO:
+        if (
+            InstallmentConstants.IDEAL_PAYMENT_RATIO
+            < payment_ratio
+            <= InstallmentConstants.CRITICAL_PAYMENT_RATIO
+        ):
             yellow_flags += 1
-            risk_factors.append(RiskFactor(
-                factor="noticeable_payment",
-                severity="low",
-                message=f"Payment is {float(payment_ratio):.1f}% of your income",
-                stat="Payments 2-3% of income are manageable but worth considering"
-            ))
+            risk_factors.append(
+                RiskFactor(
+                    factor="noticeable_payment",
+                    severity="low",
+                    message=f"Payment is {float(payment_ratio):.1f}% of your income",
+                    stat="Payments 2-3% of income are manageable but worth considering",
+                )
+            )
 
         # Balance $3,500-$5,000
-        if InstallmentConstants.COMFORTABLE_BALANCE <= current_balance < InstallmentConstants.STRONG_BALANCE:
+        if (
+            InstallmentConstants.COMFORTABLE_BALANCE
+            <= current_balance
+            < InstallmentConstants.STRONG_BALANCE
+        ):
             yellow_flags += 1
-            risk_factors.append(RiskFactor(
-                factor="adequate_balance",
-                severity="low",
-                message=f"Your balance (${float(current_balance):.2f}) is adequate but not strong",
-                stat="Balance $3,500-$5,000 provides reasonable cushion"
-            ))
+            risk_factors.append(
+                RiskFactor(
+                    factor="adequate_balance",
+                    severity="low",
+                    message=f"Your balance (${float(current_balance):.2f}) is adequate but not strong",
+                    stat="Balance $3,500-$5,000 provides reasonable cushion",
+                )
+            )
 
         # DTI 25-35%
-        if InstallmentConstants.SAFE_DTI < dti_ratio <= InstallmentConstants.MODERATE_DTI:
+        if (
+            InstallmentConstants.SAFE_DTI
+            < dti_ratio
+            <= InstallmentConstants.MODERATE_DTI
+        ):
             yellow_flags += 1
-            risk_factors.append(RiskFactor(
-                factor="moderate_dti",
-                severity="low",
-                message=f"Your DTI ratio ({float(dti_ratio):.1f}%) is in moderate range",
-                stat="DTI 25-35% is manageable but limits financial flexibility"
-            ))
+            risk_factors.append(
+                RiskFactor(
+                    factor="moderate_dti",
+                    severity="low",
+                    message=f"Your DTI ratio ({float(dti_ratio):.1f}%) is in moderate range",
+                    stat="DTI 25-35% is manageable but limits financial flexibility",
+                )
+            )
 
         # 1 active installment
         if active_installments_count == InstallmentConstants.MAX_SAFE_INSTALLMENTS:
             yellow_flags += 1
-            risk_factors.append(RiskFactor(
-                factor="one_installment",
-                severity="low",
-                message="You already have 1 active installment",
-                stat="Managing multiple payment schedules requires discipline"
-            ))
+            risk_factors.append(
+                RiskFactor(
+                    factor="one_installment",
+                    severity="low",
+                    message="You already have 1 active installment",
+                    stat="Managing multiple payment schedules requires discipline",
+                )
+            )
 
         # Balance after payment $500-$1,000
-        if InstallmentConstants.SAFE_EMERGENCY_BUFFER <= balance_after_payment < InstallmentConstants.STRONG_EMERGENCY_BUFFER:
+        if (
+            InstallmentConstants.SAFE_EMERGENCY_BUFFER
+            <= balance_after_payment
+            < InstallmentConstants.STRONG_EMERGENCY_BUFFER
+        ):
             yellow_flags += 1
-            risk_factors.append(RiskFactor(
-                factor="moderate_emergency_buffer",
-                severity="low",
-                message=f"After first payment, you'd have ${float(balance_after_payment):.2f} left",
-                stat="Having $500-$1,000 buffer provides decent protection"
-            ))
+            risk_factors.append(
+                RiskFactor(
+                    factor="moderate_emergency_buffer",
+                    severity="low",
+                    message=f"After first payment, you'd have ${float(balance_after_payment):.2f} left",
+                    stat="Having $500-$1,000 buffer provides decent protection",
+                )
+            )
 
         # Interest rate >15%
         if interest_rate > InstallmentConstants.MODERATE_INTEREST:
             yellow_flags += 1
-            risk_factors.append(RiskFactor(
-                factor="high_interest_rate",
-                severity="low",
-                message=f"Interest rate of {float(interest_rate)}% is significant",
-                stat="Interest rates >15% substantially increase total cost"
-            ))
+            risk_factors.append(
+                RiskFactor(
+                    factor="high_interest_rate",
+                    severity="low",
+                    message=f"Interest rate of {float(interest_rate)}% is significant",
+                    stat="Interest rates >15% substantially increase total cost",
+                )
+            )
 
         # === DETERMINE FINAL RISK LEVEL ===
 
@@ -423,7 +509,7 @@ class InstallmentRiskEngine:
         risk_level: RiskLevel,
         risk_factors: List[RiskFactor],
         category: InstallmentCategory,
-        age_group: AgeGroup
+        age_group: AgeGroup,
     ) -> str:
         """Generate personalized message based on user's specific situation"""
 
@@ -440,7 +526,9 @@ class InstallmentRiskEngine:
                 else:
                     return "Taking installments for utilities signals critical cash flow problems. Consider contacting your utility company about payment plans or assistance programs - they're usually more forgiving than installment providers."
 
-            elif any(f.factor == "too_many_installments" for f in high_severity_factors):
+            elif any(
+                f.factor == "too_many_installments" for f in high_severity_factors
+            ):
                 return "You already have 3 or more active installments. Studies show 66% of people in this situation face serious financial difficulties. Adding another installment would push you into very dangerous territory. Focus on completing your existing obligations first."
 
             elif any(f.factor == "high_payment_ratio" for f in high_severity_factors):
@@ -475,28 +563,30 @@ class InstallmentRiskEngine:
         monthly_payment: Decimal,
         monthly_income: Decimal,
         num_payments: int,
-        total_interest: Decimal
+        total_interest: Decimal,
     ) -> Optional[AlternativeRecommendation]:
         """Generate alternative recommendations based on risk level"""
 
         if risk_level == RiskLevel.RED:
             # Suggest saving up instead
             # Assume they can save 10% of income per month
-            saveable_amount = monthly_income * Decimal('0.10')
-            months_to_save = int((purchase_amount / saveable_amount).to_integral_value())
+            saveable_amount = monthly_income * Decimal("0.10")
+            months_to_save = int(
+                (purchase_amount / saveable_amount).to_integral_value()
+            )
 
             return AlternativeRecommendation(
                 recommendation_type="save_instead",
                 title="Save up instead",
                 description=f"If you save ${float(saveable_amount):.2f} per month (10% of your income), you can afford this in {months_to_save} months. This way you avoid debt, build saving habits, and might even get a better deal waiting for a sale.",
                 savings_amount=saveable_amount,
-                time_needed_days=months_to_save * 30
+                time_needed_days=months_to_save * 30,
             )
 
         elif risk_level == RiskLevel.ORANGE:
             # Suggest saving half and financing half
             half_amount = purchase_amount / 2
-            saveable_amount = monthly_income * Decimal('0.15')
+            saveable_amount = monthly_income * Decimal("0.15")
             months_to_save = int((half_amount / saveable_amount).to_integral_value())
 
             return AlternativeRecommendation(
@@ -504,7 +594,7 @@ class InstallmentRiskEngine:
                 title="Save half, then finance",
                 description=f"If you wait {months_to_save} months and save ${float(half_amount):.2f}, you could then finance only half. This would reduce your monthly payment to ${float(monthly_payment/2):.2f}, making it much safer.",
                 savings_amount=saveable_amount,
-                time_needed_days=months_to_save * 30
+                time_needed_days=months_to_save * 30,
             )
 
         elif risk_level == RiskLevel.YELLOW:
@@ -516,7 +606,7 @@ class InstallmentRiskEngine:
                     title="Consider a shorter term",
                     description=f"Instead of {num_payments} payments, consider {shorter_payments} payments. Yes, the monthly payment will be higher, but you'll be debt-free sooner and pay less interest (if any). This also reduces the risk of life changes affecting your ability to pay.",
                     savings_amount=None,
-                    time_needed_days=None
+                    time_needed_days=None,
                 )
 
         # GREEN level gets positive reinforcement but still suggests cash
@@ -526,7 +616,7 @@ class InstallmentRiskEngine:
                 title="Consider paying cash",
                 description="While you can afford this installment, paying cash eliminates mental overhead, gives you stronger negotiating power (ask for a cash discount!), and keeps your credit utilization low. Plus, the psychological benefit of owning it outright is real.",
                 savings_amount=None,
-                time_needed_days=None
+                time_needed_days=None,
             )
 
         return None
@@ -538,7 +628,7 @@ class InstallmentRiskEngine:
             RiskLevel.RED: "We don't recommend this",
             RiskLevel.ORANGE: "This is risky",
             RiskLevel.YELLOW: "Think it through",
-            RiskLevel.GREEN: "You can afford this"
+            RiskLevel.GREEN: "You can afford this",
         }
         return verdicts[risk_level]
 
@@ -547,7 +637,7 @@ class InstallmentRiskEngine:
         risk_level: RiskLevel,
         category: InstallmentCategory,
         age_group: AgeGroup,
-        active_installments_count: int
+        active_installments_count: int,
     ) -> List[str]:
         """Generate relevant statistics to display"""
         stats = []
@@ -558,45 +648,57 @@ class InstallmentRiskEngine:
 
         # Risk-specific stats
         if risk_level == RiskLevel.RED:
-            stats.append("71% of people with credit card debt can't manage installments")
-            stats.append("Only 37% of frequent installment users can cover a $400 emergency")
+            stats.append(
+                "71% of people with credit card debt can't manage installments"
+            )
+            stats.append(
+                "Only 37% of frequent installment users can cover a $400 emergency"
+            )
 
         if age_group == AgeGroup.AGE_18_24:
-            stats.append("51% of 18-24 year-olds with installments experience late payments")
+            stats.append(
+                "51% of 18-24 year-olds with installments experience late payments"
+            )
 
         if active_installments_count >= 2:
-            stats.append("66% of people with 3+ active installments face financial difficulties")
+            stats.append(
+                "66% of people with 3+ active installments face financial difficulties"
+            )
 
         if category in [InstallmentCategory.GROCERIES, InstallmentCategory.UTILITIES]:
-            stats.append("Installments for essentials indicate serious cash flow problems")
+            stats.append(
+                "Installments for essentials indicate serious cash flow problems"
+            )
 
         return stats[:4]  # Limit to 4 most relevant stats
 
     @staticmethod
     def generate_warnings(
-        risk_level: RiskLevel,
-        interest_rate: Decimal,
-        category: InstallmentCategory
+        risk_level: RiskLevel, interest_rate: Decimal, category: InstallmentCategory
     ) -> List[str]:
         """Generate important warnings"""
         warnings = []
 
         if interest_rate > InstallmentConstants.ZERO_INTEREST:
-            warnings.append(f"Interest rate of {float(interest_rate)}% will increase total cost significantly")
+            warnings.append(
+                f"Interest rate of {float(interest_rate)}% will increase total cost significantly"
+            )
 
         if risk_level == RiskLevel.RED:
-            warnings.append("This installment could trigger a debt spiral - one missed payment leads to fees, overdrafts, and more financial stress")
+            warnings.append(
+                "This installment could trigger a debt spiral - one missed payment leads to fees, overdrafts, and more financial stress"
+            )
 
         if category == InstallmentCategory.ELECTRONICS:
-            warnings.append("Electronics depreciate quickly - you'll still be paying for it when it's worth much less")
+            warnings.append(
+                "Electronics depreciate quickly - you'll still be paying for it when it's worth much less"
+            )
 
         return warnings
 
 
 async def calculate_installment_risk(
-    db: AsyncSession,
-    user_id: UUID,
-    calculator_input: InstallmentCalculatorInput
+    db: AsyncSession, user_id: UUID, calculator_input: InstallmentCalculatorInput
 ) -> InstallmentCalculatorOutput:
     """
     Main entry point for installment risk calculation
@@ -607,41 +709,51 @@ async def calculate_installment_risk(
     # Get or use financial profile
     if calculator_input.monthly_income is not None:
         monthly_income = calculator_input.monthly_income
-        current_balance = calculator_input.current_balance or Decimal('0')
+        current_balance = calculator_input.current_balance or Decimal("0")
         age_group = calculator_input.age_group or AgeGroup.AGE_25_34
     else:
         # Fetch from database
         result = await db.execute(
-            select(UserFinancialProfile).where(
-                UserFinancialProfile.user_id == user_id
-            )
+            select(UserFinancialProfile).where(UserFinancialProfile.user_id == user_id)
         )
         profile = result.scalar_one_or_none()
 
         if not profile:
-            raise ValueError("Financial profile not found. Please provide financial information.")
+            raise ValueError(
+                "Financial profile not found. Please provide financial information."
+            )
 
         monthly_income = profile.monthly_income
         current_balance = profile.current_balance
         age_group = profile.age_group
 
     # Calculate payment schedule
-    monthly_payment, total_interest, payment_schedule = engine.calculate_payment_schedule(
-        principal=calculator_input.purchase_amount,
-        num_payments=calculator_input.num_payments,
-        annual_interest_rate=calculator_input.interest_rate
+    monthly_payment, total_interest, payment_schedule = (
+        engine.calculate_payment_schedule(
+            principal=calculator_input.purchase_amount,
+            num_payments=calculator_input.num_payments,
+            annual_interest_rate=calculator_input.interest_rate,
+        )
     )
 
     # Calculate financial metrics
     total_cost = calculator_input.purchase_amount + total_interest
 
     total_monthly_obligations = (
-        calculator_input.active_installments_monthly +
-        calculator_input.other_monthly_obligations
+        calculator_input.active_installments_monthly
+        + calculator_input.other_monthly_obligations
     )
 
-    payment_to_income = (monthly_payment / monthly_income * 100) if monthly_income > 0 else Decimal('100')
-    dti_with_installment = ((monthly_payment + total_monthly_obligations) / monthly_income * 100) if monthly_income > 0 else Decimal('100')
+    payment_to_income = (
+        (monthly_payment / monthly_income * 100)
+        if monthly_income > 0
+        else Decimal("100")
+    )
+    dti_with_installment = (
+        ((monthly_payment + total_monthly_obligations) / monthly_income * 100)
+        if monthly_income > 0
+        else Decimal("100")
+    )
     balance_after_payment = current_balance - monthly_payment
     remaining_monthly = monthly_income - monthly_payment - total_monthly_obligations
 
@@ -658,7 +770,7 @@ async def calculate_installment_risk(
         other_monthly_obligations=calculator_input.other_monthly_obligations,
         planning_mortgage=calculator_input.planning_mortgage,
         interest_rate=calculator_input.interest_rate,
-        num_payments=calculator_input.num_payments
+        num_payments=calculator_input.num_payments,
     )
 
     # Generate personalized content
@@ -672,36 +784,38 @@ async def calculate_installment_risk(
         monthly_payment,
         monthly_income,
         calculator_input.num_payments,
-        total_interest
+        total_interest,
     )
     statistics = engine.generate_statistics(
         risk_level,
         calculator_input.category,
         age_group,
-        calculator_input.active_installments_count
+        calculator_input.active_installments_count,
     )
     warnings = engine.generate_warnings(
-        risk_level,
-        calculator_input.interest_rate,
-        calculator_input.category
+        risk_level, calculator_input.interest_rate, calculator_input.category
     )
 
     # Generate tips
     tips = []
     if calculator_input.interest_rate == 0:
-        tips.append("Even at 0% interest, track payment dates carefully to avoid late fees")
+        tips.append(
+            "Even at 0% interest, track payment dates carefully to avoid late fees"
+        )
     if risk_level in [RiskLevel.GREEN, RiskLevel.YELLOW]:
         tips.append("Set up automatic payments to never miss a due date")
         tips.append("Keep a buffer of $500-$1000 in your account for emergencies")
 
     # Calculate hidden costs
-    potential_late_fee = Decimal('35.00')  # Typical late fee
-    potential_overdraft = Decimal('35.00')  # Typical overdraft fee
+    potential_late_fee = Decimal("35.00")  # Typical late fee
+    potential_overdraft = Decimal("35.00")  # Typical overdraft fee
     hidden_cost_message = None
 
     if risk_level in [RiskLevel.ORANGE, RiskLevel.RED]:
         total_hidden_cost = potential_late_fee + potential_overdraft
-        effective_interest_increase = (total_hidden_cost / calculator_input.purchase_amount * 100)
+        effective_interest_increase = (
+            total_hidden_cost / calculator_input.purchase_amount * 100
+        )
         hidden_cost_message = (
             f"One missed payment could cost ${float(total_hidden_cost):.2f} in fees, "
             f"turning a 0% installment into an effective {float(effective_interest_increase):.1f}% interest rate"
@@ -721,7 +835,7 @@ async def calculate_installment_risk(
         payment_to_income_ratio=payment_to_income,
         remaining_balance=balance_after_payment,
         risk_factors=json.dumps([rf.model_dump() for rf in risk_factors]),
-        user_proceeded=False  # Will be updated if user creates actual installment
+        user_proceeded=False,  # Will be updated if user creates actual installment
     )
     db.add(calculation_record)
 
@@ -751,20 +865,16 @@ async def calculate_installment_risk(
         statistics=statistics,
         potential_late_fee=potential_late_fee,
         potential_overdraft=potential_overdraft,
-        hidden_cost_message=hidden_cost_message
+        hidden_cost_message=hidden_cost_message,
     )
 
 
 async def update_achievement_calculations(
-    db: AsyncSession,
-    user_id: UUID,
-    risk_level: RiskLevel
+    db: AsyncSession, user_id: UUID, risk_level: RiskLevel
 ):
     """Update user's achievement tracking for calculations"""
     result = await db.execute(
-        select(InstallmentAchievement).where(
-            InstallmentAchievement.user_id == user_id
-        )
+        select(InstallmentAchievement).where(InstallmentAchievement.user_id == user_id)
     )
     achievement = result.scalar_one_or_none()
 

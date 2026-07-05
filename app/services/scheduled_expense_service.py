@@ -9,6 +9,7 @@ Responsibilities:
 • Impact computation (delegates to the pure engine)
 • No business-logic duplication — reuses scheduled_expense_engine.py
 """
+
 from __future__ import annotations
 
 import logging
@@ -168,9 +169,7 @@ async def cancel_scheduled_expense(
     expense.deleted_at = datetime.now(timezone.utc)
     await db.flush()
 
-    logger.info(
-        "scheduled_expense: cancelled id=%s user=%s", expense_id, user_id
-    )
+    logger.info("scheduled_expense: cancelled id=%s user=%s", expense_id, user_id)
     return expense
 
 

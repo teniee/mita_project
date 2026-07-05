@@ -7,6 +7,7 @@ PHILOSOPHY (from product owner):
 - Never take from savings or essentials when rebalancing.
 - Take from discretionary (entertainment, dining) first.
 """
+
 from __future__ import annotations
 
 from enum import IntEnum
@@ -14,10 +15,10 @@ from typing import Dict
 
 
 class CategoryLevel(IntEnum):
-    SACRED = 0        # Never use as donor. Ever. (savings, rent, etc.)
-    PROTECTED = 1     # Last resort only (groceries, transport)
-    FLEXIBLE = 2      # Second priority (coffee, clothing)
-    DISCRETIONARY = 3 # First priority donor (entertainment, dining)
+    SACRED = 0  # Never use as donor. Ever. (savings, rent, etc.)
+    PROTECTED = 1  # Last resort only (groceries, transport)
+    FLEXIBLE = 2  # Second priority (coffee, clothing)
+    DISCRETIONARY = 3  # First priority donor (entertainment, dining)
 
 
 CATEGORY_PRIORITY: Dict[str, CategoryLevel] = {

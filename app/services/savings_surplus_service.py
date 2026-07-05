@@ -3,22 +3,24 @@ Savings Surplus Rollover Service
 Carries unspent savings budget from one month to the next month's goal.
 This preserves the meaning of the app: savings are sacred and accumulate.
 """
-from typing import Optional, Dict
-from uuid import UUID
+
 from datetime import date
 from decimal import Decimal
+from typing import Dict, Optional
+from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.db.models import DailyPlan, Goal
 from app.core.category_priority import CATEGORY_PRIORITY, CategoryLevel
 from app.core.logging_config import get_logger
+from app.db.models import DailyPlan, Goal
 
 logger = get_logger(__name__)
 
 # Categories considered "savings" for surplus rollover
 SAVINGS_CATEGORIES = {
-    cat for cat, level in CATEGORY_PRIORITY.items()
+    cat
+    for cat, level in CATEGORY_PRIORITY.items()
     if level == CategoryLevel.SACRED and "savings" in cat
 }
 # Fallback if registry doesn't have savings categories
@@ -76,14 +78,18 @@ def apply_surplus_to_goal(
     )
 
     if not goal:
-        logger.info(f"No active goal found for user {user_id}, surplus {surplus:.2f} not applied")
+        logger.info(
+            f"No active goal found for user {user_id}, surplus {surplus:.2f} not applied"
+        )
         return None
 
     try:
         goal.add_savings(surplus)
         db.commit()
         db.refresh(goal)
-        logger.info(f"Applied ${surplus:.2f} surplus to goal [{goal.title}] for user {user_id}")
+        logger.info(
+            f"Applied ${surplus:.2f} surplus to goal [{goal.title}] for user {user_id}"
+        )
         return {
             "goal_id": str(goal.id),
             "goal_title": goal.title,

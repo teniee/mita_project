@@ -7,27 +7,21 @@ This simulates what happens when a user submits onboarding data.
 # Simulated user input from frontend after transformation
 user_input = {
     "region": "US",
-    "income": {
-        "monthly_income": 5000,
-        "additional_income": 0
-    },
-    "fixed_expenses": {
-        "rent": 1500,
-        "utilities": 200
-    },
+    "income": {"monthly_income": 5000, "additional_income": 0},
+    "fixed_expenses": {"rent": 1500, "utilities": 200},
     "spending_habits": {
         "dining_out_per_month": 15,
         "entertainment_per_month": 4,
         "clothing_per_month": 2,
         "travel_per_year": 2,
         "coffee_per_week": 5,
-        "transport_per_month": 20
+        "transport_per_month": 20,
     },
     "goals": {
         "savings_goal_amount_per_month": 500,
         "savings_goal_type": "emergency_fund",
-        "has_emergency_fund": True
-    }
+        "has_emergency_fund": True,
+    },
 }
 
 # Simulate budget generation (from budget_logic.py)
@@ -56,8 +50,8 @@ budget_plan = {
         "clothing": 100,
         "travel": 50,
         "coffee": 250,
-        "transport": 1050
-    }
+        "transport": 1050,
+    },
 }
 
 print("\n✓ Budget plan generated successfully")
@@ -68,15 +62,21 @@ calendar_config = {
     **user_input,
     **budget_plan,
     "monthly_income": monthly_income,  # Added at top level
-    "user_id": "test-user-123"
+    "user_id": "test-user-123",
 }
 
 # Verify calendar config has what the engine needs
 print("\n=== VERIFICATION ===")
 print(f"✓ calendar_config['monthly_income'] = ${calendar_config.get('monthly_income')}")
-print(f"✓ calendar_config['fixed_expenses'] type = {type(calendar_config.get('fixed_expenses'))}")
-print(f"✓ calendar_config['fixed_expenses'] value = {calendar_config.get('fixed_expenses')}")
-print(f"✓ calendar_config['fixed_expenses_total'] = ${calendar_config.get('fixed_expenses_total')}")
+print(
+    f"✓ calendar_config['fixed_expenses'] type = {type(calendar_config.get('fixed_expenses'))}"
+)
+print(
+    f"✓ calendar_config['fixed_expenses'] value = {calendar_config.get('fixed_expenses')}"
+)
+print(
+    f"✓ calendar_config['fixed_expenses_total'] = ${calendar_config.get('fixed_expenses_total')}"
+)
 
 # Simulate what calendar engine will see (from monthly_budget_engine.py line 28)
 income_from_config = calendar_config.get("monthly_income", 3000)
@@ -96,7 +96,9 @@ else:
 if isinstance(fixed_from_config, dict):
     print("✅ SUCCESS: Calendar will receive fixed_expenses as dict")
 else:
-    print(f"❌ FAILED: Calendar will receive fixed_expenses as {type(fixed_from_config)}")
+    print(
+        f"❌ FAILED: Calendar will receive fixed_expenses as {type(fixed_from_config)}"
+    )
 
 # Calculate expected daily budget
 days_in_month = 30
@@ -106,4 +108,6 @@ print(f"✓ User's income: ${monthly_income}/month")
 print(f"✓ User's fixed expenses: ${fixed_total}/month")
 print(f"✓ User's discretionary: ${discretionary}/month")
 print(f"✓ Expected daily budget: ${daily_budget:.2f}/day")
-print(f"\n✅ User should see approximately ${daily_budget:.2f} per day in their calendar!")
+print(
+    f"\n✅ User should see approximately ${daily_budget:.2f} per day in their calendar!"
+)

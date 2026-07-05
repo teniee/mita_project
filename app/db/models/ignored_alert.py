@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime
 
 from sqlalchemy import Boolean, Column, DateTime, Numeric, String, func
 from sqlalchemy.dialects.postgresql import UUID
@@ -17,6 +16,7 @@ class IgnoredAlert(Base):
     Written by:  record_ignored_alert()  (via POST /budget/alert/ignored)
     Read by:     run_followup_reminders()  (daily cron at 09:05 UTC)
     """
+
     __tablename__ = "ignored_alerts"
 
     id = Column(

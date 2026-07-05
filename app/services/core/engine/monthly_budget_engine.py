@@ -4,7 +4,10 @@ from decimal import ROUND_HALF_UP, Decimal
 from typing import Dict, List
 
 from app.config.country_profiles_loader import COUNTRY_PROFILES
-from app.services.core.engine.calendar_engine import distribute_budget_over_days, CalendarDay
+from app.services.core.engine.calendar_engine import (
+    CalendarDay,
+    distribute_budget_over_days,
+)
 
 
 def build_monthly_budget(user_answers: dict, year: int, month: int) -> List[Dict]:
@@ -27,9 +30,9 @@ def build_monthly_budget(user_answers: dict, year: int, month: int) -> List[Dict
 
     # Get behavioral profile (weights, frequencies, etc.)
     profile = COUNTRY_PROFILES.get(region, {})
-    fixed = user_answers.get("fixed_expenses", {})
+    fixed = user_answers.get("fixed_expenses") or {}
     savings_goal = Decimal(
-        str(user_answers.get("goals", {}).get("savings_goal_amount_per_month", 0))
+        str((user_answers.get("goals") or {}).get("savings_goal_amount_per_month") or 0)
     )
 
     # Validate budget feasibility
@@ -66,7 +69,9 @@ def build_monthly_budget(user_answers: dict, year: int, month: int) -> List[Dict
         # Normalize weights if needed
         total_weight = sum(category_weights.values())
         if not (0.99 <= total_weight <= 1.01):
-            category_weights = {k: v / total_weight for k, v in category_weights.items()}
+            category_weights = {
+                k: v / total_weight for k, v in category_weights.items()
+            }
 
         # Allocate flexible budget across categories
         flexible_alloc = {
@@ -82,7 +87,7 @@ def build_monthly_budget(user_answers: dict, year: int, month: int) -> List[Dict
     full_month_plan.update(flexible_alloc)
 
     # Extract user spending frequencies from habits
-    spending_habits = user_answers.get("spending_habits", {})
+    spending_habits = user_answers.get("spending_habits") or {}
     category_frequencies = {
         "coffee": spending_habits.get("coffee_per_week", 0) * 4,  # Weekly -> Monthly
         "transport": spending_habits.get("transport_per_month", 0),
@@ -95,20 +100,19 @@ def build_monthly_budget(user_answers: dict, year: int, month: int) -> List[Dict
     # Setup days - Create CalendarDay objects for proper type compatibility
     num_days = calendar.monthrange(year, month)[1]
     days = [
-        CalendarDay(datetime.date(year, month, day))
-        for day in range(1, num_days + 1)
+        CalendarDay(datetime.date(year, month, day)) for day in range(1, num_days + 1)
     ]
 
     # Distribute category amounts across days with user frequency data
     for category, monthly_amount in full_month_plan.items():
         user_frequency = category_frequencies.get(category)  # None if not specified
-        distribute_budget_over_days(days, category, float(monthly_amount), user_frequency)
+        distribute_budget_over_days(
+            days, category, float(monthly_amount), user_frequency
+        )
 
     # Final cleanup: calculate total per day and convert to dict format
     for day in days:
-        day.total = round(
-            sum(Decimal(str(v)) for v in day.planned_budget.values()), 2
-        )
+        day.total = round(sum(Decimal(str(v)) for v in day.planned_budget.values()), 2)
 
     # Convert CalendarDay objects to dictionaries for API response
     return [day.to_dict() for day in days]

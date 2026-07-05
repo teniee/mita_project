@@ -6,38 +6,26 @@ Test script to verify calendar save function handles both formats correctly.
 list_format_calendar = [
     {
         "date": "2025-01-01",
-        "planned_budget": {
-            "food": 50.0,
-            "transport": 20.0,
-            "entertainment": 30.0
-        },
-        "total": 100.0
+        "planned_budget": {"food": 50.0, "transport": 20.0, "entertainment": 30.0},
+        "total": 100.0,
     },
     {
         "date": "2025-01-02",
-        "planned_budget": {
-            "food": 45.0,
-            "transport": 25.0,
-            "entertainment": 35.0
-        },
-        "total": 105.0
+        "planned_budget": {"food": 45.0, "transport": 25.0, "entertainment": 35.0},
+        "total": 105.0,
     },
     {
         "date": "2025-01-03",
-        "planned_budget": {
-            "food": 55.0,
-            "transport": 15.0,
-            "entertainment": 25.0
-        },
-        "total": 95.0
-    }
+        "planned_budget": {"food": 55.0, "transport": 15.0, "entertainment": 25.0},
+        "total": 95.0,
+    },
 ]
 
 # Simulate the dict format (legacy)
 dict_format_calendar = {
     "2025-01-01": {"food": 50.0, "transport": 20.0, "entertainment": 30.0},
     "2025-01-02": {"food": 45.0, "transport": 25.0, "entertainment": 35.0},
-    "2025-01-03": {"food": 55.0, "transport": 15.0, "entertainment": 25.0}
+    "2025-01-03": {"food": 55.0, "transport": 15.0, "entertainment": 25.0},
 }
 
 print("=" * 60)
@@ -58,7 +46,9 @@ for day_entry in list_format_calendar:
         calendar_dict[date_str] = planned_budget
 
 print(f"   ✓ Converted to dict with {len(calendar_dict)} keys")
-print(f"   ✓ Sample day: {list(calendar_dict.keys())[0]} = {calendar_dict[list(calendar_dict.keys())[0]]}")
+print(
+    f"   ✓ Sample day: {list(calendar_dict.keys())[0]} = {calendar_dict[list(calendar_dict.keys())[0]]}"
+)
 
 # Test dict format (should work as-is)
 print("\n2. Testing DICT format (legacy):")

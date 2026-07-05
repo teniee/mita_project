@@ -9,21 +9,16 @@ Tests the critical security fixes:
 5. All auth endpoints include token_version_id
 """
 
-import pytest
 from datetime import datetime, timedelta, timezone
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.auth_jwt_service import (
-    create_token_pair,
-    verify_token,
-    InvalidTokenError
-)
-from app.db.models import User
-from app.api.auth.services import (
-    authenticate_google
-)
 from app.api.auth.schemas import GoogleAuthIn
+from app.api.auth.services import authenticate_google
+from app.db.models import User
+from app.services.auth_jwt_service import create_token_pair, verify_token
 
 
 class TestTokenVersionValidation:
@@ -35,7 +30,7 @@ class TestTokenVersionValidation:
             "sub": "test-user-123",
             "is_premium": False,
             "country": "US",
-            "token_version_id": 5
+            "token_version_id": 5,
         }
 
         tokens = create_token_pair(user_data, user_role="basic_user")
@@ -59,7 +54,7 @@ class TestTokenVersionValidation:
             "sub": str(mock_user.id),
             "is_premium": mock_user.is_premium,
             "country": mock_user.country,
-            "token_version_id": 3  # OLD VERSION
+            "token_version_id": 3,  # OLD VERSION
         }
         tokens = create_token_pair(user_data, user_role="basic_user")
 
@@ -89,7 +84,7 @@ class TestTokenVersionValidation:
             "sub": str(mock_user.id),
             "is_premium": mock_user.is_premium,
             "country": mock_user.country,
-            "token_version_id": 5  # CURRENT VERSION
+            "token_version_id": 5,  # CURRENT VERSION
         }
         tokens = create_token_pair(user_data, user_role="basic_user")
 
@@ -120,7 +115,7 @@ class TestBackwardsCompatibility:
         user_data = {
             "sub": str(mock_user.id),
             "is_premium": mock_user.is_premium,
-            "country": mock_user.country
+            "country": mock_user.country,
             # NOTE: No token_version_id field
         }
         tokens = create_token_pair(user_data, user_role="basic_user")
@@ -149,13 +144,16 @@ class TestGoogleOAuthTokenVersion:
         mock_user.token_version = 1
 
         # Mock the authenticate_google_user function
-        with patch('app.api.auth.services.authenticate_google_user',
-                   return_value=mock_user) as mock_google_auth:
+        with patch(
+            "app.api.auth.services.authenticate_google_user", return_value=mock_user
+        ) as mock_google_auth:
 
             mock_db = AsyncMock(spec=AsyncSession)
 
             # Call authenticate_google
-            google_data = GoogleAuthIn(id_token="mockheader11.mockpayload22.mocksignature33")
+            google_data = GoogleAuthIn(
+                id_token="mockheader11.mockpayload22.mocksignature33"
+            )
             result = await authenticate_google(google_data, mock_db)
 
             # Verify token was created
@@ -164,7 +162,9 @@ class TestGoogleOAuthTokenVersion:
 
             # Decode and verify token_version_id is present
             # (In real scenario, we'd decode the JWT to check)
-            mock_google_auth.assert_called_once_with("mockheader11.mockpayload22.mocksignature33")
+            mock_google_auth.assert_called_once_with(
+                "mockheader11.mockpayload22.mocksignature33"
+            )
 
 
 class TestAccountLockout:
@@ -173,14 +173,12 @@ class TestAccountLockout:
     def test_user_model_has_lockout_fields(self):
         """Verify User model includes lockout fields"""
         user = User(
-            email="test@example.com",
-            password_hash="hashed_password",
-            country="US"
+            email="test@example.com", password_hash="hashed_password", country="US"
         )
 
         # Check fields exist
-        assert hasattr(user, 'failed_login_attempts')
-        assert hasattr(user, 'account_locked_until')
+        assert hasattr(user, "failed_login_attempts")
+        assert hasattr(user, "account_locked_until")
 
         # Check default values (column defaults apply at flush; pre-flush
         # attributes are None, which production code treats as 0/unlocked)
@@ -190,9 +188,7 @@ class TestAccountLockout:
     def test_lockout_expiration_logic(self):
         """Test that lockout expires after time period"""
         user = User(
-            email="test@example.com",
-            password_hash="hashed_password",
-            country="US"
+            email="test@example.com", password_hash="hashed_password", country="US"
         )
 
         # Lock account for 30 minutes
@@ -218,17 +214,21 @@ class TestAllAuthEndpointsIncludeVersion:
         # Actual integration test would require full database setup
 
         # Check the registration.py file includes token_version_id
-        import app.api.auth.registration as reg_module
         import inspect
 
+        import app.api.auth.registration as reg_module
+
         source = inspect.getsource(reg_module.register_user_standardized)
-        assert "token_version_id" in source, "registration.py must include token_version_id"
+        assert (
+            "token_version_id" in source
+        ), "registration.py must include token_version_id"
 
     @pytest.mark.asyncio
     async def test_login_includes_token_version(self):
         """Test that login endpoint creates tokens with version"""
-        import app.api.auth.login as login_module
         import inspect
+
+        import app.api.auth.login as login_module
 
         source = inspect.getsource(login_module.login_user_standardized)
         assert "token_version_id" in source, "login.py must include token_version_id"
@@ -236,32 +236,37 @@ class TestAllAuthEndpointsIncludeVersion:
     @pytest.mark.asyncio
     async def test_token_refresh_includes_token_version(self):
         """Test that token refresh endpoint creates tokens with version"""
-        import app.api.auth.token_management as token_module
         import inspect
 
+        import app.api.auth.token_management as token_module
+
         source = inspect.getsource(token_module.refresh_token_standardized)
-        assert "token_version_id" in source, "token_management.py must include token_version_id"
+        assert (
+            "token_version_id" in source
+        ), "token_management.py must include token_version_id"
 
     @pytest.mark.asyncio
     async def test_services_all_functions_include_version(self):
         """Test that all 6 functions in services.py include token_version_id"""
-        import app.api.auth.services as services_module
         import inspect
 
+        import app.api.auth.services as services_module
+
         functions_to_check = [
-            'register_user',
-            'authenticate_user',
-            'refresh_token_for_user',
-            'authenticate_google',
-            'register_user_async',
-            'authenticate_user_async'
+            "register_user",
+            "authenticate_user",
+            "refresh_token_for_user",
+            "authenticate_google",
+            "register_user_async",
+            "authenticate_user_async",
         ]
 
         for func_name in functions_to_check:
             func = getattr(services_module, func_name)
             source = inspect.getsource(func)
-            assert "token_version_id" in source, \
-                f"services.py function {func_name} must include token_version_id"
+            assert (
+                "token_version_id" in source
+            ), f"services.py function {func_name} must include token_version_id"
 
 
 # Run all tests

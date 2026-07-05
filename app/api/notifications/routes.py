@@ -94,6 +94,7 @@ def send_test_notification(
 
 # Device management endpoints
 
+
 @router.post("/register-device")
 def register_device(
     device_data: dict,
@@ -106,34 +107,27 @@ def register_device(
     platform = device_data.get("platform", "fcm")
 
     # Check if device already registered
-    existing = db.query(PushToken).filter(
-        PushToken.user_id == user.id,
-        PushToken.token == device_token
-    ).first()
+    existing = (
+        db.query(PushToken)
+        .filter(PushToken.user_id == user.id, PushToken.token == device_token)
+        .first()
+    )
 
     if existing:
         existing.platform = platform
         db.commit()
-        return success_response({
-            "device_id": device_id,
-            "status": "updated",
-            "token_id": str(existing.id)
-        })
+        return success_response(
+            {"device_id": device_id, "status": "updated", "token_id": str(existing.id)}
+        )
 
-    token = PushToken(
-        user_id=user.id,
-        token=device_token,
-        platform=platform
-    )
+    token = PushToken(user_id=user.id, token=device_token, platform=platform)
     db.add(token)
     db.commit()
     db.refresh(token)
 
-    return success_response({
-        "device_id": device_id,
-        "status": "registered",
-        "token_id": str(token.id)
-    })
+    return success_response(
+        {"device_id": device_id, "status": "registered", "token_id": str(token.id)}
+    )
 
 
 def _unregister_device_token(device_data: dict, db: Session, user):
@@ -175,10 +169,14 @@ def _update_device_token(device_data: dict, db: Session, user):
     platform = device_data.get("platform")
 
     if old_token and new_token:
-        existing = db.query(PushToken).filter(
-            PushToken.user_id == user.id,
-            PushToken.token == old_token,
-        ).first()
+        existing = (
+            db.query(PushToken)
+            .filter(
+                PushToken.user_id == user.id,
+                PushToken.token == old_token,
+            )
+            .first()
+        )
 
         if existing:
             existing.token = new_token
@@ -217,6 +215,7 @@ def update_device_patch(
 # Notification management endpoints
 # IMPORTANT: Specific path routes MUST come before parameterized /{notification_id}
 # routes, otherwise FastAPI will try to parse "list", "unread-count", etc. as UUID.
+
 
 @router.get("/list", response_model=NotificationListResponse)
 def get_notifications(
@@ -282,14 +281,14 @@ def get_notification_preferences(
         db.refresh(prefs)
 
     return NotificationPreferencesResponse(
-        push_enabled=getattr(prefs, 'push_enabled', True),
-        email_enabled=getattr(prefs, 'email_enabled', True),
-        budget_alerts=getattr(prefs, 'budget_alerts', True),
-        goal_updates=getattr(prefs, 'goal_updates', True),
-        daily_reminders=getattr(prefs, 'daily_reminders', True),
-        ai_recommendations=getattr(prefs, 'ai_recommendations', True),
-        transaction_alerts=getattr(prefs, 'transaction_alerts', True),
-        achievement_notifications=getattr(prefs, 'achievement_notifications', True),
+        push_enabled=getattr(prefs, "push_enabled", True),
+        email_enabled=getattr(prefs, "email_enabled", True),
+        budget_alerts=getattr(prefs, "budget_alerts", True),
+        goal_updates=getattr(prefs, "goal_updates", True),
+        daily_reminders=getattr(prefs, "daily_reminders", True),
+        ai_recommendations=getattr(prefs, "ai_recommendations", True),
+        transaction_alerts=getattr(prefs, "transaction_alerts", True),
+        achievement_notifications=getattr(prefs, "achievement_notifications", True),
     )
 
 
@@ -359,10 +358,9 @@ def mark_all_notifications_read(
     """Mark all notifications as read for current user"""
     service = NotificationService(db)
     count = service.mark_all_as_read(user.id)
-    return success_response({
-        "marked_read": count,
-        "message": f"Marked {count} notifications as read"
-    })
+    return success_response(
+        {"marked_read": count, "message": f"Marked {count} notifications as read"}
+    )
 
 
 # Parameterized routes MUST be last to avoid shadowing specific paths above
@@ -405,7 +403,4 @@ def delete_notification(
     success = service.delete_notification(notification_id, user.id)
     if not success:
         raise HTTPException(status_code=404, detail="Notification not found")
-    return success_response({
-        "deleted": True,
-        "notification_id": str(notification_id)
-    })
+    return success_response({"deleted": True, "notification_id": str(notification_id)})

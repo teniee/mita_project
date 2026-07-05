@@ -4,7 +4,9 @@ Production-ready Pydantic v2 models with comprehensive validation
 """
 
 from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field, field_validator
+
 from app.core.validators import InputSanitizer
 
 
@@ -15,14 +17,14 @@ class AIAssistantRequest(BaseModel):
         ...,
         min_length=1,
         max_length=1000,
-        description="User's financial question for the AI assistant"
+        description="User's financial question for the AI assistant",
     )
     context: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Optional context for the question (e.g., category, date range)"
+        description="Optional context for the question (e.g., category, date range)",
     )
 
-    @field_validator('question')
+    @field_validator("question")
     @classmethod
     def validate_question(cls, v: str) -> str:
         """Sanitize and validate question text"""
@@ -37,7 +39,7 @@ class AIAssistantRequest(BaseModel):
 
         return sanitized
 
-    @field_validator('context')
+    @field_validator("context")
     @classmethod
     def validate_context(cls, v: Dict[str, Any]) -> Dict[str, Any]:
         """Validate and sanitize context dictionary"""
@@ -48,7 +50,9 @@ class AIAssistantRequest(BaseModel):
         sanitized_context = {}
         for key, value in v.items():
             if isinstance(value, str):
-                sanitized_context[key] = InputSanitizer.sanitize_string(value, max_length=500)
+                sanitized_context[key] = InputSanitizer.sanitize_string(
+                    value, max_length=500
+                )
             else:
                 sanitized_context[key] = value
 
@@ -59,26 +63,26 @@ class AIAssistantResponse(BaseModel):
     """Response schema for AI assistant endpoint"""
 
     answer: str = Field(..., description="AI-generated answer to the question")
-    confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score (0.0-1.0)")
-    related_insights: List[str] = Field(default_factory=list, description="Related insights")
-    follow_up_questions: List[str] = Field(default_factory=list, description="Suggested follow-up questions")
+    confidence: float = Field(
+        ..., ge=0.0, le=1.0, description="Confidence score (0.0-1.0)"
+    )
+    related_insights: List[str] = Field(
+        default_factory=list, description="Related insights"
+    )
+    follow_up_questions: List[str] = Field(
+        default_factory=list, description="Suggested follow-up questions"
+    )
 
 
 class CategorySuggestionRequest(BaseModel):
     """Request schema for category suggestion endpoint"""
 
     description: Optional[str] = Field(
-        None,
-        max_length=500,
-        description="Transaction description"
+        None, max_length=500, description="Transaction description"
     )
-    amount: Optional[float] = Field(
-        None,
-        gt=0,
-        description="Transaction amount"
-    )
+    amount: Optional[float] = Field(None, gt=0, description="Transaction amount")
 
-    @field_validator('description')
+    @field_validator("description")
     @classmethod
     def validate_description(cls, v: Optional[str]) -> Optional[str]:
         """Sanitize description if provided"""
@@ -100,19 +104,19 @@ class DayStatusRequest(BaseModel):
     """Request schema for day status explanation"""
 
     date: str = Field(
-        ...,
-        pattern=r'^\d{4}-\d{2}-\d{2}$',
-        description="Date in YYYY-MM-DD format"
+        ..., pattern=r"^\d{4}-\d{2}-\d{2}$", description="Date in YYYY-MM-DD format"
     )
 
 
 class SpendingPredictionRequest(BaseModel):
     """Request schema for spending prediction"""
 
-    category: Optional[str] = Field(None, max_length=100, description="Category to predict")
+    category: Optional[str] = Field(
+        None, max_length=100, description="Category to predict"
+    )
     days: int = Field(7, ge=1, le=365, description="Number of days to predict")
 
-    @field_validator('category')
+    @field_validator("category")
     @classmethod
     def validate_category(cls, v: Optional[str]) -> Optional[str]:
         """Sanitize category if provided"""
@@ -126,9 +130,11 @@ class SpendingPredictionRequest(BaseModel):
 class GoalAnalysisRequest(BaseModel):
     """Request schema for goal analysis"""
 
-    goal_id: str = Field(..., min_length=1, max_length=100, description="Goal ID to analyze")
+    goal_id: str = Field(
+        ..., min_length=1, max_length=100, description="Goal ID to analyze"
+    )
 
-    @field_validator('goal_id')
+    @field_validator("goal_id")
     @classmethod
     def validate_goal_id(cls, v: str) -> str:
         """Sanitize goal ID"""
@@ -152,19 +158,19 @@ class AIFinancialAdviceRequest(BaseModel):
         ...,
         min_length=1,
         max_length=1000,
-        description="Financial question or topic for advice"
+        description="Financial question or topic for advice",
     )
     user_context: Optional[Dict[str, Any]] = Field(
         default=None,
-        description="User's financial context (income, expenses, goals, etc.)"
+        description="User's financial context (income, expenses, goals, etc.)",
     )
     advice_type: Optional[str] = Field(
         default="general",
         max_length=50,
-        description="Type of advice requested (budgeting, saving, investing, etc.)"
+        description="Type of advice requested (budgeting, saving, investing, etc.)",
     )
 
-    @field_validator('question')
+    @field_validator("question")
     @classmethod
     def validate_question(cls, v: str) -> str:
         """Sanitize and validate question"""
@@ -177,9 +183,11 @@ class AIFinancialAdviceRequest(BaseModel):
 
         return sanitized
 
-    @field_validator('user_context')
+    @field_validator("user_context")
     @classmethod
-    def validate_user_context(cls, v: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    def validate_user_context(
+        cls, v: Optional[Dict[str, Any]]
+    ) -> Optional[Dict[str, Any]]:
         """Validate user context dictionary"""
         if v is None:
             return None
@@ -189,7 +197,7 @@ class AIFinancialAdviceRequest(BaseModel):
 
         return v
 
-    @field_validator('advice_type')
+    @field_validator("advice_type")
     @classmethod
     def validate_advice_type(cls, v: Optional[str]) -> Optional[str]:
         """Sanitize advice type"""
@@ -205,6 +213,12 @@ class AIFinancialAdviceResponse(BaseModel):
 
     advice: str = Field(..., description="AI-generated financial advice")
     confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence score")
-    recommendations: List[str] = Field(default_factory=list, description="Specific recommendations")
-    next_steps: List[str] = Field(default_factory=list, description="Suggested next steps")
-    resources: List[str] = Field(default_factory=list, description="Related resources or tools")
+    recommendations: List[str] = Field(
+        default_factory=list, description="Specific recommendations"
+    )
+    next_steps: List[str] = Field(
+        default_factory=list, description="Suggested next steps"
+    )
+    resources: List[str] = Field(
+        default_factory=list, description="Related resources or tools"
+    )

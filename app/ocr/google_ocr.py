@@ -1,4 +1,3 @@
-
 # Ensure the service account path is provided via ``GOOGLE_CREDENTIALS_PATH``
 import os
 

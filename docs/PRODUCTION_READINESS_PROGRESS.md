@@ -1,57 +1,69 @@
 # MITA — Production Readiness Progress (Live Tracker)
 
-> **Started:** 2026-07-04
+> **Started:** 2026-07-04 · **Last updated:** 2026-07-05
 > **Branch:** `claude/production-readiness-audit-hlbda5`
-> **Predecessor trackers:** `docs/FIX_ALL.md` (C/H/M/L/R issues, mostly FIXED), `docs/problems audit.md` (April 2026 honest audit)
-> **Environment:** Python 3.11.15 (prod = 3.12 via Dockerfile), no Flutter SDK available (mobile = static review only), no DB/Redis (unit tests only)
+> **Predecessor trackers:** `docs/FIX_ALL.md` (C/H/M/L/R issues, mostly FIXED), `docs/problems audit.md` (April 2026 audit)
+> **Environment:** Python 3.11 venv (prod = 3.12 Docker), local Redis available, **no Postgres** (Postgres-bound tests unverifiable here), no Flutter SDK (mobile = static review only)
 
-This file is the single source of truth for the current production-readiness pass.
-Update it after every verified fix: status, root cause, changed files, next task.
+Statuses: `[x]` fixed+verified · `[~]` in progress · `[ ]` open · `[B]` blocked (credentials/product decision/environment)
 
 ---
 
-## Verification of prior audit claims (2026-07-04)
+## CRITICAL production bugs found & fixed this session (all verified by tests)
 
-| # | Claim (from `problems audit.md`) | Verified? | Notes |
-|---|----------------------------------|-----------|-------|
-| 1 | `goals/routes.py` imports non-existent `app.services.notification_integration` | **FALSE** | File exists; `get_notification_integration` defined at `app/services/notification_integration.py:641`. Full import check pending. |
-| 2 | `financial/routes.py` dead statements — installment metadata computed and discarded | **CONFIRMED** | `app/api/financial/routes.py` ~84–93: `monthly_payment * payload.months` no-op + discarded dict literal. |
-| 3 | `app/main.py:84` uses `str \| None` (breaks Python 3.9 local dev) | **CONFIRMED** | Only PEP 604 usage in `app/` (1 file). Prod runs 3.12 — dev-experience issue, not prod blocker. |
-| 4 | 8 failing tests (category mapping, discretionary calc, scheduled impact) | **STALE** | The cited test files (`test_category_mapping_fix.py`, `test_income_location_budget_allocation.py`) do not exist in the current tree. Running current suite to get ground truth. |
-| 5 | `except Exception: pass` in production files | **CONFIRMED (partial)** | ~10 production files; several look like legitimate best-effort cache/limiter ops. Case-by-case review needed. |
-| 6 | Tracked junk files | **CONFIRMED** | `.DS_Store`, `app/api/goals/routes.py.backup`, `routes.py.before_fix`, 2× `project.pbxproj.backup` tracked in git. |
-| 7 | docker-compose.yml hardcoded postgres creds | **CONFIRMED (dev-only)** | Only in dev compose files; `docker-compose.prod.yml` correctly uses env vars. Low severity. |
+- [x] **Logout was a silent no-op.** `token_blacklist_service._extract_token_info` decoded JWTs without handling the `aud` claim every issued token carries → `InvalidAudienceError` swallowed → `blacklist_token()` always returned `False`. Logout/revocation never blacklisted anything. (`53ad3e2`)
+- [x] **Revoke-all-user-tokens always crashed.** `blacklist_user_tokens` sliced the *set* returned by `smembers` → TypeError swallowed → returned failure. (`53ad3e2`)
+- [x] **Blacklist skipped for tokens < 30 min old** — even where blacklisting worked, fresh tokens bypassed the check; logout took up to 30 min to take effect. Now checked unconditionally (fail-open on Redis outage retained). (`21eac92`)
+- [x] **Every goal detail/update/delete endpoint returned HTTP 500.** Async goals routes awaited the sync `CRUDHelper` (`AsyncSession` has no `.query()`); the delete endpoint called a method that didn't exist. New `AsyncCRUDHelper` + regression tests. (`5473b89`)
+- [x] **Unknown URLs returned HTTP 500 (SYSTEM_8001) instead of 404** and every bot probe was logged as a server error + shipped to Sentry. isinstance checks used `fastapi.HTTPException` while Starlette's router raises the parent class. (`21eac92`)
+- [x] **Refreshed/OAuth tokens omitted `token_version_id`** → session-revocation consistency broken after refresh or Google login. (`53ad3e2`)
+- [x] **bcrypt silently ran 10 rounds** (config default) while validation/docs claimed 12. Now 12 everywhere. (`0ecf66e`)
+- [x] **401 responses missing `WWW-Authenticate`** (RFC 7235 violation) — exception-attached headers were dropped by the response builder. (`21eac92`)
+- [x] **Failed audit-log insert crashed budget redistribution** (the core money operation). (`73da4e1`)
+- [x] **Installment endpoint discarded computed metadata** (monthly payment, total cost never reached the client; wrong `affordable` key). (`b8246b2`)
+- [x] **Naive client timestamps → 500** on transaction validation (aware/naive comparison TypeError). (`b8246b2`)
+- [x] **`get_dynamic_budget_method` lost the food allocation** (~13% of income) summing a non-existent `groceries` key — user-facing percentages didn't add up. (`b8246b2`)
+- [x] Goal model crashes on pre-flush instances (`progress`/`saved_amount` None). (`b8246b2`)
+- [x] Zero-income crash in income scaling (`0 ** negative` ZeroDivisionError); goal timeline constraints could return min > max; `small_purchase` dispatcher missing required arg. (`b8246b2`)
+- [x] GPT-service health check reported healthy ~2/3 of the time while the API was down; connection-failure fallbacks parsed as real model output (fabricated confidence). (`73da4e1`)
+- [x] AI analyzer flagged `irregular_spending` from 5 transactions straddling a month boundary. (`73da4e1`)
 
-## Prioritized checklist
+## CI / quality gates
 
-Statuses: `[ ]` open · `[~]` in progress · `[x]` fixed+verified · `[B]` blocked (needs credentials/product decision)
+- [x] **black** — repo-wide reformat (271 files were failing the blocking gate ⇒ CI was permanently red since M-05 made gates blocking). Now `black --check .` passes.
+- [x] **isort** — passes.
+- [x] **ruff check .** — 65 errors fixed (unused/shadowed imports incl. a latent bug: pydantic `ValidationError` shadowing meant pydantic validation errors mapped to 500 not 422; SQLAlchemy `== True` → `.is_(True)`; etc.). Passes.
+- [x] **bandit -r app/ -ll** — 23 findings resolved: MD5 → `usedforsecurity=False` (5), hardcoded `/tmp` → `tempfile.gettempdir()` (6), missing request timeout checked (already present — false positive annotated), parameterized-SQL false positives annotated, pickle-of-own-cache-data annotated. Exit 0.
+- [~] **pytest in CI** — CI runs bare `pytest` (= `app/tests` incl. dirs needing live Postgres). Needs service containers or scoping (see next task).
+- [ ] CI not yet exercised on GitHub for this branch (push pending).
 
-### P0 — Broken code paths / test truth
-- [~] **PR-2** Run full backend test suite; triage every failure and collection error into real-bug vs test-infra buckets.
-- [ ] **PR-1** `app/api/financial/routes.py`: installment metadata (monthly payment, total cost) computed but never returned to client. Fix: include in response.
+## Test-suite triage (in progress this session; counts being re-measured)
 
-### P1 — Reliability / correctness
-- [ ] **PR-3** `app/main.py:84` `str | None` → `Optional[str]` (restores Py3.9 local dev; zero prod risk).
-- [ ] **PR-4** Verify goals routes import & router registration end-to-end.
-- [ ] **PR-5** Review production `except Exception: pass` sites; add logging where silent failure hides real errors.
+Fixed this session (all previously failing/stale): income classification (9), dynamic thresholds (7), goals model/routes (18+4), transactions routes (2), financial installment (2+script), password security (15), token blacklist (23), token version (11), JWT rotation (2), snapshot route (1), resilient GPT (26), circuit breaker (26), AI analyzer (25), budget redistributor (1), rate limit (2), tasks/worker/sentry/iap (6), testsprite/AI-API/insights (47 after removing suite-wide `sys.modules['openai']` pollution).
 
-### P2 — Hygiene / deployment
-- [ ] **PR-6** Remove tracked junk files (`.DS_Store`, `*.backup`, `*.before_fix`); ensure `.gitignore` covers them.
-- [ ] **PR-7** CI review: workflows reference correct paths/versions after repo restructure; pytest invocation matches what can actually pass.
+Remaining known-failing clusters (per last full run, being re-measured):
+- `app/tests/test_repositories.py` — needs live Postgres (fixtures create real tables). **[B: environment]**
+- `app/tests/test_onboarding_calendar_integration.py` — same. **[B: environment]**
+- `app/tests/performance/*` — live DB + load; CI/nightly with services only. **[B: environment]**
+- `app/tests/security/test_api_endpoint_security.py` — asserts legacy route paths (404 drift) + patched internals; stale, needs rewrite against current router map.
+- `app/tests/security/test_mita_authentication_comprehensive.py` — mix of Redis-dependent + stale internals.
+- `app/tests/test_comprehensive_middleware_health.py` — health-status enum drift + removed private methods; stale.
+- `app/tests/test_comprehensive_rate_limiting.py` — partially fixed by live Redis; remainder asserts drifted internals (penalty multipliers, payload shapes).
 
-### Deferred — needs credentials / product decision / external access
-- [B] **R-01/R-02/R-03** Railway env-var fixes (JWT_PREVIOUS_SECRET, PYTHONPATH, SENTRY_DSN/Redis/SMTP) — needs Railway dashboard access.
-- [B] **L-02** Delete 81+ stale remote branches — blocked by GitHub repo rulesets.
-- [B] Mobile ↔ Backend integration gaps (calendar/budget sync, OCR wiring in app) — feature work requiring product decisions + Flutter toolchain.
-- [B] Flutter test suite (105 failures reported in M-06 note) — no Flutter SDK in this environment.
-- [B] **L-01** Module consolidation (app/logic vs app/engine vs app/services/core) — multi-day refactor; needs sign-off.
+## Remaining blockers — need credentials / product decisions / external access
 
-## Changed files (this session)
+- [B] **IAP webhook is unauthenticated** (`POST /api/iap/webhook` trusts `user_id`/`expires_at` from the body — anyone can grant themselves premium). Proper fix = verify Apple signed JWS / Google RTDN signatures; needs product decision + store credentials. **HIGH severity — recommend disabling the route or gating behind a shared secret until signature verification ships.**
+- [B] **R-01/R-02/R-03** Railway env fixes (`JWT_PREVIOUS_SECRET`, `PYTHONPATH`, Sentry/Redis/SMTP vars) — needs Railway dashboard access.
+- [B] **L-02** stale remote branches — blocked by GitHub rulesets.
+- [B] Mobile ↔ backend integration gaps (calendar/budget sync, OCR wiring) — feature work + Flutter toolchain.
+- [B] Flutter test suite (105 failures noted in M-06) — no Flutter SDK here.
+- [B] **L-01** module triplication (`app/logic` vs `app/engine` vs `app/services/core`) — multi-day refactor; consolidation plan needed.
+- [B] OCR "99.8% accuracy" claim vs Tesseract reality — marketing/product decision.
 
-| File | Change | Issue |
-|------|--------|-------|
-| `docs/PRODUCTION_READINESS_PROGRESS.md` | created (this file) | — |
+## Changed files: see commits `b8246b2`, `0ecf66e`, `5473b89`, `73da4e1`, `21eac92`, `53ad3e2`, plus pending commit (formatting + bandit + ruff + progress file).
 
 ## Next task
 
-PR-2: run `pytest` on `app/tests` and `tests/`, triage results.
+1. Finish full-suite re-measure; classify/fix remaining clusters.
+2. Scope CI pytest (or add service containers) so the backend job can pass.
+3. Commit + push branch; verify GitHub CI.

@@ -6,9 +6,11 @@ This script checks if analytics tables exist and are properly configured
 
 import os
 import sys
+from datetime import datetime
+
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from datetime import datetime
+
 
 def print_header(text):
     """Print a formatted header"""
@@ -16,17 +18,21 @@ def print_header(text):
     print(f"  {text}")
     print(f"{'='*60}\n")
 
+
 def print_success(text):
     """Print success message"""
     print(f"✅ {text}")
+
 
 def print_error(text):
     """Print error message"""
     print(f"❌ {text}")
 
+
 def print_info(text):
     """Print info message"""
     print(f"ℹ️  {text}")
+
 
 def check_database_connection(db_url):
     """Check if we can connect to the database"""
@@ -47,23 +53,29 @@ def check_database_connection(db_url):
         print_error(f"Failed to connect to database: {e}")
         return False
 
+
 def check_table_exists(conn, table_name):
     """Check if a table exists"""
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
-        cur.execute("""
+        cur.execute(
+            """
             SELECT EXISTS (
                 SELECT FROM information_schema.tables
                 WHERE table_schema = 'public'
                 AND table_name = %s
             );
-        """, (table_name,))
-        return cur.fetchone()['exists']
+        """,
+            (table_name,),
+        )
+        return cur.fetchone()["exists"]
+
 
 def get_table_info(conn, table_name):
     """Get detailed information about a table"""
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         # Get column information
-        cur.execute("""
+        cur.execute(
+            """
             SELECT
                 column_name,
                 data_type,
@@ -73,39 +85,39 @@ def get_table_info(conn, table_name):
             WHERE table_schema = 'public'
             AND table_name = %s
             ORDER BY ordinal_position;
-        """, (table_name,))
+        """,
+            (table_name,),
+        )
         columns = cur.fetchall()
 
         # Get index information
-        cur.execute("""
+        cur.execute(
+            """
             SELECT
                 indexname,
                 indexdef
             FROM pg_indexes
             WHERE schemaname = 'public'
             AND tablename = %s;
-        """, (table_name,))
+        """,
+            (table_name,),
+        )
         indexes = cur.fetchall()
 
         # Get row count
         cur.execute(f"SELECT COUNT(*) as count FROM {table_name};")
-        row_count = cur.fetchone()['count']
+        row_count = cur.fetchone()["count"]
 
-        return {
-            'columns': columns,
-            'indexes': indexes,
-            'row_count': row_count
-        }
+        return {"columns": columns, "indexes": indexes, "row_count": row_count}
+
 
 def verify_analytics_tables(db_url):
     """Main verification function"""
-    print_header(f"Analytics Tables Verification - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print_header(
+        f"Analytics Tables Verification - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    )
 
-    tables = [
-        'feature_usage_logs',
-        'feature_access_logs',
-        'paywall_impression_logs'
-    ]
+    tables = ["feature_usage_logs", "feature_access_logs", "paywall_impression_logs"]
 
     try:
         conn = psycopg2.connect(db_url)
@@ -127,14 +139,18 @@ def verify_analytics_tables(db_url):
                 print_info(f"Columns: {len(info['columns'])}")
 
                 # Show some key columns
-                key_columns = ['id', 'user_id', 'timestamp']
-                found_columns = [col['column_name'] for col in info['columns'] if col['column_name'] in key_columns]
+                key_columns = ["id", "user_id", "timestamp"]
+                found_columns = [
+                    col["column_name"]
+                    for col in info["columns"]
+                    if col["column_name"] in key_columns
+                ]
                 if found_columns:
                     print_info(f"Key columns found: {', '.join(found_columns)}")
 
                 # Show indexes
                 print_info(f"Indexes: {len(info['indexes'])}")
-                for idx in info['indexes']:
+                for idx in info["indexes"]:
                     print(f"    - {idx['indexname']}")
 
                 # Show row count
@@ -162,8 +178,10 @@ def verify_analytics_tables(db_url):
     except Exception as e:
         print_error(f"Verification failed: {e}")
         import traceback
+
         traceback.print_exc()
         return 1
+
 
 def main():
     """Main entry point"""
@@ -173,9 +191,13 @@ def main():
     if not db_url:
         print_error("DATABASE_URL environment variable is not set")
         print_info("\nPlease set your Supabase DATABASE_URL:")
-        print_info("export DATABASE_URL='postgresql://postgres:[PASSWORD]@[HOST]:[PORT]/postgres'")
+        print_info(
+            "export DATABASE_URL='postgresql://postgres:[PASSWORD]@[HOST]:[PORT]/postgres'"
+        )
         print_info("\nExample:")
-        print_info("export DATABASE_URL='postgresql://postgres:mypassword@db.xxxxx.supabase.co:5432/postgres'")
+        print_info(
+            "export DATABASE_URL='postgresql://postgres:mypassword@db.xxxxx.supabase.co:5432/postgres'"
+        )
         return 1
 
     # Check connection first
@@ -184,6 +206,7 @@ def main():
 
     # Verify tables
     return verify_analytics_tables(db_url)
+
 
 if __name__ == "__main__":
     sys.exit(main())

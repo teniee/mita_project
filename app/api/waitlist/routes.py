@@ -8,18 +8,21 @@ GET  /waitlist/confirm/{tok} — confirm email
 
 import logging
 
-from fastapi import APIRouter, Depends, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.async_session import get_async_db
 from app.api.waitlist import service
+from app.api.waitlist.email import (
+    send_referrer_notification,
+    send_waitlist_confirmation,
+)
 from app.api.waitlist.schemas import (
+    WaitlistConfirmResponse,
     WaitlistJoinRequest,
     WaitlistJoinResponse,
     WaitlistStatusResponse,
-    WaitlistConfirmResponse,
 )
-from app.api.waitlist.email import send_waitlist_confirmation, send_referrer_notification
+from app.core.async_session import get_async_db
 
 logger = logging.getLogger(__name__)
 

@@ -2,28 +2,29 @@
 MODULE 5: Budgeting Goals - Enhanced API Routes
 Complete CRUD + Progress Tracking + Statistics
 """
-from typing import List, Optional
-from uuid import UUID
+
 from datetime import date, datetime, timezone
 from decimal import Decimal
+from typing import List, Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, validator
+from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import desc, and_, func, select
 
+from app.api.base_crud import AsyncCRUDHelper
 from app.api.dependencies import get_current_user, require_premium_user
 from app.core.async_session import get_async_db as get_db
-from app.api.base_crud import AsyncCRUDHelper
 from app.db.models import Goal
-from app.utils.response_wrapper import success_response
+from app.services.core.engine.goal_budget_sync import (
+    remove_goal_daily_plan_rows,
+    sync_goal_to_daily_plan,
+)
+from app.services.goal_budget_integration import get_goal_budget_integration
 from app.services.notification_integration import get_notification_integration
 from app.services.smart_goal_advisor import get_smart_goal_advisor
-from app.services.goal_budget_integration import get_goal_budget_integration
-from app.services.core.engine.goal_budget_sync import (
-    sync_goal_to_daily_plan,
-    remove_goal_daily_plan_rows,
-)
+from app.utils.response_wrapper import success_response
 
 router = APIRouter(prefix="/goals", tags=["goals"])
 
@@ -32,34 +33,53 @@ router = APIRouter(prefix="/goals", tags=["goals"])
 # Pydantic Schemas
 # ============================================================================
 
+
 class GoalIn(BaseModel):
     """Schema for creating a new goal"""
+
     title: str = Field(..., min_length=1, max_length=200, description="Goal title")
-    description: Optional[str] = Field(None, description="Detailed description of the goal")
+    description: Optional[str] = Field(
+        None, description="Detailed description of the goal"
+    )
     category: Optional[str] = Field(None, max_length=50, description="Goal category")
     target_amount: float = Field(..., gt=0, description="Target amount to save")
     saved_amount: Optional[float] = Field(0, ge=0, description="Amount already saved")
-    monthly_contribution: Optional[float] = Field(None, ge=0, description="Recommended monthly contribution")
+    monthly_contribution: Optional[float] = Field(
+        None, ge=0, description="Recommended monthly contribution"
+    )
     target_date: Optional[date] = Field(None, description="Target completion date")
-    priority: Optional[str] = Field("medium", description="Priority level: high, medium, low")
+    priority: Optional[str] = Field(
+        "medium", description="Priority level: high, medium, low"
+    )
 
-    @validator('priority')
+    @validator("priority")
     def validate_priority(cls, v):
-        if v and v not in ['high', 'medium', 'low']:
-            raise ValueError('Priority must be high, medium, or low')
+        if v and v not in ["high", "medium", "low"]:
+            raise ValueError("Priority must be high, medium, or low")
         return v
 
-    @validator('category')
+    @validator("category")
     def validate_category(cls, v):
-        valid_categories = ['Savings', 'Travel', 'Emergency', 'Technology', 'Education',
-                           'Health', 'Home', 'Vehicle', 'Investment', 'Other']
+        valid_categories = [
+            "Savings",
+            "Travel",
+            "Emergency",
+            "Technology",
+            "Education",
+            "Health",
+            "Home",
+            "Vehicle",
+            "Investment",
+            "Other",
+        ]
         if v and v not in valid_categories:
-            return 'Other'  # Default to Other if invalid
+            return "Other"  # Default to Other if invalid
         return v
 
 
 class GoalUpdate(BaseModel):
     """Schema for updating an existing goal"""
+
     title: Optional[str] = Field(None, min_length=1, max_length=200)
     description: Optional[str] = None
     category: Optional[str] = Field(None, max_length=50)
@@ -70,21 +90,22 @@ class GoalUpdate(BaseModel):
     priority: Optional[str] = None
     status: Optional[str] = None
 
-    @validator('priority')
+    @validator("priority")
     def validate_priority(cls, v):
-        if v and v not in ['high', 'medium', 'low']:
-            raise ValueError('Priority must be high, medium, or low')
+        if v and v not in ["high", "medium", "low"]:
+            raise ValueError("Priority must be high, medium, or low")
         return v
 
-    @validator('status')
+    @validator("status")
     def validate_status(cls, v):
-        if v and v not in ['active', 'completed', 'paused', 'cancelled']:
-            raise ValueError('Status must be active, completed, paused, or cancelled')
+        if v and v not in ["active", "completed", "paused", "cancelled"]:
+            raise ValueError("Status must be active, completed, paused, or cancelled")
         return v
 
 
 class GoalOut(BaseModel):
     """Schema for goal output"""
+
     id: UUID
     title: str
     description: Optional[str] = None
@@ -111,6 +132,7 @@ class GoalOut(BaseModel):
 
 class GoalStatistics(BaseModel):
     """Statistics about user's goals"""
+
     total_goals: int
     active_goals: int
     completed_goals: int
@@ -125,17 +147,20 @@ class GoalStatistics(BaseModel):
 
 class AddSavingsRequest(BaseModel):
     """Request to add savings to a goal"""
+
     amount: float = Field(..., gt=0, description="Amount to add to savings")
 
 
 class AutoTransferRequest(BaseModel):
     """Request to auto-transfer funds to a goal"""
+
     amount: float = Field(..., gt=0, description="Amount to transfer")
 
 
 # ============================================================================
 # Helper Functions
 # ============================================================================
+
 
 def goal_to_dict(goal: Goal) -> dict:
     """Convert Goal model to dictionary with computed fields"""
@@ -147,11 +172,15 @@ def goal_to_dict(goal: Goal) -> dict:
         "target_amount": float(goal.target_amount),
         "saved_amount": float(goal.saved_amount),
         "current_amount": float(goal.saved_amount),  # Alias for mobile
-        "monthly_contribution": float(goal.monthly_contribution) if goal.monthly_contribution else None,
+        "monthly_contribution": (
+            float(goal.monthly_contribution) if goal.monthly_contribution else None
+        ),
         "status": goal.status,
         "progress": float(goal.progress),
         "target_date": goal.target_date,
-        "deadline": goal.target_date.isoformat() if goal.target_date else None,  # For mobile
+        "deadline": (
+            goal.target_date.isoformat() if goal.target_date else None
+        ),  # For mobile
         "created_at": goal.created_at,
         "last_updated": goal.last_updated,
         "completed_at": goal.completed_at,
@@ -165,6 +194,7 @@ def goal_to_dict(goal: Goal) -> dict:
 # ============================================================================
 # CRUD Endpoints
 # ============================================================================
+
 
 @router.post("/", response_model=GoalOut)
 async def create_goal(
@@ -182,8 +212,8 @@ async def create_goal(
         saved_amount=data.saved_amount or 0,
         monthly_contribution=data.monthly_contribution,
         target_date=data.target_date,
-        priority=data.priority or 'medium',
-        status='active',
+        priority=data.priority or "medium",
+        status="active",
     )
 
     # Calculate initial progress
@@ -200,6 +230,7 @@ async def create_goal(
         await db.commit()
     except Exception as _sync_err:
         import logging as _log
+
         _log.getLogger(__name__).error(
             "goal_budget_sync failed on create goal=%s: %s", goal.id, _sync_err
         )
@@ -210,11 +241,12 @@ async def create_goal(
         notifier.notify_goal_created(
             user_id=user.id,
             goal_title=goal.title,
-            target_amount=float(goal.target_amount)
+            target_amount=float(goal.target_amount),
         )
     except Exception as e:
         # Don't fail goal creation if notification fails
         import logging
+
         logging.error(f"Failed to send goal creation notification: {e}")
 
     return success_response(goal_to_dict(goal))
@@ -222,7 +254,9 @@ async def create_goal(
 
 @router.get("/", response_model=List[GoalOut])
 async def list_goals(
-    status: Optional[str] = Query(None, description="Filter by status: active, completed, paused"),
+    status: Optional[str] = Query(
+        None, description="Filter by status: active, completed, paused"
+    ),
     category: Optional[str] = Query(None, description="Filter by category"),
     user=Depends(get_current_user),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
@@ -250,68 +284,105 @@ async def get_statistics(
     """Get comprehensive goal statistics for the user"""
 
     # Count goals by status
-    total_goals = (await db.execute(select(func.count(Goal.id)).where(Goal.user_id == user.id))).scalar() or 0
-    active_goals = (await db.execute(select(func.count(Goal.id)).where(
-        and_(Goal.user_id == user.id, Goal.status == 'active')
-    ))).scalar() or 0
-    completed_goals = (await db.execute(select(func.count(Goal.id)).where(
-        and_(Goal.user_id == user.id, Goal.status == 'completed')
-    ))).scalar() or 0
-    paused_goals = (await db.execute(select(func.count(Goal.id)).where(
-        and_(Goal.user_id == user.id, Goal.status == 'paused')
-    ))).scalar() or 0
+    total_goals = (
+        await db.execute(select(func.count(Goal.id)).where(Goal.user_id == user.id))
+    ).scalar() or 0
+    active_goals = (
+        await db.execute(
+            select(func.count(Goal.id)).where(
+                and_(Goal.user_id == user.id, Goal.status == "active")
+            )
+        )
+    ).scalar() or 0
+    completed_goals = (
+        await db.execute(
+            select(func.count(Goal.id)).where(
+                and_(Goal.user_id == user.id, Goal.status == "completed")
+            )
+        )
+    ).scalar() or 0
+    paused_goals = (
+        await db.execute(
+            select(func.count(Goal.id)).where(
+                and_(Goal.user_id == user.id, Goal.status == "paused")
+            )
+        )
+    ).scalar() or 0
 
     # Calculate averages
-    avg_progress = (await db.execute(select(func.avg(Goal.progress)).where(
-        and_(Goal.user_id == user.id, Goal.status == 'active')
-    ))).scalar() or 0.0
+    avg_progress = (
+        await db.execute(
+            select(func.avg(Goal.progress)).where(
+                and_(Goal.user_id == user.id, Goal.status == "active")
+            )
+        )
+    ).scalar() or 0.0
 
     # Calculate totals
-    total_target = (await db.execute(select(func.sum(Goal.target_amount)).where(
-        and_(Goal.user_id == user.id, Goal.status == 'active')
-    ))).scalar() or 0.0
-    total_saved = (await db.execute(select(func.sum(Goal.saved_amount)).where(
-        and_(Goal.user_id == user.id, Goal.status == 'active')
-    ))).scalar() or 0.0
+    total_target = (
+        await db.execute(
+            select(func.sum(Goal.target_amount)).where(
+                and_(Goal.user_id == user.id, Goal.status == "active")
+            )
+        )
+    ).scalar() or 0.0
+    total_saved = (
+        await db.execute(
+            select(func.sum(Goal.saved_amount)).where(
+                and_(Goal.user_id == user.id, Goal.status == "active")
+            )
+        )
+    ).scalar() or 0.0
 
     # Count overdue and due soon
     from datetime import date, timedelta
+
     today = date.today()
     soon_date = today + timedelta(days=7)
 
-    overdue_count = (await db.execute(select(func.count(Goal.id)).where(
-        and_(
-            Goal.user_id == user.id,
-            Goal.status == 'active',
-            Goal.target_date < today,
-            Goal.target_date.isnot(None)
+    overdue_count = (
+        await db.execute(
+            select(func.count(Goal.id)).where(
+                and_(
+                    Goal.user_id == user.id,
+                    Goal.status == "active",
+                    Goal.target_date < today,
+                    Goal.target_date.isnot(None),
+                )
+            )
         )
-    ))).scalar() or 0
+    ).scalar() or 0
 
-    due_soon_count = (await db.execute(select(func.count(Goal.id)).where(
-        and_(
-            Goal.user_id == user.id,
-            Goal.status == 'active',
-            Goal.target_date <= soon_date,
-            Goal.target_date >= today,
-            Goal.target_date.isnot(None)
+    due_soon_count = (
+        await db.execute(
+            select(func.count(Goal.id)).where(
+                and_(
+                    Goal.user_id == user.id,
+                    Goal.status == "active",
+                    Goal.target_date <= soon_date,
+                    Goal.target_date >= today,
+                    Goal.target_date.isnot(None),
+                )
+            )
         )
-    ))).scalar() or 0
+    ).scalar() or 0
 
     completion_rate = (completed_goals / total_goals * 100) if total_goals > 0 else 0.0
 
-    return success_response({
-        "total_goals": total_goals,
-        "active_goals": active_goals,
-        "completed_goals": completed_goals,
-        "paused_goals": paused_goals,
-        "completion_rate": round(completion_rate, 2),
-        "average_progress": round(float(avg_progress), 2),
-        "total_target_amount": float(total_target),
-        "total_saved_amount": float(total_saved),
-        "overdue_goals": overdue_count,
-        "due_soon": due_soon_count,
-    })
+    return success_response(
+        {
+            "total_goals": total_goals,
+            "active_goals": active_goals,
+            "completed_goals": completed_goals,
+            "paused_goals": paused_goals,
+            "completion_rate": round(completion_rate, 2),
+            "average_progress": round(float(avg_progress), 2),
+            "total_target_amount": float(total_target),
+            "total_saved_amount": float(total_saved),
+            "overdue_goals": overdue_count,
+            "due_soon": due_soon_count,
+        }
+    )
 
 
 @router.get("/income_based_suggestions")
@@ -325,61 +396,72 @@ async def get_income_based_suggestions(
     suggestions = []
 
     # Emergency fund - 6 months of expenses
-    suggestions.append({
-        "type": "emergency_fund",
-        "title": "Build Emergency Fund",
-        "category": "Emergency",
-        "target_amount": monthly_income * 6,
-        "monthly_contribution": monthly_income * 0.10,
-        "priority": "high",
-        "description": f"Save ${int(monthly_income * 6)} for 6 months of expenses"
-    })
+    suggestions.append(
+        {
+            "type": "emergency_fund",
+            "title": "Build Emergency Fund",
+            "category": "Emergency",
+            "target_amount": monthly_income * 6,
+            "monthly_contribution": monthly_income * 0.10,
+            "priority": "high",
+            "description": f"Save ${int(monthly_income * 6)} for 6 months of expenses",
+        }
+    )
 
     # Monthly savings - 20% rule
-    suggestions.append({
-        "type": "savings",
-        "title": "Monthly Savings Goal",
-        "category": "Savings",
-        "target_amount": monthly_income * 0.20,
-        "monthly_contribution": monthly_income * 0.20,
-        "priority": "high",
-        "description": "Save 20% of your monthly income"
-    })
+    suggestions.append(
+        {
+            "type": "savings",
+            "title": "Monthly Savings Goal",
+            "category": "Savings",
+            "target_amount": monthly_income * 0.20,
+            "monthly_contribution": monthly_income * 0.20,
+            "priority": "high",
+            "description": "Save 20% of your monthly income",
+        }
+    )
 
     # Vacation fund (for higher income)
     if monthly_income > 2000:
-        suggestions.append({
-            "type": "vacation",
-            "title": "Vacation Fund",
-            "category": "Travel",
-            "target_amount": monthly_income * 2,
-            "monthly_contribution": monthly_income * 0.05,
-            "priority": "medium",
-            "description": "Save for a well-deserved vacation"
-        })
+        suggestions.append(
+            {
+                "type": "vacation",
+                "title": "Vacation Fund",
+                "category": "Travel",
+                "target_amount": monthly_income * 2,
+                "monthly_contribution": monthly_income * 0.05,
+                "priority": "medium",
+                "description": "Save for a well-deserved vacation",
+            }
+        )
 
     # Technology upgrade
     if monthly_income > 3000:
-        suggestions.append({
-            "type": "technology",
-            "title": "Technology Upgrade",
-            "category": "Technology",
-            "target_amount": 1500,
-            "monthly_contribution": monthly_income * 0.03,
-            "priority": "low",
-            "description": "Save for new laptop, phone, or other tech"
-        })
+        suggestions.append(
+            {
+                "type": "technology",
+                "title": "Technology Upgrade",
+                "category": "Technology",
+                "target_amount": 1500,
+                "monthly_contribution": monthly_income * 0.03,
+                "priority": "low",
+                "description": "Save for new laptop, phone, or other tech",
+            }
+        )
 
-    return success_response({
-        "suggestions": suggestions,
-        "monthly_income": float(monthly_income),
-        "recommended_savings_rate": 0.20
-    })
+    return success_response(
+        {
+            "suggestions": suggestions,
+            "monthly_income": float(monthly_income),
+            "recommended_savings_rate": 0.20,
+        }
+    )
 
 
 # ============================================================================
 # AI-Powered Smart Goal Recommendations
 # ============================================================================
+
 
 @router.get("/smart_recommendations")
 async def get_smart_recommendations(
@@ -397,13 +479,16 @@ async def get_smart_recommendations(
         advisor = get_smart_goal_advisor(db)
         recommendations = advisor.generate_personalized_recommendations(user.id)
 
-        return success_response({
-            "recommendations": recommendations,
-            "count": len(recommendations),
-            "generated_at": datetime.now(timezone.utc).isoformat()
-        })
+        return success_response(
+            {
+                "recommendations": recommendations,
+                "count": len(recommendations),
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
     except Exception as e:
         import logging
+
         logging.error(f"Error generating smart recommendations: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -433,6 +518,7 @@ async def analyze_goal_health(
         raise
     except Exception as e:
         import logging
+
         logging.error(f"Error analyzing goal health: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -452,13 +538,16 @@ async def suggest_goal_adjustments(
         advisor = get_smart_goal_advisor(db)
         suggestions = advisor.suggest_goal_adjustments(user.id)
 
-        return success_response({
-            "adjustments": suggestions,
-            "count": len(suggestions),
-            "generated_at": datetime.now(timezone.utc).isoformat()
-        })
+        return success_response(
+            {
+                "adjustments": suggestions,
+                "count": len(suggestions),
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
     except Exception as e:
         import logging
+
         logging.error(f"Error generating goal adjustment suggestions: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -478,13 +567,16 @@ async def detect_goal_opportunities(
         advisor = get_smart_goal_advisor(db)
         opportunities = advisor.detect_goal_opportunities(user.id)
 
-        return success_response({
-            "opportunities": opportunities,
-            "count": len(opportunities),
-            "generated_at": datetime.now(timezone.utc).isoformat()
-        })
+        return success_response(
+            {
+                "opportunities": opportunities,
+                "count": len(opportunities),
+                "generated_at": datetime.now(timezone.utc).isoformat(),
+            }
+        )
     except Exception as e:
         import logging
+
         logging.error(f"Error detecting goal opportunities: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -492,6 +584,7 @@ async def detect_goal_opportunities(
 # ============================================================================
 # Budget-Goals Integration
 # ============================================================================
+
 
 @router.get("/budget/allocate")
 async def allocate_budget_for_goals(
@@ -510,6 +603,7 @@ async def allocate_budget_for_goals(
         return success_response(allocation)
     except Exception as e:
         import logging
+
         logging.error(f"Error allocating budget for goals: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -531,6 +625,7 @@ async def track_goal_progress_from_budget(
         return success_response(progress)
     except Exception as e:
         import logging
+
         logging.error(f"Error tracking goal progress from budget: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -547,12 +642,10 @@ async def suggest_budget_adjustments(
         integration = get_goal_budget_integration(db)
         suggestions = integration.suggest_budget_adjustments_for_goals(user.id)
 
-        return success_response({
-            "suggestions": suggestions,
-            "count": len(suggestions)
-        })
+        return success_response({"suggestions": suggestions, "count": len(suggestions)})
     except Exception as e:
         import logging
+
         logging.error(f"Error suggesting budget adjustments: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -564,7 +657,9 @@ async def get_goal(
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """Get a specific goal by ID"""
-    goal = await AsyncCRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
+    goal = await AsyncCRUDHelper.get_user_resource_or_404(
+        db, Goal, goal_id, user.id, "Goal not found"
+    )
     return success_response(goal_to_dict(goal))
 
 
@@ -576,13 +671,13 @@ async def update_goal(
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """Update an existing goal"""
-    goal = await AsyncCRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
+    goal = await AsyncCRUDHelper.get_user_resource_or_404(
+        db, Goal, goal_id, user.id, "Goal not found"
+    )
 
     # Track whether budget-relevant fields change so we know to re-sync.
     _budget_fields = {"target_amount", "saved_amount", "target_date", "status"}
-    needs_sync = any(
-        getattr(data, f) is not None for f in _budget_fields
-    )
+    needs_sync = any(getattr(data, f) is not None for f in _budget_fields)
 
     # Update fields if provided
     if data.title is not None:
@@ -617,6 +712,7 @@ async def update_goal(
             await db.commit()
         except Exception as _sync_err:
             import logging as _log
+
             _log.getLogger(__name__).error(
                 "goal_budget_sync failed on update goal=%s: %s", goal.id, _sync_err
             )
@@ -639,17 +735,21 @@ async def delete_goal(
         await db.flush()
     except Exception as _sync_err:
         import logging as _log
+
         _log.getLogger(__name__).error(
             "goal_budget_sync failed on delete goal=%s: %s", goal_id, _sync_err
         )
 
-    await AsyncCRUDHelper.delete_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
+    await AsyncCRUDHelper.delete_user_resource_or_404(
+        db, Goal, goal_id, user.id, "Goal not found"
+    )
     return success_response({"status": "deleted", "id": str(goal_id)})
 
 
 # ============================================================================
 # Progress Tracking Endpoints
 # ============================================================================
+
 
 @router.post("/{goal_id}/add_savings", response_model=GoalOut)
 async def add_savings_to_goal(
@@ -659,7 +759,9 @@ async def add_savings_to_goal(
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """Add savings to a goal and update progress"""
-    goal = await AsyncCRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
+    goal = await AsyncCRUDHelper.get_user_resource_or_404(
+        db, Goal, goal_id, user.id, "Goal not found"
+    )
 
     # Store old progress to check for milestones
     old_progress = float(goal.progress)
@@ -676,7 +778,7 @@ async def add_savings_to_goal(
         new_progress = float(goal.progress)
 
         # Check if goal was just completed
-        if goal.status == 'completed' and old_progress < 100:
+        if goal.status == "completed" and old_progress < 100:
             # Calculate days taken if created_at is available
             days_taken = None
             if goal.created_at and goal.completed_at:
@@ -686,7 +788,7 @@ async def add_savings_to_goal(
                 user_id=user.id,
                 goal_title=goal.title,
                 final_amount=float(goal.saved_amount),
-                days_taken=days_taken
+                days_taken=days_taken,
             )
         else:
             # Send progress milestone notification
@@ -695,11 +797,12 @@ async def add_savings_to_goal(
                 goal_title=goal.title,
                 progress=new_progress,
                 saved_amount=float(goal.saved_amount),
-                target_amount=float(goal.target_amount)
+                target_amount=float(goal.target_amount),
             )
     except Exception as e:
         # Don't fail savings addition if notification fails
         import logging
+
         logging.error(f"Failed to send goal progress notification: {e}")
 
     return success_response(goal_to_dict(goal))
@@ -712,9 +815,11 @@ async def mark_goal_completed(
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """Mark a goal as completed"""
-    goal = await AsyncCRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
+    goal = await AsyncCRUDHelper.get_user_resource_or_404(
+        db, Goal, goal_id, user.id, "Goal not found"
+    )
 
-    goal.status = 'completed'
+    goal.status = "completed"
     goal.progress = 100
     goal.completed_at = datetime.now(timezone.utc)
     goal.last_updated = datetime.now(timezone.utc)
@@ -728,6 +833,7 @@ async def mark_goal_completed(
         await db.commit()
     except Exception as _sync_err:
         import logging as _log
+
         _log.getLogger(__name__).error(
             "goal_budget_sync failed on complete goal=%s: %s", goal.id, _sync_err
         )
@@ -743,11 +849,12 @@ async def mark_goal_completed(
             user_id=user.id,
             goal_title=goal.title,
             final_amount=float(goal.saved_amount),
-            days_taken=days_taken
+            days_taken=days_taken,
         )
     except Exception as e:
         # Don't fail completion if notification fails
         import logging
+
         logging.error(f"Failed to send goal completion notification: {e}")
 
     return success_response(goal_to_dict(goal))
@@ -760,9 +867,11 @@ async def pause_goal(
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """Pause an active goal"""
-    goal = await AsyncCRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
+    goal = await AsyncCRUDHelper.get_user_resource_or_404(
+        db, Goal, goal_id, user.id, "Goal not found"
+    )
 
-    goal.status = 'paused'
+    goal.status = "paused"
     goal.last_updated = datetime.now(timezone.utc)
 
     await db.commit()
@@ -774,6 +883,7 @@ async def pause_goal(
         await db.commit()
     except Exception as _sync_err:
         import logging as _log
+
         _log.getLogger(__name__).error(
             "goal_budget_sync failed on pause goal=%s: %s", goal.id, _sync_err
         )
@@ -788,12 +898,14 @@ async def resume_goal(
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """Resume a paused goal"""
-    goal = await AsyncCRUDHelper.get_user_resource_or_404(db, Goal, goal_id, user.id, "Goal not found")
+    goal = await AsyncCRUDHelper.get_user_resource_or_404(
+        db, Goal, goal_id, user.id, "Goal not found"
+    )
 
-    if goal.status != 'paused':
+    if goal.status != "paused":
         raise HTTPException(status_code=400, detail="Only paused goals can be resumed")
 
-    goal.status = 'active'
+    goal.status = "active"
     goal.last_updated = datetime.now(timezone.utc)
 
     await db.commit()
@@ -805,6 +917,7 @@ async def resume_goal(
         await db.commit()
     except Exception as _sync_err:
         import logging as _log
+
         _log.getLogger(__name__).error(
             "goal_budget_sync failed on resume goal=%s: %s", goal.id, _sync_err
         )
@@ -815,6 +928,7 @@ async def resume_goal(
 # ============================================================================
 # Goal Suggestions
 # ============================================================================
+
 
 @router.post("/{goal_id}/auto_transfer")
 async def auto_transfer_to_goal(
@@ -828,8 +942,11 @@ async def auto_transfer_to_goal(
     """
     try:
         from decimal import Decimal
+
         integration = get_goal_budget_integration(db)
-        result = integration.auto_transfer_to_savings_goal(user.id, goal_id, Decimal(str(data.amount)))
+        result = integration.auto_transfer_to_savings_goal(
+            user.id, goal_id, Decimal(str(data.amount))
+        )
 
         if "error" in result:
             raise HTTPException(status_code=400, detail=result["error"])
@@ -839,5 +956,6 @@ async def auto_transfer_to_goal(
         raise
     except Exception as e:
         import logging
+
         logging.error(f"Error auto-transferring to goal: {e}")
         raise HTTPException(status_code=500, detail=str(e))

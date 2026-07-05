@@ -4,6 +4,7 @@ Category name mapper for MITA.
 Maps mobile app category names to backend CATEGORY_BEHAVIOR pattern names.
 This ensures budget distribution patterns (FIXED/SPREAD/CLUSTERED) work correctly.
 """
+
 from typing import Dict
 
 # Mobile app → Backend pattern mapping
@@ -13,14 +14,12 @@ CATEGORY_NAME_MAPPING: Dict[str, str] = {
     "rent_or_mortgage": "rent",
     "rent": "rent",
     "mortgage": "mortgage",
-
     # Food (mobile) → groceries/dining out (backend SPREAD/CLUSTERED)
     "food": "groceries",  # Default food to groceries (SPREAD pattern)
     "groceries": "groceries",
     "dining_out": "dining out",
     "dining out": "dining out",
     "restaurants": "dining out",
-
     # Transportation (mobile) → transport public/gas (backend SPREAD/CLUSTERED)
     "transportation": "transport public",  # Default to public transport (SPREAD)
     "transport": "transport public",
@@ -28,59 +27,47 @@ CATEGORY_NAME_MAPPING: Dict[str, str] = {
     "gas": "transport gas",
     "fuel": "transport gas",
     "car": "transport gas",
-
     # Utilities (mobile) → utilities (backend FIXED) ✓ Already matches
     "utilities": "utilities",
-
     # Healthcare (mobile) → insurance medical (backend FIXED)
     "healthcare": "insurance medical",
     "health": "insurance medical",
     "medical": "out of pocket medical",
     "insurance": "insurance medical",
-
     # Entertainment (mobile) → entertainment events (backend CLUSTERED)
     "entertainment": "entertainment events",
     "entertainment_per_month": "entertainment events",
     "fun": "entertainment events",
-
     # Savings (mobile) → savings emergency/goal based (backend SPREAD)
     "savings": "savings goal based",
     "emergency_fund": "savings emergency",
     "emergency": "savings emergency",
-
     # Additional common categories
     "subscriptions": "subscriptions software",
     "subscription": "subscriptions software",
     "streaming": "media streaming",
     "netflix": "media streaming",
     "spotify": "media streaming",
-
     "gym": "gym fitness",
     "fitness": "gym fitness",
-
     "shopping": "clothing",
     "clothes": "clothing",
     "clothing": "clothing",
     "clothing_per_month": "clothing",
-
     "travel": "flights",
     "travel_per_year": "flights",
     "vacation": "hotels",
-
     # Coffee is a daily habit - should be SPREAD pattern, not clustered
     # Kept as separate category for accurate budgeting
     "coffee": "coffee",
     "coffee_per_week": "coffee",
-
     "loans": "debt repayment",
     "debt": "debt repayment",
     "credit_card": "debt repayment",
-
     "childcare": "school fees",
     "education": "school fees",
     "childcare_or_education": "school fees",
     "school": "school fees",
-
     "phone": "subscriptions software",
     "internet": "utilities",
     "electricity": "utilities",
@@ -132,10 +119,7 @@ def map_budget_categories(budget: Dict[str, float]) -> Dict[str, float]:
         >>> map_budget_categories({"housing": 1500, "food": 600})
         {'rent': 1500, 'groceries': 600}
     """
-    return {
-        map_category_name(category): amount
-        for category, amount in budget.items()
-    }
+    return {map_category_name(category): amount for category, amount in budget.items()}
 
 
 def get_category_display_name(backend_name: str) -> str:

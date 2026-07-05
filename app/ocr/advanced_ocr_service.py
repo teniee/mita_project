@@ -3,13 +3,14 @@ AdvancedOCRService: Dual OCR Engine (Tesseract for free users, Google Vision API
 """
 
 import os
+import tempfile
 
 import pytesseract
 from PIL import Image
 
-from app.ocr.google_vision_ocr_service import GoogleVisionOCRService
-from app.ocr.confidence_scorer import ConfidenceScorer
 from app.core.logger import get_logger
+from app.ocr.confidence_scorer import ConfidenceScorer
+from app.ocr.google_vision_ocr_service import GoogleVisionOCRService
 
 logger = get_logger(__name__)
 
@@ -21,7 +22,7 @@ class AdvancedOCRService:
 
     def __init__(
         self,
-        temp_dir: str = "/tmp",
+        temp_dir: str = tempfile.gettempdir(),
         credentials_json_path: str = "/path/to/credentials.json",
     ):
         self.temp_dir = temp_dir

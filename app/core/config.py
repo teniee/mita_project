@@ -17,7 +17,7 @@ else:
 class Settings(BaseSettings):
     # Database - MUST be provided via environment variable
     DATABASE_URL: str = ""
-    
+
     @property
     def ASYNC_DATABASE_URL(self) -> str:
         """Get DATABASE_URL with asyncpg driver for async connections"""
@@ -27,7 +27,7 @@ class Settings(BaseSettings):
         elif url.startswith("postgres://"):
             return url.replace("postgres://", "postgresql+asyncpg://", 1)
         return url
-    
+
     # Redis Configuration - External Provider Support
     REDIS_URL: str = ""  # Set via environment variable
     UPSTASH_REDIS_URL: str = ""  # Primary external Redis provider
@@ -35,23 +35,23 @@ class Settings(BaseSettings):
     REDIS_MAX_CONNECTIONS: int = 20
     REDIS_TIMEOUT: int = 30
     REDIS_RETRY_ON_TIMEOUT: bool = True
-    
+
     # Task Queue Configuration
     WORKER_MAX_JOBS: int = 100
     WORKER_JOB_TIMEOUT: int = 600  # 10 minutes
     WORKER_HEARTBEAT_INTERVAL: int = 30  # seconds
-    
-    # Queue Configuration  
+
+    # Queue Configuration
     TASK_RESULT_TTL: int = 24 * 3600  # 24 hours
     FAILED_TASK_TTL: int = 7 * 24 * 3600  # 7 days
-    
+
     # Auto-scaling Configuration
     ENABLE_WORKER_AUTOSCALING: bool = True
     MIN_WORKERS_PER_QUEUE: int = 1
     MAX_WORKERS_PER_QUEUE: int = 5
     SCALE_UP_THRESHOLD: int = 10  # Queue depth to scale up
     SCALE_DOWN_THRESHOLD: int = 2  # Queue depth to scale down
-    
+
     # Monitoring Configuration
     ENABLE_TASK_METRICS: bool = True
     METRICS_COLLECTION_INTERVAL: int = 60  # seconds
@@ -61,13 +61,17 @@ class Settings(BaseSettings):
     JWT_PREVIOUS_SECRET: str = ""
     SECRET_KEY: str = ""
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 120  # Default 2 hours — required for onboarding completion flow
-    
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = (
+        120  # Default 2 hours — required for onboarding completion flow
+    )
+
     # Password Security Configuration
     BCRYPT_ROUNDS_PRODUCTION: int = 12  # Industry standard for financial applications
-    BCRYPT_ROUNDS_DEVELOPMENT: int = 12  # Keep parity with production (hash time still < target)
+    BCRYPT_ROUNDS_DEVELOPMENT: int = (
+        12  # Keep parity with production (hash time still < target)
+    )
     BCRYPT_PERFORMANCE_TARGET_MS: int = 500  # Maximum acceptable hash time
-    
+
     @field_validator("JWT_SECRET", "SECRET_KEY", mode="before")
     @classmethod
     def validate_secrets(cls, v, info):
@@ -75,6 +79,7 @@ class Settings(BaseSettings):
         field_name = info.field_name
         if not v:
             import os
+
             env = os.getenv("ENVIRONMENT", "development")
             if env == "production":
                 raise ValueError(
@@ -83,6 +88,7 @@ class Settings(BaseSettings):
                 )
             # Auto-generate only in development/test for convenience
             import secrets
+
             return secrets.token_urlsafe(32)
         return v
 
@@ -99,13 +105,16 @@ class Settings(BaseSettings):
             return 120
         expire_minutes = int(v)
         if expire_minutes <= 0:
-            raise ValueError(f"ACCESS_TOKEN_EXPIRE_MINUTES must be positive, got {expire_minutes}")
+            raise ValueError(
+                f"ACCESS_TOKEN_EXPIRE_MINUTES must be positive, got {expire_minutes}"
+            )
         return expire_minutes
 
     @classmethod
     def _get_environment(cls) -> str:
         """Get environment setting safely"""
         import os
+
         return os.getenv("ENVIRONMENT", "development")
 
     # OpenAI - MUST be provided via environment variable
@@ -146,8 +155,10 @@ class Settings(BaseSettings):
 
     # CORS - Allow configuration via environment (includes mobile app support)
     # SECURITY FIX: Removed wildcard (*) - only allow specific origins
-    ALLOWED_ORIGINS: str = "https://app.mita.finance,https://admin.mita.finance,https://mita.finance,https://mitafinance.app,https://mitafinance.com,https://www.mitafinance.com"
-    
+    ALLOWED_ORIGINS: str = (
+        "https://app.mita.finance,https://admin.mita.finance,https://mita.finance,https://mitafinance.app,https://mitafinance.com,https://www.mitafinance.com"
+    )
+
     # Environment settings
     ENVIRONMENT: str = "development"
     DEBUG: bool = False
@@ -166,12 +177,14 @@ class Settings(BaseSettings):
 
         # Localhost only in non-production environments
         if self.ENVIRONMENT != "production":
-            always_allow.extend([
-                "http://localhost:8080",
-                "http://localhost:3000",
-                "http://localhost:5173",
-                "http://127.0.0.1:8080",
-            ])
+            always_allow.extend(
+                [
+                    "http://localhost:8080",
+                    "http://localhost:3000",
+                    "http://localhost:5173",
+                    "http://127.0.0.1:8080",
+                ]
+            )
 
         for origin in always_allow:
             if origin not in origins:
@@ -180,9 +193,7 @@ class Settings(BaseSettings):
 
     if ConfigDict:
         model_config = ConfigDict(
-            env_file=".env",
-            validate_assignment=False,
-            extra="ignore"
+            env_file=".env", validate_assignment=False, extra="ignore"
         )
     else:  # pragma: no cover - pydantic v1 fallback
 
@@ -238,9 +249,11 @@ def get_settings():
     """
     return settings
 
+
 # Module-level exports used by auth_jwt_service and others
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = settings.ALGORITHM
+
 
 # Validation function to ensure critical settings are provided
 def validate_required_settings():
@@ -248,24 +261,25 @@ def validate_required_settings():
     # Only validate in production or when explicitly requested
     if settings.ENVIRONMENT == "development":
         return  # Skip validation in development
-        
+
     required_settings = [
-        ('DATABASE_URL', settings.DATABASE_URL),
-        ('JWT_SECRET', settings.JWT_SECRET),
-        ('SECRET_KEY', settings.SECRET_KEY),
-        ('OPENAI_API_KEY', settings.OPENAI_API_KEY),
+        ("DATABASE_URL", settings.DATABASE_URL),
+        ("JWT_SECRET", settings.JWT_SECRET),
+        ("SECRET_KEY", settings.SECRET_KEY),
+        ("OPENAI_API_KEY", settings.OPENAI_API_KEY),
     ]
-    
+
     missing_settings = []
     for name, value in required_settings:
         if not value or (isinstance(value, str) and value.strip() == ""):
             missing_settings.append(name)
-    
+
     if missing_settings:
         raise ValueError(
             f"Missing required environment variables: {', '.join(missing_settings)}. "
             f"Please set these in your deployment environment or .env file."
         )
+
 
 # Don't validate at import time - let the application handle it
 # Settings validation will be done when actually needed by the application

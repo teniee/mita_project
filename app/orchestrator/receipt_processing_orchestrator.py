@@ -1,8 +1,12 @@
+import tempfile
+
 """
 ReceiptProcessingOrchestrator: Orchestrates receipt OCR, categorization, and transaction creation.
 """
 
-from app.categorization.receipt_categorization_service import ReceiptCategorizationService
+from app.categorization.receipt_categorization_service import (
+    ReceiptCategorizationService,
+)
 from app.ocr.ocr_receipt_service import OCRReceiptService
 from app.transactions.receipt_transaction_service import ReceiptTransactionService
 
@@ -16,7 +20,11 @@ class ReceiptProcessingOrchestrator:
     """
 
     def __init__(
-        self, transaction_store, budget_tracker, calendar_engine, temp_dir="/tmp"
+        self,
+        transaction_store,
+        budget_tracker,
+        calendar_engine,
+        temp_dir=tempfile.gettempdir(),
     ):
         self.ocr_service = OCRReceiptService(temp_dir=temp_dir)
         self.categorization_service = ReceiptCategorizationService()

@@ -6,10 +6,11 @@ Pattern: same as test_redistribution_audit_log.py and test_rebalancer_integratio
 
 Run: pytest tests/test_scheduled_expense_service.py -v
 """
+
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
 from typing import AsyncGenerator
 
@@ -24,8 +25,8 @@ from app.services.scheduled_expense_service import (
     create_scheduled_expense,
     get_all_expenses,
     get_expense_by_id,
-    get_pending_expenses,
     get_impact,
+    get_pending_expenses,
 )
 
 # ─── Test database setup ─────────────────────────────────────────────────────
@@ -41,16 +42,22 @@ async def db() -> AsyncGenerator[AsyncSession, None]:
     async with engine.begin() as conn:
         await conn.execute(text("PRAGMA foreign_keys = OFF"))
         # users table (FK target)
-        await conn.execute(text("""
+        await conn.execute(
+            text(
+                """
             CREATE TABLE IF NOT EXISTS users (
                 id TEXT PRIMARY KEY,
                 email TEXT,
                 has_onboarded INTEGER DEFAULT 0,
                 notifications_enabled INTEGER DEFAULT 1
             )
-        """))
+        """
+            )
+        )
         # transactions table (FK target for scheduled_expenses.transaction_id)
-        await conn.execute(text("""
+        await conn.execute(
+            text(
+                """
             CREATE TABLE IF NOT EXISTS transactions (
                 id TEXT PRIMARY KEY,
                 user_id TEXT NOT NULL,
@@ -62,9 +69,13 @@ async def db() -> AsyncGenerator[AsyncSession, None]:
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 deleted_at DATETIME
             )
-        """))
+        """
+            )
+        )
         # daily_plan table
-        await conn.execute(text("""
+        await conn.execute(
+            text(
+                """
             CREATE TABLE IF NOT EXISTS daily_plan (
                 id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
                 user_id TEXT NOT NULL,
@@ -78,9 +89,13 @@ async def db() -> AsyncGenerator[AsyncSession, None]:
                 plan_json TEXT,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
-        """))
+        """
+            )
+        )
         # scheduled_expenses table
-        await conn.execute(text("""
+        await conn.execute(
+            text(
+                """
             CREATE TABLE IF NOT EXISTS scheduled_expenses (
                 id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
                 user_id TEXT NOT NULL,
@@ -98,7 +113,9 @@ async def db() -> AsyncGenerator[AsyncSession, None]:
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 deleted_at DATETIME
             )
-        """))
+        """
+            )
+        )
 
     async with async_session() as session:
         yield session
@@ -165,8 +182,12 @@ class TestCreate:
         user_a = uuid.uuid4()
         user_b = uuid.uuid4()
 
-        await create_scheduled_expense(db, user_a, "insurance", Decimal("100"), date(2026, 3, 25))
-        await create_scheduled_expense(db, user_b, "rent", Decimal("200"), date(2026, 3, 28))
+        await create_scheduled_expense(
+            db, user_a, "insurance", Decimal("100"), date(2026, 3, 25)
+        )
+        await create_scheduled_expense(
+            db, user_b, "rent", Decimal("200"), date(2026, 3, 28)
+        )
         await db.commit()
 
         a_expenses = await get_all_expenses(db, user_a)
@@ -185,8 +206,11 @@ class TestGet:
     @pytest.mark.asyncio
     async def test_get_by_id_found(self, db: AsyncSession):
         expense = await create_scheduled_expense(
-            db=db, user_id=USER_ID, category="phone",
-            amount=Decimal("50"), scheduled_date=date(2026, 3, 25),
+            db=db,
+            user_id=USER_ID,
+            category="phone",
+            amount=Decimal("50"),
+            scheduled_date=date(2026, 3, 25),
         )
         await db.commit()
 
@@ -197,8 +221,11 @@ class TestGet:
     @pytest.mark.asyncio
     async def test_get_by_id_wrong_user_returns_none(self, db: AsyncSession):
         expense = await create_scheduled_expense(
-            db=db, user_id=USER_ID, category="phone",
-            amount=Decimal("50"), scheduled_date=date(2026, 3, 25),
+            db=db,
+            user_id=USER_ID,
+            category="phone",
+            amount=Decimal("50"),
+            scheduled_date=date(2026, 3, 25),
         )
         await db.commit()
 
@@ -210,8 +237,11 @@ class TestGet:
     async def test_get_all_returns_all_active(self, db: AsyncSession):
         for i in range(3):
             await create_scheduled_expense(
-                db=db, user_id=USER_ID, category="insurance",
-                amount=Decimal("100"), scheduled_date=date(2026, 3, 25 - i),
+                db=db,
+                user_id=USER_ID,
+                category="insurance",
+                amount=Decimal("100"),
+                scheduled_date=date(2026, 3, 25 - i),
             )
         await db.commit()
 
@@ -220,9 +250,12 @@ class TestGet:
 
     @pytest.mark.asyncio
     async def test_get_all_with_status_filter(self, db: AsyncSession):
-        pending = await create_scheduled_expense(
-            db=db, user_id=USER_ID, category="insurance",
-            amount=Decimal("100"), scheduled_date=date(2026, 3, 25),
+        _pending = await create_scheduled_expense(
+            db=db,
+            user_id=USER_ID,
+            category="insurance",
+            amount=Decimal("100"),
+            scheduled_date=date(2026, 3, 25),
         )
         await db.commit()
 
@@ -233,12 +266,18 @@ class TestGet:
     @pytest.mark.asyncio
     async def test_get_pending_filters_by_date(self, db: AsyncSession):
         await create_scheduled_expense(
-            db=db, user_id=USER_ID, category="early",
-            amount=Decimal("50"), scheduled_date=date(2026, 3, 21),
+            db=db,
+            user_id=USER_ID,
+            category="early",
+            amount=Decimal("50"),
+            scheduled_date=date(2026, 3, 21),
         )
         await create_scheduled_expense(
-            db=db, user_id=USER_ID, category="late",
-            amount=Decimal("50"), scheduled_date=date(2026, 3, 30),
+            db=db,
+            user_id=USER_ID,
+            category="late",
+            amount=Decimal("50"),
+            scheduled_date=date(2026, 3, 30),
         )
         await db.commit()
 
@@ -256,8 +295,11 @@ class TestCancel:
     @pytest.mark.asyncio
     async def test_cancel_sets_status(self, db: AsyncSession):
         expense = await create_scheduled_expense(
-            db=db, user_id=USER_ID, category="insurance",
-            amount=Decimal("300"), scheduled_date=date(2026, 3, 25),
+            db=db,
+            user_id=USER_ID,
+            category="insurance",
+            amount=Decimal("300"),
+            scheduled_date=date(2026, 3, 25),
         )
         await db.commit()
 
@@ -278,8 +320,11 @@ class TestCancel:
     async def test_cancel_idempotent(self, db: AsyncSession):
         """Cancelling an already-cancelled (soft-deleted) expense returns None — no error."""
         expense = await create_scheduled_expense(
-            db=db, user_id=USER_ID, category="insurance",
-            amount=Decimal("100"), scheduled_date=date(2026, 3, 25),
+            db=db,
+            user_id=USER_ID,
+            category="insurance",
+            amount=Decimal("100"),
+            scheduled_date=date(2026, 3, 25),
         )
         await db.commit()
 
@@ -296,8 +341,11 @@ class TestCancel:
     async def test_cancelled_not_in_pending(self, db: AsyncSession):
         """Cancelled expenses must not appear in get_pending_expenses."""
         expense = await create_scheduled_expense(
-            db=db, user_id=USER_ID, category="insurance",
-            amount=Decimal("100"), scheduled_date=date(2026, 3, 25),
+            db=db,
+            user_id=USER_ID,
+            category="insurance",
+            amount=Decimal("100"),
+            scheduled_date=date(2026, 3, 25),
         )
         await db.commit()
 
@@ -326,24 +374,34 @@ class TestImpact:
     async def test_impact_includes_pending_expenses(self, db: AsyncSession):
         """Pending expense reduces adjusted_safe_daily_limit."""
         # Insert DailyPlan rows using UUID hex format (no dashes) for SQLite compatibility
-        user_hex = USER_ID.hex  # SQLAlchemy UUID(as_uuid=True) stores as CHAR(32) in SQLite
+        user_hex = (
+            USER_ID.hex
+        )  # SQLAlchemy UUID(as_uuid=True) stores as CHAR(32) in SQLite
         for day in range(20, 32):
-            await db.execute(text("""
+            await db.execute(
+                text(
+                    """
                 INSERT INTO daily_plan (id, user_id, date, category, planned_amount, spent_amount)
                 VALUES (:id, :user_id, :date, :category, :planned, :spent)
-            """), {
-                "id": uuid.uuid4().hex,
-                "user_id": user_hex,
-                "date": f"2026-03-{day:02d} 00:00:00",
-                "category": "dining_out",
-                "planned": 10.0,
-                "spent": 0.0,
-            })
+            """
+                ),
+                {
+                    "id": uuid.uuid4().hex,
+                    "user_id": user_hex,
+                    "date": f"2026-03-{day:02d} 00:00:00",
+                    "category": "dining_out",
+                    "planned": 10.0,
+                    "spent": 0.0,
+                },
+            )
         await db.flush()
 
-        expense = await create_scheduled_expense(
-            db=db, user_id=USER_ID, category="insurance",
-            amount=Decimal("60"), scheduled_date=date(2026, 3, 25),
+        _expense = await create_scheduled_expense(
+            db=db,
+            user_id=USER_ID,
+            category="insurance",
+            amount=Decimal("60"),
+            scheduled_date=date(2026, 3, 25),
         )
         await db.commit()
 
@@ -357,8 +415,11 @@ class TestImpact:
     async def test_impact_excludes_cancelled_expenses(self, db: AsyncSession):
         """Cancelled expenses must not affect the impact calculation."""
         expense = await create_scheduled_expense(
-            db=db, user_id=USER_ID, category="insurance",
-            amount=Decimal("300"), scheduled_date=date(2026, 3, 25),
+            db=db,
+            user_id=USER_ID,
+            category="insurance",
+            amount=Decimal("300"),
+            scheduled_date=date(2026, 3, 25),
         )
         await db.commit()
         await cancel_scheduled_expense(db, expense.id, USER_ID)
@@ -372,8 +433,11 @@ class TestImpact:
         """Another user's scheduled expenses don't affect current user's impact."""
         other_user = uuid.uuid4()
         await create_scheduled_expense(
-            db=db, user_id=other_user, category="insurance",
-            amount=Decimal("500"), scheduled_date=date(2026, 3, 25),
+            db=db,
+            user_id=other_user,
+            category="insurance",
+            amount=Decimal("500"),
+            scheduled_date=date(2026, 3, 25),
         )
         await db.commit()
 

@@ -8,31 +8,34 @@ from sqlalchemy.orm import Session
 
 from app.db.models import Transaction, User
 from app.services.core.engine.expense_tracker import apply_transaction_to_plan
-from app.utils.timezone_utils import from_user_timezone, to_user_timezone
 from app.services.notification_integration import get_notification_integration
+from app.utils.timezone_utils import from_user_timezone, to_user_timezone
 
 
 def add_transaction(user: User, data, db: Session):
     # Ensure amount is a proper Decimal for financial accuracy
-    amount = data.amount if isinstance(data.amount, Decimal) else Decimal(str(data.amount))
+    amount = (
+        data.amount if isinstance(data.amount, Decimal) else Decimal(str(data.amount))
+    )
 
     # Validate amount is positive and reasonable
     if amount <= 0:
         raise ValueError("Transaction amount must be positive")
-    if amount > Decimal('1000000'):  # 1 million limit
+    if amount > Decimal("1000000"):  # 1 million limit
         raise ValueError("Transaction amount exceeds maximum limit")
 
     # MODULE 5: Parse goal_id if provided
     goal_id = None
-    if hasattr(data, 'goal_id') and data.goal_id:
+    if hasattr(data, "goal_id") and data.goal_id:
         try:
             from uuid import UUID as parse_uuid
+
             goal_id = parse_uuid(data.goal_id)
         except (ValueError, AttributeError):
             pass  # Invalid UUID, ignore
 
     # Handle spent_at: use provided time or current UTC time
-    if hasattr(data, 'spent_at') and data.spent_at is not None:
+    if hasattr(data, "spent_at") and data.spent_at is not None:
         spent_at = from_user_timezone(data.spent_at, user.timezone)
     else:
         # Default to current UTC time if not provided
@@ -42,15 +45,15 @@ def add_transaction(user: User, data, db: Session):
         user_id=user.id,
         category=data.category,
         amount=amount,
-        currency=getattr(data, 'currency', 'USD'),
-        description=getattr(data, 'description', None),
-        merchant=getattr(data, 'merchant', None),
-        location=getattr(data, 'location', None),
-        tags=getattr(data, 'tags', None),
-        is_recurring=getattr(data, 'is_recurring', False),
-        confidence_score=getattr(data, 'confidence_score', None),
-        receipt_url=getattr(data, 'receipt_url', None),
-        notes=getattr(data, 'notes', None),
+        currency=getattr(data, "currency", "USD"),
+        description=getattr(data, "description", None),
+        merchant=getattr(data, "merchant", None),
+        location=getattr(data, "location", None),
+        tags=getattr(data, "tags", None),
+        is_recurring=getattr(data, "is_recurring", False),
+        confidence_score=getattr(data, "confidence_score", None),
+        receipt_url=getattr(data, "receipt_url", None),
+        notes=getattr(data, "notes", None),
         spent_at=spent_at,
         goal_id=goal_id,  # Link to goal
     )
@@ -64,6 +67,7 @@ def add_transaction(user: User, data, db: Session):
     except Exception as e:
         # Log error but don't fail the transaction
         from app.core.logging_config import get_logger
+
         logger = get_logger(__name__)
         logger.warning(f"Failed to update budget plan: {e}")
 
@@ -71,14 +75,16 @@ def add_transaction(user: User, data, db: Session):
     if goal_id:
         try:
             from app.services.goal_transaction_service import GoalTransactionService
+
             GoalTransactionService.process_transaction_for_goal(db, txn, goal_id)
         except Exception as e:
             from app.core.logging_config import get_logger
+
             logger = get_logger(__name__)
             logger.warning(f"Failed to update goal progress: {e}")
 
     # MODULE 10: Send notification for large transactions (>$200)
-    LARGE_TRANSACTION_THRESHOLD = Decimal('200.00')
+    LARGE_TRANSACTION_THRESHOLD = Decimal("200.00")
     if amount > LARGE_TRANSACTION_THRESHOLD:
         try:
             notifier = get_notification_integration(db)
@@ -86,10 +92,11 @@ def add_transaction(user: User, data, db: Session):
                 user_id=user.id,
                 amount=float(amount),
                 category=txn.category,
-                merchant=txn.merchant
+                merchant=txn.merchant,
             )
         except Exception as e:
             from app.core.logging_config import get_logger
+
             logger = get_logger(__name__)
             logger.warning(f"Failed to send large transaction notification: {e}")
 
@@ -102,16 +109,18 @@ def add_transaction_background(
 ) -> Transaction:
     """Create a transaction and update the plan in a background task."""
     # Ensure amount is a proper Decimal for financial accuracy
-    amount = data.amount if isinstance(data.amount, Decimal) else Decimal(str(data.amount))
+    amount = (
+        data.amount if isinstance(data.amount, Decimal) else Decimal(str(data.amount))
+    )
 
     # Validate amount is positive and reasonable
     if amount <= 0:
         raise ValueError("Transaction amount must be positive")
-    if amount > Decimal('1000000'):  # 1 million limit
+    if amount > Decimal("1000000"):  # 1 million limit
         raise ValueError("Transaction amount exceeds maximum limit")
 
     # Handle spent_at: use provided time or current UTC time
-    if hasattr(data, 'spent_at') and data.spent_at is not None:
+    if hasattr(data, "spent_at") and data.spent_at is not None:
         spent_at = from_user_timezone(data.spent_at, user.timezone)
     else:
         # Default to current UTC time if not provided
@@ -121,15 +130,15 @@ def add_transaction_background(
         user_id=user.id,
         category=data.category,
         amount=amount,
-        currency=getattr(data, 'currency', 'USD'),
-        description=getattr(data, 'description', None),
-        merchant=getattr(data, 'merchant', None),
-        location=getattr(data, 'location', None),
-        tags=getattr(data, 'tags', None),
-        is_recurring=getattr(data, 'is_recurring', False),
-        confidence_score=getattr(data, 'confidence_score', None),
-        receipt_url=getattr(data, 'receipt_url', None),
-        notes=getattr(data, 'notes', None),
+        currency=getattr(data, "currency", "USD"),
+        description=getattr(data, "description", None),
+        merchant=getattr(data, "merchant", None),
+        location=getattr(data, "location", None),
+        tags=getattr(data, "tags", None),
+        is_recurring=getattr(data, "is_recurring", False),
+        confidence_score=getattr(data, "confidence_score", None),
+        receipt_url=getattr(data, "receipt_url", None),
+        notes=getattr(data, "notes", None),
         spent_at=spent_at,
     )
     db.add(txn)
@@ -155,7 +164,7 @@ def list_user_transactions(
     # Filter out soft-deleted transactions for compliance
     query = db.query(Transaction).filter(
         Transaction.user_id == user.id,
-        Transaction.deleted_at.is_(None)  # Only non-deleted transactions
+        Transaction.deleted_at.is_(None),  # Only non-deleted transactions
     )
     if category:
         query = query.filter(Transaction.category == category)
@@ -173,13 +182,19 @@ def list_user_transactions(
     return txns
 
 
-def get_transaction_by_id(user: User, transaction_id: UUID, db: Session) -> Optional[Transaction]:
+def get_transaction_by_id(
+    user: User, transaction_id: UUID, db: Session
+) -> Optional[Transaction]:
     """Get a specific transaction by ID for the user (excludes deleted)"""
-    txn = db.query(Transaction).filter(
-        Transaction.id == transaction_id,
-        Transaction.user_id == user.id,
-        Transaction.deleted_at.is_(None)  # Only non-deleted transactions
-    ).first()
+    txn = (
+        db.query(Transaction)
+        .filter(
+            Transaction.id == transaction_id,
+            Transaction.user_id == user.id,
+            Transaction.deleted_at.is_(None),  # Only non-deleted transactions
+        )
+        .first()
+    )
 
     if txn:
         txn.spent_at = to_user_timezone(txn.spent_at, user.timezone)
@@ -187,51 +202,61 @@ def get_transaction_by_id(user: User, transaction_id: UUID, db: Session) -> Opti
     return txn
 
 
-def update_transaction(user: User, transaction_id: UUID, data, db: Session) -> Optional[Transaction]:
+def update_transaction(
+    user: User, transaction_id: UUID, data, db: Session
+) -> Optional[Transaction]:
     """Update an existing transaction (excludes deleted)"""
-    txn = db.query(Transaction).filter(
-        Transaction.id == transaction_id,
-        Transaction.user_id == user.id,
-        Transaction.deleted_at.is_(None)  # Only non-deleted transactions
-    ).first()
+    txn = (
+        db.query(Transaction)
+        .filter(
+            Transaction.id == transaction_id,
+            Transaction.user_id == user.id,
+            Transaction.deleted_at.is_(None),  # Only non-deleted transactions
+        )
+        .first()
+    )
 
     if not txn:
         return None
 
     # Update fields that are provided
-    if hasattr(data, 'amount') and data.amount is not None:
-        amount = data.amount if isinstance(data.amount, Decimal) else Decimal(str(data.amount))
+    if hasattr(data, "amount") and data.amount is not None:
+        amount = (
+            data.amount
+            if isinstance(data.amount, Decimal)
+            else Decimal(str(data.amount))
+        )
         if amount <= 0:
             raise ValueError("Transaction amount must be positive")
-        if amount > Decimal('1000000'):
+        if amount > Decimal("1000000"):
             raise ValueError("Transaction amount exceeds maximum limit")
         txn.amount = amount
 
-    if hasattr(data, 'category') and data.category is not None:
+    if hasattr(data, "category") and data.category is not None:
         txn.category = data.category
 
-    if hasattr(data, 'description') and data.description is not None:
+    if hasattr(data, "description") and data.description is not None:
         txn.description = data.description
 
-    if hasattr(data, 'currency') and data.currency is not None:
+    if hasattr(data, "currency") and data.currency is not None:
         txn.currency = data.currency
 
-    if hasattr(data, 'merchant') and data.merchant is not None:
+    if hasattr(data, "merchant") and data.merchant is not None:
         txn.merchant = data.merchant
 
-    if hasattr(data, 'location') and data.location is not None:
+    if hasattr(data, "location") and data.location is not None:
         txn.location = data.location
 
-    if hasattr(data, 'tags') and data.tags is not None:
+    if hasattr(data, "tags") and data.tags is not None:
         txn.tags = data.tags
 
-    if hasattr(data, 'is_recurring') and data.is_recurring is not None:
+    if hasattr(data, "is_recurring") and data.is_recurring is not None:
         txn.is_recurring = data.is_recurring
 
-    if hasattr(data, 'spent_at') and data.spent_at is not None:
+    if hasattr(data, "spent_at") and data.spent_at is not None:
         txn.spent_at = from_user_timezone(data.spent_at, user.timezone)
 
-    if hasattr(data, 'notes') and data.notes is not None:
+    if hasattr(data, "notes") and data.notes is not None:
         txn.notes = data.notes
 
     db.commit()
@@ -242,6 +267,7 @@ def update_transaction(user: User, transaction_id: UUID, data, db: Session) -> O
         apply_transaction_to_plan(db, txn)
     except Exception as e:
         from app.core.logging_config import get_logger
+
         logger = get_logger(__name__)
         logger.warning(f"Failed to update budget plan: {e}")
 
@@ -258,11 +284,15 @@ def delete_transaction(user: User, transaction_id: UUID, db: Session) -> bool:
     """
     from datetime import datetime
 
-    txn = db.query(Transaction).filter(
-        Transaction.id == transaction_id,
-        Transaction.user_id == user.id,
-        Transaction.deleted_at.is_(None)  # Only get non-deleted transactions
-    ).first()
+    txn = (
+        db.query(Transaction)
+        .filter(
+            Transaction.id == transaction_id,
+            Transaction.user_id == user.id,
+            Transaction.deleted_at.is_(None),  # Only get non-deleted transactions
+        )
+        .first()
+    )
 
     if not txn:
         return False

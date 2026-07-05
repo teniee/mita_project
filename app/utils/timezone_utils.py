@@ -1,6 +1,6 @@
-from datetime import datetime, timezone
-from zoneinfo import ZoneInfo
+from datetime import datetime
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 
 def to_user_timezone(dt: Optional[datetime], tz: str) -> Optional[datetime]:

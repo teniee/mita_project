@@ -4,26 +4,30 @@ import types
 
 # Set DATABASE_URL for test environment BEFORE any imports
 # This prevents "Could not parse SQLAlchemy URL from string ''" errors
-os.environ.setdefault('DATABASE_URL', 'postgresql://test:test@localhost:5432/test_mita?sslmode=disable')
-os.environ.setdefault('SECRET_KEY', 'test_secret_key_for_testing_only')
-os.environ.setdefault('ENVIRONMENT', 'test')
+os.environ.setdefault(
+    "DATABASE_URL", "postgresql://test:test@localhost:5432/test_mita?sslmode=disable"
+)
+os.environ.setdefault("SECRET_KEY", "test_secret_key_for_testing_only")
+os.environ.setdefault("ENVIRONMENT", "test")
 os.environ.setdefault("FIREBASE_JSON", "{}")
 
 # SMTP Configuration for tests (prevent validation errors)
-os.environ.setdefault('SMTP_HOST', 'smtp.gmail.com')
-os.environ.setdefault('SMTP_PORT', '587')
-os.environ.setdefault('SMTP_USERNAME', 'test@example.com')
-os.environ.setdefault('SMTP_PASSWORD', 'test_password')
+os.environ.setdefault("SMTP_HOST", "smtp.gmail.com")
+os.environ.setdefault("SMTP_PORT", "587")
+os.environ.setdefault("SMTP_USERNAME", "test@example.com")
+os.environ.setdefault("SMTP_PASSWORD", "test_password")
 
 # JWT Configuration
-os.environ.setdefault('JWT_SECRET', 'test_jwt_secret_key_min_32_chars_long_for_testing')
+os.environ.setdefault("JWT_SECRET", "test_jwt_secret_key_min_32_chars_long_for_testing")
 
 # Redis Configuration (optional for tests)
-os.environ.setdefault('REDIS_URL', 'redis://localhost:6379/1')
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
 
 # External APIs (optional for tests)
-os.environ.setdefault('OPENAI_API_KEY', 'sk-test-key')
-os.environ.setdefault('GOOGLE_APPLICATION_CREDENTIALS', '/tmp/test-credentials.json')
+os.environ.setdefault("OPENAI_API_KEY", "sk-test-key")
+os.environ.setdefault(
+    "GOOGLE_APPLICATION_CREDENTIALS", "/tmp/test-credentials.json"
+)  # nosec B108 - fake path for test env
 
 dummy = types.ModuleType("firebase_admin")
 dummy._apps = []

@@ -25,7 +25,7 @@ import types
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -34,13 +34,15 @@ from fastapi.testclient import TestClient
 # ENVIRONMENT & FIREBASE SETUP (MUST come before app imports)
 # ============================================================================
 
-os.environ.setdefault('DATABASE_URL', 'postgresql://test:test@localhost:5432/test_mita?sslmode=disable')
-os.environ.setdefault('SECRET_KEY', 'test_secret_key_for_testing_only')
-os.environ.setdefault('ENVIRONMENT', 'test')
-os.environ.setdefault('FIREBASE_JSON', '{}')
-os.environ.setdefault('JWT_SECRET', 'test_jwt_secret_key_min_32_chars_long_for_testing')
-os.environ.setdefault('REDIS_URL', 'redis://localhost:6379/1')
-os.environ.setdefault('OPENAI_API_KEY', 'sk-test-key')
+os.environ.setdefault(
+    "DATABASE_URL", "postgresql://test:test@localhost:5432/test_mita?sslmode=disable"
+)
+os.environ.setdefault("SECRET_KEY", "test_secret_key_for_testing_only")
+os.environ.setdefault("ENVIRONMENT", "test")
+os.environ.setdefault("FIREBASE_JSON", "{}")
+os.environ.setdefault("JWT_SECRET", "test_jwt_secret_key_min_32_chars_long_for_testing")
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
+os.environ.setdefault("OPENAI_API_KEY", "sk-test-key")
 
 # Mock Firebase
 dummy = types.ModuleType("firebase_admin")
@@ -70,18 +72,20 @@ sys.modules["firebase_admin.messaging"] = dummy.messaging
 # APP & ROUTE IMPORTS (after env setup)
 # ============================================================================
 
-from app.main import app
 from app.api.dependencies import get_current_user
 from app.core.async_session import get_async_db
+from app.main import app
 
 # ============================================================================
 # FIXTURES
 # ============================================================================
 
+
 @pytest.fixture
 def client():
     """Create TestClient for API testing"""
     return TestClient(app)
+
 
 @pytest.fixture
 def mock_user():
@@ -92,8 +96,9 @@ def mock_user():
         is_premium=True,
         timezone="UTC",
         monthly_income=5000.0,
-        annual_income=60000.0
+        annual_income=60000.0,
     )
+
 
 @pytest.fixture
 def mock_basic_user():
@@ -104,8 +109,9 @@ def mock_basic_user():
         is_premium=False,
         timezone="UTC",
         monthly_income=3000.0,
-        annual_income=36000.0
+        annual_income=36000.0,
     )
+
 
 @pytest.fixture
 def mock_db():
@@ -124,6 +130,7 @@ def mock_db():
 
     return db
 
+
 @pytest.fixture
 def sample_ai_snapshot():
     """Sample AI analysis snapshot"""
@@ -138,12 +145,13 @@ def sample_ai_snapshot():
             "total_by_category": {
                 "food": 456.78,
                 "transportation": 234.50,
-                "entertainment": 123.00
+                "entertainment": 123.00,
             },
-            "behavior_tags": ["weekend_spender", "emotional_spending"]
+            "behavior_tags": ["weekend_spender", "emotional_spending"],
         },
-        "created_at": datetime.now(timezone.utc)
+        "created_at": datetime.now(timezone.utc),
     }
+
 
 @pytest.fixture
 def sample_spending_patterns():
@@ -152,12 +160,13 @@ def sample_spending_patterns():
         "patterns": [
             "weekend_overspending",
             "frequent_small_purchases",
-            "impulse_buying"
+            "impulse_buying",
         ],
         "confidence": 0.85,
         "analysis_date": datetime.now(timezone.utc).isoformat(),
-        "data_points": 150
+        "data_points": 150,
     }
+
 
 @pytest.fixture
 def sample_financial_health_score():
@@ -169,14 +178,15 @@ def sample_financial_health_score():
             "budgeting": 82,
             "spending_efficiency": 75,
             "saving_potential": 80,
-            "consistency": 74
+            "consistency": 74,
         },
         "improvements": [
             "Create detailed budget categories",
-            "Reduce impulse purchases"
+            "Reduce impulse purchases",
         ],
-        "trend": "improving"
+        "trend": "improving",
     }
+
 
 @pytest.fixture
 def sample_transactions():
@@ -188,19 +198,23 @@ def sample_transactions():
         transaction = SimpleNamespace(
             id=f"txn_{i}",
             user_id="test_user_premium_ai",
-            amount=Decimal('50.00') if i % 7 < 5 else Decimal('75.00'),  # Weekend pattern
+            amount=(
+                Decimal("50.00") if i % 7 < 5 else Decimal("75.00")
+            ),  # Weekend pattern
             category="food",
             description=f"Expense {i}",
             spent_at=base_date + timedelta(days=i),
-            created_at=base_date + timedelta(days=i)
+            created_at=base_date + timedelta(days=i),
         )
         transactions.append(transaction)
 
     return transactions
 
+
 # ============================================================================
 # FIXTURE CLEANUP
 # ============================================================================
+
 
 @pytest.fixture(autouse=True)
 def cleanup_overrides():
@@ -208,14 +222,18 @@ def cleanup_overrides():
     yield
     app.dependency_overrides = {}
 
+
 # ============================================================================
 # TESTS: AI API ENDPOINTS - SNAPSHOTS
 # ============================================================================
 
+
 class TestAISnapshotEndpoints:
     """Test AI snapshot creation and retrieval"""
 
-    def test_get_latest_snapshots_success(self, client, mock_user, mock_db, sample_ai_snapshot):
+    def test_get_latest_snapshots_success(
+        self, client, mock_user, mock_db, sample_ai_snapshot
+    ):
         """Test retrieving latest AI snapshot for user"""
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_async_db] = lambda: mock_db
@@ -259,17 +277,18 @@ class TestAISnapshotEndpoints:
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_async_db] = lambda: mock_db
 
-        with patch('app.api.ai.routes.save_ai_snapshot', new_callable=AsyncMock) as mock_save:
+        with patch(
+            "app.api.ai.routes.save_ai_snapshot", new_callable=AsyncMock
+        ) as mock_save:
             mock_save.return_value = {
                 "status": "saved",
                 "snapshot_id": 123,
                 "rating": "A",
-                "risk": "low"
+                "risk": "low",
             }
 
             response = client.post(
-                "/api/ai/snapshot",
-                params={"year": 2025, "month": 12}
+                "/api/ai/snapshot", params={"year": 2025, "month": 12}
             )
 
             assert response.status_code == 200
@@ -282,28 +301,35 @@ class TestAISnapshotEndpoints:
         app.dependency_overrides[get_async_db] = lambda: mock_db
 
         response = client.post(
-            "/api/ai/snapshot",
-            params={"year": 2025, "month": 13}  # Invalid month
+            "/api/ai/snapshot", params={"year": 2025, "month": 13}  # Invalid month
         )
 
         # Route has no month validation, so server returns 500 (ValueError)
         assert response.status_code == 500
 
+
 # ============================================================================
 # TESTS: AI API ENDPOINTS - SPENDING ANALYSIS
 # ============================================================================
 
+
 class TestSpendingAnalysisEndpoints:
     """Test spending pattern and anomaly detection endpoints"""
 
-    def test_get_spending_patterns_with_data(self, client, mock_user, mock_db, sample_spending_patterns):
+    def test_get_spending_patterns_with_data(
+        self, client, mock_user, mock_db, sample_spending_patterns
+    ):
         """Test spending patterns endpoint with sufficient data"""
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_async_db] = lambda: mock_db
 
-        with patch('app.services.ai_financial_analyzer.AIFinancialAnalyzer') as mock_analyzer:
+        with patch(
+            "app.services.ai_financial_analyzer.AIFinancialAnalyzer"
+        ) as mock_analyzer:
             mock_instance = Mock()
-            mock_instance.analyze_spending_patterns.return_value = sample_spending_patterns
+            mock_instance.analyze_spending_patterns.return_value = (
+                sample_spending_patterns
+            )
             mock_analyzer.return_value = mock_instance
 
             response = client.get("/api/ai/spending-patterns")
@@ -320,12 +346,14 @@ class TestSpendingAnalysisEndpoints:
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_async_db] = lambda: mock_db
 
-        with patch('app.services.ai_financial_analyzer.AIFinancialAnalyzer') as mock_analyzer:
+        with patch(
+            "app.services.ai_financial_analyzer.AIFinancialAnalyzer"
+        ) as mock_analyzer:
             mock_instance = Mock()
             mock_instance.analyze_spending_patterns.return_value = {
                 "patterns": [],
                 "confidence": 0.0,
-                "data_points": 5
+                "data_points": 5,
             }
             mock_analyzer.return_value = mock_instance
 
@@ -348,11 +376,13 @@ class TestSpendingAnalysisEndpoints:
                 "category": "food",
                 "date": datetime.now(timezone.utc).isoformat(),
                 "severity": "high",
-                "average_for_category": 56.12
+                "average_for_category": 56.12,
             }
         ]
 
-        with patch('app.services.ai_financial_analyzer.AIFinancialAnalyzer') as mock_analyzer:
+        with patch(
+            "app.services.ai_financial_analyzer.AIFinancialAnalyzer"
+        ) as mock_analyzer:
             mock_instance = Mock()
             mock_instance.detect_spending_anomalies.return_value = anomalies
             mock_analyzer.return_value = mock_instance
@@ -378,12 +408,14 @@ class TestSpendingAnalysisEndpoints:
             "weekly_summary": {
                 "total_spent": 342.50,
                 "vs_last_week": 15.3,
-                "top_category": "food"
+                "top_category": "food",
             },
-            "recommendations": ["Consider reducing discretionary spending"]
+            "recommendations": ["Consider reducing discretionary spending"],
         }
 
-        with patch('app.services.ai_financial_analyzer.AIFinancialAnalyzer') as mock_analyzer:
+        with patch(
+            "app.services.ai_financial_analyzer.AIFinancialAnalyzer"
+        ) as mock_analyzer:
             mock_instance = Mock()
             mock_instance.generate_weekly_insights.return_value = weekly_data
             mock_analyzer.return_value = mock_instance
@@ -396,21 +428,29 @@ class TestSpendingAnalysisEndpoints:
             assert "trend" in data["data"]
             assert data["data"]["trend"] in ["increasing", "decreasing", "stable"]
 
+
 # ============================================================================
 # TESTS: AI API ENDPOINTS - FINANCIAL HEALTH
 # ============================================================================
 
+
 class TestFinancialHealthEndpoints:
     """Test financial health scoring and profiling"""
 
-    def test_get_financial_health_score(self, client, mock_user, mock_db, sample_financial_health_score):
+    def test_get_financial_health_score(
+        self, client, mock_user, mock_db, sample_financial_health_score
+    ):
         """Test financial health score calculation"""
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_async_db] = lambda: mock_db
 
-        with patch('app.services.ai_financial_analyzer.AIFinancialAnalyzer') as mock_analyzer:
+        with patch(
+            "app.services.ai_financial_analyzer.AIFinancialAnalyzer"
+        ) as mock_analyzer:
             mock_instance = Mock()
-            mock_instance.calculate_financial_health_score.return_value = sample_financial_health_score
+            mock_instance.calculate_financial_health_score.return_value = (
+                sample_financial_health_score
+            )
             mock_analyzer.return_value = mock_instance
 
             response = client.get("/api/ai/financial-health-score")
@@ -421,7 +461,17 @@ class TestFinancialHealthEndpoints:
             assert "score" in data["data"]
             assert 0 <= data["data"]["score"] <= 100
             assert "grade" in data["data"]
-            assert data["data"]["grade"] in ["A+", "A", "B+", "B", "C+", "C", "D+", "D", "F"]
+            assert data["data"]["grade"] in [
+                "A+",
+                "A",
+                "B+",
+                "B",
+                "C+",
+                "C",
+                "D+",
+                "D",
+                "F",
+            ]
             assert "components" in data["data"]
 
     def test_get_financial_profile(self, client, mock_user, mock_db):
@@ -433,10 +483,12 @@ class TestFinancialHealthEndpoints:
             "personality": "Conservative Saver",
             "strengths": ["Consistent budgeting", "Low debt"],
             "weaknesses": ["Weekend overspending"],
-            "recommendations": ["Set weekend budget limits"]
+            "recommendations": ["Set weekend budget limits"],
         }
 
-        with patch('app.services.ai_financial_analyzer.AIFinancialAnalyzer') as mock_analyzer:
+        with patch(
+            "app.services.ai_financial_analyzer.AIFinancialAnalyzer"
+        ) as mock_analyzer:
             mock_instance = Mock()
             mock_instance.generate_financial_profile.return_value = profile_data
             mock_analyzer.return_value = mock_instance
@@ -454,16 +506,15 @@ class TestFinancialHealthEndpoints:
 
         feedback_data = {
             "feedback": "Your spending is well-controlled overall",
-            "tips": [
-                "Set a weekend budget",
-                "Use the 24-hour rule for purchases"
-            ],
+            "tips": ["Set a weekend budget", "Use the 24-hour rule for purchases"],
             "confidence": 0.88,
             "category_focus": "food",
-            "spending_score": 7.2
+            "spending_score": 7.2,
         }
 
-        with patch('app.services.ai_financial_analyzer.AIFinancialAnalyzer') as mock_analyzer:
+        with patch(
+            "app.services.ai_financial_analyzer.AIFinancialAnalyzer"
+        ) as mock_analyzer:
             mock_instance = Mock()
             mock_instance.generate_personalized_feedback.return_value = feedback_data
             mock_analyzer.return_value = mock_instance
@@ -477,9 +528,11 @@ class TestFinancialHealthEndpoints:
             assert "tips" in data["data"]
             assert isinstance(data["data"]["tips"], list)
 
+
 # ============================================================================
 # TESTS: AI API ENDPOINTS - OPTIMIZATION
 # ============================================================================
+
 
 class TestOptimizationEndpoints:
     """Test budget and savings optimization endpoints"""
@@ -493,14 +546,16 @@ class TestOptimizationEndpoints:
             "potential_savings": 327.50,
             "suggestions": [
                 "Cancel unused subscriptions - save $45/month",
-                "Reduce dining out by 25% - save $112.50/month"
+                "Reduce dining out by 25% - save $112.50/month",
             ],
             "difficulty_level": "moderate",
             "impact_score": 6.5,
-            "implementation_tips": ["Start with easiest changes first"]
+            "implementation_tips": ["Start with easiest changes first"],
         }
 
-        with patch('app.services.ai_financial_analyzer.AIFinancialAnalyzer') as mock_analyzer:
+        with patch(
+            "app.services.ai_financial_analyzer.AIFinancialAnalyzer"
+        ) as mock_analyzer:
             mock_instance = Mock()
             mock_instance.generate_savings_optimization.return_value = savings_data
             mock_analyzer.return_value = mock_instance
@@ -512,7 +567,11 @@ class TestOptimizationEndpoints:
             assert "data" in data
             assert "potential_savings" in data["data"]
             assert "suggestions" in data["data"]
-            assert data["data"]["difficulty_level"] in ["easy", "moderate", "challenging"]
+            assert data["data"]["difficulty_level"] in [
+                "easy",
+                "moderate",
+                "challenging",
+            ]
 
     def test_get_budget_optimization(self, client, mock_user, mock_db):
         """Test budget optimization recommendations"""
@@ -532,19 +591,21 @@ class TestOptimizationEndpoints:
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_async_db] = lambda: mock_db
 
-        with patch('app.api.ai.routes.AIFinancialAnalyzer') as mock_analyzer:
+        with patch("app.api.ai.routes.AIFinancialAnalyzer") as mock_analyzer:
             mock_instance = Mock()
-            mock_instance.suggest_category = AsyncMock(return_value={
-                "suggested_category": "Food",
-                "confidence": 0.9,
-                "alternatives": ["Dining"],
-                "reasoning": "Starbucks is a coffee shop"
-            })
+            mock_instance.suggest_category = AsyncMock(
+                return_value={
+                    "suggested_category": "Food",
+                    "confidence": 0.9,
+                    "alternatives": ["Dining"],
+                    "reasoning": "Starbucks is a coffee shop",
+                }
+            )
             mock_analyzer.return_value = mock_instance
 
             response = client.post(
                 "/api/ai/category-suggestions",
-                json={"description": "Starbucks", "amount": 5.50}
+                json={"description": "Starbucks", "amount": 5.50},
             )
 
             assert response.status_code == 200
@@ -552,9 +613,11 @@ class TestOptimizationEndpoints:
             assert "data" in data
             assert "confidence" in data["data"]
 
+
 # ============================================================================
 # TESTS: AI API ENDPOINTS - ASSISTANT & ADVICE
 # ============================================================================
+
 
 class TestAIAssistantEndpoints:
     """Test AI assistant chatbot and advice endpoints"""
@@ -573,8 +636,8 @@ class TestAIAssistantEndpoints:
             "/api/ai/assistant",
             json={
                 "question": "How much did I spend this month?",
-                "context": {"category": "food"}
-            }
+                "context": {"category": "food"},
+            },
         )
 
         assert response.status_code == 200
@@ -592,8 +655,7 @@ class TestAIAssistantEndpoints:
         mock_db.execute.return_value = mock_result
 
         response = client.post(
-            "/api/ai/assistant",
-            json={"question": "How can I save more money?"}
+            "/api/ai/assistant", json={"question": "How can I save more money?"}
         )
 
         assert response.status_code == 200
@@ -610,8 +672,8 @@ class TestAIAssistantEndpoints:
             json={
                 "question": "How should I allocate my budget?",
                 "user_context": {"monthly_income": 5000},
-                "advice_type": "budgeting"
-            }
+                "advice_type": "budgeting",
+            },
         )
 
         assert response.status_code == 200
@@ -626,17 +688,18 @@ class TestAIAssistantEndpoints:
         # The route uses AIFinancialAnalyzer.explain_day_status with a fallback.
         # With the mock db, it will hit the except branch and return fallback data.
         response = client.get(
-            "/api/ai/day-status-explanation",
-            params={"date": "2025-12-04"}
+            "/api/ai/day-status-explanation", params={"date": "2025-12-04"}
         )
 
         assert response.status_code == 200
         data = response.json()
         assert "data" in data
 
+
 # ============================================================================
 # TESTS: AUTHENTICATION & AUTHORIZATION
 # ============================================================================
+
 
 class TestAIAuthentication:
     """Test authentication requirements for AI endpoints"""
@@ -659,9 +722,11 @@ class TestAIAuthentication:
         # Either works or returns appropriate message
         assert response.status_code in [200, 403]
 
+
 # ============================================================================
 # TESTS: ERROR HANDLING & RESILIENCE
 # ============================================================================
+
 
 class TestAIErrorHandling:
     """Test error handling and fallback responses"""
@@ -675,7 +740,7 @@ class TestAIErrorHandling:
         mock_result.scalars.return_value.all.return_value = []
         mock_db.execute.return_value = mock_result
 
-        with patch('app.api.ai.routes.AIFinancialAnalyzer') as mock_analyzer:
+        with patch("app.api.ai.routes.AIFinancialAnalyzer") as mock_analyzer:
             mock_instance = Mock()
             mock_instance.answer_question = Mock(
                 side_effect=Exception("Connection failed")
@@ -683,8 +748,7 @@ class TestAIErrorHandling:
             mock_analyzer.return_value = mock_instance
 
             response = client.post(
-                "/api/ai/assistant",
-                json={"question": "Test question"}
+                "/api/ai/assistant", json={"question": "Test question"}
             )
 
             # The route catches Exception and raises HTTPException(500)
@@ -701,12 +765,14 @@ class TestAIErrorHandling:
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_async_db] = lambda: mock_db
 
-        with patch('app.services.ai_financial_analyzer.AIFinancialAnalyzer') as mock_analyzer:
+        with patch(
+            "app.services.ai_financial_analyzer.AIFinancialAnalyzer"
+        ) as mock_analyzer:
             mock_instance = Mock()
             mock_instance.analyze_spending_patterns.return_value = {
                 "patterns": [],
                 "confidence": 0.0,
-                "message": "Insufficient data for analysis"
+                "message": "Insufficient data for analysis",
             }
             mock_analyzer.return_value = mock_instance
 
@@ -727,10 +793,7 @@ class TestAIErrorHandling:
 
         # The assistant route uses keyword matching; "Test" doesn't match any
         # keyword so it returns the generic fallback response with 200.
-        response = client.post(
-            "/api/ai/assistant",
-            json={"question": "Test"}
-        )
+        response = client.post("/api/ai/assistant", json={"question": "Test"})
 
         # Should handle gracefully with a fallback response
         assert response.status_code in [200, 400, 500]
@@ -751,9 +814,11 @@ class TestAIErrorHandling:
         data = response.json()
         assert "data" in data
 
+
 # ============================================================================
 # TESTS: DATA VALIDATION
 # ============================================================================
+
 
 class TestAIDataValidation:
     """Test input validation for AI endpoints"""
@@ -763,10 +828,7 @@ class TestAIDataValidation:
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_async_db] = lambda: mock_db
 
-        response = client.post(
-            "/api/ai/assistant",
-            json={"question": ""}
-        )
+        response = client.post("/api/ai/assistant", json={"question": ""})
 
         assert response.status_code == 422
 
@@ -776,8 +838,7 @@ class TestAIDataValidation:
         app.dependency_overrides[get_async_db] = lambda: mock_db
 
         response = client.post(
-            "/api/ai/snapshot",
-            params={"year": 1900, "month": 1}  # Too old
+            "/api/ai/snapshot", params={"year": 1900, "month": 1}  # Too old
         )
 
         # Route has no date range validation, so server returns 500
@@ -790,15 +851,16 @@ class TestAIDataValidation:
 
         # POST with invalid amount (negative) should fail validation
         response = client.post(
-            "/api/ai/category-suggestions",
-            json={"description": "Test", "amount": -5.0}
+            "/api/ai/category-suggestions", json={"description": "Test", "amount": -5.0}
         )
 
         assert response.status_code == 422
 
+
 # ============================================================================
 # TESTS: PERFORMANCE & CACHING
 # ============================================================================
+
 
 class TestAIPerformance:
     """Test AI endpoint performance characteristics"""
@@ -808,11 +870,13 @@ class TestAIPerformance:
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_async_db] = lambda: mock_db
 
-        with patch('app.services.ai_financial_analyzer.AIFinancialAnalyzer') as mock_analyzer:
+        with patch(
+            "app.services.ai_financial_analyzer.AIFinancialAnalyzer"
+        ) as mock_analyzer:
             mock_instance = Mock()
             mock_instance.analyze_spending_patterns.return_value = {
                 "patterns": ["weekend_overspending"],
-                "confidence": 0.85
+                "confidence": 0.85,
             }
             mock_analyzer.return_value = mock_instance
 
@@ -829,11 +893,13 @@ class TestAIPerformance:
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_async_db] = lambda: mock_db
 
-        with patch('app.services.ai_financial_analyzer.AIFinancialAnalyzer') as mock_analyzer:
+        with patch(
+            "app.services.ai_financial_analyzer.AIFinancialAnalyzer"
+        ) as mock_analyzer:
             mock_instance = Mock()
             mock_instance.calculate_financial_health_score.return_value = {
                 "score": 75,
-                "grade": "B"
+                "grade": "B",
             }
             mock_analyzer.return_value = mock_instance
 
@@ -844,9 +910,11 @@ class TestAIPerformance:
             assert response1.status_code == 200
             assert response2.status_code == 200
 
+
 # ============================================================================
 # TESTS: INTEGRATION SCENARIOS
 # ============================================================================
+
 
 class TestAIIntegrationScenarios:
     """Test end-to-end AI integration scenarios"""
@@ -856,27 +924,29 @@ class TestAIIntegrationScenarios:
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_async_db] = lambda: mock_db
 
-        with patch('app.services.ai_financial_analyzer.AIFinancialAnalyzer') as mock_analyzer:
+        with patch(
+            "app.services.ai_financial_analyzer.AIFinancialAnalyzer"
+        ) as mock_analyzer:
             mock_instance = Mock()
 
             # Step 1: Analyze patterns
             mock_instance.analyze_spending_patterns.return_value = {
                 "patterns": ["weekend_overspending"],
-                "confidence": 0.85
+                "confidence": 0.85,
             }
 
             # Step 2: Calculate health score
             mock_instance.calculate_financial_health_score.return_value = {
                 "score": 75,
                 "grade": "B",
-                "components": {}
+                "components": {},
             }
 
             # Step 3: Generate feedback
             mock_instance.generate_personalized_feedback.return_value = {
                 "feedback": "Good overall, watch weekend spending",
                 "tips": [],
-                "confidence": 0.85
+                "confidence": 0.85,
             }
 
             mock_analyzer.return_value = mock_instance
@@ -897,12 +967,14 @@ class TestAIIntegrationScenarios:
         app.dependency_overrides[get_async_db] = lambda: mock_db
 
         # Create snapshot (year/month are query params, not JSON body; mock must be AsyncMock)
-        with patch('app.api.ai.routes.save_ai_snapshot', new_callable=AsyncMock) as mock_save:
+        with patch(
+            "app.api.ai.routes.save_ai_snapshot", new_callable=AsyncMock
+        ) as mock_save:
             mock_save.return_value = {
                 "status": "saved",
                 "snapshot_id": 123,
                 "rating": "B+",
-                "risk": "moderate"
+                "risk": "moderate",
             }
 
             r1 = client.post("/api/ai/snapshot", params={"year": 2025, "month": 12})

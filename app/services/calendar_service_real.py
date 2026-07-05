@@ -127,7 +127,9 @@ def update_day_entry(db: Session, user_id: UUID, day: date, updates: Dict[str, A
     db.commit()
 
 
-def get_calendar_for_user(user_id: UUID, year: int, month: int) -> Dict[str, Dict[str, float]]:
+def get_calendar_for_user(
+    user_id: UUID, year: int, month: int
+) -> Dict[str, Dict[str, float]]:
     """
     Wrapper function for backward compatibility.
     Creates its own database session to fetch calendar data.

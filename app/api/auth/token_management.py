@@ -44,7 +44,7 @@ router = APIRouter(tags=["Authentication - Token Management"])
 async def refresh_token_standardized(
     request: Request,
     refresh_token: str = Body(..., embed=True),
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
 ):
     """
     Refresh an expired access token using a valid refresh token.
@@ -61,8 +61,7 @@ async def refresh_token_standardized(
 
     if not refresh_token or not refresh_token.strip():
         raise ValidationError(
-            "Refresh token is required",
-            ErrorCode.VALIDATION_REQUIRED_FIELD
+            "Refresh token is required", ErrorCode.VALIDATION_REQUIRED_FIELD
         )
 
     # Verify refresh token
@@ -70,27 +69,25 @@ async def refresh_token_standardized(
         token_data = await verify_token(refresh_token)
         if not token_data or token_data.get("token_type") != "refresh":
             raise AuthenticationError(
-                "Invalid refresh token",
-                ErrorCode.AUTH_TOKEN_INVALID
+                "Invalid refresh token", ErrorCode.AUTH_TOKEN_INVALID
             )
 
         user_id = token_data.get("sub")
         if not user_id:
             raise AuthenticationError(
-                "Invalid token payload",
-                ErrorCode.AUTH_TOKEN_INVALID
+                "Invalid token payload", ErrorCode.AUTH_TOKEN_INVALID
             )
 
         # Find user
         from sqlalchemy import select
+
         user_query = select(User).where(User.id == user_id)
         result = await db.execute(user_query)
         user = result.scalar_one_or_none()
 
         if not user:
             raise AuthenticationError(
-                "User not found",
-                ErrorCode.AUTH_INVALID_CREDENTIALS
+                "User not found", ErrorCode.AUTH_INVALID_CREDENTIALS
             )
 
         # Generate new token pair
@@ -99,7 +96,7 @@ async def refresh_token_standardized(
             "sub": str(user.id),
             "is_premium": user.is_premium,
             "country": user.country,
-            "token_version_id": user.token_version  # Security: track token version for revocation
+            "token_version_id": user.token_version,  # Security: track token version for revocation
         }
 
         new_tokens = create_token_pair(user_data, user_role=user_role)
@@ -112,7 +109,7 @@ async def refresh_token_standardized(
             event_type="token_refresh_success",
             user_id=str(user.id),
             request=request,
-            details={"token_jti": token_data.get("jti", "")}
+            details={"token_jti": token_data.get("jti", "")},
         )
 
         return AuthResponseHelper.token_refreshed(new_tokens)
@@ -123,23 +120,21 @@ async def refresh_token_standardized(
             event_type="token_refresh_failure",
             user_id=None,
             request=request,
-            details={"error": str(e)}
+            details={"error": str(e)},
         )
 
         if isinstance(e, (AuthenticationError, ValidationError)):
             raise
         else:
             raise AuthenticationError(
-                "Token refresh failed",
-                ErrorCode.AUTH_TOKEN_INVALID
+                "Token refresh failed", ErrorCode.AUTH_TOKEN_INVALID
             )
 
 
 @router.post("/logout", summary="Logout and invalidate tokens")
 @handle_auth_errors
 async def logout_user_standardized(
-    request: Request,
-    current_user: User = Depends(get_current_user)
+    request: Request, current_user: User = Depends(get_current_user)
 ):
     """
     Logout user and invalidate their tokens.
@@ -166,12 +161,12 @@ async def logout_user_standardized(
             event_type="user_logout_success",
             user_id=str(current_user.id),
             request=request,
-            details={"email": current_user.email}
+            details={"email": current_user.email},
         )
 
         return StandardizedResponse.success(
             message="Logged out successfully",
-            data={"logout_time": datetime.now(timezone.utc).isoformat() + "Z"}
+            data={"logout_time": datetime.now(timezone.utc).isoformat() + "Z"},
         )
 
     except Exception as e:
@@ -180,10 +175,7 @@ async def logout_user_standardized(
             event_type="user_logout_failure",
             user_id=str(current_user.id),
             request=request,
-            details={"error": str(e)}
+            details={"error": str(e)},
         )
 
-        raise AuthenticationError(
-            "Logout failed",
-            ErrorCode.AUTH_TOKEN_INVALID
-        )
+        raise AuthenticationError("Logout failed", ErrorCode.AUTH_TOKEN_INVALID)

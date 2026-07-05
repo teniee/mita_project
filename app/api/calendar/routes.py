@@ -1,6 +1,6 @@
+import logging
 from collections import defaultdict
 from datetime import datetime, timezone
-import logging
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy import extract
@@ -129,7 +129,7 @@ async def get_shell(
                 # Convert the weights to actual budget amounts based on income
                 category: float(payload.income * weight / 100) if weight else 0.0
                 for category, weight in payload.weights.items()
-            }
+            },
         }
 
         # Add fixed expenses to budget plan
@@ -144,77 +144,94 @@ async def get_shell(
     except Exception as e:
         logger.error(f"Error generating shell calendar: {e}")
         # Return a fallback response to prevent 500 error
-        return success_response({
-            "calendar": [{
-                "date": f"{payload.year}-{payload.month:02d}-01",
-                "planned_budget": {},
-                "limit": 0.0,
-                "total": 0.0
-            }]
-        })
+        return success_response(
+            {
+                "calendar": [
+                    {
+                        "date": f"{payload.year}-{payload.month:02d}-01",
+                        "planned_budget": {},
+                        "limit": 0.0,
+                        "total": 0.0,
+                    }
+                ]
+            }
+        )
 
 
 def _fetch_saved_calendar_data(db: Session, user_id, year: int, month: int):
     """Shared logic to retrieve saved calendar data from DailyPlan table."""
     try:
-        rows = db.query(DailyPlan).filter(
-            DailyPlan.user_id == user_id,
-            extract('year', DailyPlan.date) == year,
-            extract('month', DailyPlan.date) == month,
-        ).order_by(DailyPlan.date).all()
+        rows = (
+            db.query(DailyPlan)
+            .filter(
+                DailyPlan.user_id == user_id,
+                extract("year", DailyPlan.date) == year,
+                extract("month", DailyPlan.date) == month,
+            )
+            .order_by(DailyPlan.date)
+            .all()
+        )
 
         if not rows:
-            logger.info(f"No saved calendar data found for user {user_id}, {year}-{month}")
+            logger.info(
+                f"No saved calendar data found for user {user_id}, {year}-{month}"
+            )
             return success_response({"calendar": []})
 
-        logger.info(f"Retrieved {len(rows)} saved calendar entries for user {user_id}, {year}-{month}")
+        logger.info(
+            f"Retrieved {len(rows)} saved calendar entries for user {user_id}, {year}-{month}"
+        )
 
         # Group by date to aggregate categories for each day
-        days_data = defaultdict(lambda: {
-            'date': None,
-            'day': 0,
-            'total_budget': 0,
-            'total_planned': 0,
-            'total_spent': 0,
-            'categories': {}
-        })
+        days_data = defaultdict(
+            lambda: {
+                "date": None,
+                "day": 0,
+                "total_budget": 0,
+                "total_planned": 0,
+                "total_spent": 0,
+                "categories": {},
+            }
+        )
 
         for row in rows:
             day_key = row.date.isoformat()
             day_data = days_data[day_key]
 
-            if day_data['date'] is None:
-                day_data['date'] = row.date.isoformat()
-                day_data['day'] = row.date.day
+            if day_data["date"] is None:
+                day_data["date"] = row.date.isoformat()
+                day_data["day"] = row.date.day
 
             # Aggregate amounts
-            day_data['total_budget'] += (row.daily_budget or 0)
-            day_data['total_planned'] += (row.planned_amount or 0)
-            day_data['total_spent'] += (row.spent_amount or 0)
+            day_data["total_budget"] += row.daily_budget or 0
+            day_data["total_planned"] += row.planned_amount or 0
+            day_data["total_spent"] += row.spent_amount or 0
 
             # Add category details (convert Decimal to float for JSON serialization)
-            category_name = row.category or 'uncategorized'
-            day_data['categories'][category_name] = {
-                'planned': float(row.planned_amount or 0),
-                'spent': float(row.spent_amount or 0),
-                'status': row.status or 'pending'
+            category_name = row.category or "uncategorized"
+            day_data["categories"][category_name] = {
+                "planned": float(row.planned_amount or 0),
+                "spent": float(row.spent_amount or 0),
+                "status": row.status or "pending",
             }
 
         # Convert to list format matching the shell calendar structure
         calendar_days = []
         for day_data in days_data.values():
-            calendar_days.append({
-                'date': day_data['date'],
-                'day': day_data['day'],
-                'planned_budget': day_data['categories'],
-                'limit': float(day_data['total_budget']),
-                'total': float(day_data['total_planned']),
-                'spent': float(day_data['total_spent']),
-                'status': 'active' if day_data['total_spent'] > 0 else 'pending'
-            })
+            calendar_days.append(
+                {
+                    "date": day_data["date"],
+                    "day": day_data["day"],
+                    "planned_budget": day_data["categories"],
+                    "limit": float(day_data["total_budget"]),
+                    "total": float(day_data["total_planned"]),
+                    "spent": float(day_data["total_spent"]),
+                    "status": "active" if day_data["total_spent"] > 0 else "pending",
+                }
+            )
 
         # Sort by date
-        calendar_days.sort(key=lambda x: x['date'])
+        calendar_days.sort(key=lambda x: x["date"])
 
         return success_response({"calendar": calendar_days})
 

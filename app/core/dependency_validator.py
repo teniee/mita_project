@@ -3,13 +3,14 @@ Dependency Validation System for MITA Finance
 Validates that all required dependencies are properly configured and available
 """
 
+import importlib
+import importlib.metadata
 import logging
 import sys
-import importlib
-from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple
+
 from packaging import version
-import importlib.metadata
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class DependencyRequirement:
     """Dependency requirement specification"""
+
     name: str
     min_version: Optional[str] = None
     max_version: Optional[str] = None
@@ -27,112 +29,112 @@ class DependencyRequirement:
 
 class DependencyValidator:
     """Validates application dependencies and their versions"""
-    
+
     def __init__(self):
         self.critical_dependencies = self._get_critical_dependencies()
         self.optional_dependencies = self._get_optional_dependencies()
         self.validation_results: Dict[str, Dict] = {}
-    
+
     def _get_critical_dependencies(self) -> List[DependencyRequirement]:
         """Define critical dependencies that must be present for application to start"""
         return [
             DependencyRequirement(
-                name="fastapi", 
-                min_version="0.115.0", 
+                name="fastapi",
+                min_version="0.115.0",
                 critical=True,
-                description="Core FastAPI framework"
+                description="Core FastAPI framework",
             ),
             DependencyRequirement(
-                name="uvicorn", 
-                min_version="0.32.0", 
+                name="uvicorn",
+                min_version="0.32.0",
                 critical=True,
-                description="ASGI server"
+                description="ASGI server",
             ),
             DependencyRequirement(
-                name="pydantic", 
-                min_version="2.9.0", 
+                name="pydantic",
+                min_version="2.9.0",
                 critical=True,
-                description="Data validation and serialization"
+                description="Data validation and serialization",
             ),
             DependencyRequirement(
-                name="sqlalchemy", 
-                min_version="2.0.30", 
+                name="sqlalchemy",
+                min_version="2.0.30",
                 critical=True,
-                description="Database ORM"
+                description="Database ORM",
             ),
             DependencyRequirement(
-                name="asyncpg", 
-                min_version="0.30.0", 
+                name="asyncpg",
+                min_version="0.30.0",
                 critical=True,
-                description="PostgreSQL async driver"
+                description="PostgreSQL async driver",
             ),
             DependencyRequirement(
-                name="alembic", 
-                min_version="1.14.0", 
+                name="alembic",
+                min_version="1.14.0",
                 critical=True,
-                description="Database migrations"
+                description="Database migrations",
             ),
             DependencyRequirement(
-                name="pyjwt", 
-                min_version="2.9.0", 
+                name="pyjwt",
+                min_version="2.9.0",
                 critical=True,
-                description="JWT token handling"
+                description="JWT token handling",
             ),
             DependencyRequirement(
-                name="cryptography", 
-                min_version="43.0.0", 
+                name="cryptography",
+                min_version="43.0.0",
                 critical=True,
-                description="Security and encryption"
+                description="Security and encryption",
             ),
             DependencyRequirement(
-                name="redis", 
-                min_version="5.2.0", 
+                name="redis",
+                min_version="5.2.0",
                 critical=True,
-                description="Redis client for caching"
+                description="Redis client for caching",
             ),
             DependencyRequirement(
-                name="starlette", 
-                min_version="0.41.0", 
+                name="starlette",
+                min_version="0.41.0",
                 critical=True,
-                description="ASGI framework foundation"
-            )
+                description="ASGI framework foundation",
+            ),
         ]
-    
+
     def _get_optional_dependencies(self) -> List[DependencyRequirement]:
         """Define optional dependencies that enhance functionality"""
         return [
             DependencyRequirement(
-                name="sentry-sdk", 
-                min_version="2.17.0", 
+                name="sentry-sdk",
+                min_version="2.17.0",
                 required=False,
-                description="Error monitoring and performance tracking"
+                description="Error monitoring and performance tracking",
             ),
             DependencyRequirement(
-                name="prometheus-client", 
-                min_version="0.21.0", 
+                name="prometheus-client",
+                min_version="0.21.0",
                 required=False,
-                description="Metrics collection"
+                description="Metrics collection",
             ),
             DependencyRequirement(
-                name="openai", 
-                min_version="1.54.0", 
+                name="openai",
+                min_version="1.54.0",
                 required=False,
-                description="AI/ML functionality"
+                description="AI/ML functionality",
             ),
             DependencyRequirement(
-                name="firebase-admin", 
-                min_version="6.5.0", 
+                name="firebase-admin",
+                min_version="6.5.0",
                 required=False,
-                description="Firebase integration"
+                description="Firebase integration",
             ),
             DependencyRequirement(
-                name="boto3", 
-                min_version="1.35.0", 
+                name="boto3",
+                min_version="1.35.0",
                 required=False,
-                description="AWS services integration"
-            )
+                description="AWS services integration",
+            ),
         ]
-    
+
     def validate_dependency(self, requirement: DependencyRequirement) -> Dict:
         """Validate a single dependency"""
         result = {
@@ -143,9 +145,9 @@ class DependencyValidator:
             "status": "unknown",
             "installed_version": None,
             "meets_requirements": False,
-            "issues": []
+            "issues": [],
         }
-        
+
         try:
             # Try to import the module
             try:
@@ -155,12 +157,16 @@ class DependencyValidator:
                 # If direct import fails, try to get version from importlib.metadata
                 try:
                     result["status"] = "available"
-                    result["installed_version"] = importlib.metadata.version(requirement.name)
+                    result["installed_version"] = importlib.metadata.version(
+                        requirement.name
+                    )
                 except importlib.metadata.PackageNotFoundError:
                     result["status"] = "missing"
-                    result["issues"].append(f"Package {requirement.name} is not installed")
+                    result["issues"].append(
+                        f"Package {requirement.name} is not installed"
+                    )
                     return result
-            
+
             # Get version information if we have the module
             if result["status"] == "imported":
                 try:
@@ -169,24 +175,30 @@ class DependencyValidator:
                         if hasattr(module, attr):
                             result["installed_version"] = getattr(module, attr)
                             break
-                    
+
                     # If no version found in module, try importlib.metadata
                     if not result["installed_version"]:
                         try:
-                            result["installed_version"] = importlib.metadata.version(requirement.name)
+                            result["installed_version"] = importlib.metadata.version(
+                                requirement.name
+                            )
                         except importlib.metadata.PackageNotFoundError:
-                            result["issues"].append(f"Could not determine version for {requirement.name}")
-                            
+                            result["issues"].append(
+                                f"Could not determine version for {requirement.name}"
+                            )
+
                 except Exception as e:
-                    result["issues"].append(f"Error getting version for {requirement.name}: {str(e)}")
-            
+                    result["issues"].append(
+                        f"Error getting version for {requirement.name}: {str(e)}"
+                    )
+
             # Validate version requirements
             if result["installed_version"]:
                 try:
                     installed_ver = version.parse(result["installed_version"])
                     meets_min = True
                     meets_max = True
-                    
+
                     if requirement.min_version:
                         min_ver = version.parse(requirement.min_version)
                         meets_min = installed_ver >= min_ver
@@ -194,7 +206,7 @@ class DependencyValidator:
                             result["issues"].append(
                                 f"Version {result['installed_version']} is below minimum {requirement.min_version}"
                             )
-                    
+
                     if requirement.max_version:
                         max_ver = version.parse(requirement.max_version)
                         meets_max = installed_ver <= max_ver
@@ -202,25 +214,25 @@ class DependencyValidator:
                             result["issues"].append(
                                 f"Version {result['installed_version']} is above maximum {requirement.max_version}"
                             )
-                    
+
                     result["meets_requirements"] = meets_min and meets_max
-                    
+
                 except Exception as e:
                     result["issues"].append(f"Error parsing version: {str(e)}")
             else:
                 result["meets_requirements"] = False
                 result["issues"].append("Could not determine installed version")
-        
+
         except Exception as e:
             result["status"] = "error"
             result["issues"].append(f"Unexpected error: {str(e)}")
-        
+
         return result
-    
+
     def validate_all_dependencies(self) -> Dict[str, List[Dict]]:
         """Validate all dependencies"""
         logger.info("Starting dependency validation...")
-        
+
         results = {
             "critical": [],
             "optional": [],
@@ -229,95 +241,117 @@ class DependencyValidator:
                 "critical_passing": 0,
                 "total_optional": len(self.optional_dependencies),
                 "optional_passing": 0,
-                "overall_status": "unknown"
-            }
+                "overall_status": "unknown",
+            },
         }
-        
+
         # Validate critical dependencies
         for requirement in self.critical_dependencies:
             result = self.validate_dependency(requirement)
             results["critical"].append(result)
-            
-            if result["meets_requirements"] and result["status"] in ["imported", "available"]:
+
+            if result["meets_requirements"] and result["status"] in [
+                "imported",
+                "available",
+            ]:
                 results["summary"]["critical_passing"] += 1
-        
+
         # Validate optional dependencies
         for requirement in self.optional_dependencies:
             result = self.validate_dependency(requirement)
             results["optional"].append(result)
-            
-            if result["meets_requirements"] and result["status"] in ["imported", "available"]:
+
+            if result["meets_requirements"] and result["status"] in [
+                "imported",
+                "available",
+            ]:
                 results["summary"]["optional_passing"] += 1
-        
+
         # Determine overall status
-        critical_failing = results["summary"]["total_critical"] - results["summary"]["critical_passing"]
-        
+        critical_failing = (
+            results["summary"]["total_critical"]
+            - results["summary"]["critical_passing"]
+        )
+
         if critical_failing == 0:
-            if results["summary"]["optional_passing"] == results["summary"]["total_optional"]:
+            if (
+                results["summary"]["optional_passing"]
+                == results["summary"]["total_optional"]
+            ):
                 results["summary"]["overall_status"] = "excellent"
-            elif results["summary"]["optional_passing"] >= results["summary"]["total_optional"] * 0.8:
+            elif (
+                results["summary"]["optional_passing"]
+                >= results["summary"]["total_optional"] * 0.8
+            ):
                 results["summary"]["overall_status"] = "good"
             else:
                 results["summary"]["overall_status"] = "acceptable"
         else:
             results["summary"]["overall_status"] = "critical_failures"
-        
+
         self.validation_results = results
-        logger.info(f"Dependency validation complete. Status: {results['summary']['overall_status']}")
-        
+        logger.info(
+            f"Dependency validation complete. Status: {results['summary']['overall_status']}"
+        )
+
         return results
-    
+
     def get_failed_critical_dependencies(self) -> List[Dict]:
         """Get list of failed critical dependencies"""
         if not self.validation_results:
             self.validate_all_dependencies()
-        
+
         failed = []
         for dep in self.validation_results.get("critical", []):
-            if not dep["meets_requirements"] or dep["status"] not in ["imported", "available"]:
+            if not dep["meets_requirements"] or dep["status"] not in [
+                "imported",
+                "available",
+            ]:
                 failed.append(dep)
-        
+
         return failed
-    
+
     def check_security_vulnerabilities(self) -> Dict[str, List[str]]:
         """Check for known security vulnerabilities in dependencies"""
         vulnerabilities = {
             "high_risk": [],
             "medium_risk": [],
             "low_risk": [],
-            "recommendations": []
+            "recommendations": [],
         }
-        
+
         # Known vulnerable versions (this should be integrated with security databases)
         known_vulnerabilities = {
             "cryptography": {
                 "versions": ["41.0.7", "42.0.0", "42.0.1", "42.0.2"],
                 "risk": "high",
-                "description": "Known cryptographic vulnerabilities"
+                "description": "Known cryptographic vulnerabilities",
             },
             "pillow": {
                 "versions": ["10.0.1", "10.1.0", "10.2.0"],
-                "risk": "medium", 
-                "description": "Image processing vulnerabilities"
+                "risk": "medium",
+                "description": "Image processing vulnerabilities",
             },
             "starlette": {
                 "versions": ["0.27.0", "0.28.0", "0.37.0"],
                 "risk": "high",
-                "description": "Web framework security issues"
+                "description": "Web framework security issues",
             },
             "fastapi": {
                 "versions": ["0.104.1", "0.105.0", "0.108.0"],
                 "risk": "high",
-                "description": "API framework vulnerabilities"
-            }
+                "description": "API framework vulnerabilities",
+            },
         }
-        
+
         if not self.validation_results:
             self.validate_all_dependencies()
-        
+
         # Check all dependencies against known vulnerabilities
-        all_deps = self.validation_results.get("critical", []) + self.validation_results.get("optional", [])
-        
+        all_deps = self.validation_results.get(
+            "critical", []
+        ) + self.validation_results.get("optional", [])
+
         for dep in all_deps:
             if dep["installed_version"] and dep["name"] in known_vulnerabilities:
                 vuln_info = known_vulnerabilities[dep["name"]]
@@ -326,70 +360,92 @@ class DependencyValidator:
                     vulnerabilities[risk_level].append(
                         f"{dep['name']} {dep['installed_version']}: {vuln_info['description']}"
                     )
-        
+
         # Generate recommendations
         if vulnerabilities["high_risk"]:
-            vulnerabilities["recommendations"].append("URGENT: Update high-risk dependencies immediately")
+            vulnerabilities["recommendations"].append(
+                "URGENT: Update high-risk dependencies immediately"
+            )
         if vulnerabilities["medium_risk"]:
-            vulnerabilities["recommendations"].append("Schedule updates for medium-risk dependencies")
-        if not any(vulnerabilities[key] for key in ["high_risk", "medium_risk", "low_risk"]):
-            vulnerabilities["recommendations"].append("No known vulnerabilities detected in current versions")
-        
+            vulnerabilities["recommendations"].append(
+                "Schedule updates for medium-risk dependencies"
+            )
+        if not any(
+            vulnerabilities[key] for key in ["high_risk", "medium_risk", "low_risk"]
+        ):
+            vulnerabilities["recommendations"].append(
+                "No known vulnerabilities detected in current versions"
+            )
+
         return vulnerabilities
-    
+
     def generate_report(self) -> str:
         """Generate a comprehensive dependency validation report"""
         if not self.validation_results:
             self.validate_all_dependencies()
-        
+
         report_lines = []
         report_lines.append("=" * 80)
         report_lines.append("MITA Finance - Dependency Validation Report")
         report_lines.append("=" * 80)
-        
+
         # Summary
         summary = self.validation_results["summary"]
         report_lines.append(f"\nOVERALL STATUS: {summary['overall_status'].upper()}")
-        report_lines.append(f"Critical Dependencies: {summary['critical_passing']}/{summary['total_critical']} passing")
-        report_lines.append(f"Optional Dependencies: {summary['optional_passing']}/{summary['total_optional']} passing")
-        
+        report_lines.append(
+            f"Critical Dependencies: {summary['critical_passing']}/{summary['total_critical']} passing"
+        )
+        report_lines.append(
+            f"Optional Dependencies: {summary['optional_passing']}/{summary['total_optional']} passing"
+        )
+
         # Critical Dependencies
         report_lines.append("\n" + "-" * 40)
         report_lines.append("CRITICAL DEPENDENCIES")
         report_lines.append("-" * 40)
-        
+
         for dep in self.validation_results["critical"]:
             status_symbol = "✓" if dep["meets_requirements"] else "✗"
-            version_info = f" ({dep['installed_version']})" if dep['installed_version'] else " (version unknown)"
+            version_info = (
+                f" ({dep['installed_version']})"
+                if dep["installed_version"]
+                else " (version unknown)"
+            )
             report_lines.append(f"{status_symbol} {dep['name']}{version_info}")
-            
+
             if dep["issues"]:
                 for issue in dep["issues"]:
                     report_lines.append(f"    - {issue}")
-        
+
         # Optional Dependencies
         report_lines.append("\n" + "-" * 40)
         report_lines.append("OPTIONAL DEPENDENCIES")
         report_lines.append("-" * 40)
-        
+
         for dep in self.validation_results["optional"]:
             status_symbol = "✓" if dep["meets_requirements"] else "⚠"
-            version_info = f" ({dep['installed_version']})" if dep['installed_version'] else " (not installed)"
+            version_info = (
+                f" ({dep['installed_version']})"
+                if dep["installed_version"]
+                else " (not installed)"
+            )
             report_lines.append(f"{status_symbol} {dep['name']}{version_info}")
-        
+
         # Security vulnerabilities
         vulnerabilities = self.check_security_vulnerabilities()
-        if any(vulnerabilities[key] for key in ["high_risk", "medium_risk", "low_risk"]):
+        if any(
+            vulnerabilities[key] for key in ["high_risk", "medium_risk", "low_risk"]
+        ):
             report_lines.append("\n" + "-" * 40)
             report_lines.append("SECURITY VULNERABILITIES")
             report_lines.append("-" * 40)
-            
+
             for risk_level in ["high_risk", "medium_risk", "low_risk"]:
                 if vulnerabilities[risk_level]:
                     report_lines.append(f"\n{risk_level.replace('_', ' ').title()}:")
                     for vuln in vulnerabilities[risk_level]:
                         report_lines.append(f"  - {vuln}")
-        
+
         # Recommendations
         if vulnerabilities["recommendations"]:
             report_lines.append("\n" + "-" * 40)
@@ -397,30 +453,31 @@ class DependencyValidator:
             report_lines.append("-" * 40)
             for rec in vulnerabilities["recommendations"]:
                 report_lines.append(f"• {rec}")
-        
+
         report_lines.append("\n" + "=" * 80)
-        
+
         return "\n".join(report_lines)
-    
+
     def validate_startup_requirements(self) -> Tuple[bool, List[str]]:
         """Validate that all requirements for application startup are met"""
         failed_critical = self.get_failed_critical_dependencies()
-        
+
         if not failed_critical:
             return True, []
-        
+
         error_messages = []
         for dep in failed_critical:
             error_msg = f"Critical dependency '{dep['name']}' failed validation"
             if dep["issues"]:
                 error_msg += f": {'; '.join(dep['issues'])}"
             error_messages.append(error_msg)
-        
+
         return False, error_messages
 
 
 # Global validator instance
 _validator: Optional[DependencyValidator] = None
+
 
 def get_dependency_validator() -> DependencyValidator:
     """Get the global dependency validator instance"""
@@ -434,7 +491,8 @@ def validate_dependencies_on_startup():
     """Validate dependencies during application startup"""
     # Skip validation in test environment
     import os
-    if os.getenv('ENVIRONMENT') == 'test':
+
+    if os.getenv("ENVIRONMENT") == "test":
         logger.info("Skipping dependency validation in test environment")
         return
 
@@ -454,7 +512,9 @@ def validate_dependencies_on_startup():
         logger.critical("=" * 60)
         for error in errors:
             logger.critical("ERROR: %s", error)
-        logger.critical("Please install missing dependencies and restart the application.")
+        logger.critical(
+            "Please install missing dependencies and restart the application."
+        )
         logger.critical("=" * 60)
 
         error_summary = "; ".join(errors)
@@ -483,7 +543,7 @@ if __name__ == "__main__":
     validator = DependencyValidator()
     report = validator.generate_report()
     print(report)
-    
+
     # Exit with non-zero code if critical dependencies are missing
     startup_ok, _ = validator.validate_startup_requirements()
     sys.exit(0 if startup_ok else 1)

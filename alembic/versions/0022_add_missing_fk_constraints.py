@@ -17,14 +17,15 @@ This migration:
 3. Adds deleted_at column to subscriptions for soft delete support
 4. Checks and adds FK to goals table if missing
 """
-from alembic import op
+
 import sqlalchemy as sa
 from sqlalchemy import inspect
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = '0022_add_missing_fk_constraints'
-down_revision = '0021_add_habit_completions'
+revision = "0022_add_missing_fk_constraints"
+down_revision = "0021_add_habit_completions"
 branch_labels = None
 depends_on = None
 
@@ -39,14 +40,17 @@ def upgrade():
     # STEP 1: Add deleted_at column to subscriptions if not exists
     # ========================================
     print("Checking subscriptions table schema...")
-    subscriptions_columns = [col['name'] for col in inspector.get_columns('subscriptions')]
+    subscriptions_columns = [
+        col["name"] for col in inspector.get_columns("subscriptions")
+    ]
 
-    if 'deleted_at' not in subscriptions_columns:
+    if "deleted_at" not in subscriptions_columns:
         print("  Adding deleted_at column to subscriptions table...")
-        op.add_column('subscriptions',
-            sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True)
+        op.add_column(
+            "subscriptions",
+            sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
         )
-        op.create_index('ix_subscriptions_deleted_at', 'subscriptions', ['deleted_at'])
+        op.create_index("ix_subscriptions_deleted_at", "subscriptions", ["deleted_at"])
         print("  ✓ Added deleted_at column")
     else:
         print("  ✓ deleted_at column already exists")
@@ -57,65 +61,89 @@ def upgrade():
     print("\nCleaning up orphaned records...")
 
     # Check for orphaned daily_plan records
-    result = conn.execute(sa.text("""
+    result = conn.execute(
+        sa.text(
+            """
         SELECT COUNT(*) as count
         FROM daily_plan dp
         LEFT JOIN users u ON dp.user_id = u.id
         WHERE u.id IS NULL
-    """))
+    """
+        )
+    )
     orphaned_daily_plan_count = result.fetchone()[0]
 
     if orphaned_daily_plan_count > 0:
         print(f"  Found {orphaned_daily_plan_count} orphaned daily_plan records")
         print("  Deleting orphaned daily_plan records...")
-        conn.execute(sa.text("""
+        conn.execute(
+            sa.text(
+                """
             DELETE FROM daily_plan
             WHERE user_id NOT IN (SELECT id FROM users)
-        """))
+        """
+            )
+        )
         print(f"  ✓ Deleted {orphaned_daily_plan_count} orphaned daily_plan records")
     else:
         print("  ✓ No orphaned daily_plan records found")
 
     # Check for orphaned subscriptions
-    result = conn.execute(sa.text("""
+    result = conn.execute(
+        sa.text(
+            """
         SELECT COUNT(*) as count
         FROM subscriptions s
         LEFT JOIN users u ON s.user_id = u.id
         WHERE u.id IS NULL
-    """))
+    """
+        )
+    )
     orphaned_subscriptions_count = result.fetchone()[0]
 
     if orphaned_subscriptions_count > 0:
         print(f"  Found {orphaned_subscriptions_count} orphaned subscriptions")
         print("  Soft deleting orphaned subscriptions...")
-        conn.execute(sa.text("""
+        conn.execute(
+            sa.text(
+                """
             UPDATE subscriptions
             SET deleted_at = NOW()
             WHERE user_id NOT IN (SELECT id FROM users)
             AND deleted_at IS NULL
-        """))
+        """
+            )
+        )
         print(f"  ✓ Soft deleted {orphaned_subscriptions_count} orphaned subscriptions")
     else:
         print("  ✓ No orphaned subscriptions found")
 
     # Check for orphaned goals
-    result = conn.execute(sa.text("""
+    result = conn.execute(
+        sa.text(
+            """
         SELECT COUNT(*) as count
         FROM goals g
         LEFT JOIN users u ON g.user_id = u.id
         WHERE u.id IS NULL
-    """))
+    """
+        )
+    )
     orphaned_goals_count = result.fetchone()[0]
 
     if orphaned_goals_count > 0:
         print(f"  Found {orphaned_goals_count} orphaned goals")
         print("  Soft deleting orphaned goals...")
-        conn.execute(sa.text("""
+        conn.execute(
+            sa.text(
+                """
             UPDATE goals
             SET deleted_at = NOW()
             WHERE user_id NOT IN (SELECT id FROM users)
             AND deleted_at IS NULL
-        """))
+        """
+            )
+        )
         print(f"  ✓ Soft deleted {orphaned_goals_count} orphaned goals")
     else:
         print("  ✓ No orphaned goals found")
@@ -126,63 +154,63 @@ def upgrade():
     print("\nAdding foreign key constraints...")
 
     # Check if FK already exists for daily_plan
-    daily_plan_fks = inspector.get_foreign_keys('daily_plan')
+    daily_plan_fks = inspector.get_foreign_keys("daily_plan")
     daily_plan_has_user_fk = any(
-        fk['constrained_columns'] == ['user_id'] and fk['referred_table'] == 'users'
+        fk["constrained_columns"] == ["user_id"] and fk["referred_table"] == "users"
         for fk in daily_plan_fks
     )
 
     if not daily_plan_has_user_fk:
         print("  Adding FK constraint: daily_plan.user_id -> users.id")
         op.create_foreign_key(
-            'fk_daily_plan_user_id',
-            'daily_plan',
-            'users',
-            ['user_id'],
-            ['id'],
-            ondelete='CASCADE'
+            "fk_daily_plan_user_id",
+            "daily_plan",
+            "users",
+            ["user_id"],
+            ["id"],
+            ondelete="CASCADE",
         )
         print("  ✓ Added FK constraint to daily_plan")
     else:
         print("  ✓ FK constraint on daily_plan.user_id already exists")
 
     # Check if FK already exists for subscriptions
-    subscriptions_fks = inspector.get_foreign_keys('subscriptions')
+    subscriptions_fks = inspector.get_foreign_keys("subscriptions")
     subscriptions_has_user_fk = any(
-        fk['constrained_columns'] == ['user_id'] and fk['referred_table'] == 'users'
+        fk["constrained_columns"] == ["user_id"] and fk["referred_table"] == "users"
         for fk in subscriptions_fks
     )
 
     if not subscriptions_has_user_fk:
         print("  Adding FK constraint: subscriptions.user_id -> users.id")
         op.create_foreign_key(
-            'fk_subscriptions_user_id',
-            'subscriptions',
-            'users',
-            ['user_id'],
-            ['id'],
-            ondelete='CASCADE'
+            "fk_subscriptions_user_id",
+            "subscriptions",
+            "users",
+            ["user_id"],
+            ["id"],
+            ondelete="CASCADE",
         )
         print("  ✓ Added FK constraint to subscriptions")
     else:
         print("  ✓ FK constraint on subscriptions.user_id already exists")
 
     # Check if FK already exists for goals
-    goals_fks = inspector.get_foreign_keys('goals')
+    goals_fks = inspector.get_foreign_keys("goals")
     goals_has_user_fk = any(
-        fk['constrained_columns'] == ['user_id'] and fk['referred_table'] == 'users'
+        fk["constrained_columns"] == ["user_id"] and fk["referred_table"] == "users"
         for fk in goals_fks
     )
 
     if not goals_has_user_fk:
         print("  Adding FK constraint: goals.user_id -> users.id")
         op.create_foreign_key(
-            'fk_goals_user_id',
-            'goals',
-            'users',
-            ['user_id'],
-            ['id'],
-            ondelete='CASCADE'
+            "fk_goals_user_id",
+            "goals",
+            "users",
+            ["user_id"],
+            ["id"],
+            ondelete="CASCADE",
         )
         print("  ✓ Added FK constraint to goals")
     else:
@@ -192,7 +220,9 @@ def upgrade():
     # STEP 4: Verify constraints were added
     # ========================================
     print("\nVerifying foreign key constraints...")
-    result = conn.execute(sa.text("""
+    result = conn.execute(
+        sa.text(
+            """
         SELECT
             tc.table_name,
             tc.constraint_name,
@@ -207,7 +237,9 @@ def upgrade():
         AND tc.table_name IN ('daily_plan', 'subscriptions', 'goals')
         AND kcu.column_name = 'user_id'
         ORDER BY tc.table_name
-    """))
+    """
+        )
+    )
 
     constraints = result.fetchall()
     if constraints:
@@ -226,27 +258,29 @@ def downgrade():
 
     # Remove FK constraints
     try:
-        op.drop_constraint('fk_goals_user_id', 'goals', type_='foreignkey')
+        op.drop_constraint("fk_goals_user_id", "goals", type_="foreignkey")
         print("  ✓ Removed FK constraint from goals")
     except Exception as e:
         print(f"  ⚠️  Could not remove FK from goals: {e}")
 
     try:
-        op.drop_constraint('fk_subscriptions_user_id', 'subscriptions', type_='foreignkey')
+        op.drop_constraint(
+            "fk_subscriptions_user_id", "subscriptions", type_="foreignkey"
+        )
         print("  ✓ Removed FK constraint from subscriptions")
     except Exception as e:
         print(f"  ⚠️  Could not remove FK from subscriptions: {e}")
 
     try:
-        op.drop_constraint('fk_daily_plan_user_id', 'daily_plan', type_='foreignkey')
+        op.drop_constraint("fk_daily_plan_user_id", "daily_plan", type_="foreignkey")
         print("  ✓ Removed FK constraint from daily_plan")
     except Exception as e:
         print(f"  ⚠️  Could not remove FK from daily_plan: {e}")
 
     # Remove deleted_at column from subscriptions
     try:
-        op.drop_index('ix_subscriptions_deleted_at', table_name='subscriptions')
-        op.drop_column('subscriptions', 'deleted_at')
+        op.drop_index("ix_subscriptions_deleted_at", table_name="subscriptions")
+        op.drop_column("subscriptions", "deleted_at")
         print("  ✓ Removed deleted_at column from subscriptions")
     except Exception as e:
         print(f"  ⚠️  Could not remove deleted_at column: {e}")

@@ -35,7 +35,9 @@ def backup_database() -> None:
         )
         s3.upload_file(gz_path, bucket, key)
 
-        retention = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=7)
+        retention = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
+            days=7
+        )
         objects = s3.list_objects_v2(Bucket=bucket).get("Contents", [])
         for obj in objects:
             if (

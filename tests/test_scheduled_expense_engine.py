@@ -4,20 +4,17 @@ Unit tests for scheduled_expense_engine.py — pure computation, zero DB access.
 All tests inject data directly; no mocking or patching needed.
 Run: pytest tests/test_scheduled_expense_engine.py -v
 """
+
 from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
 
-import pytest
-
 from app.services.core.engine.scheduled_expense_engine import (
     DailyBudgetData,
     ScheduledExpenseData,
-    ScheduledImpactResult,
     compute_scheduled_impact,
 )
-
 
 # ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -215,7 +212,9 @@ class TestExpenseOutsideMonth:
 class TestCategoryCanCover:
     def test_can_cover_true_when_category_has_enough(self):
         # insurance has $400 planned, $0 spent → can cover $300
-        plans = [_plan(d, "insurance", "100") for d in range(20, 26)]  # 6 days × 100 = 600
+        plans = [
+            _plan(d, "insurance", "100") for d in range(20, 26)
+        ]  # 6 days × 100 = 600
         expenses = [_expense("e1", "insurance", "300", 25)]
         result = compute_scheduled_impact(expenses, plans, TODAY)
         assert result.impacts[0].category_can_cover is True
@@ -231,7 +230,7 @@ class TestCategoryCanCover:
         """Category remaining = planned - spent, not just planned."""
         plans = [
             _plan(20, "insurance", "100", spent="80"),  # 20 remaining on day 20
-            _plan(25, "insurance", "100", spent="0"),   # 100 remaining on day 25
+            _plan(25, "insurance", "100", spent="0"),  # 100 remaining on day 25
         ]
         expenses = [_expense("e1", "insurance", "50", 25)]
         result = compute_scheduled_impact(expenses, plans, TODAY)
@@ -356,10 +355,9 @@ class TestFullScenario:
         two scheduled expenses: $300 insurance (March 25) + $150 phone (March 28).
         Plans: 12 remaining days × $25 dining + $50 savings = $900 total.
         """
-        plans = (
-            [_plan(d, "dining_out", "25") for d in range(20, 32)]
-            + [_plan(d, "goal_savings", "50") for d in range(20, 32)]
-        )
+        plans = [_plan(d, "dining_out", "25") for d in range(20, 32)] + [
+            _plan(d, "goal_savings", "50") for d in range(20, 32)
+        ]
         expenses = [
             _expense("ins", "insurance", "300", 25),
             _expense("phone", "utilities", "150", 28),

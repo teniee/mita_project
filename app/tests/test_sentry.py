@@ -41,7 +41,6 @@ def test_sentry_captures_error():
     assert transport.events
     event = transport.events[0].items[0].payload.json
     exception_types = [
-        exc.get("type")
-        for exc in event.get("exception", {}).get("values", [])
+        exc.get("type") for exc in event.get("exception", {}).get("values", [])
     ]
     assert "RuntimeError" in exception_types

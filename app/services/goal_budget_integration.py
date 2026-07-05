@@ -3,15 +3,16 @@ MODULE 5: Goal-Budget Integration Service
 Automatically integrates goals with budget system for seamless fund allocation
 """
 
-from typing import Dict, List
+from datetime import date, datetime, timezone
 from decimal import Decimal
+from typing import Dict, List
 from uuid import UUID
-from datetime import datetime, date, timezone
-from sqlalchemy.orm import Session
-from sqlalchemy import func
 
-from app.db.models import Goal, Transaction, User
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from app.core.logging_config import get_logger
+from app.db.models import Goal, Transaction, User
 
 logger = get_logger(__name__)
 
@@ -22,12 +23,7 @@ class GoalBudgetIntegration:
     def __init__(self, db: Session):
         self.db = db
 
-    def allocate_budget_for_goals(
-        self,
-        user_id: UUID,
-        month: int,
-        year: int
-    ) -> Dict:
+    def allocate_budget_for_goals(self, user_id: UUID, month: int, year: int) -> Dict:
         """
         Automatically allocate budget for active goals from user's monthly income
 
@@ -41,16 +37,17 @@ class GoalBudgetIntegration:
         monthly_income = float(user.monthly_income)
 
         # Get active goals
-        active_goals = self.db.query(Goal).filter(
-            Goal.user_id == user_id,
-            Goal.status == 'active'
-        ).all()
+        active_goals = (
+            self.db.query(Goal)
+            .filter(Goal.user_id == user_id, Goal.status == "active")
+            .all()
+        )
 
         if not active_goals:
             return {
                 "allocated": 0,
                 "goals_count": 0,
-                "message": "No active goals to allocate budget for"
+                "message": "No active goals to allocate budget for",
             }
 
         # Calculate total goal contributions needed
@@ -69,7 +66,7 @@ class GoalBudgetIntegration:
             "requested_for_goals": total_goal_contributions,
             "goals_count": len(active_goals),
             "allocations": [],
-            "warnings": []
+            "warnings": [],
         }
 
         # If requested amount exceeds available, calculate proportional allocation
@@ -78,20 +75,26 @@ class GoalBudgetIntegration:
                 f"Requested ${total_goal_contributions:.2f} exceeds available ${available_for_goals:.2f}. "
                 f"Allocating proportionally."
             )
-            allocation_ratio = available_for_goals / total_goal_contributions if total_goal_contributions > 0 else 0
+            allocation_ratio = (
+                available_for_goals / total_goal_contributions
+                if total_goal_contributions > 0
+                else 0
+            )
         else:
             allocation_ratio = 1.0
 
         # Allocate to each goal
         for goal in active_goals:
             contribution = float(goal.monthly_contribution or 0) * allocation_ratio
-            allocation_result["allocations"].append({
-                "goal_id": str(goal.id),
-                "goal_title": goal.title,
-                "requested": float(goal.monthly_contribution or 0),
-                "allocated": round(contribution, 2),
-                "priority": goal.priority
-            })
+            allocation_result["allocations"].append(
+                {
+                    "goal_id": str(goal.id),
+                    "goal_title": goal.title,
+                    "requested": float(goal.monthly_contribution or 0),
+                    "allocated": round(contribution, 2),
+                    "priority": goal.priority,
+                }
+            )
 
         return allocation_result
 
@@ -102,30 +105,30 @@ class GoalBudgetIntegration:
         Returns:
             List of created/updated budget categories
         """
-        active_goals = self.db.query(Goal).filter(
-            Goal.user_id == user_id,
-            Goal.status == 'active'
-        ).all()
+        active_goals = (
+            self.db.query(Goal)
+            .filter(Goal.user_id == user_id, Goal.status == "active")
+            .all()
+        )
 
         categories = []
         for goal in active_goals:
             category_name = f"Goal: {goal.title}"
             monthly_amount = float(goal.monthly_contribution or 0)
 
-            categories.append({
-                "goal_id": str(goal.id),
-                "category_name": category_name,
-                "monthly_amount": monthly_amount,
-                "priority": goal.priority
-            })
+            categories.append(
+                {
+                    "goal_id": str(goal.id),
+                    "category_name": category_name,
+                    "monthly_amount": monthly_amount,
+                    "priority": goal.priority,
+                }
+            )
 
         return categories
 
     def track_goal_progress_from_budget(
-        self,
-        user_id: UUID,
-        month: int,
-        year: int
+        self, user_id: UUID, month: int, year: int
     ) -> Dict:
         """
         Track goal progress based on budget allocations and actual spending
@@ -133,16 +136,13 @@ class GoalBudgetIntegration:
         Returns:
             Progress report for all goals
         """
-        active_goals = self.db.query(Goal).filter(
-            Goal.user_id == user_id,
-            Goal.status == 'active'
-        ).all()
+        active_goals = (
+            self.db.query(Goal)
+            .filter(Goal.user_id == user_id, Goal.status == "active")
+            .all()
+        )
 
-        progress_report = {
-            "month": month,
-            "year": year,
-            "goals": []
-        }
+        progress_report = {"month": month, "year": year, "goals": []}
 
         for goal in active_goals:
             # Get transactions linked to this goal for the month
@@ -152,27 +152,28 @@ class GoalBudgetIntegration:
             else:
                 last_day = date(year, month + 1, 1)
 
-            monthly_savings = self.db.query(
-                func.sum(Transaction.amount)
-            ).filter(
+            monthly_savings = self.db.query(func.sum(Transaction.amount)).filter(
                 Transaction.goal_id == goal.id,
                 Transaction.user_id == user_id,
                 Transaction.spent_at >= first_day,
-                Transaction.spent_at < last_day
-            ).scalar() or Decimal('0')
+                Transaction.spent_at < last_day,
+            ).scalar() or Decimal("0")
 
             expected_contribution = float(goal.monthly_contribution or 0)
             actual_contribution = abs(float(monthly_savings))
 
-            progress_report["goals"].append({
-                "goal_id": str(goal.id),
-                "goal_title": goal.title,
-                "expected_contribution": expected_contribution,
-                "actual_contribution": actual_contribution,
-                "difference": actual_contribution - expected_contribution,
-                "on_track": actual_contribution >= expected_contribution * 0.9,  # 90% threshold
-                "progress_percentage": float(goal.progress)
-            })
+            progress_report["goals"].append(
+                {
+                    "goal_id": str(goal.id),
+                    "goal_title": goal.title,
+                    "expected_contribution": expected_contribution,
+                    "actual_contribution": actual_contribution,
+                    "difference": actual_contribution - expected_contribution,
+                    "on_track": actual_contribution
+                    >= expected_contribution * 0.9,  # 90% threshold
+                    "progress_percentage": float(goal.progress),
+                }
+            )
 
         return progress_report
 
@@ -185,10 +186,11 @@ class GoalBudgetIntegration:
         """
         suggestions = []
 
-        active_goals = self.db.query(Goal).filter(
-            Goal.user_id == user_id,
-            Goal.status == 'active'
-        ).all()
+        active_goals = (
+            self.db.query(Goal)
+            .filter(Goal.user_id == user_id, Goal.status == "active")
+            .all()
+        )
 
         user = self.db.query(User).filter(User.id == user_id).first()
         if not user or not user.monthly_income:
@@ -208,40 +210,44 @@ class GoalBudgetIntegration:
 
                     if required_monthly > current_monthly * 1.1:  # 10% threshold
                         shortfall = required_monthly - current_monthly
-                        suggestions.append({
-                            "goal_id": str(goal.id),
-                            "goal_title": goal.title,
-                            "type": "increase_contribution",
-                            "current_monthly": current_monthly,
-                            "required_monthly": required_monthly,
-                            "increase_needed": shortfall,
-                            "reason": f"To reach target by {goal.target_date}, increase monthly contribution",
-                            "feasible": shortfall <= (monthly_income * 0.05)  # Within 5% of income
-                        })
+                        suggestions.append(
+                            {
+                                "goal_id": str(goal.id),
+                                "goal_title": goal.title,
+                                "type": "increase_contribution",
+                                "current_monthly": current_monthly,
+                                "required_monthly": required_monthly,
+                                "increase_needed": shortfall,
+                                "reason": f"To reach target by {goal.target_date}, increase monthly contribution",
+                                "feasible": shortfall
+                                <= (monthly_income * 0.05),  # Within 5% of income
+                            }
+                        )
 
         # Check for underfunded goals
         for goal in active_goals:
             if not goal.monthly_contribution or float(goal.monthly_contribution) == 0:
                 # Suggest a reasonable contribution
                 target = float(goal.target_amount)
-                suggested_monthly = min(target / 12, monthly_income * 0.05)  # 5% of income or 1/12 of target
+                suggested_monthly = min(
+                    target / 12, monthly_income * 0.05
+                )  # 5% of income or 1/12 of target
 
-                suggestions.append({
-                    "goal_id": str(goal.id),
-                    "goal_title": goal.title,
-                    "type": "set_contribution",
-                    "suggested_monthly": suggested_monthly,
-                    "reason": "No monthly contribution set for this goal",
-                    "feasible": True
-                })
+                suggestions.append(
+                    {
+                        "goal_id": str(goal.id),
+                        "goal_title": goal.title,
+                        "type": "set_contribution",
+                        "suggested_monthly": suggested_monthly,
+                        "reason": "No monthly contribution set for this goal",
+                        "feasible": True,
+                    }
+                )
 
         return suggestions
 
     def auto_transfer_to_savings_goal(
-        self,
-        user_id: UUID,
-        goal_id: UUID,
-        amount: Decimal
+        self, user_id: UUID, goal_id: UUID, amount: Decimal
     ) -> Dict:
         """
         Automatically create a savings transaction for a goal
@@ -249,15 +255,16 @@ class GoalBudgetIntegration:
         Returns:
             Transaction details
         """
-        goal = self.db.query(Goal).filter(
-            Goal.id == goal_id,
-            Goal.user_id == user_id
-        ).first()
+        goal = (
+            self.db.query(Goal)
+            .filter(Goal.id == goal_id, Goal.user_id == user_id)
+            .first()
+        )
 
         if not goal:
             return {"error": "Goal not found"}
 
-        if goal.status != 'active':
+        if goal.status != "active":
             return {"error": "Goal is not active"}
 
         try:
@@ -269,7 +276,7 @@ class GoalBudgetIntegration:
                 category="Savings",
                 description=f"Automatic savings for goal: {goal.title}",
                 spent_at=datetime.now(timezone.utc),
-                source="auto_goal_transfer"
+                source="auto_goal_transfer",
             )
 
             self.db.add(transaction)
@@ -287,7 +294,7 @@ class GoalBudgetIntegration:
                 "goal_title": goal.title,
                 "amount": float(amount),
                 "new_saved_amount": float(goal.saved_amount),
-                "new_progress": float(goal.progress)
+                "new_progress": float(goal.progress),
             }
 
         except Exception as e:
@@ -303,14 +310,12 @@ class GoalBudgetIntegration:
         else:
             last_day = date(year, month + 1, 1)
 
-        total_expenses = self.db.query(
-            func.sum(Transaction.amount)
-        ).filter(
+        total_expenses = self.db.query(func.sum(Transaction.amount)).filter(
             Transaction.user_id == user_id,
             Transaction.spent_at >= first_day,
             Transaction.spent_at < last_day,
-            Transaction.amount < 0  # Expenses are negative
-        ).scalar() or Decimal('0')
+            Transaction.amount < 0,  # Expenses are negative
+        ).scalar() or Decimal("0")
 
         return abs(float(total_expenses))
 

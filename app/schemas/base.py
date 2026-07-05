@@ -36,6 +36,7 @@ class BaseSchema(BaseModel):
     Provides common configuration:
     - from_attributes = True for ORM compatibility
     """
+
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -47,6 +48,7 @@ class TimestampMixin(BaseModel):
     - created_at: datetime
     - updated_at: Optional[datetime]
     """
+
     created_at: datetime
     updated_at: Optional[datetime] = None
 
@@ -65,6 +67,7 @@ class BaseResponseSchema(BaseSchema):
             title: str
             target_amount: Decimal
     """
+
     id: UUID
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -82,6 +85,7 @@ class UserOwnedResponseSchema(BaseResponseSchema):
             amount: Decimal
             category: str
     """
+
     user_id: UUID
 
 
@@ -96,11 +100,9 @@ class DecimalResponseSchema(BaseSchema):
             price: Decimal
             tax: Decimal
     """
+
     model_config = ConfigDict(
-        from_attributes=True,
-        json_encoders={
-            Decimal: lambda v: str(v)
-        }
+        from_attributes=True, json_encoders={Decimal: lambda v: str(v)}
     )
 
 
@@ -117,11 +119,9 @@ class UserOwnedDecimalResponseSchema(UserOwnedResponseSchema):
             amount: Decimal
             interest_rate: Decimal
     """
+
     model_config = ConfigDict(
-        from_attributes=True,
-        json_encoders={
-            Decimal: lambda v: str(v)
-        }
+        from_attributes=True, json_encoders={Decimal: lambda v: str(v)}
     )
 
 
@@ -137,6 +137,7 @@ class PaginatedResponseSchema(BaseSchema):
         class TransactionListResponse(PaginatedResponseSchema):
             transactions: list[TransactionResponse]
     """
+
     total: int
     has_more: bool = False
 
@@ -152,6 +153,7 @@ class SuccessResponseSchema(BaseSchema):
     Example:
         return SuccessResponseSchema(status="deleted", message="Goal deleted successfully")
     """
+
     status: str
     message: Optional[str] = None
 
@@ -164,6 +166,7 @@ class ErrorResponseSchema(BaseSchema):
     - detail: str
     - code: Optional[str]
     """
+
     detail: str
     code: Optional[str] = None
 

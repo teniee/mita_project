@@ -12,20 +12,20 @@ Verifies that allocate_behavioral_budget():
   5. Logs an INFO on every successful dynamic path.
   6. Adjusts confidence score to reflect actual method quality.
 """
-import logging
-import pytest
+
 from unittest.mock import MagicMock, patch
 
-from app.services.core.behavior.behavioral_budget_allocator import allocate_behavioral_budget
+import pytest
 
+from app.services.core.behavior.behavioral_budget_allocator import (
+    allocate_behavioral_budget,
+)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
-_ALLOCATOR_MODULE = (
-    "app.services.core.behavior.behavioral_budget_allocator"
-)
+_ALLOCATOR_MODULE = "app.services.core.behavior.behavioral_budget_allocator"
 _DYN_SVC_PATH = f"{_ALLOCATOR_MODULE}.DynamicThresholdService"
 
 
@@ -55,6 +55,7 @@ _VALID_THRESHOLDS = {
 # Test class
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestAllocateBehavioralBudget:
 
     # ── happy path ──────────────────────────────────────────────────────── #
@@ -63,7 +64,9 @@ class TestAllocateBehavioralBudget:
         """user_context_applied=True when DynamicThresholdService returns valid thresholds."""
         db = _make_db(monthly_income=5000)
         with patch(_DYN_SVC_PATH) as MockSvc:
-            MockSvc.return_value.get_budget_allocation_thresholds.return_value = _VALID_THRESHOLDS
+            MockSvc.return_value.get_budget_allocation_thresholds.return_value = (
+                _VALID_THRESHOLDS
+            )
             result = allocate_behavioral_budget(user_id=42, total_budget=5000.0, db=db)
 
         assert result["user_context_applied"] is True
@@ -72,7 +75,9 @@ class TestAllocateBehavioralBudget:
         """allocation_method=='dynamic' on the happy path."""
         db = _make_db(monthly_income=5000)
         with patch(_DYN_SVC_PATH) as MockSvc:
-            MockSvc.return_value.get_budget_allocation_thresholds.return_value = _VALID_THRESHOLDS
+            MockSvc.return_value.get_budget_allocation_thresholds.return_value = (
+                _VALID_THRESHOLDS
+            )
             result = allocate_behavioral_budget(user_id=42, total_budget=5000.0, db=db)
 
         assert result["allocation_method"] == "dynamic"
@@ -81,7 +86,9 @@ class TestAllocateBehavioralBudget:
         """confidence==0.85 when personalised thresholds are used."""
         db = _make_db(monthly_income=5000)
         with patch(_DYN_SVC_PATH) as MockSvc:
-            MockSvc.return_value.get_budget_allocation_thresholds.return_value = _VALID_THRESHOLDS
+            MockSvc.return_value.get_budget_allocation_thresholds.return_value = (
+                _VALID_THRESHOLDS
+            )
             result = allocate_behavioral_budget(user_id=42, total_budget=5000.0, db=db)
 
         assert result["confidence"] == pytest.approx(0.85)
@@ -90,7 +97,9 @@ class TestAllocateBehavioralBudget:
         """income_tier is populated and not 'unknown' for a normal user."""
         db = _make_db(monthly_income=5000, country="US")
         with patch(_DYN_SVC_PATH) as MockSvc:
-            MockSvc.return_value.get_budget_allocation_thresholds.return_value = _VALID_THRESHOLDS
+            MockSvc.return_value.get_budget_allocation_thresholds.return_value = (
+                _VALID_THRESHOLDS
+            )
             result = allocate_behavioral_budget(user_id=42, total_budget=5000.0, db=db)
 
         assert "income_tier" in result
@@ -101,7 +110,9 @@ class TestAllocateBehavioralBudget:
         db = _make_db(monthly_income=4000)
         thresholds = {"food": 0.30, "savings": 0.20, "other": 0.50}
         with patch(_DYN_SVC_PATH) as MockSvc:
-            MockSvc.return_value.get_budget_allocation_thresholds.return_value = thresholds
+            MockSvc.return_value.get_budget_allocation_thresholds.return_value = (
+                thresholds
+            )
             result = allocate_behavioral_budget(user_id=42, total_budget=4000.0, db=db)
 
         assert result["categories"]["food"] == pytest.approx(1200.0, abs=0.01)
@@ -111,7 +122,9 @@ class TestAllocateBehavioralBudget:
         """total_allocated must match the actual sum (no rounding drift)."""
         db = _make_db()
         with patch(_DYN_SVC_PATH) as MockSvc:
-            MockSvc.return_value.get_budget_allocation_thresholds.return_value = _VALID_THRESHOLDS
+            MockSvc.return_value.get_budget_allocation_thresholds.return_value = (
+                _VALID_THRESHOLDS
+            )
             result = allocate_behavioral_budget(user_id=42, total_budget=3000.0, db=db)
 
         assert result["total_allocated"] == pytest.approx(
@@ -124,8 +137,8 @@ class TestAllocateBehavioralBudget:
         """user_context_applied=False when DynamicThresholdService raises."""
         db = _make_db(monthly_income=2000)
         with patch(_DYN_SVC_PATH) as MockSvc:
-            MockSvc.return_value.get_budget_allocation_thresholds.side_effect = RuntimeError(
-                "service unavailable"
+            MockSvc.return_value.get_budget_allocation_thresholds.side_effect = (
+                RuntimeError("service unavailable")
             )
             result = allocate_behavioral_budget(user_id=42, total_budget=2000.0, db=db)
 
@@ -135,7 +148,9 @@ class TestAllocateBehavioralBudget:
         """allocation_method=='hardcoded_fallback' when service raises."""
         db = _make_db()
         with patch(_DYN_SVC_PATH) as MockSvc:
-            MockSvc.return_value.get_budget_allocation_thresholds.side_effect = RuntimeError
+            MockSvc.return_value.get_budget_allocation_thresholds.side_effect = (
+                RuntimeError
+            )
             result = allocate_behavioral_budget(user_id=42, total_budget=3000.0, db=db)
 
         assert result["allocation_method"] == "hardcoded_fallback"
@@ -144,7 +159,9 @@ class TestAllocateBehavioralBudget:
         """confidence==0.50 when hardcoded defaults are used."""
         db = _make_db()
         with patch(_DYN_SVC_PATH) as MockSvc:
-            MockSvc.return_value.get_budget_allocation_thresholds.side_effect = RuntimeError
+            MockSvc.return_value.get_budget_allocation_thresholds.side_effect = (
+                RuntimeError
+            )
             result = allocate_behavioral_budget(user_id=42, total_budget=3000.0, db=db)
 
         assert result["confidence"] == pytest.approx(0.50)
@@ -153,7 +170,9 @@ class TestAllocateBehavioralBudget:
         """Fallback categories use food=30% of total_budget."""
         db = _make_db()
         with patch(_DYN_SVC_PATH) as MockSvc:
-            MockSvc.return_value.get_budget_allocation_thresholds.side_effect = RuntimeError
+            MockSvc.return_value.get_budget_allocation_thresholds.side_effect = (
+                RuntimeError
+            )
             result = allocate_behavioral_budget(user_id=42, total_budget=2000.0, db=db)
 
         assert result["categories"]["food"] == pytest.approx(600.0, abs=0.01)
@@ -162,7 +181,9 @@ class TestAllocateBehavioralBudget:
         """Fallback categories use savings=20% of total_budget."""
         db = _make_db()
         with patch(_DYN_SVC_PATH) as MockSvc:
-            MockSvc.return_value.get_budget_allocation_thresholds.side_effect = RuntimeError
+            MockSvc.return_value.get_budget_allocation_thresholds.side_effect = (
+                RuntimeError
+            )
             result = allocate_behavioral_budget(user_id=42, total_budget=2000.0, db=db)
 
         assert result["categories"]["savings"] == pytest.approx(400.0, abs=0.01)
@@ -193,7 +214,9 @@ class TestAllocateBehavioralBudget:
         """total_allocated must match sum also in fallback path."""
         db = _make_db()
         with patch(_DYN_SVC_PATH) as MockSvc:
-            MockSvc.return_value.get_budget_allocation_thresholds.side_effect = RuntimeError
+            MockSvc.return_value.get_budget_allocation_thresholds.side_effect = (
+                RuntimeError
+            )
             result = allocate_behavioral_budget(user_id=42, total_budget=5000.0, db=db)
 
         assert result["total_allocated"] == pytest.approx(
@@ -212,8 +235,8 @@ class TestAllocateBehavioralBudget:
         db = _make_db()
         with patch(f"{_ALLOCATOR_MODULE}.logger") as mock_logger:
             with patch(_DYN_SVC_PATH) as MockSvc:
-                MockSvc.return_value.get_budget_allocation_thresholds.side_effect = ValueError(
-                    "test error"
+                MockSvc.return_value.get_budget_allocation_thresholds.side_effect = (
+                    ValueError("test error")
                 )
                 allocate_behavioral_budget(user_id=42, total_budget=1000.0, db=db)
 
@@ -249,7 +272,9 @@ class TestAllocateBehavioralBudget:
         db.query.return_value.filter.return_value.first.return_value = None
 
         with patch(_DYN_SVC_PATH) as MockSvc:
-            MockSvc.return_value.get_budget_allocation_thresholds.side_effect = RuntimeError
+            MockSvc.return_value.get_budget_allocation_thresholds.side_effect = (
+                RuntimeError
+            )
             result = allocate_behavioral_budget(user_id=99, total_budget=2500.0, db=db)
 
         assert isinstance(result, dict)
@@ -259,7 +284,9 @@ class TestAllocateBehavioralBudget:
         """Response always contains the required contract keys."""
         db = _make_db()
         with patch(_DYN_SVC_PATH) as MockSvc:
-            MockSvc.return_value.get_budget_allocation_thresholds.return_value = _VALID_THRESHOLDS
+            MockSvc.return_value.get_budget_allocation_thresholds.return_value = (
+                _VALID_THRESHOLDS
+            )
             result = allocate_behavioral_budget(user_id=42, total_budget=3000.0, db=db)
 
         required_keys = {
@@ -278,11 +305,19 @@ class TestAllocateBehavioralBudget:
         db = _make_db()
 
         with patch(_DYN_SVC_PATH) as MockSvc:
-            MockSvc.return_value.get_budget_allocation_thresholds.return_value = _VALID_THRESHOLDS
-            dynamic_result = allocate_behavioral_budget(user_id=42, total_budget=3000.0, db=db)
+            MockSvc.return_value.get_budget_allocation_thresholds.return_value = (
+                _VALID_THRESHOLDS
+            )
+            dynamic_result = allocate_behavioral_budget(
+                user_id=42, total_budget=3000.0, db=db
+            )
 
         with patch(_DYN_SVC_PATH) as MockSvc:
-            MockSvc.return_value.get_budget_allocation_thresholds.side_effect = RuntimeError
-            fallback_result = allocate_behavioral_budget(user_id=42, total_budget=3000.0, db=db)
+            MockSvc.return_value.get_budget_allocation_thresholds.side_effect = (
+                RuntimeError
+            )
+            fallback_result = allocate_behavioral_budget(
+                user_id=42, total_budget=3000.0, db=db
+            )
 
         assert dynamic_result["confidence"] > fallback_result["confidence"]

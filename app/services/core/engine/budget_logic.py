@@ -1,5 +1,10 @@
 from app.config.country_profiles_loader import get_profile
-from app.services.core.income_classification_service import classify_income, get_tier_string, get_budget_weights, IncomeTier
+from app.services.core.income_classification_service import (
+    IncomeTier,
+    classify_income,
+    get_budget_weights,
+    get_tier_string,
+)
 
 
 def generate_budget_from_answers(answers: dict) -> dict:
@@ -7,16 +12,16 @@ def generate_budget_from_answers(answers: dict) -> dict:
     profile = get_profile(region)
     behavior = profile.get("default_behavior", "balanced")
 
-    income_data = answers.get("income", {})
-    monthly_income = income_data.get("monthly_income", 0)
-    additional_income = income_data.get("additional_income", 0)
+    income_data = answers.get("income") or {}
+    monthly_income = income_data.get("monthly_income") or 0
+    additional_income = income_data.get("additional_income") or 0
     income = monthly_income + additional_income
 
     # Use centralized income classification service
     income_tier = classify_income(income, region)
     user_class = get_tier_string(income_tier)
 
-    fixed = answers.get("fixed_expenses", {})
+    fixed = answers.get("fixed_expenses") or {}
     fixed_total = sum(fixed.values())
 
     if fixed_total > income:
@@ -24,7 +29,9 @@ def generate_budget_from_answers(answers: dict) -> dict:
 
     discretionary = income - fixed_total
 
-    savings_goal = answers.get("goals", {}).get("savings_goal_amount_per_month", 0)
+    savings_goal = (answers.get("goals") or {}).get(
+        "savings_goal_amount_per_month"
+    ) or 0
     discretionary -= savings_goal
     if discretionary < 0:
         savings_goal = max(0, savings_goal + discretionary)
@@ -44,7 +51,7 @@ def generate_budget_from_answers(answers: dict) -> dict:
     # Food category splits between groceries and dining out
     food_total = tier_weights.get("food", 0.12) * income
     dining_ratio = 0.4  # Default: 40% dining out, 60% groceries
-    freq = answers.get("spending_habits", {})
+    freq = answers.get("spending_habits") or {}
     dining_freq = freq.get("dining_out_per_month", 0)
     if dining_freq > 0:
         # Adjust ratio based on frequency: high frequency = more dining budget
@@ -56,7 +63,7 @@ def generate_budget_from_answers(answers: dict) -> dict:
     # Transport category
     transport_total = tier_weights.get("transport", 0.15) * income
     base_allocations["transport public"] = transport_total * 0.7  # 70% public/regular
-    base_allocations["transport gas"] = transport_total * 0.3    # 30% gas/car
+    base_allocations["transport gas"] = transport_total * 0.3  # 30% gas/car
 
     # Entertainment
     entertainment_total = tier_weights.get("entertainment", 0.08) * income
@@ -85,11 +92,11 @@ def generate_budget_from_answers(answers: dict) -> dict:
         # ✅ TIER & LOCATION AWARE: Coffee price varies by income tier and regional cost of living
         # Base coffee prices per tier (per visit, US national average)
         COFFEE_PRICE_BY_TIER = {
-            IncomeTier.LOW: 3.5,           # Budget coffee (e.g., McDonald's, 7-11)
+            IncomeTier.LOW: 3.5,  # Budget coffee (e.g., McDonald's, 7-11)
             IncomeTier.LOWER_MIDDLE: 4.5,  # Chain coffee (e.g., Dunkin')
-            IncomeTier.MIDDLE: 5.5,         # Standard Starbucks latte
-            IncomeTier.UPPER_MIDDLE: 7.0,   # Premium coffee (specialty drinks)
-            IncomeTier.HIGH: 10.0,          # Artisan/specialty coffee shops
+            IncomeTier.MIDDLE: 5.5,  # Standard Starbucks latte
+            IncomeTier.UPPER_MIDDLE: 7.0,  # Premium coffee (specialty drinks)
+            IncomeTier.HIGH: 10.0,  # Artisan/specialty coffee shops
         }
 
         # Get base price for user's income tier
@@ -101,11 +108,15 @@ def generate_budget_from_answers(answers: dict) -> dict:
 
         # Calculate monthly budget: (price per visit) × (visits per week) × 4 weeks
         # Cap at 15% of food budget to prevent over-allocation
-        coffee_monthly = min(coffee_price_per_visit * coffee_freq * 4, food_total * 0.15)
+        coffee_monthly = min(
+            coffee_price_per_visit * coffee_freq * 4, food_total * 0.15
+        )
         base_allocations["coffee"] = coffee_monthly
 
         # Reduce dining out accordingly
-        base_allocations["dining out"] = max(0, base_allocations["dining out"] - coffee_monthly)
+        base_allocations["dining out"] = max(
+            0, base_allocations["dining out"] - coffee_monthly
+        )
 
     # Calculate total allocated
     total_allocated = sum(base_allocations.values())

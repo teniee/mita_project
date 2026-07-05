@@ -18,12 +18,12 @@ Total: 44+ comprehensive test cases covering 533 lines of OCR code (currently 0%
 
 import os
 import sys
-import types
 import tempfile
+import types
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -32,14 +32,18 @@ from fastapi.testclient import TestClient
 # ENVIRONMENT & FIREBASE SETUP (MUST come before app imports)
 # ============================================================================
 
-os.environ.setdefault('DATABASE_URL', 'postgresql://test:test@localhost:5432/test_mita?sslmode=disable')
-os.environ.setdefault('SECRET_KEY', 'test_secret_key_for_testing_only')
-os.environ.setdefault('ENVIRONMENT', 'test')
-os.environ.setdefault('FIREBASE_JSON', '{}')
-os.environ.setdefault('JWT_SECRET', 'test_jwt_secret_key_min_32_chars_long_for_testing')
-os.environ.setdefault('REDIS_URL', 'redis://localhost:6379/1')
-os.environ.setdefault('OPENAI_API_KEY', 'sk-test-key')
-os.environ.setdefault('GOOGLE_APPLICATION_CREDENTIALS', '/tmp/test-credentials.json')
+os.environ.setdefault(
+    "DATABASE_URL", "postgresql://test:test@localhost:5432/test_mita?sslmode=disable"
+)
+os.environ.setdefault("SECRET_KEY", "test_secret_key_for_testing_only")
+os.environ.setdefault("ENVIRONMENT", "test")
+os.environ.setdefault("FIREBASE_JSON", "{}")
+os.environ.setdefault("JWT_SECRET", "test_jwt_secret_key_min_32_chars_long_for_testing")
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379/1")
+os.environ.setdefault("OPENAI_API_KEY", "sk-test-key")
+os.environ.setdefault(
+    "GOOGLE_APPLICATION_CREDENTIALS", "/tmp/test-credentials.json"
+)  # nosec B108 - fake path for test env
 
 # Mock Firebase (CRITICAL - before any other imports)
 dummy = types.ModuleType("firebase_admin")
@@ -65,18 +69,20 @@ sys.modules["firebase_admin.messaging"] = dummy.messaging
 # APP & ROUTE IMPORTS (after env setup)
 # ============================================================================
 
-from app.main import app
 from app.api.dependencies import get_current_user
 from app.core.session import get_db
+from app.main import app
 
 # ============================================================================
 # FIXTURES
 # ============================================================================
 
+
 @pytest.fixture
 def client():
     """Create TestClient for API testing"""
     return TestClient(app)
+
 
 @pytest.fixture
 def mock_user():
@@ -85,8 +91,9 @@ def mock_user():
         id="test_user_premium_123",
         email="premium@example.com",
         is_premium=True,
-        timezone="UTC"
+        timezone="UTC",
     )
+
 
 @pytest.fixture
 def mock_basic_user():
@@ -95,8 +102,9 @@ def mock_basic_user():
         id="test_user_basic_456",
         email="basic@example.com",
         is_premium=False,
-        timezone="UTC"
+        timezone="UTC",
     )
+
 
 @pytest.fixture
 def mock_db():
@@ -114,19 +122,21 @@ def mock_db():
 
     return db
 
+
 @pytest.fixture
 def sample_image_bytes():
     """Create sample valid JPEG bytes for testing (1x1 pixel)"""
     return (
-        b'\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01'
-        b'\x00\x00\xff\xdb\x00C\x00\x08\x06\x06\x07\x06\x05\x08\x07\x07'
-        b'\x07\t\t\x08\n\x0c\x14\r\x0c\x0b\x0b\x0c\x19\x12\x13\x0f\x14'
-        b'\x1d\x1a\x1f\x1e\x1d\x1a\x1c\x1c $.\' ",#\x1c\x1c(7),01444'
-        b'\x1f\'9=82<.342\xff\xc0\x00\x0b\x08\x00\x01\x00\x01\x01\x11'
-        b'\x00\xff\xc4\x00\x1f\x00\x00\x01\x05\x01\x01\x01\x01\x01\x01'
-        b'\x00\x00\x00\x00\x00\x00\x00\x00\x01\x02\x03\x04\x05\x06\x07'
-        b'\x08\t\n\x0b\xff\xda\x00\x08\x01\x01\x00\x00?\x00\x7f\xd9'
+        b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x00\x00\x01\x00\x01"
+        b"\x00\x00\xff\xdb\x00C\x00\x08\x06\x06\x07\x06\x05\x08\x07\x07"
+        b"\x07\t\t\x08\n\x0c\x14\r\x0c\x0b\x0b\x0c\x19\x12\x13\x0f\x14"
+        b"\x1d\x1a\x1f\x1e\x1d\x1a\x1c\x1c $.' \",#\x1c\x1c(7),01444"
+        b"\x1f'9=82<.342\xff\xc0\x00\x0b\x08\x00\x01\x00\x01\x01\x11"
+        b"\x00\xff\xc4\x00\x1f\x00\x00\x01\x05\x01\x01\x01\x01\x01\x01"
+        b"\x00\x00\x00\x00\x00\x00\x00\x00\x01\x02\x03\x04\x05\x06\x07"
+        b"\x08\t\n\x0b\xff\xda\x00\x08\x01\x01\x00\x00?\x00\x7f\xd9"
     )
+
 
 @pytest.fixture
 def sample_walmart_receipt_text():
@@ -151,6 +161,7 @@ def sample_walmart_receipt_text():
     Thank you for shopping!
     """
 
+
 @pytest.fixture
 def sample_ocr_result_walmart():
     """Sample OCR processing result for Walmart receipt"""
@@ -163,11 +174,12 @@ def sample_ocr_result_walmart():
             {"name": "Bread", "price": 3.99},
             {"name": "Milk 2%", "price": 2.50},
             {"name": "Eggs Dozen", "price": 4.25},
-            {"name": "Cheese Cheddar", "price": 5.99}
+            {"name": "Cheese Cheddar", "price": 5.99},
         ],
         "confidence": 0.92,
-        "raw_text": "Walmart Supercenter\n123 Main Street\nBread $3.99..."
+        "raw_text": "Walmart Supercenter\n123 Main Street\nBread $3.99...",
     }
+
 
 @pytest.fixture
 def sample_ocr_result_starbucks():
@@ -179,11 +191,12 @@ def sample_ocr_result_starbucks():
         "category_hint": "restaurants",
         "items": [
             {"name": "Latte Grande", "price": 5.95},
-            {"name": "Croissant", "price": 2.50}
+            {"name": "Croissant", "price": 2.50},
         ],
         "confidence": 0.88,
-        "raw_text": "Starbucks Coffee\nLatte Grande $5.95..."
+        "raw_text": "Starbucks Coffee\nLatte Grande $5.95...",
     }
+
 
 @pytest.fixture
 def sample_ocr_low_confidence():
@@ -195,12 +208,14 @@ def sample_ocr_low_confidence():
         "category_hint": "other",
         "items": [],
         "confidence": 0.35,
-        "raw_text": "blurry... illegible... unclear..."
+        "raw_text": "blurry... illegible... unclear...",
     }
+
 
 # ============================================================================
 # FIXTURE CLEANUP
 # ============================================================================
+
 
 @pytest.fixture(autouse=True)
 def cleanup_overrides():
@@ -208,35 +223,40 @@ def cleanup_overrides():
     yield
     app.dependency_overrides = {}
 
+
 # ============================================================================
 # TESTS: FILE UPLOAD VALIDATION
 # ============================================================================
 
+
 class TestOCRFileUploadValidation:
     """Test file upload validation at API layer"""
 
-    def test_upload_valid_jpeg_file(self, client, mock_user, mock_db, sample_image_bytes):
+    def test_upload_valid_jpeg_file(
+        self, client, mock_user, mock_db, sample_image_bytes
+    ):
         """Test upload with valid JPEG file"""
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_db] = lambda: mock_db
 
-        with patch('app.api.ocr.routes.OCRReceiptService') as mock_ocr, \
-             patch('app.api.ocr.routes.get_receipt_storage') as mock_get_storage:
+        with patch("app.api.ocr.routes.OCRReceiptService") as mock_ocr, patch(
+            "app.api.ocr.routes.get_receipt_storage"
+        ) as mock_get_storage:
 
             mock_ocr.return_value.process_image.return_value = {
                 "merchant": "Test Store",
                 "amount": 50.0,
                 "date": "2025-12-04",
-                "category_hint": "groceries"
+                "category_hint": "groceries",
             }
             mock_get_storage.return_value.save_image.return_value = (
                 "/app/data/receipts/user_123/image.jpg",
-                "/receipts/user_123/image.jpg"
+                "/receipts/user_123/image.jpg",
             )
 
             response = client.post(
                 "/api/ocr/process",
-                files={"file": ("receipt.jpg", sample_image_bytes, "image/jpeg")}
+                files={"file": ("receipt.jpg", sample_image_bytes, "image/jpeg")},
             )
 
             assert response.status_code == 200
@@ -258,7 +278,7 @@ class TestOCRFileUploadValidation:
 
         response = client.post(
             "/api/ocr/process",
-            files={"file": ("document.pdf", b"PDF content", "application/pdf")}
+            files={"file": ("document.pdf", b"PDF content", "application/pdf")},
         )
 
         assert response.status_code == 400
@@ -269,8 +289,7 @@ class TestOCRFileUploadValidation:
         app.dependency_overrides[get_db] = lambda: mock_db
 
         response = client.post(
-            "/api/ocr/process",
-            files={"file": ("receipt.jpg", b"", "image/jpeg")}
+            "/api/ocr/process", files={"file": ("receipt.jpg", b"", "image/jpeg")}
         )
 
         assert response.status_code == 400
@@ -285,14 +304,16 @@ class TestOCRFileUploadValidation:
 
         response = client.post(
             "/api/ocr/process",
-            files={"file": ("receipt.jpg", large_content, "image/jpeg")}
+            files={"file": ("receipt.jpg", large_content, "image/jpeg")},
         )
 
         assert response.status_code == 400
 
+
 # ============================================================================
 # TESTS: AUTHENTICATION & AUTHORIZATION
 # ============================================================================
+
 
 class TestOCRAuthentication:
     """Test authentication and authorization requirements"""
@@ -301,33 +322,36 @@ class TestOCRAuthentication:
         """Test OCR endpoint requires authentication"""
         response = client.post(
             "/api/ocr/process",
-            files={"file": ("receipt.jpg", sample_image_bytes, "image/jpeg")}
+            files={"file": ("receipt.jpg", sample_image_bytes, "image/jpeg")},
         )
 
         # Should fail with 403 Forbidden (no auth)
         assert response.status_code in [401, 403]
 
-    def test_process_with_valid_auth(self, client, mock_user, mock_db, sample_image_bytes):
+    def test_process_with_valid_auth(
+        self, client, mock_user, mock_db, sample_image_bytes
+    ):
         """Test OCR endpoint with valid authentication"""
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_db] = lambda: mock_db
 
-        with patch('app.api.ocr.routes.OCRReceiptService') as mock_ocr, \
-             patch('app.api.ocr.routes.get_receipt_storage') as mock_get_storage:
+        with patch("app.api.ocr.routes.OCRReceiptService") as mock_ocr, patch(
+            "app.api.ocr.routes.get_receipt_storage"
+        ) as mock_get_storage:
 
             mock_ocr.return_value.process_image.return_value = {
                 "merchant": "Test Store",
                 "amount": 50.0,
-                "date": "2025-12-04"
+                "date": "2025-12-04",
             }
             mock_get_storage.return_value.save_image.return_value = (
                 "/app/data/receipts/image.jpg",
-                "/receipts/image.jpg"
+                "/receipts/image.jpg",
             )
 
             response = client.post(
                 "/api/ocr/process",
-                files={"file": ("receipt.jpg", sample_image_bytes, "image/jpeg")}
+                files={"file": ("receipt.jpg", sample_image_bytes, "image/jpeg")},
             )
 
             assert response.status_code == 200
@@ -358,9 +382,11 @@ class TestOCRAuthentication:
 
         assert response.status_code == 404
 
+
 # ============================================================================
 # TESTS: OCR TEXT EXTRACTION & PARSING
 # ============================================================================
+
 
 class TestOCRTextExtraction:
     """Test OCR text extraction and parsing logic"""
@@ -471,9 +497,11 @@ class TestOCRTextExtraction:
         result = parse_receipt_text("Unknown XYZ Place\n$10\n2025-12-04")
         assert result["category"] == "other"
 
+
 # ============================================================================
 # TESTS: CONFIDENCE SCORING
 # ============================================================================
+
 
 class TestOCRConfidenceScoring:
     """Test confidence score calculations"""
@@ -489,7 +517,9 @@ class TestOCRConfidenceScoring:
         assert conf1 >= 0.8
 
         # Unknown merchant
-        conf2 = scorer.calculate_merchant_confidence("Unknown Store", "Unknown Store\n$50")
+        conf2 = scorer.calculate_merchant_confidence(
+            "Unknown Store", "Unknown Store\n$50"
+        )
         assert conf2 < 0.8
 
     def test_amount_confidence_matches_items(self):
@@ -497,10 +527,7 @@ class TestOCRConfidenceScoring:
         from app.ocr.confidence_scorer import ConfidenceScorer
 
         scorer = ConfidenceScorer()
-        items = [
-            {"name": "Item1", "price": 10.0},
-            {"name": "Item2", "price": 5.0}
-        ]
+        items = [{"name": "Item1", "price": 10.0}, {"name": "Item2", "price": 5.0}]
 
         # Exact match
         conf1 = scorer.calculate_amount_confidence(15.0, items, "Total: $15.00")
@@ -535,7 +562,9 @@ class TestOCRConfidenceScoring:
 
         # Known category with items
         items = [{"name": "Bread"}, {"name": "Milk"}]
-        conf1 = scorer.calculate_category_confidence("groceries", "Grocery Store", items)
+        conf1 = scorer.calculate_category_confidence(
+            "groceries", "Grocery Store", items
+        )
         assert conf1 >= 0.7
 
         # "other" category
@@ -551,7 +580,7 @@ class TestOCRConfidenceScoring:
         items = [
             {"name": "Item1", "price": 5.0},
             {"name": "Item2", "price": 10.0},
-            {"name": "Item3", "price": 15.0}
+            {"name": "Item3", "price": 15.0},
         ]
 
         conf = scorer.calculate_items_confidence(items, 30.0)
@@ -570,7 +599,7 @@ class TestOCRConfidenceScoring:
             "date": "2025-12-04",
             "category_hint": "groceries",
             "items": [{"name": "Bread", "price": 3.99}],
-            "raw_text": "Walmart\nTotal: $50.00"
+            "raw_text": "Walmart\nTotal: $50.00",
         }
 
         scored_result = scorer.score_ocr_result(ocr_result, ocr_result["raw_text"])
@@ -580,13 +609,13 @@ class TestOCRConfidenceScoring:
         assert "confidence_scores" in scored_result
         assert scored_result["confidence"] == pytest.approx(
             (
-                scored_result["confidence_scores"]["merchant"] * 0.25 +
-                scored_result["confidence_scores"]["amount"] * 0.30 +
-                scored_result["confidence_scores"]["date"] * 0.20 +
-                scored_result["confidence_scores"]["category"] * 0.15 +
-                scored_result["confidence_scores"]["items"] * 0.10
+                scored_result["confidence_scores"]["merchant"] * 0.25
+                + scored_result["confidence_scores"]["amount"] * 0.30
+                + scored_result["confidence_scores"]["date"] * 0.20
+                + scored_result["confidence_scores"]["category"] * 0.15
+                + scored_result["confidence_scores"]["items"] * 0.10
             ),
-            abs=0.01
+            abs=0.01,
         )
 
     def test_fields_needing_review(self):
@@ -602,7 +631,7 @@ class TestOCRConfidenceScoring:
             "date": "2025-12-04",
             "category_hint": "other",
             "items": [],
-            "raw_text": "illegible\n$50"
+            "raw_text": "illegible\n$50",
         }
 
         scored_result = scorer.score_ocr_result(ocr_result, ocr_result["raw_text"])
@@ -611,16 +640,20 @@ class TestOCRConfidenceScoring:
         # Should flag merchant and category (low confidence)
         assert len(scored_result["fields_needing_review"]) > 0
 
+
 # ============================================================================
 # TESTS: RECEIPT CATEGORIZATION
 # ============================================================================
+
 
 class TestReceiptCategorization:
     """Test receipt categorization service"""
 
     def test_merchant_based_categorization(self):
         """Test categorization based on merchant keywords"""
-        from app.categorization.receipt_categorization_service import ReceiptCategorizationService
+        from app.categorization.receipt_categorization_service import (
+            ReceiptCategorizationService,
+        )
 
         service = ReceiptCategorizationService()
 
@@ -629,7 +662,9 @@ class TestReceiptCategorization:
         assert result1 == "groceries"
 
         # Starbucks → restaurants
-        result2 = service.categorize(merchant="Starbucks", amount=10.0, items=[], hint="")
+        result2 = service.categorize(
+            merchant="Starbucks", amount=10.0, items=[], hint=""
+        )
         assert result2 == "restaurants"
 
         # Uber → transport
@@ -638,22 +673,23 @@ class TestReceiptCategorization:
 
     def test_hint_based_categorization(self):
         """Test categorization using category hint"""
-        from app.categorization.receipt_categorization_service import ReceiptCategorizationService
+        from app.categorization.receipt_categorization_service import (
+            ReceiptCategorizationService,
+        )
 
         service = ReceiptCategorizationService()
 
         result = service.categorize(
-            merchant="XYZ Place",
-            amount=30.0,
-            items=[],
-            hint="groceries"
+            merchant="XYZ Place", amount=30.0, items=[], hint="groceries"
         )
 
         assert result == "groceries"
 
     def test_items_based_categorization(self):
         """Test categorization based on item names"""
-        from app.categorization.receipt_categorization_service import ReceiptCategorizationService
+        from app.categorization.receipt_categorization_service import (
+            ReceiptCategorizationService,
+        )
 
         service = ReceiptCategorizationService()
 
@@ -661,18 +697,16 @@ class TestReceiptCategorization:
         result1 = service.categorize(
             merchant="Unknown",
             amount=20.0,
-            items=[
-                {"name": "Bread"},
-                {"name": "Milk"},
-                {"name": "Eggs"}
-            ],
-            hint=""
+            items=[{"name": "Bread"}, {"name": "Milk"}, {"name": "Eggs"}],
+            hint="",
         )
         assert result1 == "groceries"
 
     def test_amount_based_heuristics(self):
         """Test amount-based category heuristics"""
-        from app.categorization.receipt_categorization_service import ReceiptCategorizationService
+        from app.categorization.receipt_categorization_service import (
+            ReceiptCategorizationService,
+        )
 
         service = ReceiptCategorizationService()
 
@@ -686,21 +720,27 @@ class TestReceiptCategorization:
 
     def test_multilingual_support(self):
         """Test Bulgarian merchant names"""
-        from app.categorization.receipt_categorization_service import ReceiptCategorizationService
+        from app.categorization.receipt_categorization_service import (
+            ReceiptCategorizationService,
+        )
 
         service = ReceiptCategorizationService()
 
         # Bulgarian grocery store
-        result1 = service.categorize(merchant="Kaufland", amount=40.0, items=[], hint="")
+        result1 = service.categorize(
+            merchant="Kaufland", amount=40.0, items=[], hint=""
+        )
         assert result1 == "groceries"
 
         # Bulgarian pharmacy
         result2 = service.categorize(merchant="Софарма", amount=15.0, items=[], hint="")
         assert result2 == "healthcare"
 
+
 # ============================================================================
 # TESTS: IMAGE STORAGE
 # ============================================================================
+
 
 class TestReceiptImageStorage:
     """Test receipt image storage service"""
@@ -714,14 +754,12 @@ class TestReceiptImageStorage:
 
             # Create temp file
             temp_file = os.path.join(tmpdir, "temp.jpg")
-            with open(temp_file, 'wb') as f:
+            with open(temp_file, "wb") as f:
                 f.write(b"image data")
 
             # Save image (storage creates dir as "user_{user_id}")
             storage_path, image_url = storage.save_image(
-                temp_path=temp_file,
-                user_id="123",
-                job_id="job_456"
+                temp_path=temp_file, user_id="123", job_id="job_456"
             )
 
             # Verify directory created
@@ -744,7 +782,7 @@ class TestReceiptImageStorage:
             user_dir = os.path.join(tmpdir, "user_123")
             os.makedirs(user_dir, exist_ok=True)
             test_file = os.path.join(user_dir, "test.jpg")
-            with open(test_file, 'wb') as f:
+            with open(test_file, "wb") as f:
                 f.write(b"data")
 
             # Test get_image_path (uses user_id="123", creates path "user_123")
@@ -765,7 +803,7 @@ class TestReceiptImageStorage:
 
             # Create file
             test_file = os.path.join(tmpdir, "test.jpg")
-            with open(test_file, 'wb') as f:
+            with open(test_file, "wb") as f:
                 f.write(b"data")
 
             # Delete
@@ -779,8 +817,9 @@ class TestReceiptImageStorage:
 
     def test_cleanup_old_images(self):
         """Test cleanup_old_images removes old files, keeps recent"""
-        from app.storage.receipt_image_storage import ReceiptImageStorage
         import time
+
+        from app.storage.receipt_image_storage import ReceiptImageStorage
 
         with tempfile.TemporaryDirectory() as tmpdir:
             storage = ReceiptImageStorage(base_path=tmpdir)
@@ -790,14 +829,14 @@ class TestReceiptImageStorage:
 
             # Create old file (modified 100 days ago)
             old_file = os.path.join(user_dir, "old.jpg")
-            with open(old_file, 'wb') as f:
+            with open(old_file, "wb") as f:
                 f.write(b"old")
             old_time = time.time() - (100 * 24 * 3600)
             os.utime(old_file, (old_time, old_time))
 
             # Create recent file
             new_file = os.path.join(user_dir, "new.jpg")
-            with open(new_file, 'wb') as f:
+            with open(new_file, "wb") as f:
                 f.write(b"new")
 
             # Cleanup files older than 90 days
@@ -820,7 +859,7 @@ class TestReceiptImageStorage:
             # Create files
             for i in range(3):
                 file_path = os.path.join(user_dir, f"image_{i}.jpg")
-                with open(file_path, 'wb') as f:
+                with open(file_path, "wb") as f:
                     f.write(b"x" * 1000 * (i + 1))
 
             # Get images (user_id="123" → dir "user_123")
@@ -832,30 +871,37 @@ class TestReceiptImageStorage:
             assert "url" in images[0]
             assert "size" in images[0]
 
+
 # ============================================================================
 # TESTS: API ENDPOINTS
 # ============================================================================
 
+
 class TestOCRAPIEndpoints:
     """Test OCR API endpoint integration"""
 
-    def test_process_receipt_end_to_end(self, client, mock_user, mock_db, sample_image_bytes, sample_ocr_result_walmart):
+    def test_process_receipt_end_to_end(
+        self, client, mock_user, mock_db, sample_image_bytes, sample_ocr_result_walmart
+    ):
         """Test complete flow: upload → OCR → parse → store → return result"""
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_db] = lambda: mock_db
 
-        with patch('app.api.ocr.routes.OCRReceiptService') as mock_ocr, \
-             patch('app.api.ocr.routes.get_receipt_storage') as mock_get_storage:
+        with patch("app.api.ocr.routes.OCRReceiptService") as mock_ocr, patch(
+            "app.api.ocr.routes.get_receipt_storage"
+        ) as mock_get_storage:
 
             mock_ocr.return_value.process_image.return_value = sample_ocr_result_walmart
             mock_get_storage.return_value.save_image.return_value = (
                 "/app/data/receipts/user_123/image.jpg",
-                "/receipts/user_123/image.jpg"
+                "/receipts/user_123/image.jpg",
             )
 
             response = client.post(
                 "/api/ocr/process",
-                files={"file": ("walmart_receipt.jpg", sample_image_bytes, "image/jpeg")}
+                files={
+                    "file": ("walmart_receipt.jpg", sample_image_bytes, "image/jpeg")
+                },
             )
 
             assert response.status_code == 200
@@ -873,10 +919,12 @@ class TestOCRAPIEndpoints:
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_db] = lambda: mock_db
 
-        with patch('app.categorization.receipt_categorization_service.ReceiptCategorizationService') as mock_service:
+        with patch(
+            "app.categorization.receipt_categorization_service.ReceiptCategorizationService"
+        ) as mock_service:
             mock_service.return_value.categorize.return_value = {
                 "category": "groceries",
-                "confidence": 0.85
+                "confidence": 0.85,
             }
 
             response = client.post(
@@ -885,8 +933,8 @@ class TestOCRAPIEndpoints:
                     "merchant": "Walmart",
                     "amount": 50.0,
                     "items": [],
-                    "hint": "groceries"
-                }
+                    "hint": "groceries",
+                },
             )
 
             assert response.status_code == 200
@@ -961,7 +1009,7 @@ class TestOCRAPIEndpoints:
 
             mock_db.query.return_value.filter.return_value.first.return_value = mock_job
 
-            with patch('app.api.ocr.routes.get_receipt_storage') as mock_get_storage:
+            with patch("app.api.ocr.routes.get_receipt_storage") as mock_get_storage:
                 mock_get_storage.return_value.delete_image.return_value = True
 
                 response = client.delete("/api/ocr/image/job_123")
@@ -971,9 +1019,11 @@ class TestOCRAPIEndpoints:
             if os.path.exists(tmp_path):
                 os.unlink(tmp_path)
 
+
 # ============================================================================
 # TESTS: ERROR HANDLING & EDGE CASES
 # ============================================================================
+
 
 class TestOCRErrorHandling:
     """Test error handling and edge cases"""
@@ -983,27 +1033,33 @@ class TestOCRErrorHandling:
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_db] = lambda: mock_db
 
-        with patch('app.api.ocr.routes.OCRReceiptService') as mock_ocr:
-            mock_ocr.return_value.process_image.side_effect = Exception("OCR Service unavailable")
+        with patch("app.api.ocr.routes.OCRReceiptService") as mock_ocr:
+            mock_ocr.return_value.process_image.side_effect = Exception(
+                "OCR Service unavailable"
+            )
 
             response = client.post(
                 "/api/ocr/process",
-                files={"file": ("receipt.jpg", sample_image_bytes, "image/jpeg")}
+                files={"file": ("receipt.jpg", sample_image_bytes, "image/jpeg")},
             )
 
             assert response.status_code == 500
 
-    def test_no_text_detected_in_image(self, client, mock_user, mock_db, sample_image_bytes):
+    def test_no_text_detected_in_image(
+        self, client, mock_user, mock_db, sample_image_bytes
+    ):
         """Test handling when no text is detected"""
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_db] = lambda: mock_db
 
-        with patch('app.api.ocr.routes.OCRReceiptService') as mock_ocr:
-            mock_ocr.return_value.process_image.side_effect = ValueError("No text detected in image")
+        with patch("app.api.ocr.routes.OCRReceiptService") as mock_ocr:
+            mock_ocr.return_value.process_image.side_effect = ValueError(
+                "No text detected in image"
+            )
 
             response = client.post(
                 "/api/ocr/process",
-                files={"file": ("blank.jpg", sample_image_bytes, "image/jpeg")}
+                files={"file": ("blank.jpg", sample_image_bytes, "image/jpeg")},
             )
 
             assert response.status_code >= 400
@@ -1016,29 +1072,33 @@ class TestOCRErrorHandling:
         mock_db.commit.side_effect = Exception("Database error")
         app.dependency_overrides[get_db] = lambda: mock_db
 
-        with patch('app.api.ocr.routes.OCRReceiptService') as mock_ocr, \
-             patch('app.api.ocr.routes.get_receipt_storage') as mock_get_storage:
+        with patch("app.api.ocr.routes.OCRReceiptService") as mock_ocr, patch(
+            "app.api.ocr.routes.get_receipt_storage"
+        ) as mock_get_storage:
 
             mock_ocr.return_value.process_image.return_value = {
                 "merchant": "Test",
-                "amount": 10.0
+                "amount": 10.0,
             }
             mock_get_storage.return_value.save_image.return_value = ("/path", "/url")
 
             response = client.post(
                 "/api/ocr/process",
-                files={"file": ("receipt.jpg", sample_image_bytes, "image/jpeg")}
+                files={"file": ("receipt.jpg", sample_image_bytes, "image/jpeg")},
             )
 
             assert response.status_code == 500
 
-    def test_malformed_ocr_response(self, client, mock_user, mock_db, sample_image_bytes):
+    def test_malformed_ocr_response(
+        self, client, mock_user, mock_db, sample_image_bytes
+    ):
         """Test handling of malformed OCR responses"""
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_db] = lambda: mock_db
 
-        with patch('app.api.ocr.routes.OCRReceiptService') as mock_ocr, \
-             patch('app.api.ocr.routes.get_receipt_storage') as mock_get_storage:
+        with patch("app.api.ocr.routes.OCRReceiptService") as mock_ocr, patch(
+            "app.api.ocr.routes.get_receipt_storage"
+        ) as mock_get_storage:
 
             # Return empty dict
             mock_ocr.return_value.process_image.return_value = {}
@@ -1046,7 +1106,7 @@ class TestOCRErrorHandling:
 
             response = client.post(
                 "/api/ocr/process",
-                files={"file": ("receipt.jpg", sample_image_bytes, "image/jpeg")}
+                files={"file": ("receipt.jpg", sample_image_bytes, "image/jpeg")},
             )
 
             # Should handle gracefully

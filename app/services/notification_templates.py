@@ -2,7 +2,8 @@
 Notification Templates System
 Provides ready-to-use notification templates for different events
 """
-from typing import Dict, Any, Optional
+
+from typing import Any, Dict, Optional
 
 
 class NotificationTemplates:
@@ -28,10 +29,7 @@ class NotificationTemplates:
 
     @staticmethod
     def goal_progress_milestone(
-        goal_title: str,
-        progress: float,
-        saved_amount: float,
-        target_amount: float
+        goal_title: str, progress: float, saved_amount: float, target_amount: float
     ) -> Dict[str, Any]:
         """Notification when goal reaches milestone (25%, 50%, 75%, 90%)"""
         emoji_map = {
@@ -52,9 +50,7 @@ class NotificationTemplates:
 
     @staticmethod
     def goal_completed(
-        goal_title: str,
-        final_amount: float,
-        days_taken: Optional[int] = None
+        goal_title: str, final_amount: float, days_taken: Optional[int] = None
     ) -> Dict[str, Any]:
         """Notification when goal is completed"""
         time_msg = f" in {days_taken} days" if days_taken else ""
@@ -79,7 +75,9 @@ class NotificationTemplates:
         }
 
     @staticmethod
-    def goal_due_soon(goal_title: str, days_remaining: int, remaining_amount: float) -> Dict[str, Any]:
+    def goal_due_soon(
+        goal_title: str, days_remaining: int, remaining_amount: float
+    ) -> Dict[str, Any]:
         """Notification when goal deadline is approaching"""
         return {
             "title": "⏳ Goal Deadline Approaching",
@@ -94,7 +92,9 @@ class NotificationTemplates:
     # ============================================================================
 
     @staticmethod
-    def budget_warning(category: str, spent: float, limit: float, percentage: float) -> Dict[str, Any]:
+    def budget_warning(
+        category: str, spent: float, limit: float, percentage: float
+    ) -> Dict[str, Any]:
         """Warning when spending reaches 80% of budget"""
         return {
             "title": "⚠️ Budget Alert",
@@ -105,7 +105,9 @@ class NotificationTemplates:
         }
 
     @staticmethod
-    def budget_danger(category: str, spent: float, limit: float, percentage: float) -> Dict[str, Any]:
+    def budget_danger(
+        category: str, spent: float, limit: float, percentage: float
+    ) -> Dict[str, Any]:
         """Alert when spending reaches 90% of budget"""
         return {
             "title": "🟠 Budget Danger Zone",
@@ -116,7 +118,9 @@ class NotificationTemplates:
         }
 
     @staticmethod
-    def budget_exceeded(category: str, spent: float, limit: float, overage: float) -> Dict[str, Any]:
+    def budget_exceeded(
+        category: str, spent: float, limit: float, overage: float
+    ) -> Dict[str, Any]:
         """Alert when budget is exceeded"""
         return {
             "title": "🚨 Budget Exceeded!",
@@ -139,18 +143,19 @@ class NotificationTemplates:
 
     @staticmethod
     def monthly_budget_summary(
-        total_spent: float,
-        total_budget: float,
-        categories_over: int
+        total_spent: float, total_budget: float, categories_over: int
     ) -> Dict[str, Any]:
         """End of month budget summary"""
         percentage = (total_spent / total_budget * 100) if total_budget > 0 else 0
 
         return {
             "title": "📊 Monthly Budget Summary",
-            "message": f"This month you spent ${total_spent:,.2f} of ${total_budget:,.2f} ({percentage:.0f}%). "
-                      f"{categories_over} categories exceeded their limits." if categories_over > 0
-                      else "All categories stayed within budget!",
+            "message": (
+                f"This month you spent ${total_spent:,.2f} of ${total_budget:,.2f} ({percentage:.0f}%). "
+                f"{categories_over} categories exceeded their limits."
+                if categories_over > 0
+                else "All categories stayed within budget!"
+            ),
             "type": "info",
             "priority": "medium",
             "category": "budget_alerts",
@@ -161,7 +166,9 @@ class NotificationTemplates:
     # ============================================================================
 
     @staticmethod
-    def large_transaction(amount: float, category: str, merchant: Optional[str] = None) -> Dict[str, Any]:
+    def large_transaction(
+        amount: float, category: str, merchant: Optional[str] = None
+    ) -> Dict[str, Any]:
         """Notification for unusually large transactions"""
         merchant_text = f" at {merchant}" if merchant else ""
         return {
@@ -173,7 +180,9 @@ class NotificationTemplates:
         }
 
     @staticmethod
-    def transaction_added_to_goal(amount: float, goal_title: str, new_progress: float) -> Dict[str, Any]:
+    def transaction_added_to_goal(
+        amount: float, goal_title: str, new_progress: float
+    ) -> Dict[str, Any]:
         """Notification when transaction is linked to goal"""
         return {
             "title": "🎯 Savings Added to Goal",
@@ -199,9 +208,15 @@ class NotificationTemplates:
     # ============================================================================
 
     @staticmethod
-    def ai_recommendation(recommendation: str, potential_savings: Optional[float] = None) -> Dict[str, Any]:
+    def ai_recommendation(
+        recommendation: str, potential_savings: Optional[float] = None
+    ) -> Dict[str, Any]:
         """AI-generated recommendation"""
-        savings_text = f" You could save ${potential_savings:,.2f} per month." if potential_savings else ""
+        savings_text = (
+            f" You could save ${potential_savings:,.2f} per month."
+            if potential_savings
+            else ""
+        )
         return {
             "title": "💡 Smart Recommendation",
             "message": f"{recommendation}{savings_text}",
@@ -237,13 +252,15 @@ class NotificationTemplates:
     # ============================================================================
 
     @staticmethod
-    def daily_budget_reminder(remaining_budget: float, days_left: int) -> Dict[str, Any]:
+    def daily_budget_reminder(
+        remaining_budget: float, days_left: int
+    ) -> Dict[str, Any]:
         """Daily reminder about remaining budget"""
         daily_allowance = remaining_budget / days_left if days_left > 0 else 0
         return {
             "title": "🌅 Daily Budget Update",
             "message": f"Good morning! You have ${remaining_budget:,.2f} remaining for {days_left} days. "
-                      f"Daily allowance: ${daily_allowance:,.2f}",
+            f"Daily allowance: ${daily_allowance:,.2f}",
             "type": "reminder",
             "priority": "low",
             "category": "daily_reminders",
@@ -251,8 +268,7 @@ class NotificationTemplates:
 
     @staticmethod
     def weekly_progress_report(
-        goals_on_track: int,
-        total_saved_this_week: float
+        goals_on_track: int, total_saved_this_week: float
     ) -> Dict[str, Any]:
         """Weekly progress summary"""
         return {
@@ -325,9 +341,7 @@ class NotificationTemplates:
         )
         goal_text = ""
         if goal_title and delay_days and delay_days > 0:
-            goal_text = (
-                f" Your goal '{goal_title}' may be delayed ~{delay_days} days."
-            )
+            goal_text = f" Your goal '{goal_title}' may be delayed ~{delay_days} days."
         return {
             "title": f"⚠️ {cat_display} budget at risk",
             "message": (
@@ -396,7 +410,9 @@ class NotificationTemplates:
             "streak_14": ("🔥", "14-day budget streak!"),
             "streak_30": ("⭐", "30-day budget streak!"),
         }
-        emoji, title_suffix = streak_map.get(win_type, ("✅", f"{streak_days}-day streak!"))
+        emoji, title_suffix = streak_map.get(
+            win_type, ("✅", f"{streak_days}-day streak!")
+        )
         return {
             "title": f"{emoji} {title_suffix}",
             "message": (

@@ -23,6 +23,7 @@ Category used: "goal_savings"
   Registered as SACRED in category_priority.py — the rebalancer will
   never use these rows as donors when balancing other categories.
 """
+
 from __future__ import annotations
 
 import calendar
@@ -52,6 +53,7 @@ _INACTIVE_STATUSES = frozenset({"paused", "cancelled", "completed"})
 # ─────────────────────────────────────────────────────────────────────────────
 # Pure computation helpers (synchronous, no DB access)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def calculate_required_monthly_contribution(
     goal: Goal,
@@ -119,6 +121,7 @@ def calculate_daily_savings_amount(
 # ─────────────────────────────────────────────────────────────────────────────
 # Async DB operations
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 async def sync_goal_to_daily_plan(
     db: AsyncSession,

@@ -22,7 +22,7 @@ import structlog
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
 
-from railway_deploy_manager import RailwayDeploymentManager, DeploymentStatus
+from railway_deploy_manager import DeploymentStatus, RailwayDeploymentManager
 from rollback_validation import RollbackValidator
 
 logger = structlog.get_logger()
@@ -30,6 +30,7 @@ logger = structlog.get_logger()
 
 class RollbackPhase(Enum):
     """Rollback execution phases"""
+
     PRE_VALIDATION = "pre_validation"
     DATABASE_ROLLBACK = "database_rollback"
     APP_ROLLBACK = "app_rollback"
@@ -39,6 +40,7 @@ class RollbackPhase(Enum):
 
 class RollbackTrigger(Enum):
     """Rollback trigger reasons"""
+
     MANUAL = "manual"
     ERROR_RATE_THRESHOLD = "error_rate_threshold"
     LATENCY_DEGRADATION = "latency_degradation"
@@ -50,6 +52,7 @@ class RollbackTrigger(Enum):
 @dataclass
 class RollbackResult:
     """Result of rollback operation"""
+
     success: bool
     trigger: RollbackTrigger
     start_time: datetime
@@ -84,7 +87,7 @@ class AutomatedRollbackOrchestrator:
         self,
         base_url: str = "http://localhost:8000",
         railway_service_id: Optional[str] = None,
-        skip_database_rollback: bool = False
+        skip_database_rollback: bool = False,
     ):
         self.base_url = base_url
         self.skip_database_rollback = skip_database_rollback
@@ -98,7 +101,7 @@ class AutomatedRollbackOrchestrator:
         self,
         trigger: RollbackTrigger,
         target_deployment_id: Optional[str] = None,
-        trigger_reason: str = ""
+        trigger_reason: str = "",
     ) -> RollbackResult:
         """
         Execute complete automated rollback
@@ -132,7 +135,7 @@ class AutomatedRollbackOrchestrator:
                     success=False,
                     trigger=trigger,
                     target_deployment_id="unknown",
-                    error_message="Pre-validation failed - no valid target deployment"
+                    error_message="Pre-validation failed - no valid target deployment",
                 )
 
             self.phases_completed.append(RollbackPhase.PRE_VALIDATION)
@@ -144,9 +147,13 @@ class AutomatedRollbackOrchestrator:
                 logger.info("PHASE 2: DATABASE ROLLBACK")
                 logger.info(f"{'='*80}")
 
-                db_rollback_success = await self._phase2_database_rollback(target_deployment)
+                db_rollback_success = await self._phase2_database_rollback(
+                    target_deployment
+                )
                 if not db_rollback_success:
-                    logger.warning("Database rollback skipped or failed (continuing with app-only rollback)")
+                    logger.warning(
+                        "Database rollback skipped or failed (continuing with app-only rollback)"
+                    )
                 else:
                     self.phases_completed.append(RollbackPhase.DATABASE_ROLLBACK)
             else:
@@ -158,13 +165,15 @@ class AutomatedRollbackOrchestrator:
             logger.info("PHASE 3: APPLICATION ROLLBACK")
             logger.info(f"{'='*80}")
 
-            app_rollback_success = await self._phase3_application_rollback(target_deployment)
+            app_rollback_success = await self._phase3_application_rollback(
+                target_deployment
+            )
             if not app_rollback_success:
                 return self._create_result(
                     success=False,
                     trigger=trigger,
                     target_deployment_id=target_deployment,
-                    error_message="Application rollback failed"
+                    error_message="Application rollback failed",
                 )
 
             self.phases_completed.append(RollbackPhase.APP_ROLLBACK)
@@ -181,7 +190,7 @@ class AutomatedRollbackOrchestrator:
                     success=False,
                     trigger=trigger,
                     target_deployment_id=target_deployment,
-                    error_message="Health verification failed after rollback"
+                    error_message="Health verification failed after rollback",
                 )
 
             self.phases_completed.append(RollbackPhase.HEALTH_VERIFICATION)
@@ -197,9 +206,7 @@ class AutomatedRollbackOrchestrator:
 
             # SUCCESS
             result = self._create_result(
-                success=True,
-                trigger=trigger,
-                target_deployment_id=target_deployment
+                success=True, trigger=trigger, target_deployment_id=target_deployment
             )
 
             logger.info("=" * 80)
@@ -217,12 +224,11 @@ class AutomatedRollbackOrchestrator:
                 success=False,
                 trigger=trigger,
                 target_deployment_id=target_deployment_id or "unknown",
-                error_message=f"Exception in {self.current_phase}: {str(e)}"
+                error_message=f"Exception in {self.current_phase}: {str(e)}",
             )
 
     async def _phase1_pre_validation(
-        self,
-        target_deployment_id: Optional[str]
+        self, target_deployment_id: Optional[str]
     ) -> Optional[str]:
         """
         Phase 1: Pre-Rollback Validation (Target: 30-60s)
@@ -248,19 +254,23 @@ class AutomatedRollbackOrchestrator:
                 return None
 
             target = deployment.id
-            logger.info("Found previous deployment",
-                       id=target,
-                       git_sha=deployment.git_sha,
-                       created_at=deployment.created_at)
+            logger.info(
+                "Found previous deployment",
+                id=target,
+                git_sha=deployment.git_sha,
+                created_at=deployment.created_at,
+            )
 
         # Step 2: Verify target deployment status
         try:
             status = await self.railway_manager.get_deployment_status(target)
 
             if status != DeploymentStatus.SUCCESS:
-                logger.error("Target deployment was not successful",
-                           deployment_id=target,
-                           status=status.value)
+                logger.error(
+                    "Target deployment was not successful",
+                    deployment_id=target,
+                    status=status.value,
+                )
                 return None
         except Exception as e:
             logger.error("Failed to verify target deployment", error=str(e))
@@ -277,18 +287,22 @@ class AutomatedRollbackOrchestrator:
                     ["python3", str(backup_script), "backup", "--type=pre-rollback"],
                     capture_output=True,
                     text=True,
-                    timeout=60  # 60 second timeout for backup
+                    timeout=60,  # 60 second timeout for backup
                 )
 
                 if result.returncode == 0:
                     logger.info("Emergency backup created successfully")
                 else:
-                    logger.warning("Backup creation failed (continuing anyway)",
-                                 stderr=result.stderr)
+                    logger.warning(
+                        "Backup creation failed (continuing anyway)",
+                        stderr=result.stderr,
+                    )
             except subprocess.TimeoutExpired:
                 logger.warning("Backup creation timed out (continuing anyway)")
             except Exception as e:
-                logger.warning("Backup creation error (continuing anyway)", error=str(e))
+                logger.warning(
+                    "Backup creation error (continuing anyway)", error=str(e)
+                )
         else:
             logger.warning("Backup script not found, skipping backup")
 
@@ -327,14 +341,18 @@ class AutomatedRollbackOrchestrator:
                 capture_output=True,
                 text=True,
                 timeout=10,
-                cwd=Path(__file__).parent.parent.parent  # Project root
+                cwd=Path(__file__).parent.parent.parent,  # Project root
             )
 
             if alembic_result.returncode != 0:
                 logger.error("Failed to get current Alembic revision")
                 return False
 
-            current_revision = alembic_result.stdout.strip().split()[0] if alembic_result.stdout else "unknown"
+            current_revision = (
+                alembic_result.stdout.strip().split()[0]
+                if alembic_result.stdout
+                else "unknown"
+            )
             logger.info("Current Alembic revision", revision=current_revision)
 
             # TODO: Get target revision from deployment metadata
@@ -346,7 +364,7 @@ class AutomatedRollbackOrchestrator:
                 ["python3", str(migration_manager), "rollback", "--target=-1"],
                 capture_output=True,
                 text=True,
-                timeout=90  # 90 second timeout
+                timeout=90,  # 90 second timeout
             )
 
             if rollback_result.returncode == 0:
@@ -355,9 +373,11 @@ class AutomatedRollbackOrchestrator:
                 logger.info("Phase 2 completed", duration_seconds=phase_duration)
                 return True
             else:
-                logger.error("Database rollback failed",
-                           stderr=rollback_result.stderr,
-                           stdout=rollback_result.stdout)
+                logger.error(
+                    "Database rollback failed",
+                    stderr=rollback_result.stderr,
+                    stdout=rollback_result.stdout,
+                )
                 return False
 
         except subprocess.TimeoutExpired:
@@ -382,7 +402,9 @@ class AutomatedRollbackOrchestrator:
         # Step 1: Initiate Railway rollback
         logger.info("Initiating Railway rollback...")
 
-        success = await self.railway_manager.rollback_to_deployment(target_deployment_id)
+        success = await self.railway_manager.rollback_to_deployment(
+            target_deployment_id
+        )
 
         if not success:
             logger.error("Failed to initiate Railway rollback")
@@ -401,13 +423,16 @@ class AutomatedRollbackOrchestrator:
         for attempt in range(18):  # 18 * 5s = 90 seconds additional wait
             try:
                 import httpx
+
                 async with httpx.AsyncClient(timeout=2.0) as client:
                     response = await client.get(f"{self.base_url}/")
 
                     if response.status_code == 200:
                         logger.info("Application responding after rollback")
                         phase_duration = (datetime.now() - phase_start).total_seconds()
-                        logger.info("Phase 3 completed", duration_seconds=phase_duration)
+                        logger.info(
+                            "Phase 3 completed", duration_seconds=phase_duration
+                        )
                         return True
             except Exception:
                 pass
@@ -434,7 +459,9 @@ class AutomatedRollbackOrchestrator:
         success = await self.validator.validate_rollback()
 
         phase_duration = (datetime.now() - phase_start).total_seconds()
-        logger.info("Phase 4 completed", duration_seconds=phase_duration, success=success)
+        logger.info(
+            "Phase 4 completed", duration_seconds=phase_duration, success=success
+        )
 
         return success
 
@@ -452,7 +479,9 @@ class AutomatedRollbackOrchestrator:
         # Mark deployment as last known good
         await self.railway_manager.mark_deployment_as_good(target_deployment_id)
 
-        logger.info("Marked deployment as last known good", deployment_id=target_deployment_id)
+        logger.info(
+            "Marked deployment as last known good", deployment_id=target_deployment_id
+        )
 
         # TODO: Send success notifications (Slack, email, etc.)
 
@@ -464,7 +493,7 @@ class AutomatedRollbackOrchestrator:
         success: bool,
         trigger: RollbackTrigger,
         target_deployment_id: str,
-        error_message: Optional[str] = None
+        error_message: Optional[str] = None,
     ) -> RollbackResult:
         """Create rollback result object"""
         end_time = datetime.now()
@@ -478,7 +507,7 @@ class AutomatedRollbackOrchestrator:
             duration_seconds=duration,
             target_deployment_id=target_deployment_id,
             phases_completed=[p.value for p in self.phases_completed],
-            error_message=error_message
+            error_message=error_message,
         )
 
 
@@ -502,22 +531,22 @@ Examples:
 
   # Use production URL
   python3 automated_rollback.py --base-url https://api.mita.finance
-        """
+        """,
     )
 
-    parser.add_argument("--deployment-id",
-                       help="Target deployment ID (auto-detect if not specified)")
-    parser.add_argument("--base-url",
-                       default="http://localhost:8000",
-                       help="Application base URL")
-    parser.add_argument("--skip-db",
-                       action="store_true",
-                       help="Skip database rollback (app-only)")
-    parser.add_argument("--reason",
-                       default="Manual rollback",
-                       help="Reason for rollback")
-    parser.add_argument("--service-id",
-                       help="Railway service ID")
+    parser.add_argument(
+        "--deployment-id", help="Target deployment ID (auto-detect if not specified)"
+    )
+    parser.add_argument(
+        "--base-url", default="http://localhost:8000", help="Application base URL"
+    )
+    parser.add_argument(
+        "--skip-db", action="store_true", help="Skip database rollback (app-only)"
+    )
+    parser.add_argument(
+        "--reason", default="Manual rollback", help="Reason for rollback"
+    )
+    parser.add_argument("--service-id", help="Railway service ID")
 
     args = parser.parse_args()
 
@@ -525,14 +554,14 @@ Examples:
     orchestrator = AutomatedRollbackOrchestrator(
         base_url=args.base_url,
         railway_service_id=args.service_id,
-        skip_database_rollback=args.skip_db
+        skip_database_rollback=args.skip_db,
     )
 
     # Execute rollback
     result = await orchestrator.execute_rollback(
         trigger=RollbackTrigger.MANUAL,
         target_deployment_id=args.deployment_id,
-        trigger_reason=args.reason
+        trigger_reason=args.reason,
     )
 
     # Print result
@@ -540,7 +569,9 @@ Examples:
     print("ROLLBACK RESULT")
     print("=" * 80)
     print(f"Success: {result.success}")
-    print(f"Duration: {result.duration_seconds:.1f} seconds ({result.duration_seconds/60:.1f} minutes)")
+    print(
+        f"Duration: {result.duration_seconds:.1f} seconds ({result.duration_seconds/60:.1f} minutes)"
+    )
     print(f"Target Deployment: {result.target_deployment_id}")
     print(f"Phases Completed: {', '.join(result.phases_completed)}")
 

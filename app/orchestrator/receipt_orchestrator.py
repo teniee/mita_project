@@ -1,5 +1,5 @@
-from datetime import datetime
 import logging
+from datetime import datetime
 
 from app.ocr.ocr_parser import parse_receipt_text
 from app.services.expense_tracker import record_expense
@@ -22,10 +22,14 @@ def process_receipt_from_text(user_id: int, text: str, db) -> dict:
     try:
         parsed_date = datetime.strptime(date_str, "%Y-%m-%d").date()
     except (ValueError, TypeError) as e:
-        logger.warning(f"Invalid date format in receipt '{date_str}': {str(e)}. Using today's date.")
+        logger.warning(
+            f"Invalid date format in receipt '{date_str}': {str(e)}. Using today's date."
+        )
         parsed_date = datetime.today().date()
     except Exception as e:
-        logger.error(f"Unexpected error parsing date '{date_str}': {str(e)}. Using today's date.")
+        logger.error(
+            f"Unexpected error parsing date '{date_str}': {str(e)}. Using today's date."
+        )
         parsed_date = datetime.today().date()
 
     # Create transaction
@@ -94,5 +98,5 @@ def process_receipt_from_ocr_result(user_id: int, ocr_result: dict, db) -> dict:
         "status": "created",
         "transaction": result,
         "confidence": confidence,
-        "merchant": merchant
+        "merchant": merchant,
     }

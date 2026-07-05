@@ -1,7 +1,7 @@
+import logging
 from datetime import date
 from decimal import Decimal
 from uuid import UUID
-import logging
 
 from sqlalchemy.orm import Session
 
@@ -48,12 +48,13 @@ def apply_transaction_to_plan(db: Session, txn: Transaction) -> None:
     if plan and plan.planned_amount > 0:
         try:
             from app.services.budget_alert_service import get_budget_alert_service
+
             alert_service = get_budget_alert_service(db)
             alert_service.check_single_category(
                 user_id=txn.user_id,
                 category=txn.category,
                 spent_amount=plan.spent_amount,
-                budget_limit=plan.planned_amount
+                budget_limit=plan.planned_amount,
             )
         except Exception as e:
             logger.warning(f"Failed to check budget alerts: {e}")
@@ -61,6 +62,7 @@ def apply_transaction_to_plan(db: Session, txn: Transaction) -> None:
     # VELOCITY ALERT: check if this category is burning budget too fast
     try:
         from app.services.velocity_alert_service import check_velocity_after_transaction
+
         check_velocity_after_transaction(
             db=db,
             user_id=txn.user_id,

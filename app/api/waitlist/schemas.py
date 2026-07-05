@@ -1,18 +1,21 @@
-from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
 from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, EmailStr, Field
 
 
 class WaitlistJoinRequest(BaseModel):
     email: EmailStr
-    ref_code: Optional[str] = Field(None, max_length=12, description="Referral code from a friend")
+    ref_code: Optional[str] = Field(
+        None, max_length=12, description="Referral code from a friend"
+    )
 
 
 class WaitlistJoinResponse(BaseModel):
     email: str
     position: int
-    effective_position: int   # position minus boost
-    ref_code: str             # user's own referral code
+    effective_position: int  # position minus boost
+    ref_code: str  # user's own referral code
     referral_link: str
     referral_count: int
     total_signups: int

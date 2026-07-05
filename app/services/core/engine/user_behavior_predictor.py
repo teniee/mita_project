@@ -1,6 +1,7 @@
-from typing import Dict, List
-from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
+from typing import Dict, List
+
+from sqlalchemy.orm import Session
 
 
 def predict_user_behavior(transactions: List[Dict], income: float) -> str:
@@ -42,22 +43,23 @@ def predict_spending_behavior(user_id: int, db: Session) -> dict:
             "next_week_spending": 0.0,
             "next_month_spending": 0.0,
             "confidence": 0.0,
-            "insights": ["User not found"]
+            "insights": ["User not found"],
         }
 
     # Get recent transactions (last 60 days)
     sixty_days_ago = datetime.now(timezone.utc) - timedelta(days=60)
-    transactions = db.query(Transaction).filter(
-        Transaction.user_id == user_id,
-        Transaction.spent_at >= sixty_days_ago
-    ).all()
+    transactions = (
+        db.query(Transaction)
+        .filter(Transaction.user_id == user_id, Transaction.spent_at >= sixty_days_ago)
+        .all()
+    )
 
     if not transactions:
         return {
             "next_week_spending": 0.0,
             "next_month_spending": 0.0,
             "confidence": 0.0,
-            "insights": ["Not enough transaction history for predictions"]
+            "insights": ["Not enough transaction history for predictions"],
         }
 
     # Calculate average daily spending
@@ -76,7 +78,9 @@ def predict_spending_behavior(user_id: int, db: Session) -> dict:
 
     insights = []
     if confidence < 0.3:
-        insights.append("Low confidence - track more transactions for better predictions")
+        insights.append(
+            "Low confidence - track more transactions for better predictions"
+        )
     elif avg_daily_spending > (user.monthly_income or 0) / 30:
         insights.append("Warning: Spending exceeds income rate")
     else:
@@ -88,5 +92,5 @@ def predict_spending_behavior(user_id: int, db: Session) -> dict:
         "confidence": round(confidence, 2),
         "insights": insights,
         "avg_daily_spending": round(avg_daily_spending, 2),
-        "transaction_count": len(transactions)
+        "transaction_count": len(transactions),
     }

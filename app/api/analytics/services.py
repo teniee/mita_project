@@ -35,7 +35,7 @@ def get_monthly_category_totals(user_id: str, db: Session) -> dict:
         )
         .all()
     )
-    totals = defaultdict(lambda: Decimal('0'))
+    totals = defaultdict(lambda: Decimal("0"))
     for txn in txns:
         if txn.amount is not None:
             totals[txn.category] += txn.amount
@@ -57,7 +57,7 @@ def get_monthly_trend(user_id: str, db: Session) -> list:
         )
         .all()
     )
-    trend = defaultdict(lambda: Decimal('0'))
+    trend = defaultdict(lambda: Decimal("0"))
     for txn in txns:
         if txn.amount is not None:
             key = txn.timestamp.date().isoformat()

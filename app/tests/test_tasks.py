@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
-import app.services.task_manager as tm_mod
 import app.core.task_queue as tq_mod
+import app.services.task_manager as tm_mod
 from app import legacy_tasks
 
 

@@ -1,8 +1,9 @@
 """
 Service for calculating habit statistics and streaks
 """
+
 from datetime import datetime, timedelta, timezone
-from typing import Dict, Any
+from typing import Any, Dict
 from uuid import UUID
 
 from sqlalchemy import select
@@ -12,9 +13,7 @@ from app.db.models import Habit, HabitCompletion
 
 
 async def calculate_habit_statistics(
-    habit_id: UUID,
-    user_id: UUID,
-    db: AsyncSession
+    habit_id: UUID, user_id: UUID, db: AsyncSession
 ) -> Dict[str, Any]:
     """
     Calculate comprehensive statistics for a habit including:
@@ -31,16 +30,14 @@ async def calculate_habit_statistics(
         .filter(
             HabitCompletion.habit_id == habit_id,
             HabitCompletion.user_id == user_id,
-            HabitCompletion.completed_at >= ninety_days_ago
+            HabitCompletion.completed_at >= ninety_days_ago,
         )
         .order_by(HabitCompletion.completed_at.desc())
     )
     all_completions = result.scalars().all()
 
     # Extract completed dates
-    completion_dates_set = set(
-        c.completed_at.date() for c in all_completions
-    )
+    completion_dates_set = set(c.completed_at.date() for c in all_completions)
 
     # Calculate current streak (from today backwards)
     current_streak = 0
@@ -63,7 +60,7 @@ async def calculate_habit_statistics(
                 current_temp_streak = 1
             else:
                 # Check if consecutive
-                if (date - sorted_dates[i-1]).days == 1:
+                if (date - sorted_dates[i - 1]).days == 1:
                     current_temp_streak += 1
                 else:
                     longest_streak = max(longest_streak, current_temp_streak)
@@ -74,30 +71,26 @@ async def calculate_habit_statistics(
     # Calculate completion rate for last 30 days
     thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
     recent_completions = [
-        c for c in all_completions
-        if c.completed_at >= thirty_days_ago
+        c for c in all_completions if c.completed_at >= thirty_days_ago
     ]
 
     completion_rate = (len(recent_completions) / 30.0) * 100.0
 
     # Get completed dates for last 30 days as ISO strings
-    completed_dates = sorted([
-        c.completed_at.date().isoformat()
-        for c in recent_completions
-    ])
+    completed_dates = sorted(
+        [c.completed_at.date().isoformat() for c in recent_completions]
+    )
 
     return {
         "current_streak": current_streak,
         "longest_streak": longest_streak,
         "completion_rate": round(completion_rate, 1),
-        "completed_dates": completed_dates
+        "completed_dates": completed_dates,
     }
 
 
 async def get_habit_with_stats(
-    habit: Habit,
-    user_id: UUID,
-    db: AsyncSession
+    habit: Habit, user_id: UUID, db: AsyncSession
 ) -> Dict[str, Any]:
     """
     Get habit data with calculated statistics
@@ -113,5 +106,5 @@ async def get_habit_with_stats(
         "current_streak": stats["current_streak"],
         "longest_streak": stats["longest_streak"],
         "completion_rate": stats["completion_rate"],
-        "completed_dates": stats["completed_dates"]
+        "completed_dates": stats["completed_dates"],
     }

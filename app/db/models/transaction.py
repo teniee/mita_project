@@ -1,8 +1,17 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, ForeignKey, Numeric, String, Boolean, Float, Text
-from sqlalchemy.dialects.postgresql import UUID, ARRAY
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Numeric,
+    String,
+    Text,
+)
+from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import relationship
 
 from .base import Base
@@ -11,14 +20,22 @@ from .base import Base
 class Transaction(Base):
     __tablename__ = "transactions"
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True
+    )
 
     # MODULE 5: Goal Integration - Link transaction to a savings goal
-    goal_id = Column(UUID(as_uuid=True), ForeignKey("goals.id"), nullable=True, index=True)
+    goal_id = Column(
+        UUID(as_uuid=True), ForeignKey("goals.id"), nullable=True, index=True
+    )
 
     # Basic transaction data
-    category = Column(String(50), nullable=False, index=True)  # Index for category filtering
-    amount = Column(Numeric(precision=12, scale=2), nullable=False)  # Precise decimal for money
+    category = Column(
+        String(50), nullable=False, index=True
+    )  # Index for category filtering
+    amount = Column(
+        Numeric(precision=12, scale=2), nullable=False
+    )  # Precise decimal for money
     currency = Column(String(3), default="USD")
     description = Column(String(500), nullable=True)  # Optional description
 
@@ -42,11 +59,23 @@ class Transaction(Base):
     notes = Column(Text, nullable=True)  # Extended notes
 
     # Timestamps
-    spent_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True)
-    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-    deleted_at = Column(DateTime(timezone=True), nullable=True, default=None, index=True)  # Soft delete support
+    spent_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+    created_at = Column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), index=True
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+    deleted_at = Column(
+        DateTime(timezone=True), nullable=True, default=None, index=True
+    )  # Soft delete support
 
     # Relationships
     user = relationship("User", back_populates="transactions")
-    goal = relationship("Goal", backref="transactions")  # Link to Goal for savings tracking
+    goal = relationship(
+        "Goal", backref="transactions"
+    )  # Link to Goal for savings tracking

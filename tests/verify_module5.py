@@ -4,16 +4,17 @@ MODULE 5: Budgeting Goals - Comprehensive Verification Script
 Verifies all components of the goals implementation
 """
 
-import sys
 import os
+import sys
 from pathlib import Path
 
 # Color codes for output
-GREEN = '\033[92m'
-RED = '\033[91m'
-YELLOW = '\033[93m'
-BLUE = '\033[94m'
-RESET = '\033[0m'
+GREEN = "\033[92m"
+RED = "\033[91m"
+YELLOW = "\033[93m"
+BLUE = "\033[94m"
+RESET = "\033[0m"
+
 
 def check(name: str, condition: bool, error_msg: str = "") -> bool:
     """Check a condition and print result"""
@@ -25,6 +26,7 @@ def check(name: str, condition: bool, error_msg: str = "") -> bool:
         if error_msg:
             print(f"  {YELLOW}└─{RESET} {error_msg}")
         return False
+
 
 def main():
     print(f"\n{BLUE}{'='*70}{RESET}")
@@ -49,7 +51,9 @@ def main():
 
     for file_path in files_to_check:
         exists = Path(file_path).exists()
-        all_passed &= check(f"File exists: {file_path}", exists, f"File not found: {file_path}")
+        all_passed &= check(
+            f"File exists: {file_path}", exists, f"File not found: {file_path}"
+        )
 
     # 2. Check Python syntax
     print(f"\n{BLUE}2. Checking Python syntax...{RESET}")
@@ -63,7 +67,9 @@ def main():
 
     for py_file in python_files:
         result = os.system(f"python3 -m py_compile {py_file} 2>/dev/null")
-        all_passed &= check(f"Syntax valid: {py_file}", result == 0, f"Syntax error in {py_file}")
+        all_passed &= check(
+            f"Syntax valid: {py_file}", result == 0, f"Syntax error in {py_file}"
+        )
 
     # 3. Check model fields
     print(f"\n{BLUE}3. Checking Goal model fields...{RESET}")
@@ -71,21 +77,42 @@ def main():
         model_content = f.read()
 
     required_fields = [
-        "id", "user_id", "title", "description", "category",
-        "target_amount", "saved_amount", "monthly_contribution",
-        "status", "progress", "target_date", "created_at",
-        "last_updated", "completed_at", "priority"
+        "id",
+        "user_id",
+        "title",
+        "description",
+        "category",
+        "target_amount",
+        "saved_amount",
+        "monthly_contribution",
+        "status",
+        "progress",
+        "target_date",
+        "created_at",
+        "last_updated",
+        "completed_at",
+        "priority",
     ]
 
     for field in required_fields:
         has_field = field in model_content
-        all_passed &= check(f"Model has field: {field}", has_field, f"Missing field: {field}")
+        all_passed &= check(
+            f"Model has field: {field}", has_field, f"Missing field: {field}"
+        )
 
     # Check model methods
-    required_methods = ["update_progress", "add_savings", "remaining_amount", "is_completed", "is_overdue"]
+    required_methods = [
+        "update_progress",
+        "add_savings",
+        "remaining_amount",
+        "is_completed",
+        "is_overdue",
+    ]
     for method in required_methods:
         has_method = method in model_content
-        all_passed &= check(f"Model has method/property: {method}", has_method, f"Missing: {method}")
+        all_passed &= check(
+            f"Model has method/property: {method}", has_method, f"Missing: {method}"
+        )
 
     # 4. Check API endpoints
     print(f"\n{BLUE}4. Checking API endpoints...{RESET}")
@@ -107,18 +134,26 @@ def main():
 
     for method, path, func_name in required_endpoints:
         has_endpoint = func_name in routes_content
-        all_passed &= check(f"Endpoint exists: {method} {path}", has_endpoint, f"Missing: {func_name}")
+        all_passed &= check(
+            f"Endpoint exists: {method} {path}", has_endpoint, f"Missing: {func_name}"
+        )
 
     # 5. Check routes registration
     print(f"\n{BLUE}5. Checking routes registration in main.py...{RESET}")
     with open("app/main.py", "r") as f:
         main_content = f.read()
 
-    has_import = "from app.api.goals.routes import router as goals_crud_router" in main_content
-    all_passed &= check("Goals router imported", has_import, "Missing import in main.py")
+    has_import = (
+        "from app.api.goals.routes import router as goals_crud_router" in main_content
+    )
+    all_passed &= check(
+        "Goals router imported", has_import, "Missing import in main.py"
+    )
 
     has_registration = "goals_crud_router" in main_content and '"/api"' in main_content
-    all_passed &= check("Goals router registered", has_registration, "Router not registered")
+    all_passed &= check(
+        "Goals router registered", has_registration, "Router not registered"
+    )
 
     # 6. Check migration
     print(f"\n{BLUE}6. Checking migration...{RESET}")
@@ -134,7 +169,9 @@ def main():
     correct_revision = 'revision = "0010_enhance_goals"' in migration_content
     all_passed &= check("Migration has correct revision", correct_revision)
 
-    correct_down_revision = 'down_revision = "0009_add_transaction_extended_fields"' in migration_content
+    correct_down_revision = (
+        'down_revision = "0009_add_transaction_extended_fields"' in migration_content
+    )
     all_passed &= check("Migration has correct down_revision", correct_down_revision)
 
     # 7. Check mobile model
@@ -142,8 +179,17 @@ def main():
     with open("mobile_app/lib/models/goal.dart", "r") as f:
         dart_model_content = f.read()
 
-    dart_fields = ["id", "title", "description", "category", "targetAmount",
-                   "savedAmount", "status", "progress", "priority"]
+    dart_fields = [
+        "id",
+        "title",
+        "description",
+        "category",
+        "targetAmount",
+        "savedAmount",
+        "status",
+        "progress",
+        "priority",
+    ]
     for field in dart_fields:
         has_field = "final" in dart_model_content and field in dart_model_content
         all_passed &= check(f"Dart model has field: {field}", has_field)
@@ -159,8 +205,18 @@ def main():
     with open("mobile_app/lib/services/api_service.dart", "r") as f:
         api_service_content = f.read()
 
-    api_methods = ["getGoals", "getGoal", "createGoal", "updateGoal", "deleteGoal",
-                   "getGoalStatistics", "addSavingsToGoal", "completeGoal", "pauseGoal", "resumeGoal"]
+    api_methods = [
+        "getGoals",
+        "getGoal",
+        "createGoal",
+        "updateGoal",
+        "deleteGoal",
+        "getGoalStatistics",
+        "addSavingsToGoal",
+        "completeGoal",
+        "pauseGoal",
+        "resumeGoal",
+    ]
     for method in api_methods:
         has_method = method in api_service_content
         all_passed &= check(f"API service has method: {method}", has_method)
@@ -211,18 +267,23 @@ def main():
     all_passed &= check("Repository imports UUID", has_uuid_import)
 
     uses_uuid = "user_id: UUID" in repo_content and "goal_id: UUID" in repo_content
-    all_passed &= check("Repository uses UUID types", uses_uuid, "Still using int instead of UUID")
+    all_passed &= check(
+        "Repository uses UUID types", uses_uuid, "Still using int instead of UUID"
+    )
 
     # Summary
     print(f"\n{BLUE}{'='*70}{RESET}")
     if all_passed:
         print(f"{GREEN}✓ ALL CHECKS PASSED!{RESET}")
-        print(f"{GREEN}MODULE 5: Budgeting Goals is fully implemented and verified!{RESET}")
+        print(
+            f"{GREEN}MODULE 5: Budgeting Goals is fully implemented and verified!{RESET}"
+        )
         return 0
     else:
         print(f"{RED}✗ SOME CHECKS FAILED{RESET}")
         print(f"{YELLOW}Please review the errors above and fix them.{RESET}")
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

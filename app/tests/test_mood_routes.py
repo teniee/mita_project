@@ -1,7 +1,6 @@
 import json
 from types import SimpleNamespace
 
-
 from app.api.mood.routes import list_moods, log_mood
 from app.api.mood.schemas import MoodIn
 from app.db.models import Mood

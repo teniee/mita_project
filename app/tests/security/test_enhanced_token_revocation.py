@@ -19,9 +19,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from app.core import upstash
 from app.services import auth_jwt_service as jwt_service
 from app.services.token_security_service import token_security_service
-from app.core import upstash
 
 
 class TestTokenBlacklisting:
@@ -56,7 +56,9 @@ class TestTokenBlacklisting:
 
         # Blacklist the token using the async jwt_service.blacklist_token
         # which internally uses token_blacklist_service; we mock it at that level
-        with patch("app.services.token_blacklist_service.get_blacklist_service") as mock_get_bl:
+        with patch(
+            "app.services.token_blacklist_service.get_blacklist_service"
+        ) as mock_get_bl:
             mock_bl_service = AsyncMock()
             mock_bl_service.blacklist_token.return_value = True
             mock_get_bl.return_value = mock_bl_service
@@ -64,7 +66,9 @@ class TestTokenBlacklisting:
             assert success is True
 
         # Verify token is now invalid when blacklist check returns True
-        with patch("app.services.token_blacklist_service.get_blacklist_service") as mock_get_bl:
+        with patch(
+            "app.services.token_blacklist_service.get_blacklist_service"
+        ) as mock_get_bl:
             mock_bl_service = AsyncMock()
             mock_bl_service.is_token_blacklisted.return_value = True
             mock_get_bl.return_value = mock_bl_service
@@ -79,8 +83,7 @@ class TestTokenBlacklisting:
         token_data = {"sub": "user123"}
         expires_in = 3600  # 1 hour
         token = jwt_service.create_access_token(
-            token_data,
-            expires_delta=jwt_service.timedelta(seconds=expires_in)
+            token_data, expires_delta=jwt_service.timedelta(seconds=expires_in)
         )
 
         # Verify token info can be extracted
@@ -89,7 +92,9 @@ class TestTokenBlacklisting:
         assert token_info["jti"] is not None
 
         # Blacklist with mock and verify it was called
-        with patch("app.services.token_blacklist_service.get_blacklist_service") as mock_get_bl:
+        with patch(
+            "app.services.token_blacklist_service.get_blacklist_service"
+        ) as mock_get_bl:
             mock_bl_service = AsyncMock()
             mock_bl_service.blacklist_token.return_value = True
             mock_get_bl.return_value = mock_bl_service
@@ -107,7 +112,9 @@ class TestTokenBlacklisting:
             "a" * 1000,  # Too long
         ]
 
-        with patch("app.services.token_blacklist_service.get_blacklist_service") as mock_get_bl:
+        with patch(
+            "app.services.token_blacklist_service.get_blacklist_service"
+        ) as mock_get_bl:
             mock_bl_service = AsyncMock()
             mock_bl_service.blacklist_token.return_value = False
             mock_get_bl.return_value = mock_bl_service
@@ -131,11 +138,13 @@ class TestTokenBlacklisting:
         expired_token = jwt_service._create_token(
             token_data,
             jwt_service.timedelta(seconds=-100),  # Expired 100 seconds ago
-            "access_token"
+            "access_token",
         )
 
         # Should still be able to blacklist expired tokens
-        with patch("app.services.token_blacklist_service.get_blacklist_service") as mock_get_bl:
+        with patch(
+            "app.services.token_blacklist_service.get_blacklist_service"
+        ) as mock_get_bl:
             mock_bl_service = AsyncMock()
             mock_bl_service.blacklist_token.return_value = True
             mock_get_bl.return_value = mock_bl_service
@@ -155,14 +164,16 @@ class TestTokenBlacklisting:
         # Blacklist all tokens concurrently
         start_time = time.time()
 
-        with patch("app.services.token_blacklist_service.get_blacklist_service") as mock_get_bl:
+        with patch(
+            "app.services.token_blacklist_service.get_blacklist_service"
+        ) as mock_get_bl:
             mock_bl_service = AsyncMock()
             mock_bl_service.blacklist_token.return_value = True
             mock_get_bl.return_value = mock_bl_service
 
             blacklist_results = await asyncio.gather(
                 *[jwt_service.blacklist_token(token) for token in tokens],
-                return_exceptions=True
+                return_exceptions=True,
             )
 
         end_time = time.time()
@@ -196,7 +207,9 @@ class TestRefreshTokenRotation:
         refresh_token = jwt_service.create_refresh_token({"sub": "user123"})
 
         # Verify the refresh token with correct token_type
-        payload = await jwt_service.verify_token(refresh_token, token_type="refresh_token")
+        payload = await jwt_service.verify_token(
+            refresh_token, token_type="refresh_token"
+        )
         assert payload is not None
         assert payload["sub"] == "user123"
         assert payload["token_type"] == "refresh_token"
@@ -207,7 +220,9 @@ class TestRefreshTokenRotation:
         refresh_token = jwt_service.create_refresh_token({"sub": "user123"})
 
         # Verifying a refresh token as access_token should fail
-        payload = await jwt_service.verify_token(refresh_token, token_type="access_token")
+        payload = await jwt_service.verify_token(
+            refresh_token, token_type="access_token"
+        )
         assert payload is None
 
     @pytest.mark.asyncio
@@ -216,7 +231,9 @@ class TestRefreshTokenRotation:
         access_token = jwt_service.create_access_token({"sub": "user123"})
 
         # Verifying an access token as refresh_token should fail
-        payload = await jwt_service.verify_token(access_token, token_type="refresh_token")
+        payload = await jwt_service.verify_token(
+            access_token, token_type="refresh_token"
+        )
         assert payload is None
 
     @pytest.mark.asyncio
@@ -231,8 +248,12 @@ class TestRefreshTokenRotation:
         assert token_pair["token_type"] == "Bearer"
 
         # Verify both tokens
-        access_payload = await jwt_service.verify_token(token_pair["access_token"], token_type="access_token")
-        refresh_payload = await jwt_service.verify_token(token_pair["refresh_token"], token_type="refresh_token")
+        access_payload = await jwt_service.verify_token(
+            token_pair["access_token"], token_type="access_token"
+        )
+        refresh_payload = await jwt_service.verify_token(
+            token_pair["refresh_token"], token_type="refresh_token"
+        )
 
         assert access_payload is not None
         assert refresh_payload is not None
@@ -247,12 +268,19 @@ class TestSecurityMonitoring:
         """Test that security metrics are properly tracked."""
         # Reset metrics
         from app.services.token_security_service import TokenMetrics
+
         token_security_service._metrics = TokenMetrics()
 
         # Record various activities
-        token_security_service.record_token_issued("user123", "access_token", "192.168.1.1")
-        token_security_service.record_token_verification("user123", True, "192.168.1.1", "jti123")
-        token_security_service.record_token_verification("user456", False, "192.168.1.2", "jti456")
+        token_security_service.record_token_issued(
+            "user123", "access_token", "192.168.1.1"
+        )
+        token_security_service.record_token_verification(
+            "user123", True, "192.168.1.1", "jti123"
+        )
+        token_security_service.record_token_verification(
+            "user456", False, "192.168.1.2", "jti456"
+        )
         token_security_service.record_token_blacklisted("user123", "jti123", "logout")
         token_security_service.record_blacklist_hit("user789", "jti789", "192.168.1.3")
 
@@ -273,6 +301,7 @@ class TestSecurityMonitoring:
 
         # Reset all state for clean test
         from app.services.token_security_service import TokenMetrics
+
         token_security_service._metrics = TokenMetrics()
         token_security_service._alerts.clear()
         token_security_service._suspicious_ips.clear()
@@ -284,7 +313,9 @@ class TestSecurityMonitoring:
 
         try:
             # Simulate excessive failed verification attempts
-            for i in range(15):  # More than MAX_FAILED_ATTEMPTS (10) and IP threshold (10)
+            for i in range(
+                15
+            ):  # More than MAX_FAILED_ATTEMPTS (10) and IP threshold (10)
                 token_security_service.record_token_verification(
                     user_id, False, client_ip, f"jti{i}"
                 )
@@ -311,10 +342,18 @@ class TestSecurityMonitoring:
         user_id = "activity_test_user"
 
         # Record various activities for user
-        token_security_service.record_token_issued(user_id, "access_token", "192.168.1.1")
-        token_security_service.record_token_issued(user_id, "refresh_token", "192.168.1.1")
-        token_security_service.record_token_verification(user_id, True, "192.168.1.1", "jti1")
-        token_security_service.record_token_verification(user_id, False, "192.168.1.2", "jti2")
+        token_security_service.record_token_issued(
+            user_id, "access_token", "192.168.1.1"
+        )
+        token_security_service.record_token_issued(
+            user_id, "refresh_token", "192.168.1.1"
+        )
+        token_security_service.record_token_verification(
+            user_id, True, "192.168.1.1", "jti1"
+        )
+        token_security_service.record_token_verification(
+            user_id, False, "192.168.1.2", "jti2"
+        )
         token_security_service.record_token_blacklisted(user_id, "jti1", "logout")
 
         # Get activity summary
@@ -341,7 +380,7 @@ class TestSecurityMonitoring:
         old_activity = {
             "action": "token_issued",
             "timestamp": time.time() - 86400 * 2,  # 2 days ago
-            "type": "access_token"
+            "type": "access_token",
         }
         token_security_service._user_activity[user_id].append(old_activity)
 
@@ -406,9 +445,7 @@ class TestTokenHealthChecks:
         """Test health check for expired token."""
         # Create expired token
         expired_token = jwt_service._create_token(
-            {"sub": "user123"},
-            jwt_service.timedelta(seconds=-100),
-            "access_token"
+            {"sub": "user123"}, jwt_service.timedelta(seconds=-100), "access_token"
         )
 
         # get_token_info uses jwt.decode with default verify_exp=True,
@@ -435,7 +472,9 @@ class TestTokenHealthChecks:
         """Test comprehensive token security validation."""
         token = jwt_service.create_access_token({"sub": "user123"})
 
-        with patch("app.services.token_blacklist_service.get_blacklist_service") as mock_get_bl:
+        with patch(
+            "app.services.token_blacklist_service.get_blacklist_service"
+        ) as mock_get_bl:
             mock_bl_service = AsyncMock()
             mock_bl_service.is_token_blacklisted.return_value = False
             mock_get_bl.return_value = mock_bl_service
@@ -461,9 +500,13 @@ class TestErrorHandlingAndFailover:
 
         # When the blacklist service raises an exception, blacklist_token catches it
         # and returns False
-        with patch("app.services.token_blacklist_service.get_blacklist_service") as mock_get_bl:
+        with patch(
+            "app.services.token_blacklist_service.get_blacklist_service"
+        ) as mock_get_bl:
             mock_bl_service = AsyncMock()
-            mock_bl_service.blacklist_token.side_effect = ConnectionError("Redis connection failed")
+            mock_bl_service.blacklist_token.side_effect = ConnectionError(
+                "Redis connection failed"
+            )
             mock_get_bl.return_value = mock_bl_service
 
             result = await jwt_service.blacklist_token(token)
@@ -484,8 +527,12 @@ class TestErrorHandlingAndFailover:
         """Test behavior when blacklist service initialization fails."""
         token = jwt_service.create_access_token({"sub": "user123"})
 
-        with patch("app.services.token_blacklist_service.get_blacklist_service") as mock_get_bl:
-            mock_get_bl.side_effect = RuntimeError("Cannot initialize blacklist service")
+        with patch(
+            "app.services.token_blacklist_service.get_blacklist_service"
+        ) as mock_get_bl:
+            mock_get_bl.side_effect = RuntimeError(
+                "Cannot initialize blacklist service"
+            )
 
             # blacklist_token catches exceptions and returns False
             result = await jwt_service.blacklist_token(token)
@@ -495,13 +542,15 @@ class TestErrorHandlingAndFailover:
 class TestComplianceAndAudit:
     """Test compliance and audit trail functionality."""
 
-    @patch('app.services.token_security_service.log_security_event')
+    @patch("app.services.token_security_service.log_security_event")
     def test_security_event_logging(self, mock_log_event):
         """Test that security events are properly logged for audit."""
         user_id = "audit_test_user"
 
         # Perform various security-related operations
-        token_security_service.record_token_issued(user_id, "access_token", "192.168.1.1")
+        token_security_service.record_token_issued(
+            user_id, "access_token", "192.168.1.1"
+        )
         token_security_service.record_token_blacklisted(user_id, "jti123", "logout")
         token_security_service.record_blacklist_hit(user_id, "jti456", "192.168.1.2")
 
@@ -527,7 +576,7 @@ class TestComplianceAndAudit:
             "token_metrics",
             "redis_metrics",
             "alert_summary",
-            "suspicious_activity"
+            "suspicious_activity",
         ]
 
         for field in required_fields:
@@ -541,7 +590,7 @@ class TestComplianceAndAudit:
             "total_blacklisted",
             "blacklist_hits",
             "verification_failures",
-            "security_alerts"
+            "security_alerts",
         ]
 
         for counter in required_counters:
@@ -567,7 +616,9 @@ class TestComplianceAndAudit:
         assert payload.get("iss") == "mita-finance-api"
 
         # Test that blacklist operations work
-        with patch("app.services.token_blacklist_service.get_blacklist_service") as mock_get_bl:
+        with patch(
+            "app.services.token_blacklist_service.get_blacklist_service"
+        ) as mock_get_bl:
             mock_bl_service = AsyncMock()
             mock_bl_service.blacklist_token.return_value = True
             mock_get_bl.return_value = mock_bl_service
@@ -578,7 +629,4 @@ class TestComplianceAndAudit:
 
 if __name__ == "__main__":
     # Run specific test categories
-    pytest.main([
-        __file__ + "::TestTokenBlacklisting",
-        "-v"
-    ])
+    pytest.main([__file__ + "::TestTokenBlacklisting", "-v"])

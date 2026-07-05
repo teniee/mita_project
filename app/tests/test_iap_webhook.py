@@ -1,7 +1,5 @@
 from types import SimpleNamespace
 
-import pytest
-
 from app.api.iap.routes import iap_webhook
 
 
@@ -43,9 +41,7 @@ def test_iap_webhook(monkeypatch):
         "app.api.iap.routes.success_response", lambda data=None, message="": data
     )
 
-    result = iap_webhook(
-        {"user_id": "u1", "expires_at": "2025-01-01T00:00:00"}, db=db
-    )
+    result = iap_webhook({"user_id": "u1", "expires_at": "2025-01-01T00:00:00"}, db=db)
 
     assert result["received"] is True
     assert sub.expires_at.isoformat() == "2025-01-01T00:00:00"

@@ -23,10 +23,10 @@ class AlertmanagerTester:
     def __init__(
         self,
         alertmanager_url: str = "http://localhost:9093",
-        api_url: str = "http://localhost:8000"
+        api_url: str = "http://localhost:8000",
     ):
-        self.alertmanager_url = alertmanager_url.rstrip('/')
-        self.api_url = api_url.rstrip('/')
+        self.alertmanager_url = alertmanager_url.rstrip("/")
+        self.api_url = api_url.rstrip("/")
         self.http_client = httpx.AsyncClient(timeout=30.0)
 
     async def test_alertmanager_status(self) -> bool:
@@ -34,24 +34,32 @@ class AlertmanagerTester:
         logger.info("Testing Alertmanager status...")
 
         try:
-            response = await self.http_client.get(f"{self.alertmanager_url}/api/v1/status")
+            response = await self.http_client.get(
+                f"{self.alertmanager_url}/api/v1/status"
+            )
 
             if response.status_code == 200:
                 data = response.json()
-                logger.info("Alertmanager is running",
-                           version=data.get("data", {}).get("versionInfo", {}).get("version"),
-                           uptime=data.get("data", {}).get("uptime"))
+                logger.info(
+                    "Alertmanager is running",
+                    version=data.get("data", {}).get("versionInfo", {}).get("version"),
+                    uptime=data.get("data", {}).get("uptime"),
+                )
                 return True
             else:
-                logger.error("Alertmanager returned non-200 status",
-                           status_code=response.status_code)
+                logger.error(
+                    "Alertmanager returned non-200 status",
+                    status_code=response.status_code,
+                )
                 return False
 
         except Exception as e:
             logger.error("Failed to connect to Alertmanager", error=str(e))
             return False
 
-    async def test_rollback_webhook(self, alert_name: str = "CriticalErrorRate") -> bool:
+    async def test_rollback_webhook(
+        self, alert_name: str = "CriticalErrorRate"
+    ) -> bool:
         """Test rollback webhook endpoint"""
         logger.info("Testing rollback webhook...", alert_name=alert_name)
 
@@ -62,19 +70,17 @@ class AlertmanagerTester:
             "truncatedAlerts": 0,
             "status": "firing",
             "receiver": "rollback-trigger",
-            "groupLabels": {
-                "alertname": alert_name
-            },
+            "groupLabels": {"alertname": alert_name},
             "commonLabels": {
                 "alertname": alert_name,
                 "service": "mita-backend",
                 "severity": "critical",
-                "component": "api"
+                "component": "api",
             },
             "commonAnnotations": {
                 "summary": f"Test alert: {alert_name}",
                 "description": "This is a test alert for rollback system validation",
-                "value": "0.25"
+                "value": "0.25",
             },
             "externalURL": self.alertmanager_url,
             "alerts": [
@@ -83,44 +89,48 @@ class AlertmanagerTester:
                     "labels": {
                         "alertname": alert_name,
                         "service": "mita-backend",
-                        "severity": "critical"
+                        "severity": "critical",
                     },
                     "annotations": {
                         "summary": f"Test alert: {alert_name}",
-                        "description": "Test alert for validation"
+                        "description": "Test alert for validation",
                     },
                     "startsAt": datetime.now(timezone.utc).isoformat() + "Z",
                     "endsAt": None,
                     "generatorURL": f"{self.alertmanager_url}/graph",
-                    "fingerprint": "test-fingerprint-123"
+                    "fingerprint": "test-fingerprint-123",
                 }
-            ]
+            ],
         }
 
         try:
             # Get webhook secret
-            webhook_secret = os.getenv("ROLLBACK_WEBHOOK_SECRET", "change-me-in-production")
+            webhook_secret = os.getenv(
+                "ROLLBACK_WEBHOOK_SECRET", "change-me-in-production"
+            )
 
             # Test endpoint
             response = await self.http_client.post(
                 f"{self.api_url}/api/admin/rollback/test",
                 params={"alert_name": alert_name},
-                headers={
-                    "Authorization": f"Basic {webhook_secret}"
-                }
+                headers={"Authorization": f"Basic {webhook_secret}"},
             )
 
             if response.status_code == 200:
                 result = response.json()
-                logger.info("Rollback webhook test successful",
-                           alert_name=alert_name,
-                           would_trigger_rollback=result.get("would_trigger_rollback"),
-                           trigger=result.get("trigger"))
+                logger.info(
+                    "Rollback webhook test successful",
+                    alert_name=alert_name,
+                    would_trigger_rollback=result.get("would_trigger_rollback"),
+                    trigger=result.get("trigger"),
+                )
                 return True
             else:
-                logger.error("Rollback webhook test failed",
-                           status_code=response.status_code,
-                           response=response.text)
+                logger.error(
+                    "Rollback webhook test failed",
+                    status_code=response.status_code,
+                    response=response.text,
+                )
                 return False
 
         except Exception as e:
@@ -128,45 +138,47 @@ class AlertmanagerTester:
             return False
 
     async def send_test_alert(
-        self,
-        alert_name: str,
-        severity: str = "warning",
-        service: str = "mita-backend"
+        self, alert_name: str, severity: str = "warning", service: str = "mita-backend"
     ) -> bool:
         """Send test alert directly to Alertmanager"""
-        logger.info("Sending test alert to Alertmanager",
-                   alert_name=alert_name,
-                   severity=severity)
+        logger.info(
+            "Sending test alert to Alertmanager",
+            alert_name=alert_name,
+            severity=severity,
+        )
 
-        alerts = [{
-            "labels": {
-                "alertname": alert_name,
-                "service": service,
-                "severity": severity,
-                "component": "test"
-            },
-            "annotations": {
-                "summary": f"Test alert: {alert_name}",
-                "description": f"This is a test {severity} alert",
-                "value": "test_value"
-            },
-            "startsAt": datetime.now(timezone.utc).isoformat() + "Z",
-            "generatorURL": f"{self.alertmanager_url}/test"
-        }]
+        alerts = [
+            {
+                "labels": {
+                    "alertname": alert_name,
+                    "service": service,
+                    "severity": severity,
+                    "component": "test",
+                },
+                "annotations": {
+                    "summary": f"Test alert: {alert_name}",
+                    "description": f"This is a test {severity} alert",
+                    "value": "test_value",
+                },
+                "startsAt": datetime.now(timezone.utc).isoformat() + "Z",
+                "generatorURL": f"{self.alertmanager_url}/test",
+            }
+        ]
 
         try:
             response = await self.http_client.post(
-                f"{self.alertmanager_url}/api/v1/alerts",
-                json=alerts
+                f"{self.alertmanager_url}/api/v1/alerts", json=alerts
             )
 
             if response.status_code == 200:
                 logger.info("Test alert sent successfully", alert_name=alert_name)
                 return True
             else:
-                logger.error("Failed to send test alert",
-                           status_code=response.status_code,
-                           response=response.text)
+                logger.error(
+                    "Failed to send test alert",
+                    status_code=response.status_code,
+                    response=response.text,
+                )
                 return False
 
         except Exception as e:
@@ -177,12 +189,7 @@ class AlertmanagerTester:
         """Test all notification channels"""
         logger.info("Testing notification channels...")
 
-        results = {
-            "slack": False,
-            "email": False,
-            "pagerduty": False,
-            "webhook": False
-        }
+        results = {"slack": False, "email": False, "pagerduty": False, "webhook": False}
 
         # Test Slack webhook (if configured)
         slack_webhook = os.getenv("SLACK_WEBHOOK_URL")
@@ -203,7 +210,9 @@ class AlertmanagerTester:
         if pagerduty_key:
             results["pagerduty"] = await self._test_pagerduty(pagerduty_key)
         else:
-            logger.warning("PAGERDUTY_CRITICAL_KEY not configured, skipping PagerDuty test")
+            logger.warning(
+                "PAGERDUTY_CRITICAL_KEY not configured, skipping PagerDuty test"
+            )
 
         # Test rollback webhook
         results["webhook"] = await self.test_rollback_webhook()
@@ -222,9 +231,9 @@ class AlertmanagerTester:
                     "title": "Slack Integration Test",
                     "text": "This is a test message from MITA Alertmanager",
                     "footer": "MITA Alertmanager",
-                    "ts": int(datetime.now().timestamp())
+                    "ts": int(datetime.now().timestamp()),
                 }
-            ]
+            ],
         }
 
         try:
@@ -234,8 +243,9 @@ class AlertmanagerTester:
                 logger.info("Slack webhook test successful")
                 return True
             else:
-                logger.error("Slack webhook test failed",
-                           status_code=response.status_code)
+                logger.error(
+                    "Slack webhook test failed", status_code=response.status_code
+                )
                 return False
 
         except Exception as e:
@@ -250,20 +260,20 @@ class AlertmanagerTester:
         try:
             headers = {
                 "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
             }
 
             response = await self.http_client.get(
-                "https://api.sendgrid.com/v3/scopes",
-                headers=headers
+                "https://api.sendgrid.com/v3/scopes", headers=headers
             )
 
             if response.status_code == 200:
                 logger.info("SendGrid API test successful")
                 return True
             else:
-                logger.error("SendGrid API test failed",
-                           status_code=response.status_code)
+                logger.error(
+                    "SendGrid API test failed", status_code=response.status_code
+                )
                 return False
 
         except Exception as e:
@@ -283,23 +293,24 @@ class AlertmanagerTester:
                 "severity": "info",
                 "custom_details": {
                     "message": "This is a test event from MITA Alertmanager"
-                }
-            }
+                },
+            },
         }
 
         try:
             response = await self.http_client.post(
-                "https://events.pagerduty.com/v2/enqueue",
-                json=payload
+                "https://events.pagerduty.com/v2/enqueue", json=payload
             )
 
             if response.status_code == 202:
                 logger.info("PagerDuty test successful")
                 return True
             else:
-                logger.error("PagerDuty test failed",
-                           status_code=response.status_code,
-                           response=response.text)
+                logger.error(
+                    "PagerDuty test failed",
+                    status_code=response.status_code,
+                    response=response.text,
+                )
                 return False
 
         except Exception as e:
@@ -328,10 +339,7 @@ class AlertmanagerTester:
         logger.info("Test Results Summary")
         logger.info("=" * 80)
 
-        results = {
-            "Alertmanager Status": status_ok,
-            **channel_results
-        }
+        results = {"Alertmanager Status": status_ok, **channel_results}
 
         for test_name, result in results.items():
             status = "✅ PASS" if result else "❌ FAIL"
@@ -356,32 +364,31 @@ async def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Test Alertmanager configuration")
-    parser.add_argument("--alertmanager-url",
-                       default="http://localhost:9093",
-                       help="Alertmanager URL")
-    parser.add_argument("--api-url",
-                       default="http://localhost:8000",
-                       help="MITA API URL")
-    parser.add_argument("--test-alert",
-                       help="Send test alert with this name")
-    parser.add_argument("--severity",
-                       default="warning",
-                       choices=["warning", "error", "critical"],
-                       help="Test alert severity")
+    parser.add_argument(
+        "--alertmanager-url", default="http://localhost:9093", help="Alertmanager URL"
+    )
+    parser.add_argument(
+        "--api-url", default="http://localhost:8000", help="MITA API URL"
+    )
+    parser.add_argument("--test-alert", help="Send test alert with this name")
+    parser.add_argument(
+        "--severity",
+        default="warning",
+        choices=["warning", "error", "critical"],
+        help="Test alert severity",
+    )
 
     args = parser.parse_args()
 
     tester = AlertmanagerTester(
-        alertmanager_url=args.alertmanager_url,
-        api_url=args.api_url
+        alertmanager_url=args.alertmanager_url, api_url=args.api_url
     )
 
     try:
         if args.test_alert:
             # Send specific test alert
             success = await tester.send_test_alert(
-                alert_name=args.test_alert,
-                severity=args.severity
+                alert_name=args.test_alert, severity=args.severity
             )
             sys.exit(0 if success else 1)
         else:

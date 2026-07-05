@@ -4,16 +4,12 @@ Provides async SQLAlchemy session handling with proper connection management and
 """
 
 import logging
-from typing import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import AsyncGenerator
 
-from sqlalchemy.ext.asyncio import (
-    create_async_engine,
-    AsyncSession,
-    async_sessionmaker,
-)
-from sqlalchemy.pool import StaticPool
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import StaticPool
 
 from app.core.config import settings
 from app.db.models.base import Base
@@ -50,7 +46,8 @@ def _normalize_database_url(url: str) -> str:
     # Remove statement_cache_size from URL if present (will be set in connect_args)
     if "statement_cache_size=" in url:
         import re
-        url = re.sub(r'[&?]statement_cache_size=\d+', '', url)
+
+        url = re.sub(r"[&?]statement_cache_size=\d+", "", url)
 
     return url
 
@@ -69,20 +66,18 @@ def initialize_database() -> None:
     # normalize raw URL
     database_url = _normalize_database_url(settings.DATABASE_URL)
     # Log only the host portion — never log credentials (C-04 security fix)
-    redacted_host = database_url.split('@')[-1] if '@' in database_url else 'configured'
+    redacted_host = database_url.split("@")[-1] if "@" in database_url else "configured"
     logger.info(f"Database engine connecting to: {redacted_host}")
 
     try:
         engine_kwargs = {
             "echo": False,
             "pool_pre_ping": True,
-
             # safe pool settings for Render + Supabase pooler
             "pool_size": 5,
             "max_overflow": 10,
             "pool_timeout": 30,
             "pool_recycle": 1800,
-
             # CRITICAL: Disable server-side prepared statements for PgBouncer transaction mode
             "pool_use_lifo": True,  # Use LIFO for better connection reuse
         }
@@ -161,6 +156,10 @@ async def get_async_db_context():
     async with AsyncSessionLocal() as session:
         try:
             yield session
+            # Writes performed through this context (repository layer, OAuth
+            # user creation) must persist — without this commit every change
+            # was silently discarded when the session closed.
+            await session.commit()
         except Exception:
             await session.rollback()
             raise

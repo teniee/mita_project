@@ -33,10 +33,7 @@ from app.api.auth import (
 )
 
 # Main router with /auth prefix
-router = APIRouter(
-    prefix="/auth",
-    tags=["Authentication"]
-)
+router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 # Include all sub-routers (they don't have /auth prefix)
 router.include_router(registration.router)

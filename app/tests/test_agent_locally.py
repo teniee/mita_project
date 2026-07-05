@@ -13,6 +13,7 @@ if not hasattr(UserDataService, "get_user_financial_profile"):
 
 def test_risk_assessment():
     from app.core.session import get_db
+
     db = next(get_db())
     try:
         for user_id in ["user_001", "user_002", "unknown_user"]:
@@ -24,6 +25,7 @@ def test_risk_assessment():
 
 def test_installment_variants():
     from app.core.session import get_db
+
     db = next(get_db())
     try:
         test_cases = [

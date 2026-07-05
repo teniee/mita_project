@@ -82,7 +82,11 @@ class NotificationService:
             group_key=group_key,
             scheduled_for=scheduled_for,
             expires_at=expires_at,
-            status=NotificationStatus.PENDING.value if scheduled_for else NotificationStatus.SENT.value,
+            status=(
+                NotificationStatus.PENDING.value
+                if scheduled_for
+                else NotificationStatus.SENT.value
+            ),
         )
 
         self.db.add(notification)
@@ -118,10 +122,15 @@ class NotificationService:
                 return False
 
             # Import email service here to avoid circular imports
-            from app.services.email_service import EmailService, EmailType, EmailPriority
-            from app.core.config import settings
             from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
             from sqlalchemy.orm import sessionmaker
+
+            from app.core.config import settings
+            from app.services.email_service import (
+                EmailPriority,
+                EmailService,
+                EmailType,
+            )
 
             # Create async database session for email service
             async def send_email_async():
@@ -130,10 +139,12 @@ class NotificationService:
                     connect_args={
                         "statement_cache_size": 0,  # CRITICAL: Disable for PgBouncer
                         "prepared_statement_cache_size": 0,  # CRITICAL: Disable for PgBouncer
-                        "server_settings": {"jit": "off"}
-                    }
+                        "server_settings": {"jit": "off"},
+                    },
                 )
-                async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+                async_session = sessionmaker(
+                    engine, class_=AsyncSession, expire_on_commit=False
+                )
                 async with async_session() as session:
                     email_service = EmailService()
 
@@ -168,7 +179,7 @@ class NotificationService:
                         variables=variables,
                         priority=email_priority,
                         user_id=str(user.id),
-                        db=session
+                        db=session,
                     )
 
                     return result.success
@@ -197,11 +208,15 @@ class NotificationService:
                 )
                 return True
             else:
-                logger.error(f"Email fallback failed for notification {notification.id}")
+                logger.error(
+                    f"Email fallback failed for notification {notification.id}"
+                )
                 return False
 
         except Exception as e:
-            logger.error(f"Error in email fallback for notification {notification.id}: {e}")
+            logger.error(
+                f"Error in email fallback for notification {notification.id}: {e}"
+            )
             return False
 
     def _deliver_notification(self, notification: Notification) -> bool:
@@ -330,7 +345,7 @@ class NotificationService:
 
         # Apply filters
         if unread_only:
-            query = query.filter(Notification.is_read == False)
+            query = query.filter(Notification.is_read.is_(False))
 
         if notification_type:
             query = query.filter(Notification.type == notification_type)
@@ -384,7 +399,9 @@ class NotificationService:
             self.db.commit()
             self.db.refresh(notification)
 
-            logger.info(f"Marked notification {notification_id} as read for user {user_id}")
+            logger.info(
+                f"Marked notification {notification_id} as read for user {user_id}"
+            )
 
         return notification
 
@@ -395,7 +412,7 @@ class NotificationService:
             .filter(
                 and_(
                     Notification.user_id == user_id,
-                    Notification.is_read == False,
+                    Notification.is_read.is_(False),
                 )
             )
             .all()
@@ -411,9 +428,7 @@ class NotificationService:
         logger.info(f"Marked {count} notifications as read for user {user_id}")
         return count
 
-    def delete_notification(
-        self, notification_id: UUID, user_id: UUID
-    ) -> bool:
+    def delete_notification(self, notification_id: UUID, user_id: UUID) -> bool:
         """Delete a notification"""
         notification = self.get_notification_by_id(notification_id, user_id)
 
@@ -432,7 +447,7 @@ class NotificationService:
             .filter(
                 and_(
                     Notification.user_id == user_id,
-                    Notification.is_read == False,
+                    Notification.is_read.is_(False),
                     or_(
                         Notification.expires_at.is_(None),
                         Notification.expires_at > datetime.now(timezone.utc),
@@ -460,7 +475,9 @@ class NotificationService:
             .all()
         )
 
-        logger.info(f"Found {len(scheduled_notifications)} scheduled notifications to send")
+        logger.info(
+            f"Found {len(scheduled_notifications)} scheduled notifications to send"
+        )
 
         for notification in scheduled_notifications:
             self._deliver_notification(notification)
@@ -514,6 +531,7 @@ class NotificationService:
 
 # Convenience functions for creating common notification types
 
+
 def send_budget_alert(
     db: Session,
     user_id: UUID,
@@ -529,8 +547,16 @@ def send_budget_alert(
         user_id=user_id,
         title=f"Budget Alert: {budget_name}",
         message=f"You've spent {percentage}% of your {budget_name} budget (${spent_amount:.2f} of ${budget_limit:.2f})",
-        type=NotificationType.ALERT.value if percentage >= 100 else NotificationType.WARNING.value,
-        priority=NotificationPriority.HIGH.value if percentage >= 100 else NotificationPriority.MEDIUM.value,
+        type=(
+            NotificationType.ALERT.value
+            if percentage >= 100
+            else NotificationType.WARNING.value
+        ),
+        priority=(
+            NotificationPriority.HIGH.value
+            if percentage >= 100
+            else NotificationPriority.MEDIUM.value
+        ),
         category="budget",
         group_key=f"budget_{budget_name}",
     )

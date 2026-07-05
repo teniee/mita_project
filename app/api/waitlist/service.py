@@ -25,7 +25,7 @@ from app.db.models.waitlist import WaitlistEntry
 
 logger = logging.getLogger(__name__)
 
-REFERRAL_BOOST = 10          # spots moved up per referral
+REFERRAL_BOOST = 10  # spots moved up per referral
 BASE_URL = os.getenv("FRONTEND_URL", "https://mitafinance.com")
 
 
@@ -34,7 +34,9 @@ def _gen_ref_code(email: str) -> str:
     salt = secrets.token_hex(4)
     digest = hashlib.sha256(f"{email}{salt}".encode()).hexdigest()
     alphabet = string.ascii_uppercase + string.digits
-    return "".join(alphabet[int(digest[i:i+2], 16) % len(alphabet)] for i in range(0, 16, 2))
+    return "".join(
+        alphabet[int(digest[i : i + 2], 16) % len(alphabet)] for i in range(0, 16, 2)
+    )
 
 
 def _gen_confirm_token() -> str:
@@ -46,20 +48,26 @@ async def _get_total(db: AsyncSession) -> int:
     return result.scalar() or 0
 
 
-async def join_waitlist(email: str, referred_by_code: Optional[str], db: AsyncSession) -> WaitlistEntry:
+async def join_waitlist(
+    email: str, referred_by_code: Optional[str], db: AsyncSession
+) -> WaitlistEntry:
     # Check duplicate
-    existing = await db.execute(select(WaitlistEntry).where(WaitlistEntry.email == email))
+    existing = await db.execute(
+        select(WaitlistEntry).where(WaitlistEntry.email == email)
+    )
     if existing.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="This email is already on the waitlist."
+            detail="This email is already on the waitlist.",
         )
 
     # Validate referral code
     referrer: Optional[WaitlistEntry] = None
     if referred_by_code:
         res = await db.execute(
-            select(WaitlistEntry).where(WaitlistEntry.ref_code == referred_by_code.upper())
+            select(WaitlistEntry).where(
+                WaitlistEntry.ref_code == referred_by_code.upper()
+            )
         )
         referrer = res.scalar_one_or_none()
         # silently ignore invalid codes — don't block signup
@@ -106,7 +114,9 @@ async def confirm_email(token: str, db: AsyncSession) -> WaitlistEntry:
     )
     entry = res.scalar_one_or_none()
     if not entry:
-        raise HTTPException(status_code=404, detail="Invalid or expired confirmation token.")
+        raise HTTPException(
+            status_code=404, detail="Invalid or expired confirmation token."
+        )
     if entry.confirmed:
         return entry
     entry.confirmed = True

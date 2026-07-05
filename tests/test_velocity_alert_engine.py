@@ -24,10 +24,9 @@ Coverage:
   TestEdgeCases            — zeros, negatives, unknown categories
   TestFullScenario         — realistic end-to-end snapshots
 """
+
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
-
-import pytest
 
 from app.services.core.engine.velocity_alert_engine import (
     DailyPlanData,
@@ -36,10 +35,10 @@ from app.services.core.engine.velocity_alert_engine import (
     compute_velocity_alerts,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _plan(day: int, category: str, planned: str, spent: str, year=2026, month=3):
     return DailyPlanData(
@@ -108,6 +107,7 @@ def _make_plans_at_ratio(ratio_str: str, category: str = "dining_out", days: int
 # TestNoData
 # ---------------------------------------------------------------------------
 
+
 class TestNoData:
     """Engine must return empty result when there is not enough data."""
 
@@ -146,6 +146,7 @@ class TestNoData:
 # ---------------------------------------------------------------------------
 # TestVelocityRatio
 # ---------------------------------------------------------------------------
+
 
 class TestVelocityRatio:
     """velocity_ratio = (monthly_spent / days_elapsed) / (monthly_planned / days_in_month)"""
@@ -192,6 +193,7 @@ class TestVelocityRatio:
 # ---------------------------------------------------------------------------
 # TestAlertLevels
 # ---------------------------------------------------------------------------
+
 
 class TestAlertLevels:
     """Exact threshold boundary tests using _make_plans_at_ratio."""
@@ -243,6 +245,7 @@ class TestAlertLevels:
 # TestSacredCategories
 # ---------------------------------------------------------------------------
 
+
 class TestSacredCategories:
     """Sacred categories must NEVER receive velocity alerts."""
 
@@ -273,6 +276,7 @@ class TestSacredCategories:
 # ---------------------------------------------------------------------------
 # TestDaysUntilExhausted
 # ---------------------------------------------------------------------------
+
 
 class TestDaysUntilExhausted:
     """Correct computation of days_until_exhausted.
@@ -323,6 +327,7 @@ class TestDaysUntilExhausted:
 # ---------------------------------------------------------------------------
 # TestGoalImpact
 # ---------------------------------------------------------------------------
+
 
 class TestGoalImpact:
     """Goal impact calculation when spending is projected to overshoot."""
@@ -378,15 +383,28 @@ class TestGoalImpact:
     def test_multiple_goals_sorted_by_delay_desc(self):
         """Goal with larger delay comes first."""
         plans = self._over_pace_plans(multiplier=3)
-        g1 = GoalData("g1", "Small", Decimal("100"), Decimal("0"), Decimal("30"), date(2026, 6, 1))
-        g2 = GoalData("g2", "Big", Decimal("5000"), Decimal("0"), Decimal("500"), date(2026, 12, 1))
+        g1 = GoalData(
+            "g1", "Small", Decimal("100"), Decimal("0"), Decimal("30"), date(2026, 6, 1)
+        )
+        g2 = GoalData(
+            "g2",
+            "Big",
+            Decimal("5000"),
+            Decimal("0"),
+            Decimal("500"),
+            date(2026, 12, 1),
+        )
         result = _run(plans, goals=[g1, g2])
         if len(result.goal_impacts) >= 2:
-            assert result.goal_impacts[0].delay_days >= result.goal_impacts[1].delay_days
+            assert (
+                result.goal_impacts[0].delay_days >= result.goal_impacts[1].delay_days
+            )
 
     def test_goal_without_target_date_ignored(self):
         plans = self._over_pace_plans(multiplier=3)
-        g = GoalData("g1", "No deadline", Decimal("500"), Decimal("0"), Decimal("100"), None)
+        g = GoalData(
+            "g1", "No deadline", Decimal("500"), Decimal("0"), Decimal("100"), None
+        )
         result = _run(plans, goals=[g])
         assert result.goal_impacts == []
 
@@ -394,6 +412,7 @@ class TestGoalImpact:
 # ---------------------------------------------------------------------------
 # TestWinDetection
 # ---------------------------------------------------------------------------
+
 
 class TestWinDetection:
     """Streak detection for positive spending wins."""
@@ -453,6 +472,7 @@ class TestWinDetection:
 # TestDecimalPrecision
 # ---------------------------------------------------------------------------
 
+
 class TestDecimalPrecision:
     """All internal arithmetic must use Decimal; to_dict returns float."""
 
@@ -500,12 +520,14 @@ class TestDecimalPrecision:
 # TestCategoryFilter
 # ---------------------------------------------------------------------------
 
+
 class TestCategoryFilter:
     """category= parameter restricts computation to one category."""
 
     def test_filter_returns_only_target(self):
-        plans = _make_plans_at_ratio("2.00", category="dining_out") + \
-                _make_plans_at_ratio("2.00", category="gaming")
+        plans = _make_plans_at_ratio(
+            "2.00", category="dining_out"
+        ) + _make_plans_at_ratio("2.00", category="gaming")
         result = _run(plans, category="dining_out")
         assert all(cv.category == "dining_out" for cv in result.all_categories)
 
@@ -525,6 +547,7 @@ class TestCategoryFilter:
 # ---------------------------------------------------------------------------
 # TestEdgeCases
 # ---------------------------------------------------------------------------
+
 
 class TestEdgeCases:
     """Guard against division by zero and unusual inputs."""
@@ -548,7 +571,9 @@ class TestEdgeCases:
             DailyPlanData(date(2026, 2, d), "dining_out", Decimal("31"), Decimal("50"))
             for d in range(1, 11)
         ]
-        plans_mar = _make_plans_at_ratio("1.10", category="dining_out")  # under threshold
+        plans_mar = _make_plans_at_ratio(
+            "1.10", category="dining_out"
+        )  # under threshold
         result = _run(plans_feb + plans_mar, year=2026, month=3)
         # Only March rows counted — no alert expected at 1.10×
         assert result.alerts == []
@@ -556,6 +581,7 @@ class TestEdgeCases:
     def test_result_to_dict_is_json_serialisable(self):
         """to_dict() must produce a JSON-serialisable dict."""
         import json
+
         plans = _make_plans_at_ratio("2.50")
         goals = [_goal()]
         result = _run(plans, goals=goals)
@@ -567,16 +593,16 @@ class TestEdgeCases:
 # TestFullScenario
 # ---------------------------------------------------------------------------
 
+
 class TestFullScenario:
     """Realistic end-to-end scenarios."""
 
     def test_scenario_user_on_track(self):
         """User spending at 80% of plan → no alerts, 7-day win streak."""
         # Both categories at ratio 0.8 — clearly under WATCH (1.20)
-        plans = (
-            [_plan(d, "dining_out", "31.00", "8.00") for d in range(1, 11)]
-            + [_plan(d, "groceries", "31.00", "8.00") for d in range(1, 11)]
-        )
+        plans = [_plan(d, "dining_out", "31.00", "8.00") for d in range(1, 11)] + [
+            _plan(d, "groceries", "31.00", "8.00") for d in range(1, 11)
+        ]
         result = _run(plans, today=date(2026, 3, 10))
         assert result.alerts == []
         # 10 consecutive days where per-day total (16/62 ≈ 26%) < 80% → streak_7
@@ -584,10 +610,11 @@ class TestFullScenario:
 
     def test_scenario_dining_critical_savings_safe(self):
         """dining_out is CRITICAL, savings_goal is sacred (no alert for it)."""
-        plans = (
-            [_plan(d, "dining_out", "10.00", "30.00") for d in range(1, 11)]   # ~9× → CRITICAL
-            + [_plan(d, "savings_goal", "50.00", "200.00") for d in range(1, 11)]  # SACRED
-        )
+        plans = [
+            _plan(d, "dining_out", "10.00", "30.00") for d in range(1, 11)
+        ] + [  # ~9× → CRITICAL
+            _plan(d, "savings_goal", "50.00", "200.00") for d in range(1, 11)
+        ]  # SACRED
         result = _run(plans, today=date(2026, 3, 10))
         alert_cats = {a.category for a in result.alerts}
         assert "dining_out" in alert_cats

@@ -28,9 +28,9 @@ from app.core.standardized_error_handler import (
     ErrorCode,
     ResourceNotFoundError,
     ValidationError,
+    validate_email,
     validate_password,
     validate_required_fields,
-    validate_email,
 )
 from app.db.models import User
 from app.utils.response_wrapper import success_response
@@ -43,6 +43,7 @@ router = APIRouter(tags=["Authentication - Account Management"])
 
 # --- Request schemas (accept JSON body from mobile app) ---
 
+
 class ForgotPasswordRequest(BaseModel):
     email: str
     client_id: Optional[str] = None
@@ -52,6 +53,7 @@ class ForgotPasswordRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     token: str
     new_password: str
+
 
 # Alias for backward compatibility
 get_db = get_async_db
@@ -64,17 +66,23 @@ async def change_password(
     current_password: str,
     new_password: str,
     db: AsyncSession = Depends(get_db),
-    current_user = Depends(get_current_active_user)
+    current_user=Depends(get_current_active_user),
 ):
     """Change user password with current password verification."""
     try:
         # Validate inputs
-        validate_required_fields({"current_password": current_password, "new_password": new_password})
+        validate_required_fields(
+            {"current_password": current_password, "new_password": new_password}
+        )
         validate_password(new_password)
 
         # Verify current password
-        if not await verify_password_async(current_password, current_user.password_hash):
-            raise AuthenticationError("Current password is incorrect", ErrorCode.INVALID_CREDENTIALS)
+        if not await verify_password_async(
+            current_password, current_user.password_hash
+        ):
+            raise AuthenticationError(
+                "Current password is incorrect", ErrorCode.INVALID_CREDENTIALS
+            )
 
         # Hash new password
         new_password_hash = await hash_password_async(new_password)
@@ -90,18 +98,23 @@ async def change_password(
         await db.commit()
 
         # Log security event
-        log_security_event("password_changed", {
-            "user_id": str(current_user.id),
-            "user_email": current_user.email,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        })
+        log_security_event(
+            "password_changed",
+            {
+                "user_id": str(current_user.id),
+                "user_email": current_user.email,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
+        )
 
         logger.info(f"Password changed successfully for user {current_user.id}")
 
-        return success_response({
-            "message": "Password changed successfully",
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        })
+        return success_response(
+            {
+                "message": "Password changed successfully",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        )
 
     except (AuthenticationError, ValidationError):
         raise
@@ -109,7 +122,7 @@ async def change_password(
         logger.error(f"Password change failed for user {current_user.id}: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to change password"
+            detail="Failed to change password",
         )
 
 
@@ -118,28 +131,34 @@ async def delete_account(
     request: Request,
     confirmation: bool,
     db: AsyncSession = Depends(get_db),
-    current_user = Depends(get_current_active_user)
+    current_user=Depends(get_current_active_user),
 ):
     """Delete user account permanently with all associated data."""
     try:
         # Validate confirmation
         if not confirmation:
-            raise ValidationError("Account deletion must be confirmed", ErrorCode.MISSING_FIELD)
+            raise ValidationError(
+                "Account deletion must be confirmed", ErrorCode.MISSING_FIELD
+            )
 
         # Log security event before deletion
-        log_security_event("account_deletion_initiated", {
-            "user_id": str(current_user.id),
-            "user_email": current_user.email,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        })
+        log_security_event(
+            "account_deletion_initiated",
+            {
+                "user_id": str(current_user.id),
+                "user_email": current_user.email,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            },
+        )
 
         # Revoke all user tokens before deletion
         try:
             from app.api.auth.utils import revoke_user_tokens
+
             await revoke_user_tokens(
                 user_id=str(current_user.id),
                 reason="account_deletion",
-                revoked_by=str(current_user.id)
+                revoked_by=str(current_user.id),
             )
         except Exception as e:
             logger.warning(f"Failed to revoke tokens during account deletion: {e}")
@@ -148,12 +167,16 @@ async def delete_account(
         await db.delete(current_user)
         await db.commit()
 
-        logger.critical(f"Account deleted permanently: user_id={current_user.id}, email={current_user.email}")
+        logger.critical(
+            f"Account deleted permanently: user_id={current_user.id}, email={current_user.email}"
+        )
 
-        return success_response({
-            "message": "Account deleted successfully",
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        })
+        return success_response(
+            {
+                "message": "Account deleted successfully",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+        )
 
     except ValidationError:
         raise
@@ -162,16 +185,14 @@ async def delete_account(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to delete account"
+            detail="Failed to delete account",
         )
 
 
 @router.post("/forgot-password", summary="Initiate password reset")
 @handle_auth_errors
 async def forgot_password(
-    request: Request,
-    body: ForgotPasswordRequest,
-    db: AsyncSession = Depends(get_db)
+    request: Request, body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)
 ):
     """
     Initiate password reset process by sending reset token to user's email.
@@ -186,13 +207,16 @@ async def forgot_password(
 
         if not user:
             # Don't reveal if email exists - security best practice
-            return success_response({
-                "message": "If the email exists, a password reset link has been sent.",
-                "email": email
-            })
+            return success_response(
+                {
+                    "message": "If the email exists, a password reset link has been sent.",
+                    "email": email,
+                }
+            )
 
         # Generate reset token
         from app.services.auth_jwt_service import generate_password_reset_token
+
         reset_token = generate_password_reset_token(user.id)
 
         # Store token in database
@@ -205,20 +229,26 @@ async def forgot_password(
         # Send reset email
         try:
             from app.services.email_service import send_password_reset_email
-            await send_password_reset_email(user.email, reset_token, user.name or "User")
+
+            await send_password_reset_email(
+                user.email, reset_token, user.name or "User"
+            )
         except Exception as e:
             logger.error(f"Failed to send password reset email: {e}")
             # Don't fail the request if email fails
 
-        log_security_event("password_reset_initiated", {
-            "user_id": str(user.id),
-            "email": email
-        }, request)
+        log_security_event(
+            "password_reset_initiated",
+            {"user_id": str(user.id), "email": email},
+            request,
+        )
 
-        return success_response({
-            "message": "If the email exists, a password reset link has been sent.",
-            "email": email
-        })
+        return success_response(
+            {
+                "message": "If the email exists, a password reset link has been sent.",
+                "email": email,
+            }
+        )
 
     except ValidationError:
         raise
@@ -226,7 +256,7 @@ async def forgot_password(
         logger.error(f"Password reset initiation failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to initiate password reset"
+            detail="Failed to initiate password reset",
         )
 
 
@@ -244,22 +274,24 @@ async def _do_verify_reset_token(token: str, db: AsyncSession):
     if not user:
         return success_response({"valid": False, "message": "Invalid or expired token"})
 
-    if not hasattr(user, 'password_reset_token') or user.password_reset_token != token:
+    if not hasattr(user, "password_reset_token") or user.password_reset_token != token:
         return success_response({"valid": False, "message": "Invalid or expired token"})
 
-    if hasattr(user, 'password_reset_expires') and user.password_reset_expires:
+    if hasattr(user, "password_reset_expires") and user.password_reset_expires:
         if user.password_reset_expires < datetime.now(timezone.utc):
-            return success_response({"valid": False, "message": "Reset token has expired"})
+            return success_response(
+                {"valid": False, "message": "Reset token has expired"}
+            )
 
-    return success_response({"valid": True, "message": "Reset token is valid", "user_id": str(user_id)})
+    return success_response(
+        {"valid": True, "message": "Reset token is valid", "user_id": str(user_id)}
+    )
 
 
 @router.get("/verify-reset-token", summary="Verify password reset token (GET)")
 @handle_auth_errors
 async def verify_reset_token_get(
-    request: Request,
-    token: str = Query(...),
-    db: AsyncSession = Depends(get_db)
+    request: Request, token: str = Query(...), db: AsyncSession = Depends(get_db)
 ):
     """Verify if password reset token is valid (GET, used by mobile app)."""
     return await _do_verify_reset_token(token, db)
@@ -268,9 +300,7 @@ async def verify_reset_token_get(
 @router.post("/verify-reset-token", summary="Verify password reset token (POST)")
 @handle_auth_errors
 async def verify_reset_token(
-    request: Request,
-    token: str,
-    db: AsyncSession = Depends(get_db)
+    request: Request, token: str, db: AsyncSession = Depends(get_db)
 ):
     """Verify if password reset token is valid and not expired."""
     return await _do_verify_reset_token(token, db)
@@ -279,9 +309,7 @@ async def verify_reset_token(
 @router.post("/reset-password", summary="Reset password with token")
 @handle_auth_errors
 async def reset_password(
-    request: Request,
-    body: ResetPasswordRequest,
-    db: AsyncSession = Depends(get_db)
+    request: Request, body: ResetPasswordRequest, db: AsyncSession = Depends(get_db)
 ):
     """
     Reset user password using valid reset token.
@@ -294,12 +322,12 @@ async def reset_password(
 
         # Verify token
         from app.services.auth_jwt_service import verify_password_reset_token
+
         user_id = verify_password_reset_token(token)
 
         if not user_id:
             raise ValidationError(
-                "Invalid or expired reset token",
-                ErrorCode.AUTHENTICATION_TOKEN_INVALID
+                "Invalid or expired reset token", ErrorCode.AUTHENTICATION_TOKEN_INVALID
             )
 
         # Get user
@@ -310,18 +338,19 @@ async def reset_password(
             raise ResourceNotFoundError("User not found")
 
         # Verify token matches
-        if not hasattr(user, 'password_reset_token') or user.password_reset_token != token:
+        if (
+            not hasattr(user, "password_reset_token")
+            or user.password_reset_token != token
+        ):
             raise ValidationError(
-                "Invalid reset token",
-                ErrorCode.AUTHENTICATION_TOKEN_INVALID
+                "Invalid reset token", ErrorCode.AUTHENTICATION_TOKEN_INVALID
             )
 
         # Check expiration
-        if hasattr(user, 'password_reset_expires') and user.password_reset_expires:
+        if hasattr(user, "password_reset_expires") and user.password_reset_expires:
             if user.password_reset_expires < datetime.now(timezone.utc):
                 raise ValidationError(
-                    "Reset token has expired",
-                    ErrorCode.AUTHENTICATION_TOKEN_EXPIRED
+                    "Reset token has expired", ErrorCode.AUTHENTICATION_TOKEN_EXPIRED
                 )
 
         # Hash new password
@@ -338,19 +367,23 @@ async def reset_password(
         # Revoke all existing tokens for security
         try:
             from app.api.auth.utils import revoke_user_tokens
+
             await revoke_user_tokens(str(user.id), "password_reset")
         except Exception as e:
             logger.warning(f"Failed to revoke tokens after password reset: {e}")
 
-        log_security_event("password_reset_completed", {
-            "user_id": str(user.id),
-            "email": user.email
-        }, request)
+        log_security_event(
+            "password_reset_completed",
+            {"user_id": str(user.id), "email": user.email},
+            request,
+        )
 
-        return success_response({
-            "message": "Password has been reset successfully. Please login with your new password.",
-            "success": True
-        })
+        return success_response(
+            {
+                "message": "Password has been reset successfully. Please login with your new password.",
+                "success": True,
+            }
+        )
 
     except (ValidationError, ResourceNotFoundError):
         raise
@@ -359,5 +392,5 @@ async def reset_password(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to reset password"
+            detail="Failed to reset password",
         )

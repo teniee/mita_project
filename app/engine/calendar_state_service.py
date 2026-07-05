@@ -1,4 +1,3 @@
-
 from app.core.logger import get_logger
 from app.services.calendar_service_real import get_calendar_for_user
 from app.services.core.engine.calendar_ai_advisor import explain_day_status

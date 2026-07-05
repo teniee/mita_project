@@ -25,7 +25,7 @@ from sqlalchemy.orm import Session
 # APNS temporarily disabled due to dependency conflicts
 # compat-fork-apns2==0.8.0 depends on hyper 0.7.0, which conflicts with h2>=4.0.0
 # Alternative solutions for future implementation:
-# 1. Use aioapns (async APNS library) 
+# 1. Use aioapns (async APNS library)
 # 2. Use original apns2 library when Python 3.10+ compatible
 # 3. Use HTTP/2 APNS direct implementation
 APNS_AVAILABLE = False
@@ -33,6 +33,7 @@ APNS_AVAILABLE = False
 try:
     from apns2.client import APNsClient
     from apns2.payload import Payload
+
     APNS_AVAILABLE = True
 except ImportError:
     # APNS library not available - will raise error if APNS is attempted
@@ -54,7 +55,10 @@ if not firebase_admin._apps:
     except Exception as e:
         # Last resort: initialize without credentials (will fail for FCM but won't crash app startup)
         import logging
-        logging.warning(f"Failed to initialize Firebase with credentials: {e}. FCM notifications will not work.")
+
+        logging.warning(
+            f"Failed to initialize Firebase with credentials: {e}. FCM notifications will not work."
+        )
         try:
             firebase_admin.initialize_app()
         except Exception:
@@ -160,7 +164,7 @@ def send_apns_notification(
     db: Optional[Session] = None,
 ) -> dict:
     """Send a push notification via Apple Push Notification service.
-    
+
     Note: APNS is temporarily disabled due to dependency conflicts.
     Use FCM (send_push_notification) for all push notifications.
     """
@@ -170,7 +174,7 @@ def send_apns_notification(
             "APNS is temporarily disabled due to dependency conflicts. "
             "Use FCM (send_push_notification) instead or wait for library update."
         )
-    
+
     # Legacy APNS code (will not execute until APNS_AVAILABLE is True)
     client = APNsClient(
         credentials=settings.apns_key,

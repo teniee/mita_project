@@ -15,63 +15,187 @@ class ReceiptCategorizationService:
         self.category_keywords = {
             "groceries": [
                 # International chains
-                "walmart", "costco", "aldi", "whole foods", "kroger", "safeway",
-                "trader joe", "target", "grocery", "supermarket", "market",
+                "walmart",
+                "costco",
+                "aldi",
+                "whole foods",
+                "kroger",
+                "safeway",
+                "trader joe",
+                "target",
+                "grocery",
+                "supermarket",
+                "market",
                 # Bulgarian chains
-                "kaufland", "lidl", "billa", "fantastico", "metro", "carrefour",
-                "t market", "piccadilly", "marketplace", "магазин", "хранителен",
+                "kaufland",
+                "lidl",
+                "billa",
+                "fantastico",
+                "metro",
+                "carrefour",
+                "t market",
+                "piccadilly",
+                "marketplace",
+                "магазин",
+                "хранителен",
             ],
             "transport": [
                 # Ride sharing
-                "uber", "lyft", "bolt", "taxi", "cab",
+                "uber",
+                "lyft",
+                "bolt",
+                "taxi",
+                "cab",
                 # Gas stations
-                "shell", "chevron", "bp", "exxon", "mobil", "gas", "petrol", "lukoil",
-                "omv", "eko", "rompetrol",
+                "shell",
+                "chevron",
+                "bp",
+                "exxon",
+                "mobil",
+                "gas",
+                "petrol",
+                "lukoil",
+                "omv",
+                "eko",
+                "rompetrol",
                 # Public transport
-                "metro", "subway", "bus", "parking", "toll",
+                "metro",
+                "subway",
+                "bus",
+                "parking",
+                "toll",
             ],
             "entertainment": [
-                "cinema", "movie", "netflix", "spotify", "amc", "theater", "theatre",
-                "concert", "ticket", "entertainment", "game", "gaming", "steam",
-                "кино", "театър",
+                "cinema",
+                "movie",
+                "netflix",
+                "spotify",
+                "amc",
+                "theater",
+                "theatre",
+                "concert",
+                "ticket",
+                "entertainment",
+                "game",
+                "gaming",
+                "steam",
+                "кино",
+                "театър",
             ],
             "restaurants": [
-                "mcdonalds", "mcdonald's", "starbucks", "restaurant", "cafe", "coffee",
-                "burger king", "kfc", "subway", "pizza", "domino", "dunkin",
-                "ресторант", "кафе", "заведение", "бар",
+                "mcdonalds",
+                "mcdonald's",
+                "starbucks",
+                "restaurant",
+                "cafe",
+                "coffee",
+                "burger king",
+                "kfc",
+                "subway",
+                "pizza",
+                "domino",
+                "dunkin",
+                "ресторант",
+                "кафе",
+                "заведение",
+                "бар",
             ],
             "shopping": [
-                "amazon", "ebay", "target", "best buy", "mall", "clothing", "fashion",
-                "nike", "adidas", "zara", "h&m", "store", "shop", "boutique",
-                "magazine", "outlet",
+                "amazon",
+                "ebay",
+                "target",
+                "best buy",
+                "mall",
+                "clothing",
+                "fashion",
+                "nike",
+                "adidas",
+                "zara",
+                "h&m",
+                "store",
+                "shop",
+                "boutique",
+                "magazine",
+                "outlet",
             ],
             "healthcare": [
-                "pharmacy", "walgreens", "cvs", "hospital", "clinic", "medical",
-                "doctor", "dentist", "health", "аптека", "болница", "лекар",
-                "софарма", "pharmacy",
+                "pharmacy",
+                "walgreens",
+                "cvs",
+                "hospital",
+                "clinic",
+                "medical",
+                "doctor",
+                "dentist",
+                "health",
+                "аптека",
+                "болница",
+                "лекар",
+                "софарма",
+                "pharmacy",
             ],
             "utilities": [
-                "electric", "electricity", "water", "gas", "utility", "bill",
-                "евн", "топлофикация", "софийска вода",
+                "electric",
+                "electricity",
+                "water",
+                "gas",
+                "utility",
+                "bill",
+                "евн",
+                "топлофикация",
+                "софийска вода",
             ],
             "subscriptions": [
-                "subscription", "netflix", "spotify", "amazon prime", "disney",
-                "youtube premium", "apple music", "hbo", "абонамент",
+                "subscription",
+                "netflix",
+                "spotify",
+                "amazon prime",
+                "disney",
+                "youtube premium",
+                "apple music",
+                "hbo",
+                "абонамент",
             ],
         }
 
         # Item keywords for better categorization
         self.item_keywords = {
             "groceries": [
-                "bread", "milk", "cheese", "egg", "meat", "chicken", "fish",
-                "vegetable", "fruit", "beer", "wine", "хляб", "мляко", "сирене",
+                "bread",
+                "milk",
+                "cheese",
+                "egg",
+                "meat",
+                "chicken",
+                "fish",
+                "vegetable",
+                "fruit",
+                "beer",
+                "wine",
+                "хляб",
+                "мляко",
+                "сирене",
             ],
             "restaurants": [
-                "burger", "pizza", "sandwich", "drink", "coffee", "tea", "meal",
-                "menu", "бургер", "пица", "сандвич",
+                "burger",
+                "pizza",
+                "sandwich",
+                "drink",
+                "coffee",
+                "tea",
+                "meal",
+                "menu",
+                "бургер",
+                "пица",
+                "сандвич",
             ],
             "healthcare": [
-                "medicine", "pill", "tablet", "prescription", "лекарство", "медикамент",
+                "medicine",
+                "pill",
+                "tablet",
+                "prescription",
+                "лекарство",
+                "медикамент",
             ],
         }
 
@@ -82,7 +206,7 @@ class ReceiptCategorizationService:
         merchant: str = "",
         amount: float = 0.0,
         items: list = None,
-        hint: str = ""
+        hint: str = "",
     ) -> str:
         """
         Enhanced categorization based on multiple factors.
@@ -128,19 +252,25 @@ class ReceiptCategorizationService:
                     item_name = str(item.get("name", "")).lower()
                     for keyword in keywords:
                         if keyword in item_name:
-                            category_scores[category] = category_scores.get(category, 0) + 0.5
+                            category_scores[category] = (
+                                category_scores.get(category, 0) + 0.5
+                            )
                             break
 
         # 4. Amount-based heuristics
         if amount > 0:
             if amount < 10:
                 # Small amounts often from cafes/transport
-                category_scores["restaurants"] = category_scores.get("restaurants", 0) + 0.3
+                category_scores["restaurants"] = (
+                    category_scores.get("restaurants", 0) + 0.3
+                )
                 category_scores["transport"] = category_scores.get("transport", 0) + 0.2
             elif 10 <= amount < 100:
                 # Medium amounts often groceries/restaurants
                 category_scores["groceries"] = category_scores.get("groceries", 0) + 0.2
-                category_scores["restaurants"] = category_scores.get("restaurants", 0) + 0.2
+                category_scores["restaurants"] = (
+                    category_scores.get("restaurants", 0) + 0.2
+                )
 
         # Find category with highest score
         if category_scores:
@@ -164,5 +294,5 @@ class ReceiptCategorizationService:
             merchant=receipt_data.get("store", receipt_data.get("merchant", "")),
             amount=receipt_data.get("amount", receipt_data.get("total", 0.0)),
             items=receipt_data.get("items", []),
-            hint=receipt_data.get("category_hint", receipt_data.get("category", ""))
+            hint=receipt_data.get("category_hint", receipt_data.get("category", "")),
         )

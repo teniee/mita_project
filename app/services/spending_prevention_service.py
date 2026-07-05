@@ -4,18 +4,22 @@ Provides real-time budget validation BEFORE transaction creation
 Implements MITA's core differentiator: preventive (not reactive) overspending protection
 """
 
-from datetime import datetime, date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Dict, List, Optional
 from uuid import UUID
-from sqlalchemy.orm import Session
-from sqlalchemy import and_
 
+from sqlalchemy import and_
+from sqlalchemy.orm import Session
+
+from app.core.budget_thresholds import (
+    THRESHOLD_DANGER,
+    THRESHOLD_EXCEEDED,
+    THRESHOLD_SAFE,
+    THRESHOLD_WARNING,
+)
 from app.db.models.daily_plan import DailyPlan
 from app.db.models.goal import Goal
-from app.core.budget_thresholds import (
-    THRESHOLD_SAFE, THRESHOLD_WARNING, THRESHOLD_DANGER, THRESHOLD_EXCEEDED
-)
 
 
 class SpendingPreventionService:
@@ -25,10 +29,14 @@ class SpendingPreventionService:
     """
 
     # Warning level thresholds (sourced from app.core.budget_thresholds)
-    SAFE_UPPER = THRESHOLD_SAFE        # < 70%: safe (green)
-    CAUTION_UPPER = THRESHOLD_WARNING  # 70–80%: caution (yellow) — aligns with first push at 80%
-    DANGER_UPPER = THRESHOLD_DANGER    # 80–90%: warning (amber)
-    EXCEEDED_UPPER = THRESHOLD_EXCEEDED  # 90–100%: danger (orange); ≥ 100% = blocked (red)
+    SAFE_UPPER = THRESHOLD_SAFE  # < 70%: safe (green)
+    CAUTION_UPPER = (
+        THRESHOLD_WARNING  # 70–80%: caution (yellow) — aligns with first push at 80%
+    )
+    DANGER_UPPER = THRESHOLD_DANGER  # 80–90%: warning (amber)
+    EXCEEDED_UPPER = (
+        THRESHOLD_EXCEEDED  # 90–100%: danger (orange); ≥ 100% = blocked (red)
+    )
 
     def __init__(self, db: Session, user_id: UUID):
         self.db = db
@@ -38,7 +46,7 @@ class SpendingPreventionService:
         self,
         category: str,
         amount: Decimal,
-        transaction_date: Optional[datetime] = None
+        transaction_date: Optional[datetime] = None,
     ) -> Dict:
         """
         Check if user can afford transaction BEFORE creating it
@@ -63,16 +71,24 @@ class SpendingPreventionService:
         if transaction_date is None:
             transaction_date = datetime.now()
 
-        trans_date = transaction_date.date() if isinstance(transaction_date, datetime) else transaction_date
+        trans_date = (
+            transaction_date.date()
+            if isinstance(transaction_date, datetime)
+            else transaction_date
+        )
 
         # Get today's daily plan for this category
-        daily_plan = self.db.query(DailyPlan).filter(
-            and_(
-                DailyPlan.user_id == self.user_id,
-                DailyPlan.date == trans_date,
-                DailyPlan.category == category
+        daily_plan = (
+            self.db.query(DailyPlan)
+            .filter(
+                and_(
+                    DailyPlan.user_id == self.user_id,
+                    DailyPlan.date == trans_date,
+                    DailyPlan.category == category,
+                )
             )
-        ).first()
+            .first()
+        )
 
         # If no daily plan exists, can't validate (allow with warning)
         if not daily_plan:
@@ -84,12 +100,14 @@ class SpendingPreventionService:
         # Calculate impact
         new_total = current_spent + amount
         remaining = daily_budget - new_total
-        percentage_used = float((new_total / daily_budget * 100)) if daily_budget > 0 else 999.0
+        percentage_used = (
+            float((new_total / daily_budget * 100)) if daily_budget > 0 else 999.0
+        )
         overage = max(Decimal(0), new_total - daily_budget)
 
         # Determine warning level
         warning_level = self._calculate_warning_level(new_total, daily_budget)
-        can_afford = warning_level in ['safe', 'caution', 'warning']
+        can_afford = warning_level in ["safe", "caution", "warning"]
 
         # Get alternative categories with available budget
         alternatives = self._find_alternative_categories(trans_date, amount)
@@ -101,7 +119,7 @@ class SpendingPreventionService:
             overage=overage,
             alternatives=alternatives,
             daily_budget=daily_budget,
-            remaining=remaining
+            remaining=remaining,
         )
 
         # Get goal context for personalised impact message
@@ -130,7 +148,7 @@ class SpendingPreventionService:
             "suggestions": suggestions,
             "allow_override": True,  # Always allow override (user has final say)
             "category": category,
-            "amount": float(amount)
+            "amount": float(amount),
         }
 
     def _get_user_goal_context(self, overspend_amount: float) -> Optional[Dict]:
@@ -154,7 +172,9 @@ class SpendingPreventionService:
         except Exception:
             return None
 
-    def _calculate_warning_level(self, new_total: Decimal, daily_budget: Decimal) -> str:
+    def _calculate_warning_level(
+        self, new_total: Decimal, daily_budget: Decimal
+    ) -> str:
         """Calculate warning level based on budget usage"""
         if daily_budget <= 0:
             return "safe"  # No budget set
@@ -173,20 +193,22 @@ class SpendingPreventionService:
             return "blocked"
 
     def _find_alternative_categories(
-        self,
-        transaction_date: date,
-        amount: Decimal
+        self, transaction_date: date, amount: Decimal
     ) -> List[Dict]:
         """
         Find categories with enough available budget for this transaction
         Returns top 3 alternatives sorted by available amount
         """
-        daily_plans = self.db.query(DailyPlan).filter(
-            and_(
-                DailyPlan.user_id == self.user_id,
-                DailyPlan.date == transaction_date
+        daily_plans = (
+            self.db.query(DailyPlan)
+            .filter(
+                and_(
+                    DailyPlan.user_id == self.user_id,
+                    DailyPlan.date == transaction_date,
+                )
             )
-        ).all()
+            .all()
+        )
 
         alternatives = []
         for plan in daily_plans:
@@ -195,16 +217,20 @@ class SpendingPreventionService:
             available = daily_budget - spent
 
             if available >= amount:  # Has enough budget
-                percentage_free = float((available / daily_budget * 100)) if daily_budget > 0 else 0
-                alternatives.append({
-                    "category": plan.category,
-                    "available": float(available),
-                    "percentage_free": round(percentage_free, 1),
-                    "daily_budget": float(daily_budget)
-                })
+                percentage_free = (
+                    float((available / daily_budget * 100)) if daily_budget > 0 else 0
+                )
+                alternatives.append(
+                    {
+                        "category": plan.category,
+                        "available": float(available),
+                        "percentage_free": round(percentage_free, 1),
+                        "daily_budget": float(daily_budget),
+                    }
+                )
 
         # Sort by available amount (descending)
-        alternatives.sort(key=lambda x: x['available'], reverse=True)
+        alternatives.sort(key=lambda x: x["available"], reverse=True)
         return alternatives[:3]  # Top 3
 
     def _generate_suggestions(
@@ -214,7 +240,7 @@ class SpendingPreventionService:
         overage: Decimal,
         alternatives: List[Dict],
         daily_budget: Decimal,
-        remaining: Decimal
+        remaining: Decimal,
     ) -> List[str]:
         """Generate actionable suggestions for user"""
         suggestions = []
@@ -240,9 +266,7 @@ class SpendingPreventionService:
                 )
 
             # Suggest waiting
-            suggestions.append(
-                "Wait until tomorrow when daily budget resets"
-            )
+            suggestions.append("Wait until tomorrow when daily budget resets")
 
         else:
             # Within budget - suggest being mindful
@@ -268,7 +292,9 @@ class SpendingPreventionService:
             if goal_context.get("delay_days", 0) > 0:
                 goal_suffix = f" Goal [{goal_context['goal_title']}] may be delayed by {goal_context['delay_days']} day(s)."
             else:
-                goal_suffix = f" Staying on track for goal [{goal_context['goal_title']}]."
+                goal_suffix = (
+                    f" Staying on track for goal [{goal_context['goal_title']}]."
+                )
 
         if warning_level == "safe":
             return f"✅ Safe to spend. You'll have ${float(remaining):.2f} left in {category} today.{goal_suffix}"
@@ -299,14 +325,16 @@ class SpendingPreventionService:
             "alternative_categories": [],
             "suggestions": [
                 f"Set a daily budget for '{category}' in settings",
-                "Use automatic budget suggestions from AI"
+                "Use automatic budget suggestions from AI",
             ],
             "allow_override": True,
             "category": category,
-            "amount": float(amount)
+            "amount": float(amount),
         }
 
-    def get_all_category_status(self, transaction_date: Optional[date] = None) -> Dict[str, Dict]:
+    def get_all_category_status(
+        self, transaction_date: Optional[date] = None
+    ) -> Dict[str, Dict]:
         """
         Get current budget status for ALL categories
         Useful for dashboard/overview screens
@@ -326,12 +354,16 @@ class SpendingPreventionService:
         if transaction_date is None:
             transaction_date = date.today()
 
-        daily_plans = self.db.query(DailyPlan).filter(
-            and_(
-                DailyPlan.user_id == self.user_id,
-                DailyPlan.date == transaction_date
+        daily_plans = (
+            self.db.query(DailyPlan)
+            .filter(
+                and_(
+                    DailyPlan.user_id == self.user_id,
+                    DailyPlan.date == transaction_date,
+                )
             )
-        ).all()
+            .all()
+        )
 
         result = {}
         for plan in daily_plans:
@@ -357,7 +389,7 @@ class SpendingPreventionService:
                 "spent": float(spent),
                 "remaining": float(remaining),
                 "percentage_used": round(percentage, 1),
-                "status": status
+                "status": status,
             }
 
         return result

@@ -9,10 +9,12 @@ from app.legacy_tasks import (
     enqueue_monthly_redistribution,
     enqueue_subscription_refresh,
 )
-from app.services.core.engine.cron_task_streak_wins import run_streak_win_check
 from app.services.core.engine.cron_task_followup_reminder import run_followup_reminders
+from app.services.core.engine.cron_task_scheduled_expenses import (
+    run_scheduled_expenses_daily,
+)
+from app.services.core.engine.cron_task_streak_wins import run_streak_win_check
 from app.services.core.engine.cron_task_velocity_alerts import run_velocity_alerts_daily
-from app.services.core.engine.cron_task_scheduled_expenses import run_scheduled_expenses_daily
 
 redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 conn = Redis.from_url(redis_url)

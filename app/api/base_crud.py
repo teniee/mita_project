@@ -20,7 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class CRUDHelper:
@@ -34,7 +34,7 @@ class CRUDHelper:
         db: Session,
         model: Type[T],
         resource_id: UUID,
-        detail: str = "Resource not found"
+        detail: str = "Resource not found",
     ) -> T:
         """
         Get a resource by ID or raise 404.
@@ -62,7 +62,7 @@ class CRUDHelper:
         model: Type[T],
         resource_id: UUID,
         user_id: UUID,
-        detail: str = "Resource not found"
+        detail: str = "Resource not found",
     ) -> T:
         """
         Get a user-owned resource by ID or raise 404.
@@ -83,12 +83,11 @@ class CRUDHelper:
             HTTPException: 404 if not found or not owned by user
         """
         query = db.query(model).filter(
-            model.id == resource_id,
-            model.user_id == user_id
+            model.id == resource_id, model.user_id == user_id
         )
 
         # Filter out soft-deleted records if model supports soft delete
-        if hasattr(model, 'deleted_at'):
+        if hasattr(model, "deleted_at"):
             query = query.filter(model.deleted_at.is_(None))
 
         resource = query.first()
@@ -103,7 +102,7 @@ class CRUDHelper:
         user_id: UUID,
         skip: int = 0,
         limit: int = 100,
-        order_by: Optional[Any] = None
+        order_by: Optional[Any] = None,
     ) -> List[T]:
         """
         Get all resources owned by a user with pagination.
@@ -124,7 +123,7 @@ class CRUDHelper:
         query = db.query(model).filter(model.user_id == user_id)
 
         # Filter out soft-deleted records if model supports soft delete
-        if hasattr(model, 'deleted_at'):
+        if hasattr(model, "deleted_at"):
             query = query.filter(model.deleted_at.is_(None))
 
         if order_by is not None:
@@ -133,11 +132,7 @@ class CRUDHelper:
         return query.offset(skip).limit(limit).all()
 
     @staticmethod
-    def create_resource(
-        db: Session,
-        model: Type[T],
-        data: Dict[str, Any]
-    ) -> T:
+    def create_resource(db: Session, model: Type[T], data: Dict[str, Any]) -> T:
         """
         Create a new resource.
 
@@ -157,10 +152,7 @@ class CRUDHelper:
 
     @staticmethod
     def create_user_resource(
-        db: Session,
-        model: Type[T],
-        data: Dict[str, Any],
-        user_id: UUID
+        db: Session, model: Type[T], data: Dict[str, Any], user_id: UUID
     ) -> T:
         """
         Create a new user-owned resource.
@@ -182,10 +174,7 @@ class CRUDHelper:
 
     @staticmethod
     def update_resource(
-        db: Session,
-        resource: T,
-        data: Dict[str, Any],
-        exclude_none: bool = True
+        db: Session, resource: T, data: Dict[str, Any], exclude_none: bool = True
     ) -> T:
         """
         Update a resource with given data.
@@ -225,9 +214,10 @@ class CRUDHelper:
             True if deleted successfully
         """
         # Check if model supports soft delete (has deleted_at field)
-        if hasattr(resource, 'deleted_at'):
+        if hasattr(resource, "deleted_at"):
             # Soft delete for compliance (financial data must be recoverable)
             from datetime import datetime, timezone
+
             resource.deleted_at = datetime.now(timezone.utc)
             db.commit()
         else:
@@ -242,7 +232,7 @@ class CRUDHelper:
         model: Type[T],
         resource_id: UUID,
         user_id: UUID,
-        detail: str = "Resource not found"
+        detail: str = "Resource not found",
     ) -> bool:
         """
         Delete a user-owned resource by ID or raise 404.
@@ -273,7 +263,7 @@ class CRUDHelper:
         db: Session,
         model: Type[T],
         user_id: UUID,
-        filters: Optional[Dict[str, Any]] = None
+        filters: Optional[Dict[str, Any]] = None,
     ) -> int:
         """
         Count resources owned by a user.
@@ -297,11 +287,7 @@ class CRUDHelper:
         return query.count()
 
     @staticmethod
-    def exists(
-        db: Session,
-        model: Type[T],
-        resource_id: UUID
-    ) -> bool:
+    def exists(db: Session, model: Type[T], resource_id: UUID) -> bool:
         """
         Check if a resource exists.
 
@@ -330,7 +316,7 @@ class AsyncCRUDHelper:
         model: Type[T],
         resource_id: UUID,
         user_id: UUID,
-        detail: str = "Resource not found"
+        detail: str = "Resource not found",
     ) -> T:
         """
         Get a user-owned resource by ID or raise 404 (async).
@@ -344,7 +330,7 @@ class AsyncCRUDHelper:
             model.id == resource_id,
             model.user_id == user_id,
         )
-        if hasattr(model, 'deleted_at'):
+        if hasattr(model, "deleted_at"):
             query = query.where(model.deleted_at.is_(None))
 
         result = await db.execute(query)
@@ -356,9 +342,10 @@ class AsyncCRUDHelper:
     @staticmethod
     async def delete_resource(db: AsyncSession, resource: T) -> bool:
         """Delete a resource (soft delete if supported, hard delete otherwise)."""
-        if hasattr(resource, 'deleted_at'):
+        if hasattr(resource, "deleted_at"):
             # Soft delete for compliance (financial data must be recoverable)
             from datetime import datetime, timezone
+
             resource.deleted_at = datetime.now(timezone.utc)
             await db.commit()
         else:
@@ -372,7 +359,7 @@ class AsyncCRUDHelper:
         model: Type[T],
         resource_id: UUID,
         user_id: UUID,
-        detail: str = "Resource not found"
+        detail: str = "Resource not found",
     ) -> bool:
         """Delete a user-owned resource by ID or raise 404 (async, soft-delete aware)."""
         resource = await AsyncCRUDHelper.get_user_resource_or_404(
