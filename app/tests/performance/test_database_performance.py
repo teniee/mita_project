@@ -713,6 +713,19 @@ async def test_cleanup_performance_test_data():
     # class-scoped and not visible here, so build the factory directly.
     async_session_factory = get_async_session_factory()
     async with async_session_factory() as session:
+        # Another test's teardown may have dropped the schema before this
+        # module-level cleanup runs; with no tables there is nothing to clean.
+        tables_exist = await session.execute(
+            text(
+                "SELECT COUNT(*) FROM information_schema.tables "
+                "WHERE table_schema = 'public' "
+                "AND table_name IN ('transactions', 'users')"
+            )
+        )
+        if tables_exist.scalar() != 2:
+            print("✅ Performance test cleanup skipped — schema not present")
+            return
+
         # Delete test transactions
         await session.execute(
             delete(Transaction).where(Transaction.description.like("%test%"))
