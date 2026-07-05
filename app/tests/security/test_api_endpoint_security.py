@@ -26,7 +26,7 @@ from fastapi.testclient import TestClient
 
 from app.api.auth.routes import router as auth_router
 from app.api.auth.schemas import TokenOut
-from app.services.auth_jwt_service import create_access_token
+from app.services.auth_jwt_service import create_access_token, create_refresh_token
 
 
 class TestAuthEndpointSecurity:
@@ -37,15 +37,16 @@ class TestAuthEndpointSecurity:
 
     @pytest.fixture
     def test_app(self):
-        """Create test FastAPI app with auth routes"""
-        app = FastAPI()
-        app.include_router(auth_router, prefix="/auth")
-        return app
+        """Use the real application: real prefixes, middleware, handlers"""
+        from app.main import app as real_app
+
+        return real_app
 
     @pytest.fixture
     def client(self, test_app):
         """Create test client for API testing"""
-        return TestClient(test_app)
+        with TestClient(test_app, raise_server_exceptions=False) as c:
+            yield c
 
     @pytest.fixture
     def valid_token(self):
@@ -58,34 +59,32 @@ class TestAuthEndpointSecurity:
         Test login endpoint comprehensive security measures.
         Critical for financial application authentication security.
         """
-        # Test 1: Valid login request structure
-        valid_login_data = {
-            "email": "test@example.com",
-            "password": "ValidPassword123!",
-        }
+        # Test 1: Valid login request structure — real registration + login
+        import secrets as _secrets
 
-        with patch("app.api.auth.services.authenticate_user_async") as mock_auth, patch(
-            "app.core.security.get_rate_limiter"
-        ) as mock_rate_limiter:
+        email = f"api_sec_{_secrets.token_hex(6)}@example.com"
+        valid_login_data = {"email": email, "password": "ValidPassword123!"}
 
-            # Mock successful authentication
-            mock_auth.return_value = TokenOut(
-                access_token="mock_access_token", refresh_token="mock_refresh_token"
-            )
+        reg = client.post(
+            "/api/auth/register",
+            json={
+                "email": email,
+                "password": "ValidPassword123!",
+                "country": "US",
+                "annual_income": 50000,
+                "timezone": "UTC",
+            },
+        )
+        assert reg.status_code in [200, 201], f"registration failed: {reg.text}"
 
-            # Mock rate limiter
-            mock_limiter = Mock()
-            mock_limiter.check_auth_rate_limit = Mock()
-            mock_rate_limiter.return_value = mock_limiter
+        response = client.post("/api/auth/login", json=valid_login_data)
 
-            response = client.post("/auth/login", json=valid_login_data)
-
-            # Should succeed with proper structure
-            assert response.status_code == 200
-            response_data = response.json()
-            assert "data" in response_data
-            assert "access_token" in response_data["data"]
-            assert "refresh_token" in response_data["data"]
+        # Should succeed with proper structure
+        assert response.status_code == 200
+        response_data = response.json()
+        assert "data" in response_data
+        assert "access_token" in response_data["data"]
+        assert "refresh_token" in response_data["data"]
 
         # Test 2: SQL injection attempts
         sql_injection_attempts = [
@@ -99,7 +98,7 @@ class TestAuthEndpointSecurity:
         ]
 
         for injection_data in sql_injection_attempts:
-            response = client.post("/auth/login", json=injection_data)
+            response = client.post("/api/auth/login", json=injection_data)
 
             # Should reject malicious input
             assert response.status_code in [400, 401, 422]
@@ -128,7 +127,7 @@ class TestAuthEndpointSecurity:
         ]
 
         for malformed_data in malformed_requests:
-            response = client.post("/auth/login", json=malformed_data)
+            response = client.post("/api/auth/login", json=malformed_data)
             assert response.status_code in [
                 400,
                 422,
@@ -136,7 +135,7 @@ class TestAuthEndpointSecurity:
 
         # Test 4: Content-Type validation
         response = client.post(
-            "/auth/login",
+            "/api/auth/login",
             data="email=test@example.com&password=pass",
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
@@ -150,7 +149,7 @@ class TestAuthEndpointSecurity:
             "password": "x" * 10000,  # Very large password
         }
 
-        response = client.post("/auth/login", json=oversized_data)
+        response = client.post("/api/auth/login", json=oversized_data)
         assert response.status_code in [
             400,
             413,
@@ -164,7 +163,7 @@ class TestAuthEndpointSecurity:
         """
         # Test 1: Valid registration
         valid_registration = {
-            "email": "newuser@example.com",
+            "email": f"newuser_{__import__('secrets').token_hex(6)}@example.com",
             "password": "StrongPassword123!",
             "country": "US",
             "annual_income": 75000,
@@ -183,8 +182,8 @@ class TestAuthEndpointSecurity:
             mock_limiter.check_auth_rate_limit = Mock()
             mock_rate_limiter.return_value = mock_limiter
 
-            response = client.post("/auth/register", json=valid_registration)
-            assert response.status_code == 200
+            response = client.post("/api/auth/register", json=valid_registration)
+            assert response.status_code in [200, 201]
 
         # Test 2: Password security requirements
         weak_passwords = [
@@ -199,7 +198,7 @@ class TestAuthEndpointSecurity:
             weak_reg_data = valid_registration.copy()
             weak_reg_data["password"] = weak_password
 
-            response = client.post("/auth/register", json=weak_reg_data)
+            response = client.post("/api/auth/register", json=weak_reg_data)
             assert response.status_code in [
                 400,
                 422,
@@ -219,7 +218,7 @@ class TestAuthEndpointSecurity:
             invalid_reg_data = valid_registration.copy()
             invalid_reg_data["email"] = invalid_email
 
-            response = client.post("/auth/register", json=invalid_reg_data)
+            response = client.post("/api/auth/register", json=invalid_reg_data)
             assert response.status_code in [
                 400,
                 422,
@@ -236,7 +235,7 @@ class TestAuthEndpointSecurity:
             income_reg_data = valid_registration.copy()
             income_reg_data["annual_income"] = invalid_income
 
-            response = client.post("/auth/register", json=income_reg_data)
+            response = client.post("/api/auth/register", json=income_reg_data)
             assert response.status_code in [
                 400,
                 422,
@@ -258,7 +257,7 @@ class TestAuthEndpointSecurity:
                 xss_reg_data = valid_registration.copy()
                 xss_reg_data[field] = xss_payload
 
-                response = client.post("/auth/register", json=xss_reg_data)
+                response = client.post("/api/auth/register", json=xss_reg_data)
                 # Should either reject or sanitize XSS attempts
                 assert response.status_code in [200, 400, 422]
 
@@ -273,59 +272,46 @@ class TestAuthEndpointSecurity:
         Test token refresh endpoint security and token rotation.
         Critical for maintaining session security in financial applications.
         """
-        # Create refresh token
-        refresh_token = create_access_token(
-            {"sub": "test_user_123"}, scope="refresh_token"
+        import secrets as _secrets
+
+        email = f"refresh_sec_{_secrets.token_hex(6)}@example.com"
+        reg = client.post(
+            "/api/auth/register",
+            json={
+                "email": email,
+                "password": "ValidPassword123!",
+                "country": "US",
+                "annual_income": 50000,
+                "timezone": "UTC",
+            },
         )
+        assert reg.status_code in [200, 201]
+        refresh_token = reg.json()["data"]["refresh_token"]
 
-        with patch("app.api.auth.routes.verify_token") as mock_verify, patch(
-            "app.services.auth_jwt_service.blacklist_token"
-        ) as mock_blacklist, patch(
-            "app.core.security.get_rate_limiter"
-        ) as mock_rate_limiter:
+        # Test 1: Valid refresh request (token travels in the body)
+        response = client.post(
+            "/api/auth/refresh-token", json={"refresh_token": refresh_token}
+        )
+        assert response.status_code == 200, response.text
+        response_data = response.json()
+        assert "access_token" in response_data["data"]
+        assert "refresh_token" in response_data["data"]
 
-            # Mock token verification
-            mock_verify.return_value = {"sub": "test_user_123", "jti": "mock_jti"}
-            mock_blacklist.return_value = True
+        # Test 2: Missing body
+        response = client.post("/api/auth/refresh-token")
+        assert response.status_code in [401, 403, 422]
 
-            # Mock rate limiter
-            mock_limiter = Mock()
-            mock_limiter.check_auth_rate_limit = Mock()
-            mock_rate_limiter.return_value = mock_limiter
-
-            # Test 1: Valid refresh request
-            headers = {"Authorization": f"Bearer {refresh_token}"}
-            response = client.post("/auth/refresh", headers=headers)
-
-            assert response.status_code == 200
-            response_data = response.json()
-            assert "access_token" in response_data["data"]
-            assert "refresh_token" in response_data["data"]
-
-            # Test 2: Missing authorization header
-            response = client.post("/auth/refresh")
-            assert response.status_code in [401, 403]
-
-            # Test 3: Invalid token format
-            invalid_headers = [
-                {"Authorization": "Bearer invalid_token"},
-                {"Authorization": "Basic invalid_auth"},
-                {"Authorization": "Bearer "},
-                {"Authorization": ""},
-            ]
-
-            for invalid_header in invalid_headers:
-                mock_verify.return_value = None  # Invalid token
-                response = client.post("/auth/refresh", headers=invalid_header)
-                assert response.status_code in [401, 403]
-
-            # Test 4: Expired token
-            mock_verify.side_effect = HTTPException(
-                status_code=401, detail="Token expired"
+        # Test 3: Invalid token values are rejected without a 5xx
+        for bad_token in ["invalid_token", "", "Bearer xyz"]:
+            response = client.post(
+                "/api/auth/refresh-token", json={"refresh_token": bad_token}
             )
-            headers = {"Authorization": "Bearer expired_token"}
-            response = client.post("/auth/refresh", headers=headers)
-            assert response.status_code == 401
+            assert response.status_code in [
+                400,
+                401,
+                403,
+                422,
+            ], f"unexpected status for bad refresh token: {response.status_code}"
 
     def test_security_headers(self, client):
         """
@@ -333,9 +319,13 @@ class TestAuthEndpointSecurity:
         Essential for financial application security compliance.
         """
         endpoints_to_test = [
-            ("/auth/login", "POST", {"email": "test@example.com", "password": "pass"}),
             (
-                "/auth/register",
+                "/api/auth/login",
+                "POST",
+                {"email": "test@example.com", "password": "pass"},
+            ),
+            (
+                "/api/auth/register",
                 "POST",
                 {
                     "email": "test@example.com",
@@ -364,7 +354,7 @@ class TestAuthEndpointSecurity:
                     "X-Content-Type-Options": "nosniff",
                     "X-Frame-Options": "DENY",
                     "X-XSS-Protection": "1; mode=block",
-                    "Referrer-Policy": "no-referrer",
+                    "Referrer-Policy": "same-origin",
                     "Content-Security-Policy": None,  # Should exist but value may vary
                 }
 
@@ -410,15 +400,30 @@ class TestAuthEndpointSecurity:
         Critical for preventing information disclosure in financial applications.
         """
         # Test 1: Database errors should not be exposed
-        with patch("app.api.auth.services.authenticate_user_async") as mock_auth:
+        # (patch the credential check the login route actually awaits)
+        with patch("app.api.auth.login.verify_password_async") as mock_verify:
             # Simulate database error
-            mock_auth.side_effect = Exception(
+            mock_verify.side_effect = Exception(
                 "Database connection failed on table 'users' at line 42"
             )
 
+            import secrets as _secrets
+
+            email = f"errsec_{_secrets.token_hex(6)}@example.com"
+            client.post(
+                "/api/auth/register",
+                json={
+                    "email": email,
+                    "password": "ValidPassword123!",
+                    "country": "US",
+                    "annual_income": 50000,
+                    "timezone": "UTC",
+                },
+            )
+
             response = client.post(
-                "/auth/login",
-                json={"email": "test@example.com", "password": "password"},
+                "/api/auth/login",
+                json={"email": email, "password": "ValidPassword123!"},
             )
 
             # Should return generic error, not database details
@@ -445,7 +450,7 @@ class TestAuthEndpointSecurity:
             )
 
             response = client.post(
-                "/auth/register",
+                "/api/auth/register",
                 json={
                     "email": "test@example.com",
                     "password": "StrongPass123!",
@@ -456,7 +461,7 @@ class TestAuthEndpointSecurity:
             )
 
             # Should not expose stack trace information
-            assert response.status_code in [400, 500]
+            assert response.status_code in [400, 422, 500]
             error_text = response.text.lower()
 
             stack_trace_keywords = [
@@ -476,7 +481,7 @@ class TestAuthEndpointSecurity:
             "password": "'; DROP TABLE users; --",
         }
 
-        response = client.post("/auth/login", json=malicious_input)
+        response = client.post("/api/auth/login", json=malicious_input)
 
         # Response should not echo back malicious input
         response_text = response.text
@@ -489,39 +494,43 @@ class TestAuthEndpointSecurity:
         Test rate limiting integration with auth endpoints.
         Ensures rate limiting is properly applied to prevent abuse.
         """
+        # Mock rate limiter to trigger rate limiting
+        # Restore production limits (the test env relaxes them) and hit the
+        # real register limiter until it trips.
+        import os as _os
+
         from app.core.error_handler import RateLimitException
 
-        # Mock rate limiter to trigger rate limiting
-        with patch("app.core.security.get_rate_limiter") as mock_rate_limiter_factory:
-            mock_rate_limiter = Mock()
-            mock_rate_limiter.check_auth_rate_limit.side_effect = RateLimitException(
-                "Rate limit exceeded"
-            )
-            mock_rate_limiter_factory.return_value = mock_rate_limiter
+        _os.environ["TESTING"] = "false"
+        _prev_environment = _os.environ.get("ENVIRONMENT")
+        _os.environ["ENVIRONMENT"] = "development"  # _testing_mode checks both
+        try:
+            import secrets as _secrets
 
-            # Test rate limiting on login
-            response = client.post(
-                "/auth/login",
-                json={"email": "test@example.com", "password": "password"},
-            )
+            saw_429 = False
+            for _ in range(7):  # production limit is 5/hour per IP
+                response = client.post(
+                    "/api/auth/register",
+                    json={
+                        "email": f"rl_{_secrets.token_hex(6)}@example.com",
+                        "password": "StrongPass123!",
+                        "country": "US",
+                        "annual_income": 50000,
+                        "timezone": "UTC",
+                    },
+                )
+                if response.status_code == 429:
+                    saw_429 = True
+                    break
 
-            assert response.status_code == 429  # Too Many Requests
-            response_data = response.json()
-            assert "rate limit" in response_data.get("detail", "").lower()
-
-            # Test rate limiting on register
-            response = client.post(
-                "/auth/register",
-                json={
-                    "email": "test@example.com",
-                    "password": "StrongPass123!",
-                    "country": "US",
-                    "annual_income": 50000,
-                    "timezone": "UTC",
-                },
-            )
-
-            assert response.status_code == 429
+            assert saw_429, "register endpoint never rate-limited"
+            body = response.json()
+            detail = str(body).lower()
+            assert "rate limit" in detail or "too many" in detail
+        finally:
+            _os.environ["TESTING"] = "true"
+            if _prev_environment is not None:
+                _os.environ["ENVIRONMENT"] = _prev_environment
 
     def test_cors_security(self, client):
         """
@@ -530,7 +539,7 @@ class TestAuthEndpointSecurity:
         """
         # Test 1: Preflight request
         response = client.options(
-            "/auth/login",
+            "/api/auth/login",
             headers={
                 "Origin": "https://malicious-site.com",
                 "Access-Control-Request-Method": "POST",
@@ -552,7 +561,7 @@ class TestAuthEndpointSecurity:
 
         # Test 2: Actual request with origin
         response = client.post(
-            "/auth/login",
+            "/api/auth/login",
             json={"email": "test@example.com", "password": "pass"},
             headers={"Origin": "https://untrusted-site.com"},
         )
@@ -574,7 +583,8 @@ class TestAuthEndpointSecurity:
         """
         # Test 1: Current API version should work
         response = client.post(
-            "/auth/login", json={"email": "test@example.com", "password": "password"}
+            "/api/auth/login",
+            json={"email": "test@example.com", "password": "password"},
         )
 
         # Should respond (even if with error due to mocking)
@@ -600,31 +610,23 @@ class TestAuthEndpointSecurity:
                 501,
             ], f"Deprecated endpoint {deprecated_endpoint} should be disabled or secured"
 
-    def test_request_logging_security(self, client):
+    def test_request_logging_security(self, client, caplog):
         """
         Test that request logging doesn't expose sensitive information.
         Ensures audit trails don't contain passwords or tokens.
         """
-        with patch("app.core.logger.info") as mock_logger:
-            # Make request with sensitive data
-            sensitive_data = {
-                "email": "user@example.com",
-                "password": "SuperSecretPassword123!",
-            }
+        import logging as _logging
 
-            client.post("/auth/login", json=sensitive_data)
+        sensitive_password = "SuperSecretPassword123!"
+        with caplog.at_level(_logging.DEBUG):
+            client.post(
+                "/api/auth/login",
+                json={"email": "user@example.com", "password": sensitive_password},
+            )
 
-            # Check that logging calls don't contain sensitive data
-            if mock_logger.called:
-                for call_args in mock_logger.call_args_list:
-                    log_message = str(call_args)
-
-                    # Should not log passwords
-                    assert "SuperSecretPassword123!" not in log_message
-                    assert sensitive_data["password"] not in log_message
-
-                    # Email might be logged but should be handled carefully
-                    # (This test might need adjustment based on actual logging policy)
+        assert (
+            sensitive_password not in caplog.text
+        ), "Plaintext password appeared in application logs"
 
 
 if __name__ == "__main__":

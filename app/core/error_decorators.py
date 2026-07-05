@@ -113,14 +113,22 @@ def handle_errors(
                 # Handle all other exceptions as internal server errors
                 import traceback as _tb
 
+                from app.core.config import settings as _settings
+
                 internal_error = StandardizedAPIException(
                     message="An unexpected error occurred",
                     error_code=ErrorCode.SYSTEM_INTERNAL_ERROR,
                     status_code=500,
-                    details={
-                        "exception_type": type(e).__name__,
-                        "exception_msg": str(e),
-                    },
+                    # Raw exception text goes to logs/Sentry, never to clients
+                    # (it leaks schema/internals); expose it in DEBUG builds only.
+                    details=(
+                        {
+                            "exception_type": type(e).__name__,
+                            "exception_msg": str(e),
+                        }
+                        if getattr(_settings, "DEBUG", False)
+                        else {}
+                    ),
                     context={"original_error": type(e).__name__},
                 )
 

@@ -292,12 +292,14 @@ class ErrorResponse:
             validation_errors = []
             if hasattr(error, "errors") and callable(error.errors):
                 for err in error.errors():
+                    # Never echo the submitted value back — reflecting raw
+                    # input (e.g. injection attempts) into error responses is
+                    # an information-disclosure/reflection vector.
                     validation_errors.append(
                         {
                             "field": ".".join(str(loc) for loc in err.get("loc", [])),
                             "message": err.get("msg", "Invalid value"),
                             "type": err.get("type", "value_error"),
-                            "input": err.get("input"),
                         }
                     )
 
@@ -354,8 +356,12 @@ class ErrorResponse:
                 },
             }
 
-        # Add request context for debugging (non-production)
-        if request and logger.level <= logging.DEBUG:
+        # Add request context for debugging (explicit DEBUG builds only —
+        # logger.level is 0/NOTSET on module loggers, so the old check
+        # leaked debug_info in production)
+        from app.core.config import settings as _settings
+
+        if request and getattr(_settings, "DEBUG", False):
             response["error"]["debug_info"] = {
                 "method": request.method,
                 "path": request.url.path,

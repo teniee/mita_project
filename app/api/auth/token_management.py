@@ -66,8 +66,14 @@ async def refresh_token_standardized(
 
     # Verify refresh token
     try:
-        token_data = await verify_token(refresh_token)
-        if not token_data or token_data.get("token_type") != "refresh":
+        # verify_token defaults to access tokens; refresh tokens carry
+        # token_type="refresh_token". The old call rejected EVERY refresh
+        # token (default type mismatch + comparison against "refresh"),
+        # force-logging users out whenever their access token expired.
+        token_data = await verify_token(
+            refresh_token, token_type="refresh_token", db=db
+        )
+        if not token_data:
             raise AuthenticationError(
                 "Invalid refresh token", ErrorCode.AUTH_TOKEN_INVALID
             )
