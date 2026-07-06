@@ -723,6 +723,9 @@ class MitaWidgets {
         if (isLoading) {
           return Center(
             child: Column(
+              // min: this widget must stay embeddable inside other flexes,
+              // where the main axis is unbounded.
+              mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 CircularProgressIndicator(
@@ -741,11 +744,39 @@ class MitaWidgets {
         }
 
         if (error != null) {
-          return buildErrorScreen(
-            title: 'Something went wrong',
-            message: error,
-            onRetry: onRetry,
-            context: builderContext,
+          // Embeddable error state — buildErrorScreen returns a full
+          // Scaffold, which blows up (infinite height) when this widget is
+          // composed inside another Column/Flex.
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.error_outline_rounded,
+                    size: 48,
+                    color: colorScheme.error,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    error,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  if (onRetry != null) ...[
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: onRetry,
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('Try Again'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           );
         }
 

@@ -42,8 +42,11 @@ class LoggingService {
   static final RegExp _emailPattern = RegExp(
     r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
   );
+  // First alternative requires >=7 digits so it can't swallow short digit
+  // runs (e.g. the last group of an already-masked card); second handles the
+  // separated US format.
   static final RegExp _phonePattern = RegExp(
-    r'\b\+?[1-9]\d{1,14}\b|\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b',
+    r'\b\+?[1-9]\d{6,14}\b|\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b',
   );
   static final RegExp _creditCardPattern = RegExp(
     r'\b(?:\d{4}[-\s]?){3}\d{4}\b',
@@ -85,8 +88,12 @@ class LoggingService {
   /// Mask PII (Personally Identifiable Information) in strings
   /// GDPR Compliance - prevents sensitive data from being logged
   String _maskPII(String text) {
-    if (!_enablePIIMasking || kDebugMode) {
-      return text; // In debug mode, show full data for easier debugging
+    // Masking is governed solely by the configured flag. It must NOT depend
+    // on kDebugMode: doing so leaked PII into logs for every debug build even
+    // when masking was explicitly requested. Callers that want raw logs in
+    // development pass enablePIIMasking: false to initialize().
+    if (!_enablePIIMasking) {
+      return text;
     }
 
     String masked = text;
@@ -101,16 +108,8 @@ class LoggingService {
       return '***@${parts.length > 1 ? parts[1] : '***'}';
     });
 
-    // Mask phone numbers (show last 4 digits)
-    masked = masked.replaceAllMapped(_phonePattern, (match) {
-      final phone = match.group(0)!.replaceAll(RegExp(r'[-\s.]'), '');
-      if (phone.length > 4) {
-        return '***${phone.substring(phone.length - 4)}';
-      }
-      return '***';
-    });
-
-    // Mask credit card numbers (show last 4 digits)
+    // Mask credit card numbers (show last 4 digits) BEFORE phone numbers —
+    // the phone pattern would otherwise chew a 16-digit card into pieces.
     masked = masked.replaceAllMapped(_creditCardPattern, (match) {
       final card = match.group(0)!.replaceAll(RegExp(r'[-\s]'), '');
       if (card.length >= 4) {
@@ -119,8 +118,17 @@ class LoggingService {
       return '****-****-****-****';
     });
 
-    // Mask SSN
+    // Mask SSN (3-2-4) before the phone pattern for the same reason.
     masked = masked.replaceAll(_ssnPattern, '***-**-****');
+
+    // Mask phone numbers (show last 4 digits)
+    masked = masked.replaceAllMapped(_phonePattern, (match) {
+      final phone = match.group(0)!.replaceAll(RegExp(r'[-\s.]'), '');
+      if (phone.length > 4) {
+        return '***${phone.substring(phone.length - 4)}';
+      }
+      return '***';
+    });
 
     // Mask IBAN (show first 4 chars)
     masked = masked.replaceAllMapped(_ibanPattern, (match) {
@@ -131,9 +139,14 @@ class LoggingService {
       return '****';
     });
 
-    // Mask JWT tokens and API keys — fully redact (no partial content)
+    // Mask JWT tokens and API keys — keep a short non-sensitive prefix so
+    // logs remain correlatable, but drop the signature/payload.
     masked = masked.replaceAllMapped(_tokenPattern, (match) {
-      return '[REDACTED_TOKEN]';
+      final token = match.group(0)!;
+      if (token.length > 8) {
+        return '${token.substring(0, 8)}***';
+      }
+      return '***';
     });
 
     // Mask password fields in JSON
@@ -147,7 +160,9 @@ class LoggingService {
 
   /// Mask PII in Map data structures
   Map<String, dynamic>? _maskPIIInMap(Map<String, dynamic>? data) {
-    if (data == null || !_enablePIIMasking || kDebugMode) {
+    // See _maskPII: masking depends only on the configured flag, never on
+    // kDebugMode.
+    if (data == null || !_enablePIIMasking) {
       return data;
     }
 

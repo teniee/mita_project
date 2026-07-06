@@ -507,11 +507,16 @@ void main() {
         // Test loading state
         expect(testWidgetState.isLoading, isFalse);
 
-        // Test error execution
-        await testWidgetState.executeRobustly(() async {
+        // Test error execution. Don't await before pumping: the operation's
+        // internal timer only fires when the test clock advances, so a plain
+        // await would deadlock the fake-async zone.
+        final operation = testWidgetState.executeRobustly(() async {
           await Future.delayed(const Duration(milliseconds: 100));
           throw Exception('Test execution error');
         }, operationName: 'Test Operation');
+
+        await tester.pump(const Duration(milliseconds: 150));
+        await operation;
 
         await tester.pump();
         expect(testWidgetState.errorMessage, isNotNull);
@@ -524,6 +529,9 @@ void main() {
         final analyticsService = ErrorAnalyticsService.instance;
 
         await analyticsService.initialize();
+        // The analytics singleton persists across tests in this file; start
+        // this end-to-end assertion from a clean slate.
+        analyticsService.clearAllData();
         recoveryService.initialize();
 
         int operationAttempts = 0;

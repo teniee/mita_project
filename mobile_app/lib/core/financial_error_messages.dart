@@ -48,6 +48,9 @@ enum FinancialErrorType {
   locationPermission,
   deviceNotSupported,
 
+  // Security incidents
+  securityBreach,
+
   // Generic
   unknown,
 }
@@ -76,6 +79,16 @@ class FinancialErrorMessages {
         context?['operation']?.toString().toLowerCase() ?? '';
     final contextEndpoint =
         context?['endpoint']?.toString().toLowerCase() ?? '';
+
+    // Security incidents & data integrity (checked first: most severe)
+    if (errorString.contains('security breach') ||
+        errorString.contains('breach detected')) {
+      return FinancialErrorType.securityBreach;
+    }
+
+    if (errorString.contains('corruption') || errorString.contains('corrupt')) {
+      return FinancialErrorType.dataCorrupted;
+    }
 
     // Authentication & Security errors
     if (errorString.contains('session expired') ||
@@ -255,7 +268,7 @@ class FinancialErrorMessages {
           severity: FinancialErrorSeverity.low,
           category: 'Budget Management',
           financialContext:
-              'Staying within budget helps achieve your financial goals. Consider if this expense is necessary.',
+              'Your records stay accurate either way — staying within budget simply keeps you on track for your financial goals.',
           tips: [
             'Review your spending categories to find areas to save',
             'Consider postponing non-essential purchases',
@@ -430,6 +443,154 @@ class FinancialErrorMessages {
             'Try again in a few minutes',
             'You can still use offline features',
             'Check our status page for updates',
+          ],
+        );
+
+      case FinancialErrorType.requestTimeout:
+        return FinancialErrorInfo(
+          title: 'Connection Timed Out',
+          message:
+              'The server is taking longer than usual to respond. Please try again.',
+          actions: [
+            FinancialErrorAction(
+              label: 'Try Again',
+              action: FinancialErrorActionType.retry,
+              isPrimary: true,
+            ),
+            FinancialErrorAction(
+              label: 'Work Offline',
+              action: FinancialErrorActionType.continueOffline,
+              isPrimary: false,
+            ),
+          ],
+          icon: Icons.hourglass_empty_outlined,
+          severity: FinancialErrorSeverity.low,
+          category: 'Connectivity',
+          financialContext:
+              'Your financial data stays secure; nothing was lost while connecting.',
+          tips: [
+            'Check your internet connection strength',
+            'Try again in a few moments',
+            'You can keep recording expenses offline',
+          ],
+        );
+
+      case FinancialErrorType.invalidEmail:
+        return FinancialErrorInfo(
+          title: 'Invalid Email Address',
+          message:
+              'That email address doesn\'t look right. Please check it and try again.',
+          actions: [
+            FinancialErrorAction(
+              label: 'Fix Email',
+              action: FinancialErrorActionType.edit,
+              isPrimary: true,
+            ),
+          ],
+          icon: Icons.alternate_email_outlined,
+          severity: FinancialErrorSeverity.low,
+          category: 'Input Validation',
+          financialContext:
+              'A correct email keeps your account recovery and receipts accurate.',
+        );
+
+      case FinancialErrorType.weakPassword:
+        return FinancialErrorInfo(
+          title: 'Password Too Weak',
+          message:
+              'Please choose a stronger password to keep your financial data secure.',
+          actions: [
+            FinancialErrorAction(
+              label: 'Choose New Password',
+              action: FinancialErrorActionType.edit,
+              isPrimary: true,
+            ),
+          ],
+          icon: Icons.password_outlined,
+          severity: FinancialErrorSeverity.low,
+          category: 'Input Validation',
+          financialContext:
+              'A strong password keeps your financial data secure.',
+          tips: [
+            'Use at least 8 characters',
+            'Mix letters, numbers and symbols',
+            'Avoid names and common words',
+          ],
+        );
+
+      case FinancialErrorType.requiredField:
+        return FinancialErrorInfo(
+          title: 'Missing Information',
+          message: 'Please fill in the highlighted fields to continue.',
+          actions: [
+            FinancialErrorAction(
+              label: 'Complete Fields',
+              action: FinancialErrorActionType.edit,
+              isPrimary: true,
+            ),
+          ],
+          icon: Icons.edit_note_outlined,
+          severity: FinancialErrorSeverity.low,
+          category: 'Input Validation',
+          financialContext:
+              'Complete information keeps your financial records accurate.',
+        );
+
+      case FinancialErrorType.dataCorrupted:
+        return FinancialErrorInfo(
+          title: 'Data Issue Detected',
+          message:
+              'We found a problem with some stored data. A re-sync usually fixes this safely.',
+          actions: [
+            FinancialErrorAction(
+              label: 'Re-sync Data',
+              action: FinancialErrorActionType.retry,
+              isPrimary: true,
+            ),
+            FinancialErrorAction(
+              label: 'Contact Support',
+              action: FinancialErrorActionType.contactSupport,
+              isPrimary: false,
+            ),
+          ],
+          icon: Icons.report_problem_outlined,
+          severity: FinancialErrorSeverity.high,
+          category: 'Data Integrity',
+          financialContext:
+              'Your server-side records remain safe; the app will restore an accurate copy.',
+          tips: [
+            'Re-sync to restore your data from the server',
+            'Avoid making changes until the sync completes',
+            'Contact support if the problem persists',
+          ],
+        );
+
+      case FinancialErrorType.securityBreach:
+        return FinancialErrorInfo(
+          title: 'Security Alert',
+          message:
+              'We detected unusual activity and secured your account. Please sign in again and review your recent activity.',
+          actions: [
+            FinancialErrorAction(
+              label: 'Secure My Account',
+              action: FinancialErrorActionType.reauth,
+              isPrimary: true,
+            ),
+            FinancialErrorAction(
+              label: 'Contact Support',
+              action: FinancialErrorActionType.contactSupport,
+              isPrimary: false,
+            ),
+          ],
+          icon: Icons.gpp_maybe_outlined,
+          severity: FinancialErrorSeverity.critical,
+          category: 'Security',
+          financialContext:
+              'Your financial data is protected; we locked things down as a precaution.',
+          tips: [
+            'Change your password immediately',
+            'Review recent transactions for anything unfamiliar',
+            'Enable biometric login for extra protection',
           ],
         );
 
