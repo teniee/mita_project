@@ -19,8 +19,12 @@ void main() {
     testWidgets('Complete location selection flow',
         (WidgetTester tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: OnboardingLocationScreen(),
+        MaterialApp(
+          home: const OnboardingLocationScreen(),
+          routes: {
+            '/onboarding_income': (context) =>
+                const Scaffold(body: Text('Income step')),
+          },
         ),
       );
 
@@ -33,14 +37,13 @@ void main() {
           find.widgetWithText(ElevatedButton, 'Continue'));
       expect(continueButton.onPressed, isNull);
 
-      // Find and tap California in the list
-      await tester.scrollUntilVisible(
-        find.text('California'),
-        500.0,
-        scrollable: find.byType(Scrollable).first,
-      );
+      // Search narrows the list to one result and hides the popular-state
+      // chips ('California' would otherwise match twice).
+      await tester.enterText(find.byType(TextField), 'California');
+      await tester.pump();
 
-      await tester.tap(find.text('California'));
+      await tester.ensureVisible(find.widgetWithText(ListTile, 'California'));
+      await tester.tap(find.widgetWithText(ListTile, 'California'));
       await tester.pump();
 
       // Verify selection feedback
@@ -51,9 +54,10 @@ void main() {
           find.widgetWithText(ElevatedButton, 'Continue'));
       expect(enabledButton.onPressed, isNotNull);
 
-      // Tap continue (note: actual navigation would require full app context)
+      // Tap continue
+      await tester.ensureVisible(find.text('Continue'));
       await tester.tap(find.text('Continue'));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       // Verify state is saved in OnboardingState
       expect(OnboardingState.instance.countryCode, equals('US'));
@@ -80,11 +84,20 @@ void main() {
 
     testWidgets('State list contains all 50 states',
         (WidgetTester tester) async {
+      // Tall surface so the embedded state list is on-screen and drags
+      // actually reach it (on the default 600px surface it sits below
+      // the fold and drag gestures miss).
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
       await tester.pumpWidget(
         const MaterialApp(
           home: OnboardingLocationScreen(),
         ),
       );
+      await tester.pump();
 
       // Get all state list items
       final stateListFinder = find.byType(ListTile);
@@ -92,16 +105,7 @@ void main() {
       // Scroll through and count unique states
       final Set<String> foundStates = {};
 
-      // Scroll to find all states
-      for (int i = 0; i < 60; i++) {
-        // Extra iterations to ensure we see all
-        await tester.drag(
-          find.byType(ListView),
-          const Offset(0, -100),
-        );
-        await tester.pump();
-
-        // Find all visible ListTiles and extract state names
+      void collectVisible() {
         final visibleTiles = tester.widgetList<ListTile>(stateListFinder);
         for (final tile in visibleTiles) {
           if (tile.title is Text) {
@@ -113,46 +117,56 @@ void main() {
         }
       }
 
+      collectVisible();
+      // Scroll to find all states
+      for (int i = 0; i < 60; i++) {
+        await tester.drag(
+          find.byType(ListView).last,
+          const Offset(0, -100),
+        );
+        await tester.pump();
+        collectVisible();
+      }
+
       // Should find a reasonable number of states (test may need adjustment)
       expect(foundStates.length, greaterThan(40));
     });
 
     testWidgets('State selection persistence', (WidgetTester tester) async {
       await tester.pumpWidget(
-        const MaterialApp(
-          home: OnboardingLocationScreen(),
+        MaterialApp(
+          home: const OnboardingLocationScreen(),
+          routes: {
+            '/onboarding_income': (context) =>
+                const Scaffold(body: Text('Income step')),
+          },
         ),
       );
 
-      // Select Texas
-      await tester.scrollUntilVisible(
-        find.text('Texas'),
-        500.0,
-        scrollable: find.byType(Scrollable).first,
-      );
-
-      await tester.tap(find.text('Texas'));
+      // Select Texas (search narrows to a single match)
+      await tester.enterText(find.byType(TextField), 'Texas');
+      await tester.pump();
+      await tester.ensureVisible(find.widgetWithText(ListTile, 'Texas'));
+      await tester.tap(find.widgetWithText(ListTile, 'Texas'));
       await tester.pump();
 
       // Verify Texas is selected
       expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
 
       // Select different state (Florida)
-      await tester.scrollUntilVisible(
-        find.text('Florida'),
-        500.0,
-        scrollable: find.byType(Scrollable).first,
-      );
-
-      await tester.tap(find.text('Florida'));
+      await tester.enterText(find.byType(TextField), 'Florida');
+      await tester.pump();
+      await tester.ensureVisible(find.widgetWithText(ListTile, 'Florida'));
+      await tester.tap(find.widgetWithText(ListTile, 'Florida'));
       await tester.pump();
 
       // Should still have only one check mark (Florida selected)
       expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
 
       // Continue with Florida selection
+      await tester.ensureVisible(find.text('Continue'));
       await tester.tap(find.text('Continue'));
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       // Verify Florida is saved, not Texas
       expect(OnboardingState.instance.stateCode, equals('FL'));
@@ -247,7 +261,9 @@ void main() {
 
         for (final state in states) {
           if (find.text(state).evaluate().isNotEmpty) {
-            await tester.tap(find.text(state));
+            // A state name can appear both as a popular-state chip and a
+            // list tile; either instance selects the state.
+            await tester.tap(find.text(state).first, warnIfMissed: false);
             await tester.pump();
           }
         }
@@ -272,13 +288,9 @@ void main() {
         );
 
         // Select a state and take another screenshot
-        await tester.scrollUntilVisible(
-          find.text('California'),
-          500.0,
-          scrollable: find.byType(Scrollable).first,
-        );
-
-        await tester.tap(find.text('California'));
+        await tester.enterText(find.byType(TextField), 'California');
+        await tester.pump();
+        await tester.tap(find.widgetWithText(ListTile, 'California'));
         await tester.pump();
 
         await expectLater(
