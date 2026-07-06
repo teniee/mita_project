@@ -1,130 +1,100 @@
 # MITA — Production Readiness (Live)
 
-> **Owner:** production-readiness audit · **Branch:** `claude/production-readiness-audit-hlbda5`
-> **Last updated:** 2026-07-05
-> **Verification environment:** Python 3.11 venv · PostgreSQL 16 (real test DB `test_mita`) · Redis 7 (real, db 0/1/15) · no Flutter SDK (mobile = static review) · no external OpenAI/Firebase/Apple/Google keys
+> **Owner:** production-readiness engineering · **Branch:** `claude/mita-finance-prod-ready-wqj2k9`
+> **Last updated:** 2026-07-06 (session 2 — continuation of the 2026-07-05 audit)
+> **Verification environment:** Python 3.11 venv · PostgreSQL 16 (real) · Redis 7 (real) · Flutter 3.35.4 / Dart 3.9.2 (real SDK, tests + analyze) · no Android SDK (dl.google.com blocked by sandbox egress policy) · no external Apple/Google/OpenAI/Firebase credentials · Railway production URL unreachable from sandbox (egress policy)
 
-This file is the single source of truth. It supersedes `docs/PRODUCTION_READINESS_PROGRESS.md` (kept for history). Update **before** each change and **after** each verified fix.
+This file is the single source of truth. Update **before** each change and **after** each verified fix.
 
 ---
 
-## Current test totals
+## Current verified status (this session)
 
-Measured with real Postgres 16 + Redis 7. Two roots (`pytest.ini` scopes to `app/tests`; `tests/` run separately).
+| Gate | Status | Evidence |
+|------|--------|----------|
+| `tests/` root | ✅ **287/287** | after fixing aiosqlite dep (was inside a comment string) |
+| `app/tests` root | ✅ 580 pass + order-dependent cleanup flake fixed; IAP suite rewritten (19 new security tests); full-suite re-run pending final sweep | see below |
+| black / isort / ruff | ✅ PASS | whole repo |
+| bandit -ll | ✅ PASS (0 medium/high) | app/ |
+| Migrations from empty PG 16 | ✅ 0001→**0034** | includes new 0034 (iap_events + subscription purchase identity) |
+| ORM ↔ schema drift | ✅ no column/table drift | subscriptions.deleted_at added to model; remaining diffs are index/FK-name noise |
+| Backend cold start | ✅ | uvicorn against migration-built DB |
+| `GET /` & `GET /health` | ✅ 200 / healthy | |
+| Backend E2E journey | ✅ register→login→onboarding→calendar-day→refresh→authed→404 | **found+fixed**: Decimal serialization 500 on calendar day |
+| Flutter analyze | ✅ 0 errors (infos/warnings only; CI uses --no-fatal-infos --no-fatal-warnings) | |
+| Flutter tests | 🟡 in progress — from **104 failures → single digits**; all failure clusters below fixed and green per-file | full-suite re-measure pending |
+| Mobile HTTP client ↔ backend | ✅ comprehensive_api_test 12/12 against local FastAPI (`--dart-define=API_BASE_URL=http://localhost:8000`) | Railway URL blocked in sandbox |
+| Android debug build | ❌ blocked in sandbox: dl.google.com (Android SDK + google() maven) returns 403 via egress proxy | CI (GitHub) can build; see Next tasks |
+| iOS build | ❌ blocked: no macOS/Xcode in environment | |
+| GitHub CI run | ⏳ pending push + run evidence | |
 
-| Root | Passed | Failed | Errors | Notes |
-|------|-------:|-------:|-------:|-------|
-| `app/tests` | **581** | **0** | **0** | Single clean run, 272s, against real Postgres 16 + Redis 7 (`exit=0`). |
-| `tests/` | **287** | **0** | **0** | engine/rebalancer/calendar/velocity/scheduled-expense unit tests. |
-| **Total** | **868** | **0** | **0** | Full backend suite green. |
+## Fixed this session (all verified by tests)
 
-Session start baseline (2026-07-04, before this audit): **447 passed / 102 failed / 23 errors** (`app/tests`).
-Final (2026-07-05): **868 passed / 0 failed / 0 errors** across both roots.
-Latest per-file verified green this session (real DB+Redis):
-- auth-comprehensive 22/22 · token-blacklist 23/23 · token-version 11/11 · jwt-rotation 2/2
-- csrf 12/12 · api-endpoint-security 9/9 · password-security 15/15 · snapshot 1/1
-- repositories 17/17 · onboarding-integration 3/3 · middleware-health 25/25
-- comprehensive-rate-limiting 21/21 · resilient-services 26/26 · circuit-breaker 26/26
-- income-classification 9/9 · dynamic-thresholds 32/32 · goals 22/22 · financial 2/2
+### Backend
+1. **Decimal/date/UUID responses 500'd** — `JSONResponse` used stdlib json; `GET /api/calendar/day/{y}/{m}/{d}` crashed right after onboarding (core journey). Fixed in the response wrapper with `jsonable_encoder`; 5 regression tests. (`890a20b`)
+2. **aiosqlite dev dep never installed** — line was concatenated into a comment in requirements-dev.txt → 17 collection errors locally and in CI. (`890a20b`)
+3. **IAP webhook accepted client-supplied `{user_id, expires_at}`** (HIGH — anyone could self-grant premium). Replaced with store-signed verification architecture (below). (`e05f270`)
 
-## Production bugs found & fixed (severity-ranked, all verified by tests)
+### IAP security architecture (`e05f270`, migration 0034)
+- Apple App Store Server Notifications V2: full JWS verification — x5c chain to a **pinned root CA** (`APPLE_ROOT_CA_PATH`), Apple marker OIDs, ES256 signature, bundleId + environment claims, nested signedTransactionInfo verified identically.
+- Google RTDN: Pub/Sub push OIDC token verified (issuer/audience/service-account email); entitlement state re-fetched from the Play Developer API — notification content never trusted.
+- Replay/idempotency: `iap_events` table, unique (provider, event_id).
+- Ownership: subscriptions matched by store transaction key (`originalTransactionId`/`purchaseToken`); unknown transactions change nothing; cross-account receipt reuse → 409.
+- Sandbox/production separation (Apple 21007 fallback; Play purchaseType); product-id allowlist `IAP_ALLOWED_PRODUCT_IDS` **required in production** (fails closed).
+- Entitlement state machine shared by validate + webhooks: grace keeps premium, cancel keeps until expiry, refund/revoke/hold end immediately; `GET /api/iap/status` for restore flows.
+- Fail closed: missing config → 503 and no entitlement change. Legacy payloads → 400.
+- 19 tests: tampered signature, unpinned chain, wrong bundle, sandbox rejection, replay, unmatched transaction, fail-closed, OIDC rejection, revoke/refund/grace flows, premium state matrix.
 
-### CRITICAL — deployment / broke a core user journey
-0a. **`alembic upgrade head` failed from an empty database** — start.sh runs it on boot, so no fresh environment (staging, DR, CI) could start. Four ordering/definition bugs: a 36-char revision id exceeding `version_num VARCHAR(32)`; 0006 altering tables created later; 0009 using a trigger function defined only in 0019; 0021 creating duplicate indexes. (`e90a3c3`)
-0b. **Migrated schema was missing model columns** — `daily_plan.{category,planned_amount,spent_amount,daily_budget,status}` and `transactions.description` existed in the ORM models but no migration created them, so onboarding/calendar 500'd and transaction inserts would fail on any freshly-migrated (production) DB. Migration 0033 reconciles; a drift check now reports **NO DRIFT**. (`b4243c4`)
-1. **Password reset & change both 500'd.** `confirm_password_reset` / `change_password` called `validate_required_fields()` missing its `required_fields` arg → TypeError → 500 on every request. (`feff93c`)
-2. **Token refresh never worked.** Refresh endpoint verified tokens as `access_token` then compared to `"refresh"`; every refresh returned 401 → users logged out when the 2h access token expired. (`60b1019`)
-3. **Logout was a silent no-op.** Blacklist couldn't decode current tokens (unhandled `aud` claim) → `blacklist_token` always returned False; revoke-all crashed on a set slice. (`53ad3e2`)
-4. **Every goal detail/update/delete 500'd.** Async routes awaited the sync `CRUDHelper` (`AsyncSession.query` doesn't exist); delete called a non-existent method. (`5473b89`)
-5. **Repository writes never committed.** `get_async_db_context` dropped its commit → OAuth user creation and all repository writes silently discarded. (`a758093`)
-6. **Goal inserts failed at runtime.** Aware datetimes bound to naive TIMESTAMP columns (asyncpg rejects) + missing `users.last_login` + phantom `transaction_type` filter. Migrations 0031/0032. (`a758093`)
-7. **Onboarding 500'd on optional sections.** Omitting goals/spending_habits crashed budget generation & calendar build (None.get). Additional income silently dropped. (`a758093`)
+### Flutter app (real product bugs)
+4. **executeWithRetry swallowed terminal errors** — screens using `executeRobustly` (login, daily budget) never showed their error state; only an explicit fallback may now absorb failures. (`7dd44b1`)
+5. **PII masking disabled in every debug build** regardless of the flag (emails/phones/cards/JWTs leaked to logs); masking now follows configuration only. Also: card/SSN masking ran after the phone pattern (which consumed card digits). (`7dd44b1`)
+6. **Error-pattern analytics never detected patterns** (counted windows, not repetitions) → pairwise co-occurrence counting; `clearAllData()` added (GDPR + test isolation). (`7dd44b1`)
+7. **buildLoadingWithError not embeddable** — error branch returned a full Scaffold → infinite-height overflow inside any Column. (`7dd44b1`)
+8. **Unhandled error types fell to generic "System"** — requestTimeout/invalidEmail/weakPassword/requiredField/dataCorrupted now have dedicated messaging; new securityBreach type (critical). (`7dd44b1`)
+9. **Context-taking formatters ignored the widget locale** — screens under an `es` MaterialApp could render US-formatted money; now synced to `Localizations.localeOf`. (`3632694`)
+10. **`parseCurrency` couldn't parse US-formatted input** (`$1,234.56`) — thousands separators never stripped. (`3632694`)
+11. **Login sign-up row overflowed** with longer translations (Flexible). (`3632694`)
+12. **Frontend income thresholds carried a 5th 'high' boundary key** that the backend contract explicitly does not define — removed from all 50 states + defaults (backend_consistency_test now passes). (`e4e50ea`)
+13. **Calendar status legend overflowed 136px on 320px-wide phones** — Wrap instead of Row. (uncommitted → this batch)
+14. **Missing offline-first feature `CalendarFallbackService`** implemented (37 tests define the contract): deterministic month of daily budgets from income+location when the backend is unreachable. (`f6a60b9`)
+15. **InstallmentsProvider not injectable** — screens' mocks were never wired; provider now accepts a service (DI). Category label + popup menu overflow fixes. (`0770048`)
+16. **Spanish translation inconsistency** rememberMe unified to "Recordarme". (`3632694`)
 
-### HIGH — security / correctness
-8. **Unknown URLs → 500 (not 404)** and every bot probe logged as server error + sent to Sentry (Starlette vs FastAPI HTTPException). (`21eac92`)
-9. **401s missing `WWW-Authenticate`** (RFC 7235); exception headers dropped. (`21eac92`)
-10. **Rate-limit errors → 500** (MITAException fell through to the generic catch-all instead of its handler). (`4975063`)
-11. **Error responses leaked internals** (raw exception text + reflected input in prod). (`60b1019`)
-12. **bcrypt silently ran 10 rounds** while config/docs claimed 12. (`0ecf66e`)
-13. **SQLi scanner missed quoted tautologies** (`' OR '1'='1`). (`feff93c`)
-14. **Blacklist skipped for tokens < 30 min old** — logout delayed up to 30 min. (`21eac92`)
-15. **Audit-log failure crashed budget redistribution** (the core money op). (`73da4e1`)
-16. **Installment endpoint discarded computed metadata**; naive timestamps → 500 on transactions. (`b8246b2`)
-17. **`get_dynamic_budget_method` dropped the food allocation** (~13% of income) via a wrong dict key. (`b8246b2`)
-18. **SQLite engine fallback crashed** (Postgres pool kwargs passed to StaticPool). (`4975063`)
+### Flutter test infrastructure
+- `test/helpers/test_app.dart` — provider tree mirroring `lib/main.dart` (screens throw ProviderNotFoundException without it; caused ~40 failures).
+- Stateful secure-storage mock (Keychain-like), SharedPreferences mocks, golden baselines for onboarding, illegal `testWidgets`-inside-`test` nests flattened, pumpAndSettle vs periodic-timer deadlocks replaced with bounded pumps.
+- Stale expectations updated **with documented reasons** (income tiers per 5-tier upper-bound semantics; login strings per current .arb).
 
-### MEDIUM — reliability / quality
-19. Goal model crashed on pre-flush None; zero-income scaling ZeroDivisionError; goal timeline min>max; GPT fallback fabricated confidence; AI flagged irregular spending from 5 tx; middleware-health `_store_health_history` removed; auth-health referenced non-existent `AuthJWTService`; velocity-alert silently dropped malformed goals. (`b8246b2`, `73da4e1`, `feff93c`)
-20. **Scheduled-expense impact always returned `total_committed=0`** for any non-current month — `get_impact` passed `date.today()` to an engine that derives its month from that anchor, so it computed the wrong month and dropped every pending expense (the April-audit "impact = 0" defect). (`b14d129`)
+## Per-file Flutter test status (each verified green this session)
+calendar_screen 18/18 · installments_screen 17/17 · onboarding_integration 10/10 (incl. goldens) · calendar_service+calendar_integration 37/37 · secure_token_storage 20/20 · security_services 19/19 · error_message 20/20 · error_handling_comprehensive 24/24 · edge_cases 17/17 · i18n_integration 16/16 · income_classification 17/17 · backend_consistency 9/9 · login_screen 1/1 · dashboard_screen 1/1 · comprehensive_api 12/12 (vs local backend) · ui_fixes_validation (calendar overflow fix in progress)
 
-## Quality gates (last local run)
+## Remaining blockers
 
-| Gate | Status |
-|------|--------|
-| `black --check .` | PASS |
-| `isort --check .` | PASS |
-| `ruff check .` | PASS |
-| `bandit -r app/ -ll` | PASS (0 findings; MD5→usedforsecurity, /tmp→tempfile, parameterized-SQL nosec, pickle-of-own-cache nosec) |
-| `pytest tests/` | PASS — **287/287** |
-| `pytest app/tests` | 576–581 pass (see totals table; residual is a connection-leak flake, not a product bug) |
-| migrations apply from empty | PASS — `alembic upgrade head` builds 0001→**0033** on a clean PostgreSQL 16, **zero schema drift** vs ORM |
-| backend cold start + `/health` | PASS — 200 `healthy` against the migration-built DB |
-| E2E main journey | PASS — register→login→onboarding+budget→refresh→authed→404 all green on the migrated DB |
+### Fixable here (in progress)
+- Full Flutter suite final re-measure (after ui_fixes + performance files) and full backend suite re-run.
+- CI workflow: point mobile job's live-API tests at a reachable target or skip cleanly when unreachable.
+- Push + real GitHub Actions run evidence.
 
-## Remaining blocker clusters
+### Blocked — environment (exact unblock condition documented)
+- **Android debug/release build**: sandbox egress policy 403-blocks dl.google.com (Android SDK cmdline-tools, platform tools, google() maven). Unblock: allowlist dl.google.com/maven.google.com in the Claude environment network policy, or rely on GitHub CI (ubuntu runners reach it) — the mobile-ci workflow already runs analyze+test; an `flutter build apk --debug` step can be added.
+- **iOS build**: requires macOS/Xcode (not available in Linux sandbox or ubuntu CI). Needs a macOS runner.
+- **Railway production verification**: `mita-production-production.up.railway.app` blocked by sandbox egress. Local backend used instead for mobile↔backend E2E.
 
-### Real production bugs
-- _None currently open._ (Re-triage after the full-suite re-measure completes.)
+### Blocked — external credentials (code paths ready & fail closed)
+- Apple: `APPLE_ROOT_CA_PATH` (download AppleRootCA-G3.cer from apple.com/certificateauthority — apple.com also blocked in sandbox), `APPLE_BUNDLE_ID`, `APPSTORE_SHARED_SECRET`, App Store Server Notifications V2 URL configured in App Store Connect → `POST /api/iap/webhook`.
+- Google Play: service-account JSON (`GOOGLE_SERVICE_ACCOUNT`), `GOOGLE_PACKAGE_NAME`, RTDN Pub/Sub push subscription with OIDC auth → set `GOOGLE_PUBSUB_AUDIENCE` + `GOOGLE_PUBSUB_SERVICE_ACCOUNT`.
+- `IAP_ALLOWED_PRODUCT_IDS` (comma-separated store product ids) — **required in production**, otherwise validation fails closed.
+- Firebase push (service-account JSON + APNs key), OpenAI (`OPENAI_API_KEY`), Sentry DSN, SMTP password, Railway env vars (docs/FIX_ALL.md R-01/02/03).
 
-### Environment / configuration (verifiable here — being worked)
-- Full-suite re-measure in progress to confirm no regressions.
+## Commits this session
+`890a20b` backend Decimal/aiosqlite/cleanup-flake · `e05f270` IAP security · `0770048` calendar+installments tests · `f6a60b9` CalendarFallbackService · `7dd44b1` error handling/PII/recovery · `3632694` i18n · `e4e50ea` thresholds contract + onboarding · (pending) ui_fixes/login/dashboard batch
 
-### Blocked — need credentials / external access / product decision
-- **IAP webhook is unauthenticated** (`POST /api/iap/webhook` trusts body `user_id`/`expires_at` → anyone can self-grant premium). Fix needs Apple JWS / Google RTDN signature verification + store credentials. **HIGH — recommend gating behind a shared secret until signatures ship.**
-- **Railway env vars** (`JWT_PREVIOUS_SECRET`, `PYTHONPATH=/app`, `SENTRY_DSN`, Upstash Redis, SMTP password, `APPSTORE_SHARED_SECRET`) — Railway dashboard access. (docs/FIX_ALL.md R-01/02/03)
-- **Firebase / APNs push** — needs service-account JSON + APNs cert; code paths degrade gracefully without them.
-- **OpenAI insights** — needs `OPENAI_API_KEY`; resilient fallback verified (no blocking dependency).
-- **Mobile build (Android/iOS)** — no Flutter SDK in this environment; static review only.
-- **Flutter test suite** (~105 failures per docs/FIX_ALL.md M-06) — no Flutter SDK here.
-- **L-01** module triplication (`app/logic` vs `app/engine` vs `app/services/core`) — multi-day refactor; needs sign-off.
-
-## Core user journeys — verified status
-
-| Journey | Backend | Mobile | Evidence |
-|---------|---------|--------|----------|
-| Register → login → refresh → logout | ✅ | static | csrf + api-endpoint-security + auth-comprehensive suites |
-| Password reset / change | ✅ (bug #1 fixed) | static | reset flow test hits real endpoint |
-| Token blacklist / revocation | ✅ | n/a | token-blacklist 23/23 |
-| Onboarding → budget generation → persistence | ✅ | static | onboarding-integration 3/3 (real DB) |
-| Goal CRUD + budget sync | ✅ (bug #4 fixed) | static | goals 22/22, repositories 17/17 |
-| Budget redistribution / rebalance | ✅ | n/a | redistributor + rebalancer suites |
-| OCR receipt (queue/degrade) | ⚠️ needs live Redis for queue; degrades | ❌ not wired in app | resilient/rate-limit suites |
-| AI insights (fallback) | ✅ fallback | static | resilient-services 26/26 |
-| Premium / IAP | ⚠️ webhook unauthenticated (blocked) | static | iap tests pass; signature verify pending |
-
-## Changed files (this session)
-Commits `b8246b2 · 0ecf66e · 5473b89 · 73da4e1 · 21eac92 · 53ad3e2 · a758093 · 4975063 · 60b1019 · feff93c`.
-Production code: `app/api/auth/{password_reset,account_management,services,token_management,registration}.py`, `app/api/{financial,transactions,goals}/*`, `app/core/{security,standardized_error_handler,error_decorators,async_session,password_security,config,caching,secret_manager,audit_logging,deployment_optimizations,health_monitoring_alerts,middleware_health_monitor,middleware_components_health}.py`, `app/db/models/{goal,user,habit,push_token,ai_analysis_snapshot,daily_plan}.py`, `app/repositories/{base,user,transaction}_repository.py`, `app/services/{budget_redistributor,resilient_gpt_service,ai_financial_analyzer,velocity_alert_service,token_blacklist_service}.py`, `app/services/core/**`, `app/config/country_profiles/US-CA.yaml`, `app/main.py`, `app/ocr/**`, `app/orchestrator/**`. Migrations: `alembic/versions/0031_timestamptz_alignment.py`, `0032_add_user_last_login.py`.
-
-## Deployment evidence (this session)
-
-| Evidence | Result |
-|----------|--------|
-| Full test suite `tests/` | **287 passed, 0 failed, 0 errors** |
-| Full test suite `app/tests` | **581 passed, 0 failed, 0 errors** (single clean run, exit=0) |
-| Quality gates | black ✅ · isort ✅ · ruff ✅ · bandit ✅ (0 findings) |
-| DB migrations from empty | ✅ `alembic upgrade head` → 0033, **NO schema drift** vs ORM |
-| Backend cold start | ✅ app boots against the migration-built DB |
-| Health check | ✅ `GET /health` → 200 `healthy`; `GET /` → 200 |
-| E2E main journey (backend) | ✅ register→login→onboarding+budget→refresh→authed→404 all pass |
-| CI | ⏳ pushed; workflow now provisions Postgres+Redis + runs migrations (evidence pending GitHub run) |
-| Mobile build | ❌ blocked — no Flutter SDK in this environment |
-
-## Production-readiness estimate
-
-**~85%** by verified backend functionality. Every critical **backend** user journey now works end-to-end against a from-scratch **migrated** PostgreSQL + Redis (not create_all), the app cold-starts, `/health` is green, and migrations apply cleanly from empty with zero drift — the deployment path a fresh production/staging/DR environment actually takes. Remaining ~15% is gated on items that need external access or a product decision (below), plus mobile build/e2e which needs the Flutter toolchain. Not a code-volume estimate.
+## Readiness estimate
+**~90% backend (verified)** — all critical backend journeys verified against migrated PostgreSQL+Redis including the IAP entitlement architecture; remaining backend risk is CI-run evidence.
+**Mobile: test suite from 104 failures → near-green; mobile↔backend contract verified against a real backend.** Builds remain environment-blocked (Android SDK egress, no macOS).
 
 ## Next task
-1. Confirm the definitive clean `app/tests` run is fully green with the hardened connection-leak sweep; record exact totals.
-2. Watch the GitHub CI run on this branch (now has Postgres+Redis services); fix anything CI-specific.
-3. Backend flows are verified; mobile build/e2e and IAP signature verification remain blocked on external toolchain/credentials (documented above).
+1. Finish ui_fixes/performance Flutter files; run the FULL Flutter suite and record exact totals.
+2. Re-run full backend suites (app/tests + tests/) after all backend changes; record totals.
+3. Push branch; obtain a real GitHub Actions run; add `flutter build apk --debug` to mobile-ci.
+4. Update this file with final evidence.

@@ -591,8 +591,13 @@ class _CalendarScreenState extends State<CalendarScreen>
                           ),
                         ),
                         const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        // Wrap, not Row: the three indicators overflow a
+                        // 320px-wide phone; on narrow screens they flow to
+                        // a second line instead.
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.spaceBetween,
                           children: [
                             _buildStatusIndicator(
                                 'On Track', Colors.green, Colors.white),
