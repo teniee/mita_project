@@ -180,16 +180,19 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
       try {
         final refreshResult = await _api.refreshAccessToken();
         if (refreshResult != null) {
-          logInfo('✅ Tokens refreshed successfully before onboarding submission',
+          logInfo(
+              '✅ Tokens refreshed successfully before onboarding submission',
               tag: 'ONBOARDING_FINISH');
         } else {
-          logWarning('Token refresh returned null - continuing with existing token',
+          logWarning(
+              'Token refresh returned null - continuing with existing token',
               tag: 'ONBOARDING_FINISH');
           // Continue anyway - the existing token might still be valid
           // If not, the auto-refresh interceptor will handle it
         }
       } catch (refreshError) {
-        logWarning('Proactive token refresh failed: $refreshError - continuing anyway',
+        logWarning(
+            'Proactive token refresh failed: $refreshError - continuing anyway',
             tag: 'ONBOARDING_FINISH');
         // Don't fail here - let the submission attempt proceed
         // The interceptor will handle 401 errors if the token is actually expired
@@ -454,7 +457,8 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                             ),
                             const SizedBox(height: 12),
                             // Add login/registration options for auth-related errors
-                            if (_error?.contains('session has expired') == true ||
+                            if (_error?.contains('session has expired') ==
+                                    true ||
                                 _error?.contains('log in') == true ||
                                 _error?.contains('create an account') == true)
                               Column(
@@ -480,7 +484,8 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                                         padding: const EdgeInsets.symmetric(
                                             vertical: 16, horizontal: 24),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(18),
+                                          borderRadius:
+                                              BorderRadius.circular(18),
                                         ),
                                       ),
                                       child: const Text(

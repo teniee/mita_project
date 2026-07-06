@@ -407,7 +407,8 @@ class _MITAAppState extends State<MITAApp> {
         '/onboarding_income': (context) => const OnboardingIncomeScreen(),
         '/onboarding_expenses': (context) => const OnboardingExpensesScreen(),
         '/onboarding_goal': (context) => const OnboardingGoalScreen(),
-        '/onboarding_spending_frequency': (context) => const OnboardingSpendingFrequencyScreen(),
+        '/onboarding_spending_frequency': (context) =>
+            const OnboardingSpendingFrequencyScreen(),
         '/onboarding_habits': (context) => const OnboardingHabitsScreen(),
         '/onboarding_finish': (context) => const OnboardingFinishScreen(),
         '/referral': (context) => const ReferralScreen(),
@@ -423,7 +424,8 @@ class _MITAAppState extends State<MITAApp> {
         '/transactions': (context) => const TransactionsScreen(),
         '/goals': (context) => const GoalsScreen(),
         '/challenges': (context) => const ChallengesScreen(),
-        '/installment-calculator': (context) => const InstallmentCalculatorScreen(),
+        '/installment-calculator': (context) =>
+            const InstallmentCalculatorScreen(),
         '/installments': (context) => const InstallmentsScreen(),
       },
     );

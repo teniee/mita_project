@@ -24,7 +24,8 @@ class AppErrorHandler {
       _initialized = true;
       logInfo('AppErrorHandler initialized successfully', tag: 'ERROR_HANDLER');
     } catch (e) {
-      logError('Failed to initialize AppErrorHandler: $e', tag: 'ERROR_HANDLER');
+      logError('Failed to initialize AppErrorHandler: $e',
+          tag: 'ERROR_HANDLER');
     }
   }
 
@@ -60,7 +61,8 @@ class AppErrorHandler {
         context: context,
       );
     } else {
-      logWarning('Error reported before initialization: $error', tag: 'ERROR_HANDLER');
+      logWarning('Error reported before initialization: $error',
+          tag: 'ERROR_HANDLER');
     }
   }
 

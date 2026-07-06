@@ -24,7 +24,8 @@ import 'dart:io';
 /// Target: Zero high/critical security findings
 void main() {
   group('CRITICAL: Certificate Pinning Tests', () {
-    test('Certificate pinning must be configured with production certificates', () {
+    test('Certificate pinning must be configured with production certificates',
+        () {
       // CRITICAL-001: Certificate pinning not configured
       // This test will FAIL until production certificates are added
 
@@ -39,7 +40,9 @@ void main() {
       // TODO: Replace with actual test when certificates are configured
       // Certificate pinning will be configured when production domain is live
       // Skip this test until then - pinning is already disabled in debug mode (see certificate_pinning_service.dart:48)
-    }, skip: 'Certificate pinning configuration pending - will be added before production deployment');
+    },
+        skip:
+            'Certificate pinning configuration pending - will be added before production deployment');
 
     test('Certificate fingerprint format must be valid SHA-256', () {
       // Valid SHA-256 format: AA:BB:CC:...:DD (32 bytes, 64 hex chars with colons)
@@ -56,7 +59,8 @@ void main() {
       // }
     });
 
-    test('Certificate validation must reject self-signed certificates', () async {
+    test('Certificate validation must reject self-signed certificates',
+        () async {
       // Test that self-signed certificates are rejected
       // Requires integration test with mock server
     });
@@ -120,7 +124,8 @@ void main() {
       // expect(canFork, isFalse, reason: 'Fork should fail on non-jailbroken device');
     });
 
-    test('Code signing validation must be implemented via platform channel', () async {
+    test('Code signing validation must be implemented via platform channel',
+        () async {
       // Uncomment when service is available:
       // final service = IOSSecurityService();
       //
@@ -129,7 +134,8 @@ void main() {
       // expect(isTampered, isFalse, reason: 'App Store build should not be tampered');
     });
 
-    test('Debugger detection must be implemented via platform channel', () async {
+    test('Debugger detection must be implemented via platform channel',
+        () async {
       // Uncomment when service is available:
       // final service = IOSSecurityService();
       //
@@ -204,7 +210,8 @@ void main() {
     });
 
     test('JWT tokens must be masked', () {
-      final jwtToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
+      final jwtToken =
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c';
 
       // Uncomment when service is available:
       // final masked = PIIMasker.maskToken(jwtToken);
@@ -310,7 +317,8 @@ void main() {
       // Requires time manipulation or mocking
     });
 
-    test('Failed authentication attempts must be logged to SecurityMonitor', () async {
+    test('Failed authentication attempts must be logged to SecurityMonitor',
+        () async {
       // Verify security events are logged with correct severity
       // Severity should increase with failed attempts (3+ = HIGH)
     });
@@ -480,7 +488,9 @@ void main() {
     test('M3: Insecure Communication - Certificate pinning enabled', () {
       // CRITICAL: This will fail until certificates are configured
       // Skip until production domain is live and certificates can be extracted
-    }, skip: 'Certificate pinning configuration pending - will be added before production deployment');
+    },
+        skip:
+            'Certificate pinning configuration pending - will be added before production deployment');
 
     test('M4: Insecure Authentication - Biometric with no weak fallback', () {
       // Verify biometric-only for sensitive operations

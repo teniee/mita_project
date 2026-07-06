@@ -2,7 +2,9 @@ name: Main CI/CD Pipeline
 
 on:
   push:
-    branches: [ main ]
+    # claude/** feature branches run the full pipeline so readiness work
+    # gets real CI evidence before any merge to main.
+    branches: [ main, 'claude/**' ]
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -119,6 +121,12 @@ jobs:
           channel: 'stable'
           cache: true
 
+      - name: Set up Java (Android toolchain)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
       - name: Install dependencies
         run: flutter pub get
 
@@ -130,8 +138,21 @@ jobs:
           # Analyze
           flutter analyze --no-fatal-infos --no-fatal-warnings
 
+      # Live-API integration tests probe the backend and skip themselves
+      # when it is unreachable, so this run covers unit + widget tests.
       - name: Run tests
         run: flutter test
+
+      - name: Android debug build
+        run: flutter build apk --debug --dart-define=ENV=development
+
+      - name: Upload debug APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mita-debug-apk
+          path: mobile_app/build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 7
 
   # Build check
   build-check:

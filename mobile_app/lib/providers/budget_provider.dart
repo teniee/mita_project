@@ -85,6 +85,7 @@ class BudgetProvider extends ChangeNotifier {
             ? valueData.toDouble()
             : (valueData is String ? double.tryParse(valueData) ?? 0.0 : 0.0);
   }
+
   double get remaining => totalBudget - totalSpent;
   double get spendingPercentage =>
       totalBudget > 0 ? (totalSpent / totalBudget) : 0.0;
@@ -371,8 +372,7 @@ class BudgetProvider extends ChangeNotifier {
           month: targetMonth,
         );
         for (final tx in rawTx) {
-          final spentAt =
-              DateTime.tryParse(tx['spent_at'] as String? ?? '');
+          final spentAt = DateTime.tryParse(tx['spent_at'] as String? ?? '');
           if (spentAt == null) continue;
           final day = spentAt.day;
           final cat = (tx['category'] as String?) ?? 'other';
@@ -391,31 +391,25 @@ class BudgetProvider extends ChangeNotifier {
 
       // ── Step 3: Merge planned budget + real spending ──
       if (savedCalendar != null && savedCalendar.isNotEmpty) {
-        final today =
-            DateTime(now.year, now.month, now.day);
+        final today = DateTime(now.year, now.month, now.day);
 
-        _calendarData =
-            savedCalendar.map<Map<String, dynamic>>((dynamic raw) {
+        _calendarData = savedCalendar.map<Map<String, dynamic>>((dynamic raw) {
           final d = Map<String, dynamic>.from(raw as Map);
           final day = d['day'] as int? ?? 0;
           final dateStr = d['date'] as String?;
-          final dayDate = dateStr != null
-              ? DateTime.tryParse(dateStr)
-              : null;
+          final dayDate = dateStr != null ? DateTime.tryParse(dateStr) : null;
           final dayOnly = dayDate != null
               ? DateTime(dayDate.year, dayDate.month, dayDate.day)
               : null;
 
           final isToday = dayOnly == today;
-          final isPast =
-              dayOnly != null && dayOnly.isBefore(today);
+          final isPast = dayOnly != null && dayOnly.isBefore(today);
 
           final limit = (d['limit'] as num?)?.toDouble() ?? 0.0;
           final realSpent = spentByDay[day] ?? 0.0;
 
           // Build per-category breakdown: planned (from DailyPlan) + real
-          final plannedCats =
-              (d['planned_budget'] as Map?) ?? {};
+          final plannedCats = (d['planned_budget'] as Map?) ?? {};
           final mergedCats = <String, dynamic>{};
 
           for (final entry in plannedCats.entries) {
@@ -459,8 +453,7 @@ class BudgetProvider extends ChangeNotifier {
             'spent': realSpent.round(), // int expected by calendar_screen.dart
             'categories': mergedCats,
             'is_today': isToday,
-            'is_weekend':
-                dayDate != null && dayDate.weekday >= 6,
+            'is_weekend': dayDate != null && dayDate.weekday >= 6,
           };
         }).toList();
 

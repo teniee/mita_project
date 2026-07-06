@@ -60,7 +60,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
   final List<Map<String, dynamic>> _categories = [
     {
       'name': 'Food & Dining',
-      'apiValue': 'food',  // Backend API expects lowercase single word
+      'apiValue': 'food', // Backend API expects lowercase single word
       'icon': Icons.restaurant,
       'color': Colors.orange,
       'subcategories': [
@@ -140,7 +140,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
     },
     {
       'name': 'Personal Care',
-      'apiValue': 'other',  // Backend doesn't have personal_care, map to other
+      'apiValue': 'other', // Backend doesn't have personal_care, map to other
       'icon': Icons.spa,
       'color': Colors.cyan,
       'subcategories': ['Haircut', 'Skincare', 'Massage', 'Nails', 'Dental']
@@ -439,7 +439,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
     // Create transaction input for the provider
     final transactionInput = TransactionInput(
       amount: _amount!,
-      category: _getCategoryApiValue(_action!),  // Convert to backend API value
+      category: _getCategoryApiValue(_action!), // Convert to backend API value
       description: _description,
       spentAt: _selectedDate,
       notes: _selectedSubcategory != null
@@ -474,9 +474,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
             ),
           );
           // Refresh redistribution history in BudgetProvider
-          context
-              .read<BudgetProvider>()
-              .onTransactionCreated(rebalanced: true);
+          context.read<BudgetProvider>().onTransactionCreated(rebalanced: true);
         }
 
         logInfo('Expense submitted via TransactionProvider successfully',
@@ -986,7 +984,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const ReceiptCaptureScreen(),
+                              builder: (context) =>
+                                  const ReceiptCaptureScreen(),
                             ),
                           );
                         },

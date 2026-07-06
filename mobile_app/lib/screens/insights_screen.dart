@@ -419,7 +419,8 @@ class _InsightsScreenState extends State<InsightsScreen>
             fontWeight: FontWeight.bold,
           ),
         ),
-        backgroundColor: _incomeTier != null ? Colors.white : AppColors.background,
+        backgroundColor:
+            _incomeTier != null ? Colors.white : AppColors.background,
         foregroundColor: primaryColor,
         elevation: 0,
         iconTheme: IconThemeData(color: primaryColor),
@@ -888,7 +889,8 @@ class _InsightsScreenState extends State<InsightsScreen>
       return InsightsEmptyStateWidgets.buildSectionEmptyCard(
         title: 'Financial Health Score',
         icon: Icons.health_and_safety,
-        message: 'Add more transactions to calculate your financial health score',
+        message:
+            'Add more transactions to calculate your financial health score',
         color: AppColors.textPrimary,
       );
     }
@@ -1343,7 +1345,8 @@ class _InsightsScreenState extends State<InsightsScreen>
       return InsightsEmptyStateWidgets.buildSectionEmptyCard(
         title: 'Personalized Recommendations',
         icon: Icons.lightbulb_outline,
-        message: 'AI will generate personalized recommendations based on your spending',
+        message:
+            'AI will generate personalized recommendations based on your spending',
         color: AppColors.textPrimary,
       );
     }

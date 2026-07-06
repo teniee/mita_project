@@ -846,7 +846,8 @@ class CategoryIntelligenceService {
               'Category aligned with financial goals',
           'impactScore':
               (alignmentData['alignment_score'] as num?)?.toDouble() ?? 0.7,
-          'actionableRecommendations': alignmentData['recommendations'] ?? <dynamic>[],
+          'actionableRecommendations':
+              alignmentData['recommendations'] ?? <dynamic>[],
           'supportingData': alignmentData,
         });
       }

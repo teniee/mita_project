@@ -53,6 +53,7 @@ class UserProvider extends ChangeNotifier {
             ? incomeData.toDouble()
             : (incomeData is String ? double.tryParse(incomeData) ?? 0.0 : 0.0);
   }
+
   String get userCurrency => _userProfile['currency'] as String? ?? 'USD';
   String get userRegion => _userProfile['region'] as String? ?? '';
   String get userCountryCode => _userProfile['countryCode'] as String? ?? '';
@@ -61,11 +62,13 @@ class UserProvider extends ChangeNotifier {
     if (expenses is List) return expenses;
     return [];
   }
+
   List<dynamic> get userGoals {
     final goals = _userProfile['goals'];
     if (goals is List) return goals;
     return [];
   }
+
   List<dynamic> get userHabits {
     final habits = _userProfile['habits'];
     if (habits is List) return habits;
