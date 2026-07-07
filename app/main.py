@@ -453,10 +453,30 @@ async def prometheus_metrics():
     return Response(content=metrics_data, media_type=CONTENT_TYPE_LATEST)
 
 
+async def _check_redis_health() -> str:
+    """Ping Redis with a short timeout: connected / unavailable / not_configured."""
+    redis_url = settings.REDIS_URL or getattr(settings, "UPSTASH_REDIS_URL", "")
+    if not redis_url:
+        return "not_configured"
+    try:
+        import redis.asyncio as aioredis
+
+        client = aioredis.from_url(
+            redis_url, socket_connect_timeout=3, socket_timeout=3
+        )
+        try:
+            pong = await asyncio.wait_for(client.ping(), timeout=3.0)
+            return "connected" if pong else "error"
+        finally:
+            await client.aclose()
+    except Exception:
+        return "unavailable"
+
+
 @app.get("/health")
 async def detailed_health_check():
     """Detailed health check with database status and performance metrics"""
-    from app.core.async_session import check_database_health
+    from app.core.async_session import check_database_health, get_alembic_revision
     from app.core.performance_cache import get_cache_stats
 
     # Check environment configuration
@@ -493,6 +513,23 @@ async def detailed_health_check():
         database_status = "error"
         database_error = str(e)
 
+    # Deployment provenance + dependency reachability (safe read-only
+    # diagnostics: a commit SHA and a migration revision id reveal no
+    # schema or secret material, and both are required to verify what is
+    # actually running on Railway from the outside).
+    deployed_commit = (
+        os.getenv("RAILWAY_GIT_COMMIT_SHA")
+        or os.getenv("GIT_COMMIT_SHA")
+        or os.getenv("SOURCE_VERSION")
+        or "unknown"
+    )[:12]
+    alembic_revision = "unknown"
+    try:
+        alembic_revision = await asyncio.wait_for(get_alembic_revision(), timeout=5.0)
+    except Exception:
+        pass
+    redis_status = await _check_redis_health()
+
     # Get performance cache statistics
     cache_stats = get_cache_stats()
 
@@ -518,7 +555,10 @@ async def detailed_health_check():
         "status": overall_status,
         "service": "Mita Finance API",
         "version": "1.0.0",
+        "commit": deployed_commit,
+        "alembic_revision": alembic_revision,
         "database": database_status,
+        "redis": redis_status,
         "firebase": firebase_status,
         "sentry": sentry_status,
         "config": config_status,
