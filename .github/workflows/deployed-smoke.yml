@@ -11,11 +11,20 @@ on:
         description: 'Deployed backend base URL'
         required: true
         default: 'https://mita-production-production.up.railway.app'
+  # Fallback trigger for environments whose GitHub token cannot call the
+  # workflow-dispatch API: a push whose head commit message contains
+  # [deployed-smoke] runs the smoke test against the default (Railway
+  # production) URL. Ordinary pushes never touch production.
+  push:
+    branches: [ 'claude/**' ]
 
 jobs:
   smoke:
     name: Remote smoke (deployed backend)
     runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      contains(github.event.head_commit.message, '[deployed-smoke]')
     timeout-minutes: 10
 
     steps:
@@ -28,4 +37,6 @@ jobs:
           python-version: '3.12'
 
       - name: Run remote smoke test
-        run: python scripts/remote_smoke_test.py --base-url "${{ inputs.base_url }}"
+        run: >-
+          python scripts/remote_smoke_test.py
+          --base-url "${{ inputs.base_url || 'https://mita-production-production.up.railway.app' }}"
