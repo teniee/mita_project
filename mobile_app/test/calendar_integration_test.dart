@@ -135,6 +135,12 @@ void main() {
       });
 
       test('Spending patterns are realistic', () async {
+        // Rewritten 2026-07-07: the previous fixed thresholds
+        // (good > over, over < today ~/ 3) failed on the 1st, 2nd and 7th
+        // of every month purely from date arithmetic — with 0-6 past days
+        // the sample is too small for those ratios. The simulated pattern
+        // overspends exactly one day per 7-day cycle, so assert that
+        // proportionally, which holds on any calendar date.
         final calendarData = await fallbackService.generateFallbackCalendarData(
           monthlyIncome: 5000,
         );
@@ -142,22 +148,34 @@ void main() {
         final today = DateTime.now().day;
         int totalOverBudgetDays = 0;
         int totalGoodDays = 0;
+        int pastDays = 0;
 
         for (final day in calendarData) {
           final dayNumber = day['day'] as int;
           final status = day['status'] as String;
 
           if (dayNumber < today) {
-            // Past days
+            pastDays++;
             if (status == 'over') totalOverBudgetDays++;
             if (status == 'good') totalGoodDays++;
           }
         }
 
-        // Realistic spending: most days should be good, some over budget
-        expect(totalGoodDays, greaterThan(totalOverBudgetDays));
-        expect(totalOverBudgetDays,
-            lessThan(today ~/ 3)); // Less than 1/3 over budget
+        // At most one overspent day per started 7-day cycle.
+        expect(totalOverBudgetDays, lessThanOrEqualTo((pastDays / 7).ceil()),
+            reason: 'overspending must stay a small minority of past days');
+        // With at least a few past days, at/under-budget days dominate.
+        if (pastDays >= 3) {
+          expect(totalGoodDays, greaterThan(totalOverBudgetDays),
+              reason: 'most past days should be at or under budget');
+        }
+        // Future days never show spending.
+        for (final day in calendarData) {
+          if ((day['day'] as int) > today) {
+            expect(day['spent'], 0);
+            expect(day['status'], 'good');
+          }
+        }
       });
     });
 

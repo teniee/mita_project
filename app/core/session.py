@@ -14,6 +14,25 @@ engine = None
 SessionLocal = None
 
 
+def _resolve_sslmode(query):
+    """psycopg2 sslmode from the URL's query parameters.
+
+    Honors an explicit sslmode= (or asyncpg-style ssl=) parameter; only
+    when the URL says nothing do we default to "require" (hosted Postgres
+    like Supabase). Forcing "require" unconditionally broke every
+    deployment whose Postgres has SSL off (CI service containers,
+    docker-compose, private networking).
+    """
+    value = str(query.get("sslmode") or query.get("ssl") or "").lower()
+    if value in ("true", "require"):
+        return "require"
+    if value in ("false", "disable"):
+        return "disable"
+    if value in ("allow", "prefer", "verify-ca", "verify-full"):
+        return value
+    return "require"
+
+
 def _initialize_sync_session():
     """Initialize synchronous database session (lazy)"""
     global engine, SessionLocal
@@ -28,12 +47,6 @@ def _initialize_sync_session():
 
         # Parse asyncpg URL and extract credentials
         database_url = settings.DATABASE_URL.strip()
-
-        # Remove ssl= parameter if present (psycopg2 only supports sslmode in connect_args)
-        if "ssl=require" in database_url:
-            database_url = database_url.replace("?ssl=require", "").replace(
-                "&ssl=require", ""
-            )
 
         # Parse the URL to extract components
         parsed = make_url(database_url)
@@ -52,7 +65,7 @@ def _initialize_sync_session():
         connect_args = {
             "user": parsed.username,  # Username with dot will be preserved
             "password": parsed.password,  # Password passed separately
-            "sslmode": "require",  # Force SSL for Supabase
+            "sslmode": _resolve_sslmode(parsed.query),
         }
 
         sync_url = make_url(sync_database_url)

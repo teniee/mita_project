@@ -1,56 +1,92 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:mita/models/installment_models.dart';
+import 'package:mita/providers/installments_provider.dart';
 import 'package:mita/screens/installments_screen.dart';
 import 'package:mita/services/installment_service.dart';
-import 'package:mita/services/localization_service.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-// Mock classes
-class MockInstallmentService extends Mock implements InstallmentService {}
-
-class MockLocalizationService extends Mock implements LocalizationService {}
+// The screen reads its data through InstallmentsProvider, which is now
+// injectable with a service. The mock is wired through the provider so the
+// stubs actually drive the screen (previously the mock was constructed but
+// never connected — every test hit the real singleton and crashed).
+class MockInstallmentService extends Mock implements InstallmentService {
+  @override
+  Future<InstallmentsSummary> getInstallments({InstallmentStatus? status}) =>
+      super.noSuchMethod(
+        Invocation.method(#getInstallments, [], {#status: status}),
+        returnValue: Future.value(
+          InstallmentsSummary(
+            totalActive: 0,
+            totalCompleted: 0,
+            totalMonthlyPayment: 0.0,
+            installments: const [],
+            currentInstallmentLoad: 0.0,
+            loadMessage: 'Safe',
+          ),
+        ),
+      ) as Future<InstallmentsSummary>;
+}
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  SharedPreferences.setMockInitialValues(<String, Object>{});
+
   group('InstallmentsScreen Tests', () {
     late MockInstallmentService mockInstallmentService;
-    late MockLocalizationService mockLocalizationService;
 
     setUp(() {
       mockInstallmentService = MockInstallmentService();
-      mockLocalizationService = MockLocalizationService();
     });
 
     Widget createWidgetUnderTest() {
-      return MaterialApp(
-        home: const InstallmentsScreen(),
-        routes: {
-          '/installment-calculator': (context) => const Scaffold(
-            body: Center(child: Text('Calculator')),
-          ),
-        },
+      return ChangeNotifierProvider<InstallmentsProvider>(
+        create: (_) => InstallmentsProvider(service: mockInstallmentService),
+        child: MaterialApp(
+          home: const InstallmentsScreen(),
+          routes: {
+            '/installment-calculator': (context) => const Scaffold(
+                  body: Center(child: Text('Calculator')),
+                ),
+          },
+        ),
       );
     }
 
     group('Initial Load Tests', () {
       testWidgets('displays shimmer loader while loading',
           (WidgetTester tester) async {
-        when(mockInstallmentService.getInstallments(status: null)).thenAnswer(
-          (_) => Future.delayed(
-            const Duration(seconds: 2),
-            () => InstallmentsSummary(
-              totalActive: 1,
-              totalCompleted: 0,
-              totalMonthlyPayment: 150.0,
-              installments: [],
-              currentInstallmentLoad: 0.5,
-              loadMessage: 'Moderate',
-            ),
-          ),
-        );
+        // A Completer keeps the load pending without scheduling a real Timer
+        // (Future.delayed would leave a pending timer at teardown).
+        final completer = Completer<InstallmentsSummary>();
+        when(mockInstallmentService.getInstallments(status: null))
+            .thenAnswer((_) => completer.future);
 
         await tester.pumpWidget(createWidgetUnderTest());
-        expect(find.byType(CircularProgressIndicator), findsWidgets);
+        // The load starts in a post-frame callback and flips isLoading; pump
+        // twice so that runs and the provider rebuild lands.
+        await tester.pump();
+        await tester.pump();
+        // Loading UI is a shimmer skeleton, not a spinner.
+        expect(
+            find.byKey(const ValueKey('installments_loading')), findsOneWidget);
+
+        // Resolve the load and settle so no timers/tickers outlive the test.
+        completer.complete(
+          InstallmentsSummary(
+            totalActive: 1,
+            totalCompleted: 0,
+            totalMonthlyPayment: 150.0,
+            installments: const [],
+            currentInstallmentLoad: 0.5,
+            loadMessage: 'Moderate',
+          ),
+        );
+        await tester.pumpAndSettle();
       });
 
       testWidgets('displays error state when loading fails',
@@ -69,15 +105,15 @@ void main() {
           (WidgetTester tester) async {
         when(mockInstallmentService.getInstallments(status: null))
             .thenAnswer((_) => Future.value(
-              InstallmentsSummary(
-                totalActive: 0,
-                totalCompleted: 0,
-                totalMonthlyPayment: 0.0,
-                installments: [],
-                currentInstallmentLoad: 0.0,
-                loadMessage: 'Safe',
-              ),
-            ));
+                  InstallmentsSummary(
+                    totalActive: 0,
+                    totalCompleted: 0,
+                    totalMonthlyPayment: 0.0,
+                    installments: [],
+                    currentInstallmentLoad: 0.0,
+                    loadMessage: 'Safe',
+                  ),
+                ));
 
         await tester.pumpWidget(createWidgetUnderTest());
         await tester.pumpAndSettle();
@@ -111,17 +147,17 @@ void main() {
 
         when(mockInstallmentService.getInstallments(status: null))
             .thenAnswer((_) => Future.value(
-              InstallmentsSummary(
-                totalActive: 1,
-                totalCompleted: 0,
-                totalMonthlyPayment: 100.0,
-                nextPaymentDate: installment.nextPaymentDate,
-                nextPaymentAmount: installment.paymentAmount,
-                installments: [installment],
-                currentInstallmentLoad: 0.5,
-                loadMessage: 'Moderate',
-              ),
-            ));
+                  InstallmentsSummary(
+                    totalActive: 1,
+                    totalCompleted: 0,
+                    totalMonthlyPayment: 100.0,
+                    nextPaymentDate: installment.nextPaymentDate,
+                    nextPaymentAmount: installment.paymentAmount,
+                    installments: [installment],
+                    currentInstallmentLoad: 0.5,
+                    loadMessage: 'Moderate',
+                  ),
+                ));
 
         await tester.pumpWidget(createWidgetUnderTest());
         await tester.pumpAndSettle();
@@ -132,18 +168,40 @@ void main() {
 
       testWidgets('displays load indicator with correct color levels',
           (WidgetTester tester) async {
-        // Test Safe load (green)
+        // Test Safe load (green). Summary card renders only when the
+        // installments list is non-empty, so include one.
         when(mockInstallmentService.getInstallments(status: null))
             .thenAnswer((_) => Future.value(
-              InstallmentsSummary(
-                totalActive: 1,
-                totalCompleted: 0,
-                totalMonthlyPayment: 50.0,
-                installments: [],
-                currentInstallmentLoad: 0.3, // Safe
-                loadMessage: 'Safe',
-              ),
-            ));
+                  InstallmentsSummary(
+                    totalActive: 1,
+                    totalCompleted: 0,
+                    totalMonthlyPayment: 50.0,
+                    installments: [
+                      Installment(
+                        id: 's1',
+                        userId: 'user1',
+                        itemName: 'Safe Item',
+                        category: InstallmentCategory.other,
+                        totalAmount: 500.0,
+                        paymentAmount: 50.0,
+                        interestRate: 5.0,
+                        totalPayments: 10,
+                        paymentsMade: 1,
+                        paymentFrequency: 'monthly',
+                        firstPaymentDate: DateTime.now(),
+                        nextPaymentDate:
+                            DateTime.now().add(const Duration(days: 30)),
+                        finalPaymentDate:
+                            DateTime.now().add(const Duration(days: 300)),
+                        status: InstallmentStatus.active,
+                        createdAt: DateTime.now(),
+                        updatedAt: DateTime.now(),
+                      ),
+                    ],
+                    currentInstallmentLoad: 0.3, // Safe
+                    loadMessage: 'Safe',
+                  ),
+                ));
 
         await tester.pumpWidget(createWidgetUnderTest());
         await tester.pumpAndSettle();
@@ -157,23 +215,44 @@ void main() {
           (WidgetTester tester) async {
         when(mockInstallmentService.getInstallments(status: null))
             .thenAnswer((_) => Future.value(
-              InstallmentsSummary(
-                totalActive: 2,
-                totalCompleted: 1,
-                totalMonthlyPayment: 200.0,
-                installments: [],
-                currentInstallmentLoad: 0.4,
-                loadMessage: 'Moderate',
-              ),
-            ));
+                  InstallmentsSummary(
+                    totalActive: 2,
+                    totalCompleted: 1,
+                    totalMonthlyPayment: 200.0,
+                    installments: [
+                      Installment(
+                        id: 't1',
+                        userId: 'user1',
+                        itemName: 'Tab Item',
+                        category: InstallmentCategory.other,
+                        totalAmount: 500.0,
+                        paymentAmount: 50.0,
+                        interestRate: 5.0,
+                        totalPayments: 10,
+                        paymentsMade: 1,
+                        paymentFrequency: 'monthly',
+                        firstPaymentDate: DateTime.now(),
+                        nextPaymentDate:
+                            DateTime.now().add(const Duration(days: 30)),
+                        finalPaymentDate:
+                            DateTime.now().add(const Duration(days: 300)),
+                        status: InstallmentStatus.active,
+                        createdAt: DateTime.now(),
+                        updatedAt: DateTime.now(),
+                      ),
+                    ],
+                    currentInstallmentLoad: 0.4,
+                    loadMessage: 'Moderate',
+                  ),
+                ));
 
         await tester.pumpWidget(createWidgetUnderTest());
         await tester.pumpAndSettle();
 
-        expect(find.text('All'), findsWidgets);
-        expect(find.text('Active'), findsWidgets);
-        expect(find.text('Completed'), findsWidgets);
-        expect(find.text('Overdue'), findsWidgets);
+        expect(find.textContaining('All'), findsWidgets);
+        expect(find.textContaining('Active'), findsWidgets);
+        expect(find.textContaining('Completed'), findsWidgets);
+        expect(find.textContaining('Overdue'), findsWidgets);
       });
 
       testWidgets('filters installments when tab is selected',
@@ -199,28 +278,28 @@ void main() {
 
         when(mockInstallmentService.getInstallments(status: null))
             .thenAnswer((_) => Future.value(
-              InstallmentsSummary(
-                totalActive: 1,
-                totalCompleted: 0,
-                totalMonthlyPayment: 80.0,
-                installments: [activeInstallment],
-                currentInstallmentLoad: 0.4,
-                loadMessage: 'Moderate',
-              ),
-            ));
+                  InstallmentsSummary(
+                    totalActive: 1,
+                    totalCompleted: 0,
+                    totalMonthlyPayment: 80.0,
+                    installments: [activeInstallment],
+                    currentInstallmentLoad: 0.4,
+                    loadMessage: 'Moderate',
+                  ),
+                ));
 
         when(mockInstallmentService.getInstallments(
                 status: InstallmentStatus.active))
             .thenAnswer((_) => Future.value(
-              InstallmentsSummary(
-                totalActive: 1,
-                totalCompleted: 0,
-                totalMonthlyPayment: 80.0,
-                installments: [activeInstallment],
-                currentInstallmentLoad: 0.4,
-                loadMessage: 'Moderate',
-              ),
-            ));
+                  InstallmentsSummary(
+                    totalActive: 1,
+                    totalCompleted: 0,
+                    totalMonthlyPayment: 80.0,
+                    installments: [activeInstallment],
+                    currentInstallmentLoad: 0.4,
+                    loadMessage: 'Moderate',
+                  ),
+                ));
 
         await tester.pumpWidget(createWidgetUnderTest());
         await tester.pumpAndSettle();
@@ -257,15 +336,15 @@ void main() {
 
         when(mockInstallmentService.getInstallments(status: null))
             .thenAnswer((_) => Future.value(
-              InstallmentsSummary(
-                totalActive: 1,
-                totalCompleted: 0,
-                totalMonthlyPayment: 150.0,
-                installments: [installment],
-                currentInstallmentLoad: 0.5,
-                loadMessage: 'Moderate',
-              ),
-            ));
+                  InstallmentsSummary(
+                    totalActive: 1,
+                    totalCompleted: 0,
+                    totalMonthlyPayment: 150.0,
+                    installments: [installment],
+                    currentInstallmentLoad: 0.5,
+                    loadMessage: 'Moderate',
+                  ),
+                ));
 
         await tester.pumpWidget(createWidgetUnderTest());
         await tester.pumpAndSettle();
@@ -298,15 +377,15 @@ void main() {
 
         when(mockInstallmentService.getInstallments(status: null))
             .thenAnswer((_) => Future.value(
-              InstallmentsSummary(
-                totalActive: 1,
-                totalCompleted: 0,
-                totalMonthlyPayment: 125.0,
-                installments: [installment],
-                currentInstallmentLoad: 0.3,
-                loadMessage: 'Safe',
-              ),
-            ));
+                  InstallmentsSummary(
+                    totalActive: 1,
+                    totalCompleted: 0,
+                    totalMonthlyPayment: 125.0,
+                    installments: [installment],
+                    currentInstallmentLoad: 0.3,
+                    loadMessage: 'Safe',
+                  ),
+                ));
 
         await tester.pumpWidget(createWidgetUnderTest());
         await tester.pumpAndSettle();
@@ -337,15 +416,15 @@ void main() {
 
         when(mockInstallmentService.getInstallments(status: null))
             .thenAnswer((_) => Future.value(
-              InstallmentsSummary(
-                totalActive: 1,
-                totalCompleted: 0,
-                totalMonthlyPayment: 50.0,
-                installments: [installment],
-                currentInstallmentLoad: 0.2,
-                loadMessage: 'Safe',
-              ),
-            ));
+                  InstallmentsSummary(
+                    totalActive: 1,
+                    totalCompleted: 0,
+                    totalMonthlyPayment: 50.0,
+                    installments: [installment],
+                    currentInstallmentLoad: 0.2,
+                    loadMessage: 'Safe',
+                  ),
+                ));
 
         await tester.pumpWidget(createWidgetUnderTest());
         await tester.pumpAndSettle();
@@ -377,20 +456,20 @@ void main() {
 
         when(mockInstallmentService.getInstallments(status: null))
             .thenAnswer((_) => Future.value(
-              InstallmentsSummary(
-                totalActive: 1,
-                totalCompleted: 0,
-                totalMonthlyPayment: 50.0,
-                installments: [installment],
-                currentInstallmentLoad: 0.2,
-                loadMessage: 'Safe',
-              ),
-            ));
+                  InstallmentsSummary(
+                    totalActive: 1,
+                    totalCompleted: 0,
+                    totalMonthlyPayment: 50.0,
+                    installments: [installment],
+                    currentInstallmentLoad: 0.2,
+                    loadMessage: 'Safe',
+                  ),
+                ));
 
         await tester.pumpWidget(createWidgetUnderTest());
         await tester.pumpAndSettle();
 
-        await tester.tap(find.byIcon(Icons.more_vert));
+        await tester.tap(find.byIcon(Icons.more_vert).first);
         await tester.pumpAndSettle();
 
         expect(find.text('View Details'), findsWidgets);
@@ -422,15 +501,15 @@ void main() {
 
         when(mockInstallmentService.getInstallments(status: null))
             .thenAnswer((_) => Future.value(
-              InstallmentsSummary(
-                totalActive: 1,
-                totalCompleted: 0,
-                totalMonthlyPayment: 100.0,
-                installments: [installment],
-                currentInstallmentLoad: 0.3,
-                loadMessage: 'Safe',
-              ),
-            ));
+                  InstallmentsSummary(
+                    totalActive: 1,
+                    totalCompleted: 0,
+                    totalMonthlyPayment: 100.0,
+                    installments: [installment],
+                    currentInstallmentLoad: 0.3,
+                    loadMessage: 'Safe',
+                  ),
+                ));
 
         await tester.pumpWidget(createWidgetUnderTest());
         await tester.pumpAndSettle();
@@ -463,15 +542,15 @@ void main() {
 
         when(mockInstallmentService.getInstallments(status: null))
             .thenAnswer((_) => Future.value(
-              InstallmentsSummary(
-                totalActive: 0,
-                totalCompleted: 1,
-                totalMonthlyPayment: 0.0,
-                installments: [completedInstallment],
-                currentInstallmentLoad: 0.0,
-                loadMessage: 'Safe',
-              ),
-            ));
+                  InstallmentsSummary(
+                    totalActive: 0,
+                    totalCompleted: 1,
+                    totalMonthlyPayment: 0.0,
+                    installments: [completedInstallment],
+                    currentInstallmentLoad: 0.0,
+                    loadMessage: 'Safe',
+                  ),
+                ));
 
         await tester.pumpWidget(createWidgetUnderTest());
         await tester.pumpAndSettle();
@@ -485,15 +564,15 @@ void main() {
           (WidgetTester tester) async {
         when(mockInstallmentService.getInstallments(status: null))
             .thenAnswer((_) => Future.value(
-              InstallmentsSummary(
-                totalActive: 0,
-                totalCompleted: 0,
-                totalMonthlyPayment: 0.0,
-                installments: [],
-                currentInstallmentLoad: 0.0,
-                loadMessage: 'Safe',
-              ),
-            ));
+                  InstallmentsSummary(
+                    totalActive: 0,
+                    totalCompleted: 0,
+                    totalMonthlyPayment: 0.0,
+                    installments: [],
+                    currentInstallmentLoad: 0.0,
+                    loadMessage: 'Safe',
+                  ),
+                ));
 
         await tester.pumpWidget(createWidgetUnderTest());
         await tester.pumpAndSettle();
@@ -503,19 +582,18 @@ void main() {
     });
 
     group('Refresh Indicator Tests', () {
-      testWidgets('allows pull to refresh',
-          (WidgetTester tester) async {
+      testWidgets('allows pull to refresh', (WidgetTester tester) async {
         when(mockInstallmentService.getInstallments(status: null))
             .thenAnswer((_) => Future.value(
-              InstallmentsSummary(
-                totalActive: 0,
-                totalCompleted: 0,
-                totalMonthlyPayment: 0.0,
-                installments: [],
-                currentInstallmentLoad: 0.0,
-                loadMessage: 'Safe',
-              ),
-            ));
+                  InstallmentsSummary(
+                    totalActive: 0,
+                    totalCompleted: 0,
+                    totalMonthlyPayment: 0.0,
+                    installments: [],
+                    currentInstallmentLoad: 0.0,
+                    loadMessage: 'Safe',
+                  ),
+                ));
 
         await tester.pumpWidget(createWidgetUnderTest());
         await tester.pumpAndSettle();
@@ -550,15 +628,15 @@ void main() {
 
         when(mockInstallmentService.getInstallments(status: null))
             .thenAnswer((_) => Future.value(
-              InstallmentsSummary(
-                totalActive: 1,
-                totalCompleted: 0,
-                totalMonthlyPayment: 50.0,
-                installments: [installmentWithNotes],
-                currentInstallmentLoad: 0.2,
-                loadMessage: 'Safe',
-              ),
-            ));
+                  InstallmentsSummary(
+                    totalActive: 1,
+                    totalCompleted: 0,
+                    totalMonthlyPayment: 50.0,
+                    installments: [installmentWithNotes],
+                    currentInstallmentLoad: 0.2,
+                    loadMessage: 'Safe',
+                  ),
+                ));
 
         await tester.pumpWidget(createWidgetUnderTest());
         await tester.pumpAndSettle();
@@ -609,15 +687,15 @@ void main() {
 
         when(mockInstallmentService.getInstallments(status: null))
             .thenAnswer((_) => Future.value(
-              InstallmentsSummary(
-                totalActive: 2,
-                totalCompleted: 0,
-                totalMonthlyPayment: 150.0,
-                installments: installments,
-                currentInstallmentLoad: 0.4,
-                loadMessage: 'Moderate',
-              ),
-            ));
+                  InstallmentsSummary(
+                    totalActive: 2,
+                    totalCompleted: 0,
+                    totalMonthlyPayment: 150.0,
+                    installments: installments,
+                    currentInstallmentLoad: 0.4,
+                    loadMessage: 'Moderate',
+                  ),
+                ));
 
         await tester.pumpWidget(createWidgetUnderTest());
         await tester.pumpAndSettle();

@@ -156,7 +156,9 @@ class _MainScreenState extends State<MainScreen> {
       if (confidenceValue != null) {
         final confidence = (confidenceValue is num)
             ? confidenceValue.toDouble()
-            : (confidenceValue is String ? double.tryParse(confidenceValue) ?? 0.0 : 0.0);
+            : (confidenceValue is String
+                ? double.tryParse(confidenceValue) ?? 0.0
+                : 0.0);
         financialHealthScore = {
           'score': (confidence * 100).round(),
           'grade': _getGradeFromConfidence(confidence),
@@ -518,7 +520,8 @@ class _MainScreenState extends State<MainScreen> {
   /// Uses ACTUAL calendar data from onboarding, not hardcoded percentages!
   List<Map<String, dynamic>> _buildDailyTargets(BudgetProvider budgetProvider) {
     if (_monthlyIncome <= 0) {
-      logDebug('No income data - cannot show daily targets', tag: 'MAIN_SCREEN');
+      logDebug('No income data - cannot show daily targets',
+          tag: 'MAIN_SCREEN');
       return [];
     }
 
@@ -536,9 +539,8 @@ class _MainScreenState extends State<MainScreen> {
         final categories = todayEntry['categories'] as Map<String, dynamic>;
 
         logInfo(
-          'Using REAL calendar data for today (${categories.length} categories)',
-          tag: 'MAIN_SCREEN'
-        );
+            'Using REAL calendar data for today (${categories.length} categories)',
+            tag: 'MAIN_SCREEN');
 
         // Convert calendar categories to daily targets format
         return categories.entries.map((entry) {
@@ -557,13 +559,12 @@ class _MainScreenState extends State<MainScreen> {
     }
 
     // Fallback: Use default weights only if no calendar data available
-    logWarning(
-      'No calendar data available - using fallback default weights',
-      tag: 'MAIN_SCREEN'
-    );
+    logWarning('No calendar data available - using fallback default weights',
+        tag: 'MAIN_SCREEN');
 
     final dailyBudget = _monthlyIncome / 30;
-    final weights = _incomeService.getDefaultBudgetWeights(_incomeTier ?? IncomeTier.middle);
+    final weights = _incomeService
+        .getDefaultBudgetWeights(_incomeTier ?? IncomeTier.middle);
 
     return [
       {
@@ -1265,8 +1266,11 @@ class _MainScreenState extends State<MainScreen> {
 
     // Get goals data from dashboard
     // FIXED: Safe type casting to handle API response types
-    final goalsData = (dashboardData['data']?['goals'] as List?)?.cast<dynamic>() ?? [];
-    final goalsSummary = (dashboardData['data']?['goals_summary'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{};
+    final goalsData =
+        (dashboardData['data']?['goals'] as List?)?.cast<dynamic>() ?? [];
+    final goalsSummary = (dashboardData['data']?['goals_summary'] as Map?)
+            ?.cast<String, dynamic>() ??
+        <String, dynamic>{};
 
     final totalActive = goalsSummary['total_active'] ?? 0;
     final nearCompletion = goalsSummary['near_completion'] ?? 0;
@@ -1460,17 +1464,23 @@ class _MainScreenState extends State<MainScreen> {
           final progressValue = goal['progress'];
           final progress = (progressValue is num)
               ? progressValue.toDouble()
-              : (progressValue is String ? double.tryParse(progressValue) ?? 0.0 : 0.0);
+              : (progressValue is String
+                  ? double.tryParse(progressValue) ?? 0.0
+                  : 0.0);
 
           final targetAmountValue = goal['target_amount'];
           final targetAmount = (targetAmountValue is num)
               ? targetAmountValue.toDouble()
-              : (targetAmountValue is String ? double.tryParse(targetAmountValue) ?? 0.0 : 0.0);
+              : (targetAmountValue is String
+                  ? double.tryParse(targetAmountValue) ?? 0.0
+                  : 0.0);
 
           final savedAmountValue = goal['saved_amount'];
           final savedAmount = (savedAmountValue is num)
               ? savedAmountValue.toDouble()
-              : (savedAmountValue is String ? double.tryParse(savedAmountValue) ?? 0.0 : 0.0);
+              : (savedAmountValue is String
+                  ? double.tryParse(savedAmountValue) ?? 0.0
+                  : 0.0);
           final isOverdue = goal['is_overdue'] as bool? ?? false;
           final priority = goal['priority'] ?? 'medium';
           final category = goal['category'] ?? 'Other';
@@ -1672,8 +1682,12 @@ class _MainScreenState extends State<MainScreen> {
 
     // Get challenges data from dashboard
     // FIXED: Safe type casting to handle API response types
-    final challengesData = (dashboardData['data']?['challenges'] as List?)?.cast<dynamic>() ?? [];
-    final challengesSummary = (dashboardData['data']?['challenges_summary'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{};
+    final challengesData =
+        (dashboardData['data']?['challenges'] as List?)?.cast<dynamic>() ?? [];
+    final challengesSummary =
+        (dashboardData['data']?['challenges_summary'] as Map?)
+                ?.cast<String, dynamic>() ??
+            <String, dynamic>{};
 
     final activeChallenges = challengesSummary['active_challenges'] ?? 0;
     final completedThisMonth = challengesSummary['completed_this_month'] ?? 0;
@@ -1876,7 +1890,9 @@ class _MainScreenState extends State<MainScreen> {
           final progressPercentageValue = challenge['progress_percentage'];
           final progressPercentage = (progressPercentageValue is num)
               ? progressPercentageValue.toDouble()
-              : (progressPercentageValue is String ? double.tryParse(progressPercentageValue) ?? 0.0 : 0.0);
+              : (progressPercentageValue is String
+                  ? double.tryParse(progressPercentageValue) ?? 0.0
+                  : 0.0);
           final daysCompleted = challenge['days_completed'] ?? 0;
           final durationDays = challenge['duration_days'] ?? 0;
           final rewardPoints = challenge['reward_points'] ?? 0;

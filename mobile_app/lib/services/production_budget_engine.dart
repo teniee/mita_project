@@ -93,12 +93,19 @@ class ProductionBudgetEngine {
     } catch (e) {
       logError('Error calculating daily budget: $e',
           tag: 'BUDGET_ENGINE', error: e);
+      // Graceful degradation: with no usable income (fresh install, wiped
+      // onboarding state) return a conservative low-confidence budget
+      // instead of crashing the budget/calendar screens.
       if (onboardingData.income == null || onboardingData.income! <= 0) {
-        throw ArgumentError('Monthly income is required for fallback budget');
+        return _getFallbackDailyBudget(_conservativeFallbackIncome);
       }
       return _getFallbackDailyBudget(onboardingData.income!);
     }
   }
+
+  /// Assumed monthly income when the user has provided none — deliberately
+  /// conservative so a data-less fallback never encourages overspending.
+  static const double _conservativeFallbackIncome = 3000.0;
 
   /// Generate intelligent category budget allocations based on user data
   CategoryBudgetAllocation calculateCategoryBudgets({
@@ -1260,7 +1267,11 @@ class ProductionBudgetEngine {
     List<String>? habits,
   }) {
     final weights = _incomeService.getDefaultBudgetWeights(tier);
-    return weights.map((k, v) => MapEntry(k, monthlyIncome * v));
+    final allocations = weights.map((k, v) => MapEntry(k, monthlyIncome * v));
+    // Callers consume the aggregate alongside the per-category breakdown.
+    allocations['totalBudget'] =
+        allocations.values.fold(0.0, (sum, v) => sum + v);
+    return allocations;
   }
 }
 

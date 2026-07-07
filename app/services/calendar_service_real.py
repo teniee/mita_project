@@ -54,6 +54,10 @@ def save_calendar_for_user(
                     date=day_date,
                     category=category,
                     planned_amount=Decimal(amount),
+                    # daily_budget is the enforceable per-category limit read by
+                    # the calendar (day "limit") and spending-prevention checks;
+                    # leaving it NULL renders every day limitless (limit=0).
+                    daily_budget=Decimal(amount),
                     spent_amount=Decimal("0.00"),
                 )
                 db.add(db_plan)
@@ -114,6 +118,7 @@ def update_day_entry(db: Session, user_id: UUID, day: date, updates: Dict[str, A
         )
         if plan:
             plan.planned_amount = Decimal(new_amount)
+            plan.daily_budget = Decimal(new_amount)
         else:
             db.add(
                 DailyPlan(
@@ -121,6 +126,7 @@ def update_day_entry(db: Session, user_id: UUID, day: date, updates: Dict[str, A
                     date=day,
                     category=category,
                     planned_amount=Decimal(new_amount),
+                    daily_budget=Decimal(new_amount),
                     spent_amount=Decimal("0.00"),
                 )
             )

@@ -8,7 +8,7 @@ import 'package:mita/services/income_service.dart';
 void main() {
   group('ProductionBudgetEngine Tests', () {
     late ProductionBudgetEngine budgetEngine;
-    
+
     setUp(() {
       budgetEngine = ProductionBudgetEngine();
     });
@@ -26,14 +26,18 @@ void main() {
         onboardingData.stateCode = 'TX'; // Lower cost area
 
         // Act
-        final result = budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
+        final result =
+            budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
 
         // Assert
-        expect(result.totalDailyBudget, greaterThan(15.0)); // Reasonable minimum for low income
-        expect(result.totalDailyBudget, lessThan(60.0)); // Not too high for low income
-        expect(result.confidence, greaterThan(0.5)); // Should have some confidence
+        expect(result.totalDailyBudget,
+            greaterThan(15.0)); // Reasonable minimum for low income
+        expect(result.totalDailyBudget,
+            lessThan(60.0)); // Not too high for low income
+        expect(
+            result.confidence, greaterThan(0.5)); // Should have some confidence
         expect(result.methodology, contains('MITA'));
-        
+
         // print('Low income daily budget: \$${result.totalDailyBudget.toStringAsFixed(2)}');
         // print('Confidence: ${(result.confidence * 100).toStringAsFixed(1)}%');
         // print('Methodology: ${result.methodology}');
@@ -51,12 +55,15 @@ void main() {
         onboardingData.stateCode = 'CA'; // Higher cost area
 
         // Act
-        final result = budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
+        final result =
+            budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
 
         // Assert
-        expect(result.totalDailyBudget, greaterThan(100.0)); // Should be significantly higher
-        expect(result.confidence, greaterThanOrEqualTo(0.8)); // High confidence for high income
-        
+        expect(result.totalDailyBudget,
+            greaterThan(100.0)); // Should be significantly higher
+        expect(result.confidence,
+            greaterThanOrEqualTo(0.8)); // High confidence for high income
+
         // print('High income daily budget: \$${result.totalDailyBudget.toStringAsFixed(2)}');
         // print('Confidence: ${(result.confidence * 100).toStringAsFixed(1)}%');
       });
@@ -73,15 +80,18 @@ void main() {
         // Test low cost area
         onboardingData.countryCode = 'US';
         onboardingData.stateCode = 'TX';
-        final lowCostResult = budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
+        final lowCostResult =
+            budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
 
         // Test high cost area
         onboardingData.stateCode = 'CA';
-        final highCostResult = budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
+        final highCostResult =
+            budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
 
         // Assert
-        expect(highCostResult.totalDailyBudget, greaterThan(lowCostResult.totalDailyBudget));
-        
+        expect(highCostResult.totalDailyBudget,
+            greaterThan(lowCostResult.totalDailyBudget));
+
         // print('Low cost area budget: \$${lowCostResult.totalDailyBudget.toStringAsFixed(2)}');
         // print('High cost area budget: \$${highCostResult.totalDailyBudget.toStringAsFixed(2)}');
       });
@@ -96,16 +106,20 @@ void main() {
 
         // Test without habits
         onboardingData.habits = [];
-        final normalResult = budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
+        final normalResult =
+            budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
 
         // Test with problematic habits
         onboardingData.habits = ['impulse_buying', 'credit_dependency'];
-        final habitsResult = budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
+        final habitsResult =
+            budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
 
         // Assert
-        expect(habitsResult.totalDailyBudget, lessThan(normalResult.totalDailyBudget));
-        expect(habitsResult.redistributionBuffer, greaterThan(normalResult.redistributionBuffer));
-        
+        expect(habitsResult.totalDailyBudget,
+            lessThan(normalResult.totalDailyBudget));
+        expect(habitsResult.redistributionBuffer,
+            greaterThan(normalResult.redistributionBuffer));
+
         // print('Normal budget: \$${normalResult.totalDailyBudget.toStringAsFixed(2)}');
         // print('With habits budget: \$${habitsResult.totalDailyBudget.toStringAsFixed(2)}');
       });
@@ -125,13 +139,15 @@ void main() {
         ];
 
         // Act
-        final result = budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
+        final result =
+            budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
 
         // Assert
         // Should account for high fixed expenses
         expect(result.fixedCommitments, greaterThan(40.0)); // ~1550/30 = 51.67
-        expect(result.confidence, greaterThanOrEqualTo(0.8)); // High confidence with real data
-        
+        expect(result.confidence,
+            greaterThanOrEqualTo(0.8)); // High confidence with real data
+
         // print('Fixed commitments: \$${result.fixedCommitments.toStringAsFixed(2)}/day');
         // print('Available spending: \$${result.availableSpending.toStringAsFixed(2)}/day');
       });
@@ -147,7 +163,8 @@ void main() {
         onboardingData.goals = [];
         onboardingData.habits = [];
 
-        final dailyBudget = budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
+        final dailyBudget =
+            budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
 
         // Act
         final categoryResult = budgetEngine.calculateCategoryBudgets(
@@ -158,11 +175,11 @@ void main() {
         // Assert
         expect(categoryResult.dailyAllocations, isNotEmpty);
         expect(categoryResult.confidence, greaterThanOrEqualTo(0.5));
-        
+
         // Should have reasonable food allocation (typically largest category)
         final foodAllocation = categoryResult.dailyAllocations['food'] ?? 0.0;
         expect(foodAllocation, greaterThan(15.0)); // At least $15/day for food
-        
+
         // print('Category allocations:');
         categoryResult.dailyAllocations.forEach((category, amount) {
           // print('  $category: \$${amount.toStringAsFixed(2)}/day');
@@ -179,7 +196,8 @@ void main() {
 
         // Test without savings goal
         onboardingData.goals = ['budgeting'];
-        final dailyBudget1 = budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
+        final dailyBudget1 =
+            budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
         final normalResult = budgetEngine.calculateCategoryBudgets(
           onboardingData: onboardingData,
           dailyBudget: dailyBudget1,
@@ -187,7 +205,8 @@ void main() {
 
         // Test with savings goal
         onboardingData.goals = ['save_more', 'budgeting'];
-        final dailyBudget2 = budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
+        final dailyBudget2 =
+            budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
         final savingsResult = budgetEngine.calculateCategoryBudgets(
           onboardingData: onboardingData,
           dailyBudget: dailyBudget2,
@@ -195,10 +214,11 @@ void main() {
 
         // Assert
         final normalSavings = normalResult.monthlyAllocations['savings'] ?? 0.0;
-        final prioritizedSavings = savingsResult.monthlyAllocations['savings'] ?? 0.0;
-        
+        final prioritizedSavings =
+            savingsResult.monthlyAllocations['savings'] ?? 0.0;
+
         expect(prioritizedSavings, greaterThan(normalSavings));
-        
+
         // print('Normal savings: \$${normalSavings.toStringAsFixed(2)}/month');
         // print('Prioritized savings: \$${prioritizedSavings.toStringAsFixed(2)}/month');
       });
@@ -215,10 +235,14 @@ void main() {
           {'category': 'food', 'amount': 600.0},
           {'category': 'transportation', 'amount': 400.0},
           {'category': 'entertainment', 'amount': 200.0},
-          {'category': 'custom_category', 'amount': 150.0}, // User-specific category
+          {
+            'category': 'custom_category',
+            'amount': 150.0
+          }, // User-specific category
         ];
 
-        final dailyBudget = budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
+        final dailyBudget =
+            budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
 
         // Act
         final result = budgetEngine.calculateCategoryBudgets(
@@ -227,9 +251,11 @@ void main() {
         );
 
         // Assert
-        expect(result.monthlyAllocations.containsKey('custom_category'), isTrue);
-        expect(result.confidence, greaterThanOrEqualTo(0.5)); // Base confidence with user data
-        
+        expect(
+            result.monthlyAllocations.containsKey('custom_category'), isTrue);
+        expect(result.confidence,
+            greaterThanOrEqualTo(0.5)); // Base confidence with user data
+
         // print('User-specific allocations:');
         result.monthlyAllocations.forEach((category, amount) {
           // print('  $category: \$${amount.toStringAsFixed(2)}/month');
@@ -257,8 +283,11 @@ void main() {
         // Assert
         expect(rules.rules, isNotEmpty);
         expect(rules.rules.any((rule) => rule.id.contains('impulse')), isTrue);
-        expect(rules.adaptationFrequency, equals(AdaptationFrequency.daily)); // Lower income = more frequent adjustments
-        
+        expect(
+            rules.adaptationFrequency,
+            equals(AdaptationFrequency
+                .daily)); // Lower income = more frequent adjustments
+
         // print('Generated ${rules.rules.length} dynamic rules');
         for (final rule in rules.rules) {
           // print('  ${rule.id}: ${rule.description}');
@@ -289,13 +318,16 @@ void main() {
         );
 
         // Assert
-        final adjustmentRules = rules.rules.where((rule) => 
-          rule.id.contains('overspending') || rule.id.contains('correction') || 
-          rule.description.toLowerCase().contains('overspending')).toList();
-        
+        final adjustmentRules = rules.rules
+            .where((rule) =>
+                rule.id.contains('overspending') ||
+                rule.id.contains('correction') ||
+                rule.description.toLowerCase().contains('overspending'))
+            .toList();
+
         // Should have some rules, even if not specifically overspending correction
         expect(rules.rules, isNotEmpty);
-        
+
         // print('Mid-month adjustment rules:');
         for (final rule in adjustmentRules) {
           // print('  ${rule.description} (${rule.priority})');
@@ -322,12 +354,12 @@ void main() {
         expect(personalization.goalNudges, isNotEmpty);
         expect(personalization.habitInterventions, isNotEmpty);
         expect(personalization.behavioralNudges, isNotEmpty);
-        
+
         // Should have nudges for each goal
         final goalTypes = personalization.goalNudges.map((n) => n.goal).toSet();
         expect(goalTypes.contains('save_more'), isTrue);
         expect(goalTypes.contains('pay_off_debt'), isTrue);
-        
+
         // print('Personalization features:');
         // print('  Goal nudges: ${personalization.goalNudges.length}');
         // print('  Habit interventions: ${personalization.habitInterventions.length}');
@@ -363,9 +395,11 @@ void main() {
         );
 
         // Assert
-        expect(conservativeProfile.personalityProfile, equals(PersonalityProfile.conservative));
-        expect(aggressiveProfile.personalityProfile, equals(PersonalityProfile.aggressive));
-        
+        expect(conservativeProfile.personalityProfile,
+            equals(PersonalityProfile.conservative));
+        expect(aggressiveProfile.personalityProfile,
+            equals(PersonalityProfile.aggressive));
+
         // print('Conservative profile: ${conservativeProfile.personalityProfile}');
         // print('Aggressive profile: ${aggressiveProfile.personalityProfile}');
       });
@@ -379,9 +413,12 @@ void main() {
         // Leave everything null/empty
 
         // Act & Assert - Should not throw
-        final result = budgetEngine.calculateDailyBudget(onboardingData: emptyData);
-        expect(result.totalDailyBudget, greaterThan(0.0)); // Should have fallback
-        expect(result.confidence, lessThanOrEqualTo(0.8)); // Lower confidence with no data
+        final result =
+            budgetEngine.calculateDailyBudget(onboardingData: emptyData);
+        expect(
+            result.totalDailyBudget, greaterThan(0.0)); // Should have fallback
+        expect(result.confidence,
+            lessThanOrEqualTo(0.8)); // Lower confidence with no data
       });
 
       test('should handle extreme income values', () {
@@ -394,12 +431,14 @@ void main() {
         extremeData.habits = [];
 
         // Act
-        final result = budgetEngine.calculateDailyBudget(onboardingData: extremeData);
+        final result =
+            budgetEngine.calculateDailyBudget(onboardingData: extremeData);
 
         // Assert
-        expect(result.totalDailyBudget, greaterThan(500.0)); // Should be substantial
+        expect(result.totalDailyBudget,
+            greaterThan(500.0)); // Should be substantial
         expect(result.savingsTarget, greaterThan(100.0)); // High savings target
-        
+
         // print('Extreme income daily budget: \$${result.totalDailyBudget.toStringAsFixed(2)}');
         // print('Savings target: \$${result.savingsTarget.toStringAsFixed(2)}/day');
       });
@@ -413,7 +452,8 @@ void main() {
         onboardingData.goals = ['budgeting'];
         onboardingData.habits = [];
 
-        final dailyBudget = budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
+        final dailyBudget =
+            budgetEngine.calculateDailyBudget(onboardingData: onboardingData);
         final categoryBudget = budgetEngine.calculateCategoryBudgets(
           onboardingData: onboardingData,
           dailyBudget: dailyBudget,
@@ -422,9 +462,12 @@ void main() {
         // Act & Assert - Total allocations should not exceed income
         final totalMonthlyAllocations = categoryBudget.monthlyAllocations.values
             .fold(0.0, (sum, amount) => sum + amount);
-        
-        expect(totalMonthlyAllocations, lessThanOrEqualTo(onboardingData.income! * 1.1)); // Allow 10% buffer
-        
+
+        expect(
+            totalMonthlyAllocations,
+            lessThanOrEqualTo(
+                onboardingData.income! * 1.1)); // Allow 10% buffer
+
         // print('Monthly income: \$${onboardingData.income}');
         // print('Total allocations: \$${totalMonthlyAllocations.toStringAsFixed(2)}');
         // print('Allocation ratio: ${(totalMonthlyAllocations / onboardingData.income! * 100).toStringAsFixed(1)}%');

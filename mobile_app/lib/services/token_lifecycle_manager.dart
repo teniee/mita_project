@@ -98,7 +98,8 @@ class TokenLifecycleManager {
       healthResult['rotationNeeded'] = shouldRotate;
 
       if (shouldRotate) {
-        logInfo('Token rotation needed - triggering refresh', tag: 'TOKEN_LIFECYCLE');
+        logInfo('Token rotation needed - triggering refresh',
+            tag: 'TOKEN_LIFECYCLE');
         final rotationSuccess = await _triggerTokenRotation();
         healthResult['rotationTriggered'] = true;
         healthResult['rotationSuccess'] = rotationSuccess;

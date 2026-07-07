@@ -203,9 +203,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
 
   Future<void> _loadCategoryBreakdown() async {
     try {
-      final isPastOrToday = !widget.date
-          .isAfter(DateTime(DateTime.now().year, DateTime.now().month,
-              DateTime.now().day));
+      final isPastOrToday = !widget.date.isAfter(DateTime(
+          DateTime.now().year, DateTime.now().month, DateTime.now().day));
 
       // ── Collect planned amounts from merged calendar data ──
       // BudgetProvider already merged planned+real when loadCalendarData ran,
@@ -214,10 +213,9 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
       final Map<String, double> spentByCategory = {};
 
       Map<String, dynamic>? catsMap;
-      if (widget.dayData != null &&
-          widget.dayData!['categories'] != null) {
-        catsMap = Map<String, dynamic>.from(
-            widget.dayData!['categories'] as Map);
+      if (widget.dayData != null && widget.dayData!['categories'] != null) {
+        catsMap =
+            Map<String, dynamic>.from(widget.dayData!['categories'] as Map);
       } else {
         final budgetProvider = context.read<BudgetProvider>();
         final dayEntry = budgetProvider.calendarData.firstWhere(
@@ -225,8 +223,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
           orElse: () => <String, dynamic>{},
         );
         if (dayEntry.isNotEmpty && dayEntry['categories'] != null) {
-          catsMap = Map<String, dynamic>.from(
-              dayEntry['categories'] as Map);
+          catsMap = Map<String, dynamic>.from(dayEntry['categories'] as Map);
         }
       }
 
@@ -235,12 +232,10 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
           if (val is Map) {
             plannedByCategory[cat] =
                 (val['planned'] as num?)?.toDouble() ?? 0.0;
-            spentByCategory[cat] =
-                (val['spent'] as num?)?.toDouble() ?? 0.0;
+            spentByCategory[cat] = (val['spent'] as num?)?.toDouble() ?? 0.0;
           } else {
             // Legacy plain-number format from shell calendar
-            plannedByCategory[cat] =
-                (val as num?)?.toDouble() ?? 0.0;
+            plannedByCategory[cat] = (val as num?)?.toDouble() ?? 0.0;
           }
         });
       }
@@ -251,14 +246,14 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
       // already pre-merged into widget.dayData by BudgetProvider.
       if (isPastOrToday) {
         final transactionProvider = context.read<TransactionProvider>();
-        final dayStart = DateTime(
-            widget.date.year, widget.date.month, widget.date.day);
+        final dayStart =
+            DateTime(widget.date.year, widget.date.month, widget.date.day);
         // Reset so TransactionProvider is the authoritative source
         spentByCategory.updateAll((_, __) => 0.0);
         bool anyTxForDay = false;
         for (final tx in transactionProvider.transactions) {
-          final txDay = DateTime(
-              tx.spentAt.year, tx.spentAt.month, tx.spentAt.day);
+          final txDay =
+              DateTime(tx.spentAt.year, tx.spentAt.month, tx.spentAt.day);
           if (txDay != dayStart) continue;
           anyTxForDay = true;
           spentByCategory[tx.category] =
@@ -299,14 +294,11 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
 
       // Sort: over-budget first, then by spent descending
       breakdown.sort((a, b) {
-        final aOver =
-            (a['spent'] as double) > (a['budgeted'] as double);
-        final bOver =
-            (b['spent'] as double) > (b['budgeted'] as double);
+        final aOver = (a['spent'] as double) > (a['budgeted'] as double);
+        final bOver = (b['spent'] as double) > (b['budgeted'] as double);
         if (aOver && !bOver) return -1;
         if (!aOver && bOver) return 1;
-        return (b['spent'] as double)
-            .compareTo(a['spent'] as double);
+        return (b['spent'] as double).compareTo(a['spent'] as double);
       });
 
       if (mounted) {

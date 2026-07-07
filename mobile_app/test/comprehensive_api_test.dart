@@ -18,17 +18,42 @@ void main() {
   group('MITA API Endpoint Tests', () {
     late Dio dio;
     final baseUrl = AppConfig.fullApiUrl;
+    // These are live-backend integration tests. They target
+    // API_BASE_URL (--dart-define) and are skipped — not failed — when
+    // that backend is unreachable (sandboxes, forks, offline dev).
+    var backendReachable = false;
 
-    setUpAll(() {
+    setUpAll(() async {
       dio = Dio(BaseOptions(
         baseUrl: baseUrl,
         connectTimeout: const Duration(seconds: 30),
         receiveTimeout: const Duration(seconds: 30),
       ));
+      try {
+        await Dio(BaseOptions(
+          connectTimeout: const Duration(seconds: 5),
+          receiveTimeout: const Duration(seconds: 5),
+          validateStatus: (_) => true,
+        )).get(AppConfig.fullHealthUrl);
+        backendReachable = true;
+      } catch (_) {
+        backendReachable = false;
+      }
     });
+
+    /// Skip helper: returns true when the test should bail out because no
+    /// backend is reachable from this environment.
+    bool skipIfUnreachable() {
+      if (!backendReachable) {
+        markTestSkipped('Backend not reachable at ' + baseUrl);
+        return true;
+      }
+      return false;
+    }
 
     group('Authentication & User Management', () {
       test('POST /auth/login - Should handle login requests', () async {
+        if (skipIfUnreachable()) return;
         try {
           final response = await dio.post('/auth/login',
               data: {'email': 'test@example.com', 'password': 'testpassword'});
@@ -54,6 +79,7 @@ void main() {
       });
 
       test('GET /users/me - Fixed duplicate path issue', () async {
+        if (skipIfUnreachable()) return;
         try {
           final response = await dio.get('/users/me');
 
@@ -74,6 +100,7 @@ void main() {
 
     group('Cohort & Analytics Endpoints', () {
       test('GET /api/cohort/insights - Should return insights data', () async {
+        if (skipIfUnreachable()) return;
         try {
           final response = await dio.get('/cohort/insights');
 
@@ -96,6 +123,7 @@ void main() {
       test(
           'GET /api/cohort/income_classification - Should return income tier data',
           () async {
+        if (skipIfUnreachable()) return;
         try {
           final response = await dio.get('/cohort/income_classification');
 
@@ -119,6 +147,7 @@ void main() {
 
       test('GET /api/insights/ - Should work for premium and non-premium users',
           () async {
+        if (skipIfUnreachable()) return;
         try {
           final response = await dio.get('/insights/');
 
@@ -141,6 +170,7 @@ void main() {
 
     group('AI & Analytics Endpoints', () {
       test('GET /api/ai/latest-snapshots - Fixed duplicate path', () async {
+        if (skipIfUnreachable()) return;
         try {
           final response = await dio.get('/ai/latest-snapshots');
 
@@ -165,6 +195,7 @@ void main() {
       });
 
       test('GET /api/analytics/monthly - Fixed duplicate path', () async {
+        if (skipIfUnreachable()) return;
         try {
           final response = await dio.get('/analytics/monthly');
 
@@ -190,6 +221,7 @@ void main() {
       test(
           'POST /api/calendar/shell - Should return calendar data without 500 errors',
           () async {
+        if (skipIfUnreachable()) return;
         try {
           // Test with realistic shell configuration
           final shellConfig = {
@@ -238,6 +270,7 @@ void main() {
 
     group('Error Handling & Response Format Tests', () {
       test('All endpoints should return proper JSON responses', () async {
+        if (skipIfUnreachable()) return;
         final endpoints = [
           '/cohort/insights',
           '/insights/',
@@ -265,6 +298,7 @@ void main() {
       });
 
       test('Endpoints should have consistent error response format', () async {
+        if (skipIfUnreachable()) return;
         try {
           // Test with invalid auth token
           final response = await dio.get('/users/me',
@@ -286,6 +320,7 @@ void main() {
 
     group('Performance & Reliability Tests', () {
       test('Endpoints should respond within reasonable time', () async {
+        if (skipIfUnreachable()) return;
         final stopwatch = Stopwatch()..start();
 
         try {
@@ -302,6 +337,7 @@ void main() {
       });
 
       test('Calendar endpoint should handle invalid data gracefully', () async {
+        if (skipIfUnreachable()) return;
         try {
           // Test with invalid shell configuration
           final response = await dio.post('/calendar/shell', data: {

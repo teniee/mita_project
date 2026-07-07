@@ -51,6 +51,9 @@ def record_expense(
             date=day,
             category=category,
             planned_amount=Decimal("0.00"),
+            # Unplanned category for this day: explicit zero limit, not NULL,
+            # so calendar limits and spending checks stay well-defined.
+            daily_budget=Decimal("0.00"),
             spent_amount=Decimal(amount),
         )
         db.add(new_plan)

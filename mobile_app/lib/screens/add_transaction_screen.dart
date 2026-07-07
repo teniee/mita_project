@@ -158,9 +158,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
             ),
           );
           // Refresh redistribution history in BudgetProvider
-          context
-              .read<BudgetProvider>()
-              .onTransactionCreated(rebalanced: true);
+          context.read<BudgetProvider>().onTransactionCreated(rebalanced: true);
         }
 
         Navigator.pop(context, true);

@@ -100,7 +100,8 @@ void main() {
 
       test('should unlock after lockout duration expires', () async {
         // Arrange - Lockout expired 1 minute ago
-        final expiredLockout = DateTime.now().subtract(const Duration(minutes: 1));
+        final expiredLockout =
+            DateTime.now().subtract(const Duration(minutes: 1));
         SharedPreferences.setMockInitialValues({
           'biometric_lockout_until': expiredLockout.millisecondsSinceEpoch,
         });
@@ -178,7 +179,8 @@ void main() {
 
     test('should mask JWT tokens', () {
       // Arrange
-      const message = 'Token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U';
+      const message =
+          'Token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U';
 
       // Act
       loggingService.info(message, tag: 'TEST');
@@ -187,7 +189,8 @@ void main() {
       // Assert
       expect(recentLogs.length, 1);
       expect(recentLogs.first.message, contains('eyJhbGci***'));
-      expect(recentLogs.first.message, isNot(contains('eyJzdWIiOiIxMjM0NTY3ODkwIn0')));
+      expect(recentLogs.first.message,
+          isNot(contains('eyJzdWIiOiIxMjM0NTY3ODkwIn0')));
     });
 
     test('should mask sensitive fields in extra data', () {

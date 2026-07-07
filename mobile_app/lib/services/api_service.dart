@@ -104,15 +104,15 @@ class ApiService {
             // Don't try to refresh if the failing request IS the refresh request
             final path = e.requestOptions.path ?? '';
             final isRefreshRequest = path.contains('/refresh-token') ||
-                                    path.endsWith('/refresh-token') ||
-                                    path.contains('refresh_token');
+                path.endsWith('/refresh-token') ||
+                path.contains('refresh_token');
 
             if (isRefreshRequest) {
               // Refresh token itself failed - cannot retry, just log and fail
               logError(
-                'Refresh token request failed with 401 - token is invalid/expired',
-                tag: 'TOKEN_REFRESH');
-              return handler.next(e);  // Pass through to error handling
+                  'Refresh token request failed with 401 - token is invalid/expired',
+                  tag: 'TOKEN_REFRESH');
+              return handler.next(e); // Pass through to error handling
             }
 
             final refreshed = await _refreshTokens();
@@ -144,7 +144,9 @@ class ApiService {
                 // 1. Новых пользователей на onboarding (нет токена вообще)
                 // 2. Старых токенов из предыдущих установок (_hasActiveSession = false)
                 final existingToken = await getToken();
-                if (existingToken != null && existingToken.isNotEmpty && _hasActiveSession) {
+                if (existingToken != null &&
+                    existingToken.isNotEmpty &&
+                    _hasActiveSession) {
                   MessageService.instance
                       .showError('Session expired. Please log in.');
                   logWarning(
@@ -208,7 +210,9 @@ class ApiService {
   // Prevents showing "Session expired" for old tokens from previous installs
   bool _hasActiveSession = false;
 
-  final String _baseUrl = AppConfig.baseUrl;
+  // All backend routes are mounted under /api (see backend app.main);
+  // using the bare host here 404'd every request the app made.
+  final String _baseUrl = AppConfig.fullApiUrl;
 
   // ---------------------------------------------------------------------------
   // Helpers
@@ -259,7 +263,8 @@ class ApiService {
     // Fallback to legacy storage
     final legacyToken = await _storage.read(key: 'access_token');
     if (legacyToken != null) {
-      logInfo('✅ Retrieved token from legacy storage fallback', tag: 'API_SECURITY');
+      logInfo('✅ Retrieved token from legacy storage fallback',
+          tag: 'API_SECURITY');
     }
     return legacyToken;
   }
@@ -286,7 +291,8 @@ class ApiService {
     // Fallback to legacy storage
     final legacyToken = await _storage.read(key: 'refresh_token');
     if (legacyToken != null) {
-      logInfo('✅ Retrieved refresh token from legacy storage fallback', tag: 'API_SECURITY');
+      logInfo('✅ Retrieved refresh token from legacy storage fallback',
+          tag: 'API_SECURITY');
     }
     return legacyToken;
   }
@@ -319,9 +325,11 @@ class ApiService {
         try {
           await _storage.write(key: 'access_token', value: access);
           await _storage.write(key: 'refresh_token', value: refresh);
-          logInfo('Legacy tokens also updated as fallback', tag: 'API_SECURITY');
+          logInfo('Legacy tokens also updated as fallback',
+              tag: 'API_SECURITY');
         } catch (e) {
-          logWarning('Failed to update legacy fallback tokens: $e', tag: 'API_SECURITY');
+          logWarning('Failed to update legacy fallback tokens: $e',
+              tag: 'API_SECURITY');
         }
 
         return;
@@ -455,8 +463,7 @@ class ApiService {
       logInfo('Refresh token length: ${refresh.length}', tag: 'TOKEN_REFRESH');
 
       const requestUrl = '/auth/refresh-token';
-      logInfo('Making refresh request to: $requestUrl',
-          tag: 'TOKEN_REFRESH');
+      logInfo('Making refresh request to: $requestUrl', tag: 'TOKEN_REFRESH');
 
       final response = await _dio.post(
         requestUrl,
@@ -466,8 +473,10 @@ class ApiService {
 
       logInfo('✅ Token refresh response received: ${response.statusCode}',
           tag: 'TOKEN_REFRESH');
-      logInfo('Response headers: ${response.headers.map}', tag: 'TOKEN_REFRESH');
-      logInfo('Response data type: ${response.data.runtimeType}', tag: 'TOKEN_REFRESH');
+      logInfo('Response headers: ${response.headers.map}',
+          tag: 'TOKEN_REFRESH');
+      logInfo('Response data type: ${response.data.runtimeType}',
+          tag: 'TOKEN_REFRESH');
 
       final data = response.data as Map<String, dynamic>?;
       if (data == null) {
@@ -476,7 +485,8 @@ class ApiService {
         throw Exception('Refresh token response data is null');
       }
 
-      logInfo('Response data keys: ${data.keys.toList()}', tag: 'TOKEN_REFRESH');
+      logInfo('Response data keys: ${data.keys.toList()}',
+          tag: 'TOKEN_REFRESH');
 
       // Try direct access first, then unwrap from StandardizedResponse {data: {...}}
       String? newAccess = data['access_token'] as String?;
@@ -496,7 +506,8 @@ class ApiService {
         throw Exception('Missing tokens in refresh response');
       }
 
-      logInfo('✅ New tokens received - access length: ${newAccess.length}, refresh length: ${newRefresh.length}',
+      logInfo(
+          '✅ New tokens received - access length: ${newAccess.length}, refresh length: ${newRefresh.length}',
           tag: 'TOKEN_REFRESH');
 
       // Use secure storage for token refresh when available
@@ -504,7 +515,8 @@ class ApiService {
 
       if (secureStorage != null) {
         try {
-          logInfo('📦 Storing tokens in secure storage...', tag: 'TOKEN_REFRESH');
+          logInfo('📦 Storing tokens in secure storage...',
+              tag: 'TOKEN_REFRESH');
           await secureStorage.storeTokens(newAccess, newRefresh);
           logInfo('✅ Tokens stored securely', tag: 'TOKEN_REFRESH');
 
@@ -512,9 +524,11 @@ class ApiService {
           try {
             await _storage.write(key: 'access_token', value: newAccess);
             await _storage.write(key: 'refresh_token', value: newRefresh);
-            logInfo('✅ Legacy fallback tokens also updated', tag: 'TOKEN_REFRESH');
+            logInfo('✅ Legacy fallback tokens also updated',
+                tag: 'TOKEN_REFRESH');
           } catch (legacyError) {
-            logWarning('Failed to update legacy fallback: $legacyError', tag: 'TOKEN_REFRESH');
+            logWarning('Failed to update legacy fallback: $legacyError',
+                tag: 'TOKEN_REFRESH');
           }
 
           logInfo('✅✅✅ Tokens refreshed and stored securely',
@@ -540,8 +554,10 @@ class ApiService {
       if (e is DioException) {
         logError('DioException type: ${e.type}', tag: 'TOKEN_REFRESH');
         logError('DioException message: ${e.message}', tag: 'TOKEN_REFRESH');
-        logError('DioException response: ${e.response?.data}', tag: 'TOKEN_REFRESH');
-        logError('DioException status code: ${e.response?.statusCode}', tag: 'TOKEN_REFRESH');
+        logError('DioException response: ${e.response?.data}',
+            tag: 'TOKEN_REFRESH');
+        logError('DioException status code: ${e.response?.statusCode}',
+            tag: 'TOKEN_REFRESH');
       }
 
       // DON'T clear tokens immediately - might be temporary network issue
@@ -766,12 +782,14 @@ class ApiService {
       final userData = response.data['data'];
       if (userData != null && userData.containsKey('has_onboarded')) {
         final hasOnboarded = userData['has_onboarded'] == true;
-        logInfo('Onboarding status from backend: $hasOnboarded', tag: 'ONBOARDING');
+        logInfo('Onboarding status from backend: $hasOnboarded',
+            tag: 'ONBOARDING');
         return hasOnboarded;
       }
 
       // Backend always returns has_onboarded field, so if it's missing something is wrong
-      logWarning('Backend /users/me response missing has_onboarded field', tag: 'ONBOARDING');
+      logWarning('Backend /users/me response missing has_onboarded field',
+          tag: 'ONBOARDING');
       return false;
     } catch (e) {
       // If there's an error checking the API, we should be conservative
@@ -960,7 +978,8 @@ class ApiService {
 
           dashboardData['today_budget'] = totalDaily;
           dashboardData['monthly_budget'] = totalDaily * DateTime.now().day;
-          dashboardData['today_spent'] = 0.0; // Real spending loaded from transactions
+          dashboardData['today_spent'] =
+              0.0; // Real spending loaded from transactions
           dashboardData['monthly_spent'] = 0.0;
         }
 
@@ -1016,8 +1035,7 @@ class ApiService {
         return null;
       }
 
-      logInfo(
-          'Fetching saved calendar from /calendar/saved/$year/$month',
+      logInfo('Fetching saved calendar from /calendar/saved/$year/$month',
           tag: 'CALENDAR_SAVED');
 
       final response = await _dio.get(
@@ -1052,8 +1070,7 @@ class ApiService {
           // Direct structure: {calendar: [...]}
           calendarData = responseData['calendar'];
         } else {
-          logWarning(
-              'Unexpected response structure: ${responseData.keys}',
+          logWarning('Unexpected response structure: ${responseData.keys}',
               tag: 'CALENDAR_SAVED');
           return null;
         }
@@ -1070,8 +1087,7 @@ class ApiService {
       }
 
       if (calendarData is! List || (calendarData as List).isEmpty) {
-        logInfo(
-            'Saved calendar data is empty for $year-$month',
+        logInfo('Saved calendar data is empty for $year-$month',
             tag: 'CALENDAR_SAVED');
         return null;
       }
@@ -1080,7 +1096,6 @@ class ApiService {
           '✅ Successfully retrieved ${calendarData.length} saved calendar days from onboarding',
           tag: 'CALENDAR_SAVED');
       return calendarData as List<dynamic>;
-
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
         logInfo(
@@ -1091,8 +1106,7 @@ class ApiService {
             'Authentication failed when fetching saved calendar - token may be expired',
             tag: 'CALENDAR_SAVED');
       } else {
-        logWarning(
-            'Network error fetching saved calendar: ${e.message}',
+        logWarning('Network error fetching saved calendar: ${e.message}',
             tag: 'CALENDAR_SAVED');
       }
       return null; // Graceful fallback to shell config
@@ -1160,8 +1174,7 @@ class ApiService {
 
         try {
           // Get raw cached onboarding data
-          final cachedData =
-              UserDataManager.instance.getCachedOnboardingData();
+          final cachedData = UserDataManager.instance.getCachedOnboardingData();
 
           if (cachedData != null) {
             logInfo(
@@ -1172,7 +1185,8 @@ class ApiService {
             final fixedExpensesData = cachedData['fixed_expenses'];
             if (fixedExpensesData != null && fixedExpensesData is Map) {
               fixedExpenses = Map<String, dynamic>.from(fixedExpensesData);
-              logInfo('Loaded REAL fixed expenses from onboarding: $fixedExpenses',
+              logInfo(
+                  'Loaded REAL fixed expenses from onboarding: $fixedExpenses',
                   tag: 'CALENDAR');
             }
 
@@ -1196,12 +1210,19 @@ class ApiService {
             if (habitsData != null && habitsData is Map) {
               // Calculate weights based on actual spending frequencies
               // Higher frequency = higher weight
-              final diningOut = (habitsData['dining_out_per_month'] as num?)?.toDouble() ?? 8;
-              final entertainment = (habitsData['entertainment_per_month'] as num?)?.toDouble() ?? 4;
-              final transport = (habitsData['transport_per_month'] as num?)?.toDouble() ?? 20;
+              final diningOut =
+                  (habitsData['dining_out_per_month'] as num?)?.toDouble() ?? 8;
+              final entertainment =
+                  (habitsData['entertainment_per_month'] as num?)?.toDouble() ??
+                      4;
+              final transport =
+                  (habitsData['transport_per_month'] as num?)?.toDouble() ?? 20;
 
               // Normalize frequencies to weights (simple proportion)
-              final totalFreq = diningOut + entertainment + transport + 10; // +10 for other categories
+              final totalFreq = diningOut +
+                  entertainment +
+                  transport +
+                  10; // +10 for other categories
               weights = {
                 'food': (diningOut / totalFreq).clamp(0.05, 0.25),
                 'transportation': (transport / totalFreq).clamp(0.05, 0.25),
@@ -1209,7 +1230,8 @@ class ApiService {
                 'shopping': 0.10, // Keep default for now
                 'healthcare': 0.07, // Keep default for now
               };
-              logInfo('Calculated weights from habits: $weights', tag: 'CALENDAR');
+              logInfo('Calculated weights from habits: $weights',
+                  tag: 'CALENDAR');
             }
           } else {
             logWarning(
@@ -1217,18 +1239,21 @@ class ApiService {
                 tag: 'CALENDAR');
           }
         } catch (e) {
-          logWarning('Could not load cached onboarding data, using defaults: $e',
+          logWarning(
+              'Could not load cached onboarding data, using defaults: $e',
               tag: 'CALENDAR');
         }
 
         // Prepare shell configuration with user's ACTUAL data (not hardcoded percentages!)
         final shellConfig = {
-          'savings_target': savingsTarget, // Use actual savings goal from onboarding
+          'savings_target':
+              savingsTarget, // Use actual savings goal from onboarding
           'income': actualIncome,
           'location': userLocation,
           'fixed': fixedExpenses ??
               {
-                'rent': actualIncome * 0.3, // Fallback to 30% only if no cached data
+                'rent': actualIncome *
+                    0.3, // Fallback to 30% only if no cached data
                 'utilities': actualIncome * 0.05,
                 'insurance': actualIncome * 0.04,
               },
@@ -1266,7 +1291,8 @@ class ApiService {
 
           // DISABLED: Fake data fallback - return empty instead of misleading data
           // DO NOT show fake budget data when API fails - it breaks user trust
-          logWarning('Calendar API failed - returning empty data (no fake fallback)',
+          logWarning(
+              'Calendar API failed - returning empty data (no fake fallback)',
               tag: 'CALENDAR');
 
           // Return empty calendar data - UI will show appropriate empty state
@@ -1316,8 +1342,44 @@ class ApiService {
 
   /// Transform backend calendar data to standard format
   List<dynamic> _transformCalendarData(
-      Map<String, dynamic> calendarData, double actualIncome) {
+      dynamic rawCalendarData, double actualIncome) {
     List<dynamic> calendarDays = [];
+
+    // The backend's /calendar/shell contract is a LIST of day entries:
+    // {calendar_id, date, planned_budget, limit, total}. (The previous
+    // Map-only signature made every successful response throw and the
+    // catch below returned an empty calendar.)
+    if (rawCalendarData is List) {
+      final now = DateTime.now();
+      for (final entry in rawCalendarData) {
+        if (entry is! Map) continue;
+        final map = Map<String, dynamic>.from(entry);
+        final date = DateTime.tryParse(map['date']?.toString() ?? '');
+        final limit = ((map['limit'] as num?) ?? 0).round();
+        final spent =
+            ((map['total'] as num?) ?? (map['spent'] as num?) ?? 0).round();
+        calendarDays.add({
+          'day': date?.day ?? 0,
+          'limit': limit,
+          'status': _calculateDayStatus(spent, limit),
+          'spent': spent,
+          'categories': Map<String, dynamic>.from(
+              (map['planned_budget'] as Map?) ??
+                  (map['categories'] as Map?) ??
+                  {}),
+          'is_today': date != null &&
+              date.year == now.year &&
+              date.month == now.month &&
+              date.day == now.day,
+          'is_weekend': date != null && date.weekday >= 6,
+        });
+      }
+      return calendarDays;
+    }
+
+    final calendarData = rawCalendarData is Map
+        ? Map<String, dynamic>.from(rawCalendarData)
+        : <String, dynamic>{};
 
     if (calendarData.containsKey('flexible')) {
       // Transform flexible budget format to daily calendar

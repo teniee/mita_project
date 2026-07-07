@@ -92,7 +92,8 @@ class TransactionModel {
       'updated_at': updatedAt?.toIso8601String(),
       if (rebalanced != null) 'rebalanced': rebalanced,
       if (rebalanceCovered != null) 'rebalance_covered': rebalanceCovered,
-      if (rebalanceFullyCovered != null) 'rebalance_fully_covered': rebalanceFullyCovered,
+      if (rebalanceFullyCovered != null)
+        'rebalance_fully_covered': rebalanceFullyCovered,
     };
   }
 
@@ -135,7 +136,8 @@ class TransactionModel {
       updatedAt: updatedAt ?? this.updatedAt,
       rebalanced: rebalanced ?? this.rebalanced,
       rebalanceCovered: rebalanceCovered ?? this.rebalanceCovered,
-      rebalanceFullyCovered: rebalanceFullyCovered ?? this.rebalanceFullyCovered,
+      rebalanceFullyCovered:
+          rebalanceFullyCovered ?? this.rebalanceFullyCovered,
     );
   }
 

@@ -76,7 +76,11 @@ class EnhancedErrorHandling {
         } else {
           logError('Final failure for $opName after $attempt attempts',
               tag: 'ENHANCED_ERROR_HANDLING');
-          return fallbackValue;
+          // Swallowing the terminal error hid every failure from callers
+          // (screens using executeRobustly never showed their error state).
+          // Only an explicitly provided fallback may absorb the failure.
+          if (fallbackValue != null) return fallbackValue;
+          rethrow;
         }
       }
     }

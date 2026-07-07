@@ -56,7 +56,11 @@ void main() {
         final caClassification = incomeService
             .classifyIncomeForLocation(monthlyIncome, 'US', stateCode: 'CA');
 
-        expect(msClassification, equals(IncomeTier.high));
+        // Upper-bound tier semantics (annual <= threshold[tier] -> tier):
+        // MS: 60000 <= middle threshold 62400 -> middle.
+        // CA: 60000 <= lower_middle threshold 71896 -> lowerMiddle.
+        // The same $60k reads two tiers lower in CA than in MS.
+        expect(msClassification, equals(IncomeTier.middle));
         expect(caClassification, equals(IncomeTier.lowerMiddle));
       });
 
@@ -245,13 +249,15 @@ void main() {
         // Colorado has high thresholds
         final thresholds =
             countryService.getIncomeThresholds('US', stateCode: 'CO');
-        expect(thresholds['high'], equals(260928));
+        // 4 boundary keys only (backend contract): 'high' is everything
+        // above upper_middle.
+        expect(thresholds['upper_middle'], equals(193280));
 
         // Test classification
         final result = incomeService.classifyIncomeForLocation(15000, 'US',
             stateCode: 'CO');
-        expect(result,
-            equals(IncomeTier.lowerMiddle)); // 15000*12 = 180000 < 260928
+        // 15000*12 = 180000 <= CO upper_middle threshold 193280
+        expect(result, equals(IncomeTier.upperMiddle));
       });
 
       test('Income tier display names are consistent', () {

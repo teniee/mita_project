@@ -23,6 +23,12 @@ class ErrorAnalyticsService {
   Timer? _analyticsTimer;
   bool _initialized = false;
 
+  /// Erase all recorded analytics (user data deletion / test isolation).
+  void clearAllData() {
+    _errorMetrics.clear();
+    _recentErrors.clear();
+  }
+
   /// Initialize error analytics service
   Future<void> initialize() async {
     if (_initialized) return;
@@ -199,13 +205,27 @@ class ErrorAnalyticsService {
       }
     }
 
-    // Find patterns
+    // Find patterns: pairs of errors that repeatedly co-occur in the same
+    // window. Pair frequency is the number of joint repetitions
+    // (min of the two counts), so unrelated one-off errors in the same
+    // window don't drown out a real recurring combination.
     final patternCounts = <String, int>{};
     for (final errors in errorPairs.values) {
-      if (errors.length > 1) {
-        errors.sort();
-        final patternKey = errors.join('|');
-        patternCounts[patternKey] = (patternCounts[patternKey] ?? 0) + 1;
+      final counts = <String, int>{};
+      for (final key in errors) {
+        counts[key] = (counts[key] ?? 0) + 1;
+      }
+      // Only errors that themselves repeated can form a pattern.
+      final repeated = counts.keys.where((k) => counts[k]! >= 2).toList()
+        ..sort();
+      for (var i = 0; i < repeated.length; i++) {
+        for (var j = i + 1; j < repeated.length; j++) {
+          final a = repeated[i];
+          final b = repeated[j];
+          final patternKey = '$a|$b';
+          final joint = counts[a]! < counts[b]! ? counts[a]! : counts[b]!;
+          patternCounts[patternKey] = (patternCounts[patternKey] ?? 0) + joint;
+        }
       }
     }
 
@@ -526,7 +546,8 @@ class ErrorOccurrence {
       ),
       operationName: json['operationName'] as String?,
       screenName: json['screenName'] as String?,
-      context: Map<String, dynamic>.from((json['context'] ?? <String, dynamic>{}) as Map),
+      context: Map<String, dynamic>.from(
+          (json['context'] ?? <String, dynamic>{}) as Map),
       stackTrace: json['stackTrace'] as String?,
       timestamp: DateTime.parse(json['timestamp'] as String),
     );

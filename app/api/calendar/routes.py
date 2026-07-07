@@ -195,12 +195,16 @@ def _fetch_saved_calendar_data(db: Session, user_id, year: int, month: int):
         )
 
         for row in rows:
-            day_key = row.date.isoformat()
+            # DailyPlan.date is a (tz-aware) DateTime; the API contract is a
+            # plain YYYY-MM-DD day key, matching the shell calendar and the
+            # mobile app's date-keyed merging.
+            row_day = row.date.date() if isinstance(row.date, datetime) else row.date
+            day_key = row_day.isoformat()
             day_data = days_data[day_key]
 
             if day_data["date"] is None:
-                day_data["date"] = row.date.isoformat()
-                day_data["day"] = row.date.day
+                day_data["date"] = day_key
+                day_data["day"] = row_day.day
 
             # Aggregate amounts
             day_data["total_budget"] += row.daily_budget or 0
@@ -218,12 +222,17 @@ def _fetch_saved_calendar_data(db: Session, user_id, year: int, month: int):
         # Convert to list format matching the shell calendar structure
         calendar_days = []
         for day_data in days_data.values():
+            # Rows saved before daily_budget was populated have NULL there;
+            # for those legacy rows the planned total is the day's limit.
+            day_limit = float(day_data["total_budget"]) or float(
+                day_data["total_planned"]
+            )
             calendar_days.append(
                 {
                     "date": day_data["date"],
                     "day": day_data["day"],
                     "planned_budget": day_data["categories"],
-                    "limit": float(day_data["total_budget"]),
+                    "limit": day_limit,
                     "total": float(day_data["total_planned"]),
                     "spent": float(day_data["total_spent"]),
                     "status": "active" if day_data["total_spent"] > 0 else "pending",

@@ -34,4 +34,7 @@ safety==3.2.11                      # Dependency vulnerability checker
 
 # Documentation Generation
 mkdocs==1.6.1                       # Documentation generator
-mkdocs-material==9.5.44             # Material themeaiosqlite==0.20.0                    # Async SQLite driver for isolated test fixtures
+mkdocs-material==9.5.44             # Material theme
+
+# Test Database Drivers
+aiosqlite==0.20.0                    # Async SQLite driver for isolated test fixtures

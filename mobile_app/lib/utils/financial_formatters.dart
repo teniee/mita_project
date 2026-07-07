@@ -8,6 +8,20 @@ class FinancialFormatters {
   static LocalizationService get _localizationService =>
       LocalizationService.instance;
 
+  /// The context-taking formatters must follow the widget-tree locale, not
+  /// whatever the singleton was last set to — otherwise a screen under an
+  /// `es` MaterialApp can render US-formatted money. Sync the service to
+  /// the ambient locale before formatting.
+  static LocalizationService _serviceFor(BuildContext context) {
+    final locale = Localizations.maybeLocaleOf(context);
+    final service = LocalizationService.instance;
+    if (locale != null &&
+        locale.toString() != service.currentLocale.toString()) {
+      service.setLocale(locale);
+    }
+    return service;
+  }
+
   /// Format currency amount for display in UI components
   ///
   /// Uses the current app locale for proper formatting
@@ -21,7 +35,7 @@ class FinancialFormatters {
     bool compact = false,
     int decimalDigits = 2,
   }) {
-    return _localizationService.formatCurrency(
+    return _serviceFor(context).formatCurrency(
       amount,
       showSymbol: showSymbol,
       compact: compact,
@@ -35,7 +49,7 @@ class FinancialFormatters {
       BuildContext context, double spent, double budget) {
     final l10n = AppLocalizations.of(context);
 
-    return _localizationService.formatBudgetStatus(
+    return _serviceFor(context).formatBudgetStatus(
       spent,
       budget,
       l10n.overBudget,
@@ -48,13 +62,13 @@ class FinancialFormatters {
   /// Used in progress indicators and charts
   static String formatBudgetProgress(
       BuildContext context, double spent, double budget) {
-    return _localizationService.formatBudgetProgress(spent, budget);
+    return _serviceFor(context).formatBudgetProgress(spent, budget);
   }
 
   /// Format large currency amounts with abbreviated suffixes (K, M, B)
   /// Useful for charts and summary displays
   static String formatCompactCurrency(BuildContext context, double amount) {
-    return _localizationService.formatCurrency(amount, compact: true);
+    return _serviceFor(context).formatCurrency(amount, compact: true);
   }
 
   /// Format percentage with proper locale formatting

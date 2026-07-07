@@ -10,6 +10,7 @@ from typing import Any, Dict, List, Optional, Union
 from uuid import uuid4
 
 from fastapi import Request, status
+from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 
 from app.core.standardized_error_handler import (
@@ -33,14 +34,16 @@ class StandardizedResponse:
         response_content = {
             "success": True,
             "message": message,
-            "data": data,
+            # DB-derived payloads carry Decimal/date/UUID values that stdlib
+            # json (used by JSONResponse) cannot serialize — encode them here.
+            "data": jsonable_encoder(data),
             "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
             "request_id": f"req_{uuid4().hex[:12]}",
         }
 
         # Add metadata if provided
         if meta:
-            response_content["meta"] = meta
+            response_content["meta"] = jsonable_encoder(meta)
 
         return JSONResponse(status_code=status_code, content=response_content)
 

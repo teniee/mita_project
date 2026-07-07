@@ -378,8 +378,7 @@ class _LoginScreenState extends State<LoginScreen>
       // Check if user has completed onboarding from UserProvider
       final hasOnboarded = userProvider.hasCompletedOnboarding;
       if (kDebugMode)
-        dev.log('User onboarding status: $hasOnboarded',
-            name: 'LoginScreen');
+        dev.log('User onboarding status: $hasOnboarded', name: 'LoginScreen');
 
       if (!mounted) {
         if (kDebugMode)
@@ -633,8 +632,7 @@ class _LoginScreenState extends State<LoginScreen>
       // Check if user has completed onboarding from UserProvider
       final hasOnboarded = userProvider.hasCompletedOnboarding;
       if (kDebugMode)
-        dev.log('User onboarding status: $hasOnboarded',
-            name: 'LoginScreen');
+        dev.log('User onboarding status: $hasOnboarded', name: 'LoginScreen');
 
       if (!mounted) {
         if (kDebugMode)
@@ -1175,7 +1173,10 @@ class _LoginScreenState extends State<LoginScreen>
                                           child: FilledButton(
                                             focusNode: _signInButtonFocusNode,
                                             // Only enable login when both email and password are valid
-                                            onPressed: (_isEmailValid && _isPasswordValid) ? _handleEmailLogin : null,
+                                            onPressed: (_isEmailValid &&
+                                                    _isPasswordValid)
+                                                ? _handleEmailLogin
+                                                : null,
                                             style: FilledButton.styleFrom(
                                               padding:
                                                   const EdgeInsets.symmetric(
@@ -1303,11 +1304,15 @@ class _LoginScreenState extends State<LoginScreen>
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(
-                              l10n.dontHaveAccountQuestion,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: colorScheme.onSurface
-                                    .withValues(alpha: 0.8),
+                            // Flexible: long translations (or large text
+                            // scales) must wrap instead of overflowing.
+                            Flexible(
+                              child: Text(
+                                l10n.dontHaveAccountQuestion,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: colorScheme.onSurface
+                                      .withValues(alpha: 0.8),
+                                ),
                               ),
                             ),
                             Semantics(

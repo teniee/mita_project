@@ -49,8 +49,8 @@ void main() {
         ];
 
         for (final testCase in recurringCases) {
-          final monthly = testCase['monthly'] as double;
-          final annual = testCase['annual'] as double;
+          final monthly = (testCase['monthly'] as num).toDouble();
+          final annual = (testCase['annual'] as num).toDouble();
 
           // Forward conversion (monthly -> annual -> classification)
           final tier1 = incomeService.classifyIncomeForLocation(monthly, 'US',

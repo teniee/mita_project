@@ -98,6 +98,7 @@ class ChallengesProvider extends ChangeNotifier {
             ? valueData.toInt()
             : (valueData is String ? int.tryParse(valueData) ?? 0 : 0);
   }
+
   List<dynamic> get badgesEarned =>
       _gamificationStats['badges_earned'] as List<dynamic>? ?? [];
 

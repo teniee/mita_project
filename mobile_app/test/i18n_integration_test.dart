@@ -81,6 +81,13 @@ void main() {
           ],
           supportedLocales: AppLocalizations.supportedLocales,
           home: WelcomeScreen(),
+          // The init sequence ends by replacing the route; stub the
+          // possible destinations so navigation succeeds in the harness.
+          routes: {
+            '/login': _stubRoute,
+            '/main': _stubRoute,
+            '/onboarding_location': _stubRoute,
+          },
         ),
       );
 
@@ -88,6 +95,12 @@ void main() {
 
       // The initial text should appear
       expect(find.text('Initializing...'), findsOneWidget);
+
+      // The welcome screen runs a timed init sequence; advance the clock so
+      // no timers are left pending when the widget tree is torn down.
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pump(const Duration(seconds: 3));
     });
 
     test('LocalizationService formats currency correctly for different locales',
@@ -107,48 +120,46 @@ void main() {
       // Note: Exact formatting may vary based on system locale support
     });
 
-    test('FinancialFormatters work with BuildContext-aware methods', () {
-      // Create a test widget to provide context
-      testWidgets('Currency formatting with context', (tester) async {
-        late BuildContext testContext;
+    testWidgets('FinancialFormatters work with BuildContext-aware methods',
+        (tester) async {
+      late BuildContext testContext;
 
-        await tester.pumpWidget(
-          MaterialApp(
-            locale: const Locale('en', 'US'),
-            localizationsDelegates: const [
-              AppLocalizations.delegate,
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: Builder(
-              builder: (context) {
-                testContext = context;
-                return Container();
-              },
-            ),
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en', 'US'),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Builder(
+            builder: (context) {
+              testContext = context;
+              return Container();
+            },
           ),
-        );
+        ),
+      );
 
-        await tester.pump();
+      await tester.pump();
 
-        // Test currency formatting
-        final currencyFormatted =
-            FinancialFormatters.formatCurrency(testContext, 1234.56);
-        expect(currencyFormatted, contains('\$'));
-        expect(currencyFormatted, contains('1,234.56'));
+      // Test currency formatting
+      final currencyFormatted =
+          FinancialFormatters.formatCurrency(testContext, 1234.56);
+      expect(currencyFormatted, contains('\$'));
+      expect(currencyFormatted, contains('1,234.56'));
 
-        // Test compact formatting
-        final compactFormatted =
-            FinancialFormatters.formatCompactCurrency(testContext, 1234567);
-        expect(compactFormatted, contains('1.2M'));
+      // Test compact formatting
+      final compactFormatted =
+          FinancialFormatters.formatCompactCurrency(testContext, 1234567);
+      expect(compactFormatted, contains('1.2M'));
 
-        // Test category formatting
-        final categoryFormatted =
-            FinancialFormatters.formatCategory(testContext, 'food');
-        expect(categoryFormatted, 'Food');
-      });
+      // Test category formatting
+      final categoryFormatted =
+          FinancialFormatters.formatCategory(testContext, 'food');
+      expect(categoryFormatted, 'Food');
     });
 
     test('LocalizationService provides correct currency data', () {
@@ -252,46 +263,45 @@ void main() {
       expect(find.text('Test'), findsOneWidget);
     });
 
-    test('FinancialFormatters budget status formatting works', () {
-      testWidgets('Budget status with context', (tester) async {
-        late BuildContext testContext;
+    testWidgets('FinancialFormatters budget status formatting works',
+        (tester) async {
+      late BuildContext testContext;
 
-        await tester.pumpWidget(
-          MaterialApp(
-            locale: const Locale('en'),
-            localizationsDelegates: const [
-              AppLocalizations.delegate,
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: Builder(
-              builder: (context) {
-                testContext = context;
-                return Container();
-              },
-            ),
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Builder(
+            builder: (context) {
+              testContext = context;
+              return Container();
+            },
           ),
-        );
+        ),
+      );
 
-        await tester.pump();
+      await tester.pump();
 
-        // Test over budget
-        String status =
-            FinancialFormatters.formatBudgetStatus(testContext, 1200.0, 1000.0);
-        expect(status, contains('Over Budget'));
+      // Test over budget
+      String status =
+          FinancialFormatters.formatBudgetStatus(testContext, 1200.0, 1000.0);
+      expect(status, contains('Over Budget'));
 
-        // Test under budget
-        status =
-            FinancialFormatters.formatBudgetStatus(testContext, 800.0, 1000.0);
-        expect(status, contains('Under Budget'));
+      // Test under budget
+      status =
+          FinancialFormatters.formatBudgetStatus(testContext, 800.0, 1000.0);
+      expect(status, contains('Under Budget'));
 
-        // Test on track
-        status =
-            FinancialFormatters.formatBudgetStatus(testContext, 950.0, 1000.0);
-        expect(status, contains('On Track'));
-      });
+      // Test on track
+      status =
+          FinancialFormatters.formatBudgetStatus(testContext, 950.0, 1000.0);
+      expect(status, contains('On Track'));
     });
 
     test('Large amount detection works correctly', () {
@@ -327,44 +337,45 @@ void main() {
       expect(formatted, isNotEmpty);
     });
 
-    test('FinancialFormatters handle edge cases', () {
-      testWidgets('Edge case handling', (tester) async {
-        late BuildContext testContext;
+    testWidgets('FinancialFormatters handle edge cases', (tester) async {
+      late BuildContext testContext;
 
-        await tester.pumpWidget(
-          MaterialApp(
-            locale: const Locale('en'),
-            localizationsDelegates: const [
-              AppLocalizations.delegate,
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: Builder(
-              builder: (context) {
-                testContext = context;
-                return Container();
-              },
-            ),
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Builder(
+            builder: (context) {
+              testContext = context;
+              return Container();
+            },
           ),
-        );
+        ),
+      );
 
-        await tester.pump();
+      await tester.pump();
 
-        // Test zero amounts
-        String result = FinancialFormatters.formatCurrency(testContext, 0.0);
-        expect(result, contains('0.00'));
+      // Test zero amounts
+      String result = FinancialFormatters.formatCurrency(testContext, 0.0);
+      expect(result, contains('0.00'));
 
-        // Test negative amounts
-        result = FinancialFormatters.formatCurrency(testContext, -100.0);
-        expect(result, contains('-'));
+      // Test negative amounts
+      result = FinancialFormatters.formatCurrency(testContext, -100.0);
+      expect(result, contains('-'));
 
-        // Test very large amounts
-        result =
-            FinancialFormatters.formatCompactCurrency(testContext, 1000000000);
-        expect(result, contains('1.0B'));
-      });
+      // Test very large amounts
+      result =
+          FinancialFormatters.formatCompactCurrency(testContext, 1000000000);
+      expect(result, contains('1.0B'));
     });
   });
 }
+
+Widget _stubRoute(BuildContext context) =>
+    const Scaffold(body: Text('stub route'));

@@ -49,7 +49,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get forgotPassword => '¿Olvidaste tu contraseña?';
 
   @override
-  String get rememberMe => 'Recuérdame';
+  String get rememberMe => 'Recordarme';
 
   @override
   String get continueWithGoogle => 'Continuar con Google';

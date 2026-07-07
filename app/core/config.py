@@ -127,6 +127,15 @@ class Settings(BaseSettings):
     # App Store
     APPSTORE_SHARED_SECRET: str = ""
 
+    # In-App Purchase verification (webhooks fail closed when unset)
+    APPLE_BUNDLE_ID: str = ""  # e.g. com.mita.finance
+    APPLE_ROOT_CA_PATH: str = ""  # PEM bundle with Apple Root CA G3
+    GOOGLE_PACKAGE_NAME: str = ""  # e.g. com.mita.finance
+    GOOGLE_PUBSUB_AUDIENCE: str = ""  # OIDC audience of the RTDN push endpoint
+    GOOGLE_PUBSUB_SERVICE_ACCOUNT: str = ""  # allowed push service account email
+    IAP_ALLOWED_PRODUCT_IDS: str = ""  # comma-separated store product ids
+    IAP_ALLOW_SANDBOX: bool = False  # accept sandbox receipts (never in prod)
+
     # Sentry (optional)
     SENTRY_DSN: str = ""
 

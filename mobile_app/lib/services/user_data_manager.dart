@@ -294,7 +294,8 @@ class UserDataManager {
       return {
         'income': income,
         'expenses': expenses is List ? expenses : [],
-        'goals': goals is List ? goals : (goals is Map ? [goals] : ['budgeting']),
+        'goals':
+            goals is List ? goals : (goals is Map ? [goals] : ['budgeting']),
         'habits': habits is List ? habits : [],
         'region': profile['region'] as String? ?? '',
         'countryCode': profile['countryCode'] as String? ?? '',

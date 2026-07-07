@@ -243,6 +243,9 @@ class LocalizationService {
       if (_currentLocale.toString().startsWith('es')) {
         // European format: 1.234,56
         cleanString = cleanString.replaceAll('.', '').replaceAll(',', '.');
+      } else {
+        // US/UK format: 1,234.56 — commas are thousands separators
+        cleanString = cleanString.replaceAll(',', '');
       }
 
       return double.tryParse(cleanString);

@@ -246,7 +246,10 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
         onRefresh: _refreshInstallments,
         color: AppColors.textPrimary,
         child: isLoading && currentSummary == null
-            ? const Center(child: _ShimmerLoader())
+            ? const Center(
+                key: ValueKey('installments_loading'),
+                child: _ShimmerLoader(),
+              )
             : errorMessage != null && currentSummary == null
                 ? _buildErrorState(errorMessage)
                 : _buildMainContent(provider),
@@ -715,12 +718,16 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                                 const SizedBox(height: 4),
                                 Row(
                                   children: [
-                                    Text(
-                                      installment.category.displayName,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        fontFamily: AppTypography.fontBody,
-                                        color: Colors.grey[600],
+                                    Flexible(
+                                      child: Text(
+                                        installment.category.displayName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontFamily: AppTypography.fontBody,
+                                          color: Colors.grey[600],
+                                        ),
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -760,7 +767,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                                   children: [
                                     Icon(Icons.info_outline, size: 18),
                                     SizedBox(width: 8),
-                                    Text('View Details'),
+                                    Flexible(child: Text('View Details')),
                                   ],
                                 ),
                                 onTap: () {
@@ -774,7 +781,8 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                                       Icon(Icons.check_circle_outline,
                                           size: 18),
                                       SizedBox(width: 8),
-                                      Text('Mark Payment Made'),
+                                      Flexible(
+                                          child: Text('Mark Payment Made')),
                                     ],
                                   ),
                                   onTap: () {
@@ -787,7 +795,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                                     children: [
                                       Icon(Icons.cancel_outlined, size: 18),
                                       SizedBox(width: 8),
-                                      Text('Cancel'),
+                                      Flexible(child: Text('Cancel')),
                                     ],
                                   ),
                                   onTap: () {
@@ -799,7 +807,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                                   children: [
                                     Icon(Icons.delete_outline, size: 18),
                                     SizedBox(width: 8),
-                                    Text('Delete'),
+                                    Flexible(child: Text('Delete')),
                                   ],
                                 ),
                                 onTap: () {
