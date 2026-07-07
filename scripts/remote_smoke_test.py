@@ -81,9 +81,7 @@ def http(method, url, body=None, token=None, timeout=30, follow_redirects=True):
     except urllib.error.HTTPError as e:
         raw = e.read()
         status = e.code
-        LAST_HEADERS = (
-            {k.lower(): v for k, v in e.headers.items()} if e.headers else {}
-        )
+        LAST_HEADERS = {k.lower(): v for k, v in e.headers.items()} if e.headers else {}
     except Exception as e:  # network-level failure
         LAST_HEADERS = {}
         return 0, {"_transport_error": str(e)}
@@ -178,7 +176,9 @@ def main():
         )
         if name not in root_headers
     ]
-    record("security headers present", not missing_headers, f"missing={missing_headers}")
+    record(
+        "security headers present", not missing_headers, f"missing={missing_headers}"
+    )
 
     # 2d. Docs surface: whatever the policy, it must never 500.
     status, _ = http("GET", f"{base}/docs")
@@ -194,13 +194,15 @@ def main():
     # 2e. Plain HTTP must not silently serve the API (redirect or refuse).
     if base.startswith("https://"):
         status, _ = http(
-            "GET", "http://" + base[len("https://"):] + "/health",
+            "GET",
+            "http://" + base[len("https://") :] + "/health",
             follow_redirects=False,
         )
         location = LAST_HEADERS.get("location", "") if LAST_HEADERS else ""
         record(
             "plain HTTP redirects to HTTPS or is refused",
-            status in (0, 301, 302, 307, 308) and (status == 0 or location.startswith("https://")),
+            status in (0, 301, 302, 307, 308)
+            and (status == 0 or location.startswith("https://")),
             f"status={status} location={location}",
         )
 
@@ -377,7 +379,9 @@ def main():
         status = e.code
     except Exception:
         status = 0
-    record("malformed JSON body -> 4xx (not 500)", 400 <= status < 500, f"status={status}")
+    record(
+        "malformed JSON body -> 4xx (not 500)", 400 <= status < 500, f"status={status}"
+    )
 
     finish()
 
