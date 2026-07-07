@@ -1101,7 +1101,10 @@ void main() {
             reason: 'Error rate should be less than 1%');
         expect(result.opsPerSecond, greaterThan(5.0),
             reason: 'Should maintain at least 5 operations per second');
-      });
+        // The 30s load window collides with the framework's default 30s
+        // per-test timeout (in-flight operations still wind down after the
+        // window closes), so the test needs explicit headroom.
+      }, timeout: const Timeout(Duration(seconds: 90)));
 
       test('Concurrent user simulation - Income Classification', () async {
         final simulator = LoadTestSimulator(
@@ -1165,7 +1168,9 @@ void main() {
             reason: 'Mixed operation error rate should be less than 2%');
         expect(result.totalOperations, greaterThan(1000),
             reason: 'Should complete a significant number of mixed operations');
-      });
+        // 20s load window + wind-down runs close to the default 30s
+        // per-test timeout; give it explicit headroom.
+      }, timeout: const Timeout(Duration(seconds: 60)));
     });
   });
 }

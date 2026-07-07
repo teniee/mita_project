@@ -1,7 +1,7 @@
 # MITA — Production Readiness (Live)
 
 > **Owner:** production-readiness engineering · **Branch:** `claude/mita-finance-prod-ready-wqj2k9`
-> **Last updated:** 2026-07-06 (session 2 — continuation of the 2026-07-05 audit)
+> **Last updated:** 2026-07-07 (session 3 — continuation of the 2026-07-05/06 audit)
 > **Verification environment:** Python 3.11 venv · PostgreSQL 16 (real) · Redis 7 (real) · Flutter 3.35.4 / Dart 3.9.2 (real SDK, tests + analyze) · no Android SDK (dl.google.com blocked by sandbox egress policy) · no external Apple/Google/OpenAI/Firebase credentials · Railway production URL unreachable from sandbox (egress policy)
 
 This file is the single source of truth. Update **before** each change and **after** each verified fix.
@@ -12,23 +12,34 @@ This file is the single source of truth. Update **before** each change and **aft
 
 | Gate | Status | Evidence |
 |------|--------|----------|
-| `tests/` root | ✅ **287/287** | after fixing aiosqlite dep (was inside a comment string) |
-| `app/tests` root | ✅ 580 pass + order-dependent cleanup flake fixed; IAP suite rewritten (19 new security tests); full-suite re-run pending final sweep | see below |
+| `tests/` root | ✅ **287/287** | re-verified 2026-07-07 |
+| `app/tests` root | ✅ **611/611** (incl. 7 new calendar-limit + 19 IAP security tests) + 6 new sync-session SSL tests verified separately | full run 2026-07-07, real PG16+Redis |
 | black / isort / ruff | ✅ PASS | whole repo |
 | bandit -ll | ✅ PASS (0 medium/high) | app/ |
-| Migrations from empty PG 16 | ✅ 0001→**0034** | includes new 0034 (iap_events + subscription purchase identity) |
-| ORM ↔ schema drift | ✅ no column/table drift | subscriptions.deleted_at added to model; remaining diffs are index/FK-name noise |
+| Migrations from empty PG 16 | ✅ 0001→**0034** | re-verified in CI run #220 (migrations step green) |
 | Backend cold start | ✅ | uvicorn against migration-built DB |
 | `GET /` & `GET /health` | ✅ 200 / healthy | |
-| Backend E2E journey | ✅ register→login→onboarding→calendar-day→refresh→authed→404 | **found+fixed**: Decimal serialization 500 on calendar day |
-| Flutter analyze | ✅ 0 errors (infos/warnings only; CI uses --no-fatal-infos --no-fatal-warnings) | |
-| Flutter tests | 🟡 in progress — from **104 failures → single digits**; all failure clusters below fixed and green per-file | full-suite re-measure pending |
-| Mobile HTTP client ↔ backend | ✅ comprehensive_api_test 12/12 against local FastAPI (`--dart-define=API_BASE_URL=http://localhost:8000`) | Railway URL blocked in sandbox |
-| Android debug build | ❌ blocked in sandbox: dl.google.com (Android SDK + google() maven) returns 403 via egress proxy | CI (GitHub) can build; see Next tasks |
-| iOS build | ❌ blocked: no macOS/Xcode in environment | |
-| GitHub CI run | ⏳ pending push + run evidence | |
+| Backend E2E journey | ✅ register→onboarding→transaction→**saved calendar (31 days, non-zero limits, spent reflected)**→refresh→logout | raw HTTP + the app's real ApiService |
+| Flutter analyze | ✅ 0 errors, 0 warnings | |
+| Flutter tests | ✅ **376 passed / 15 skipped / 0 failed** (live-API tests skip without a backend; with local backend they run — see mobile↔backend row) | full suite 2026-07-07 |
+| Mobile ↔ backend E2E | ✅ full journey through real ApiService (dio, interceptors, secure storage) against local FastAPI: register→login→onboarding→transaction→getSavedCalendar (all limits > 0, today's spent ≥ tx amount)→refresh→persistence→logout | mobile_backend_journey_test.dart |
+| Android debug build | ❌ blocked in sandbox (dl.google.com 403) → built in CI mobile job | see CI row |
+| iOS build | ❌ blocked: no macOS/Xcode in environment | needs a macOS runner |
+| GitHub CI run | 🟡 run #220 (first run on branch) red → all 3 root causes fixed (see session-3 findings); green run pending next push | |
 
-## Fixed this session (all verified by tests)
+## Fixed session 3 (2026-07-07) — calendar correctness end to end
+
+1. **Calendar returned `limit: 0.0` for every day** (HIGH — core product). `DailyPlan.daily_budget` — summed into each day's `limit` by `GET /api/calendar/saved/{y}/{m}` and read by spending-prevention — was never written by ANY writer. The mobile traffic-light (`limit > 0 && spent > limit`) was silently disabled for every onboarded user. Fixed at every write point with the invariant *daily_budget follows the allocation*: onboarding save, day edits, realtime rebalancer (donor cuts + credit), budget redistributor, both expense trackers (explicit 0, never NULL, for unplanned categories), goal sync, user-data service. Read-side fallback to the planned total for legacy NULL rows. (`2bf578a`)
+2. **Saved-calendar endpoint emitted full timestamps** (`2026-07-06T00:00:00+00:00`) instead of the `YYYY-MM-DD` day keys the mobile app merges on. (`2bf578a`)
+3. **Mobile ApiService base URL missed the API path** (`AppConfig.baseUrl` → every request 404'd) and `_transformCalendarData` rejected the List contract `/calendar/shell` actually returns (every successful response surfaced as an empty calendar). (`2bf578a`)
+4. **Sync DB session forced `sslmode=require`** regardless of the URL's own `?sslmode=disable` — every deployment on non-SSL Postgres (CI containers, docker-compose, private networking) lost the whole sync-session path ("server does not support SSL"). Found via CI run #220; now honors the URL, defaulting to require only when unspecified. 6 regression tests.
+5. **CI live-API tests ran against production Railway** (reachable from GitHub runners, unlike this sandbox) — registering junk users in the production DB and testing the previously-deployed code instead of the commit under test. mobile-ci is now hermetic: PG16+Redis service containers, migrations, uvicorn on localhost, `flutter test --dart-define=API_BASE_URL=http://localhost:8000` → the full journey E2E runs in CI on every push.
+6. **CI Flutter version floated on `stable`** while the suite is verified on 3.35.4 (SnackBar timer semantics differed → phantom CI-only failure). Pinned.
+7. **Date-fragile test**: `calendar_integration_test.dart` "Spending patterns are realistic" failed on the 1st, 2nd and 7th of every month from date arithmetic alone (fixed thresholds over 0–6 past days). Rewritten proportionally; also removed the fallback service's factor bucket sitting exactly on the 1.1 'over' boundary (status flipped with income rounding).
+8. **Load tests raced the framework's default 30s timeout** (30s/20s load windows + wind-down). Explicit timeouts; assertions unchanged.
+9. Regression coverage for the calendar bug at four levels: backend service + API route (`app/tests/test_calendar_limits.py`, 7 tests), Flutter unit (`test/budget_provider_calendar_merge_test.dart`, 8 tests — merge extracted as pure `mergeSavedCalendarDay`, behavior unchanged), live integration (journey test asserts non-empty days, all limits > 0, today's spent ≥ transaction amount).
+
+## Fixed session 2 (2026-07-06) (all verified by tests)
 
 ### Backend
 1. **Decimal/date/UUID responses 500'd** — `JSONResponse` used stdlib json; `GET /api/calendar/day/{y}/{m}/{d}` crashed right after onboarding (core journey). Fixed in the response wrapper with `jsonable_encoder`; 5 regression tests. (`890a20b`)
@@ -71,9 +82,8 @@ calendar_screen 18/18 · installments_screen 17/17 · onboarding_integration 10/
 ## Remaining blockers
 
 ### Fixable here (in progress)
-- Full Flutter suite final re-measure (after ui_fixes + performance files) and full backend suite re-run.
-- CI workflow: point mobile job's live-API tests at a reachable target or skip cleanly when unreachable.
-- Push + real GitHub Actions run evidence.
+- Green GitHub Actions run on the branch (all known root causes of run #220 fixed; awaiting next push's run).
+- Production deploy of this branch's backend — the deployed Railway backend still serves zero-limit calendars until redeployed.
 
 ### Blocked — environment (exact unblock condition documented)
 - **Android debug/release build**: sandbox egress policy 403-blocks dl.google.com (Android SDK cmdline-tools, platform tools, google() maven). Unblock: allowlist dl.google.com/maven.google.com in the Claude environment network policy, or rely on GitHub CI (ubuntu runners reach it) — the mobile-ci workflow already runs analyze+test; an `flutter build apk --debug` step can be added.
@@ -86,15 +96,15 @@ calendar_screen 18/18 · installments_screen 17/17 · onboarding_integration 10/
 - `IAP_ALLOWED_PRODUCT_IDS` (comma-separated store product ids) — **required in production**, otherwise validation fails closed.
 - Firebase push (service-account JSON + APNs key), OpenAI (`OPENAI_API_KEY`), Sentry DSN, SMTP password, Railway env vars (docs/FIX_ALL.md R-01/02/03).
 
-## Commits this session
-`890a20b` backend Decimal/aiosqlite/cleanup-flake · `e05f270` IAP security · `0770048` calendar+installments tests · `f6a60b9` CalendarFallbackService · `7dd44b1` error handling/PII/recovery · `3632694` i18n · `e4e50ea` thresholds contract + onboarding · (pending) ui_fixes/login/dashboard batch
+## Commits
+Session 2: `890a20b` backend Decimal/aiosqlite/cleanup-flake · `e05f270` IAP security · `0770048` calendar+installments tests · `f6a60b9` CalendarFallbackService · `7dd44b1` error handling/PII/recovery · `3632694` i18n · `e4e50ea` thresholds contract + onboarding · `4350a38` CI pipeline + format
+Session 3: `2bf578a` calendar non-zero limits end to end (4-level regression coverage) · (this commit) sync-session sslmode + hermetic mobile CI + version pin + date-fragile/timeout test fixes
 
 ## Readiness estimate
-**~90% backend (verified)** — all critical backend journeys verified against migrated PostgreSQL+Redis including the IAP entitlement architecture; remaining backend risk is CI-run evidence.
-**Mobile: test suite from 104 failures → near-green; mobile↔backend contract verified against a real backend.** Builds remain environment-blocked (Android SDK egress, no macOS).
+**Backend: all suites green against real PG16+Redis (611 + 287), all critical journeys verified including saved-calendar correctness and IAP entitlements.**
+**Mobile: full suite green (376 pass / 15 env-skip); full app-code journey verified against a live backend; calendar traffic-light now backed by real limits.** Builds: Android via CI job; iOS needs a macOS runner. Remaining evidence: a green CI run on the branch (all #220 root causes fixed).
 
 ## Next task
-1. Finish ui_fixes/performance Flutter files; run the FULL Flutter suite and record exact totals.
-2. Re-run full backend suites (app/tests + tests/) after all backend changes; record totals.
-3. Push branch; obtain a real GitHub Actions run; add `flutter build apk --debug` to mobile-ci.
-4. Update this file with final evidence.
+1. Confirm the next CI run is green end to end (backend job, hermetic mobile job incl. E2E + APK build).
+2. Deploy the branch's backend to Railway so production stops serving zero-limit calendars.
+3. Provision external credentials (Apple/Google IAP, Firebase, OpenAI, Sentry) per the blocked-credentials list.

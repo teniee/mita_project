@@ -231,9 +231,12 @@ void main() {
           ),
         );
 
-        // Tap to show error
+        // Tap to show error; one pump starts the entrance animation and
+        // the second completes it — with a single pump the SnackBar is
+        // still positioned below the viewport and can't be hit-tested.
         await tester.tap(find.text('Show Error'));
-        await tester.pump(const Duration(seconds: 1));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 750));
 
         // Should find a SnackBar or dismissible error message
         final snackBarFinder = find.byType(SnackBar);
@@ -245,18 +248,18 @@ void main() {
             isTrue,
             reason: 'Error messages should be dismissible');
 
-        // Try to dismiss if close button exists
+        // Dismiss deterministically through the SnackBar's own action —
+        // relying on the auto-dismiss timer proved Flutter-version
+        // sensitive (passed on 3.35.4, failed on CI's newer stable).
+        // The point under test is that the error CAN be dismissed.
         if (dismissButtonFinder.evaluate().isNotEmpty) {
           await tester.tap(dismissButtonFinder.first);
-          await tester.pump(const Duration(seconds: 1));
+        } else {
+          await tester.tap(find.text('Dismiss'));
         }
-
-        // Error should be gone after dismissal or timeout. The auto-
-        // dismiss timer starts once the entrance animation completes, so
-        // advance well past duration and settle the exit animation.
-        await tester.pump(const Duration(seconds: 3));
-        await tester.pump(const Duration(seconds: 3));
-        await tester.pump(const Duration(seconds: 3));
+        // Let the exit animation run to completion.
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
         await tester.pumpAndSettle();
         expect(find.text('Test error'), findsNothing);
       });

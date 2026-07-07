@@ -111,11 +111,12 @@ class CalendarFallbackService {
 
   int _spentForDay(int limit, int day) {
     if (limit <= 0) return 0;
-    // Deterministic factor: mostly at/under budget, occasionally over.
-    // day % 7 -> {0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2}; one bucket exceeds
-    // the 'over' threshold so a realistic minority of days overspend.
-    final factor = 0.6 + (day % 7) * 0.1;
-    final spent = (limit * factor).round();
+    // Deterministic factor: mostly at/under budget, exactly one bucket per
+    // 7-day cycle overspends. No bucket sits on the 1.1 'over' boundary —
+    // a factor of exactly 1.1 flipped between warning/over depending on how
+    // the integer limit rounded, so day statuses varied with income.
+    const factors = [0.6, 0.7, 0.8, 0.9, 1.0, 1.05, 1.2];
+    final spent = (limit * factors[day % 7]).round();
     return spent < 1 ? 1 : spent;
   }
 
