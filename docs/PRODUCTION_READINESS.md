@@ -1,182 +1,92 @@
 # MITA — Production Readiness (Live)
 
-> **Owner:** production-readiness engineering · **Branch:** `claude/mita-closed-beta-readiness-4nn5q6`
-> **Last updated:** 2026-07-07 (session 4 — post-merge closed-beta readiness)
-> **Latest code commit:** `c53d812` — **CI run #227 GREEN end-to-end**
-> https://github.com/teniee/mita_project/actions/runs/28864333526
-> **Verification environment:** Python 3.11 venv · PostgreSQL 16 (real) · Redis 7 (real) · Flutter 3.35.4 / Dart 3.9.2 (real SDK) · no Android SDK (dl.google.com blocked by sandbox egress) · Railway host blocked from sandbox but PROBED FROM GITHUB RUNNERS via the new deployed-smoke workflow
+> **Owner:** production-readiness engineering · **Branch:** `claude/mita-closed-beta-readiness-95q19q`
+> **Last updated:** 2026-07-07 (session 5 — deployability)
+> **Latest code commit:** `7cc0e12` (jinja2 clean-env boot fix + deployment docs) on top of main `73c1817`
+> **Verification environment:** Python 3.11 venv (prod requirements only) · PostgreSQL 16 (real, empty) · Redis 7 (real) · no Android SDK (dl.google.com blocked) · Railway host unreachable from sandbox (probe via GitHub runners)
 
 This file is the single source of truth. Update **before** each change and **after** each verified fix.
 
 ---
 
-## Where things stand (session 4)
+## Where things stand (session 5)
 
-The session-3 branch (`claude/mita-finance-prod-ready-wqj2k9`, commits `2bf578a` + `91b0d5a`)
-was **merged into main via PR #272** (squash commit `be220da`, 2026-07-07 07:25 UTC) and the
-branch deleted. All session-3 work (calendar fix, migration 0034, Flutter 3.35.4 pin, hermetic
-mobile CI) is on main. Follow-up work continues on `claude/mita-closed-beta-readiness-4nn5q6`
-(branched from `be220da`).
+Session-4 work **is merged**: PR #273 (squash `73c1817`) landed on main 2026-07-07 12:23 UTC and
+**main CI is green** — Main CI/CD Pipeline run **#229** ✅ and Security Scanning run **#169** ✅ on
+`73c1817`. (Run #227 was the same pipeline going green on the pre-merge branch.) The "PR the fixes
+to main" item from session 4 is **done**.
 
-## Current verified status
+This session moved from "locally verified" toward "deployable": booting the backend in
+`ENVIRONMENT=production` from an **empty** database with **only documented env vars** exposed a
+real deployment blocker — `jinja2` was missing from `requirements.txt` (only present transitively
+via dev deps; a Railway/Docker image crashes at import, before binding the port). Fixed in
+`7cc0e12`; the same clean-env boot then ran migrations 0001→0034 and passed the full **19/19**
+smoke journey.
 
-| Gate | Status | Evidence |
-|------|--------|----------|
-| Backend CI (format, lint, migrations 0001→0034 from empty PG16, `pytest` full = tests/ 287 + app/tests 611+, bandit) | ✅ green | CI run #224 & #226 Backend CI job: **success** |
-| Migrations from empty PG 16 → **0034** | ✅ | re-verified locally this session AND in CI runs #224/#226/#227 |
-| Flutter format / analyze | ✅ 0 errors (3 pre-existing warnings, non-fatal) | local 3.35.4 + CI Verify code step green |
-| Flutter tests incl. hermetic live-API E2E vs this commit's backend | ✅ | CI run #224/#226 “Run tests” green; local: **376 passed / 15 skipped / 0 failed** |
-| Local backend E2E (remote_smoke_test.py vs local uvicorn, clean-DB migrations) | ✅ **19/19** | register→login→onboarding→transaction→saved calendar (31/31 days, all limits > 0, today present, spent 23.75 reflected, YYYY-MM-DD keys)→day detail→refresh rotation→logout→404/4xx never 500 |
-| IAP security suite | ✅ 21 passed (isolated DB) + green inside CI backend job | fixture-based: tampered JWS, unpinned chain, replay, ownership, fail-closed, grace/refund/revoke |
-| Android debug APK in CI | ✅ **built + artifact retained** | run #227: Android debug build success (6m Gradle); artifact `mita-debug-apk` 88.9 MB, sha256 `9fc43ac3…7833`, retained to 2026-07-14. Binary inspection blocked from sandbox (Azure blob egress) — source-verified: applicationId `mita.finance`, versionCode 1 / versionName 1.0, debug mode, API URL = Railway default via dart-define, cleartext off, no hardcoded secrets, 0 raw print() |
-| Security Scanning workflow on main | ❌ red on main (deprecated upload-sarif@v2) → fixed on this branch (`93e6a92`: v3 + security-events permission) | lands on main with next merge |
-| **Deployed backend (Railway)** | ❌ **HARD DOWN — “Application not found”** | see Deployment status |
-| iOS build | ❌ blocked: no macOS/Xcode available anywhere in this setup | needs a macOS runner |
+## Status dashboard
 
-## CI run history (this session)
+| Item | Status | Evidence / blocker |
+|------|--------|--------------------|
+| Branch | `claude/mita-closed-beta-readiness-95q19q` (from main `73c1817`) | — |
+| Latest commit | `7cc0e12` + tracker update commit | this branch |
+| PR status | Session-4 fixes: **merged** (PR #273). This session's jinja2 fix + docs: PR to main **open** (see PR list; do not merge without owner approval) | GitHub |
+| Main CI | ✅ green — run #229 + Security #169 on `73c1817` | Actions |
+| Railway deployment | ❌ **none exists** — old service returns Railway-edge 404. Complete recreation recipe ready: `docs/RAILWAY_DEPLOYMENT.md` | owner action |
+| Staging URL | ❌ none — exact creation steps in `docs/RAILWAY_DEPLOYMENT.md` §4 | owner action |
+| Remote E2E (deployed) | ❌ blocked on a URL. Locally: **19/19** vs clean-env production boot at this commit (register→login→onboarding→budget→transaction→calendar 31/31 days, today present, all limits > 0, spent 23.75 reflected, YYYY-MM-DD keys→day detail→refresh rotation→rotated token works→logout→404 stays 404→4xx never 500). One-click re-run vs any URL: Actions → "Deployed Backend Smoke Test" | this session |
+| Clean-env production boot | ✅ **verified** with only `ENVIRONMENT`, `DATABASE_URL`, `JWT_SECRET`, `SECRET_KEY`, `OPENAI_API_KEY`(placeholder), `REDIS_URL`, `PORT` — after `7cc0e12` | this session |
+| Android release | ⚠️ debug APK only (CI artifact `mita-debug-apk`). Release hygiene source-verified ✅ (applicationId `mita.finance`, v1.0+1, dart-define API URL, no localhost, no bundled secrets, cleartext off, logging gated, Firebase degrades gracefully, pinning safely off). Release APK/AAB needs the owner's keystore — exact requirements in `docs/ANDROID_RELEASE.md` | owner keystore |
+| Firebase | ❌ not connected (by design, fail-safe): app boots without it; push/Crashlytics off until `google-services.json` + FIREBASE_* dart-defines (mobile) and `GOOGLE_APPLICATION_CREDENTIALS` (backend) | owner credentials |
+| IAP production | ❌ not configured; **fails closed** (safe). Not required for a free closed beta. Vars in `docs/RAILWAY_DEPLOYMENT.md` §2.8 | owner store setup |
+| Offline reads | ✅ cached calendar reads (sqflite, 2h) + deterministic fallback | code-verified |
+| Offline writes | ❌ **not queued** — offline transaction creation fails **visibly**, no silent loss. Estimate for true queue: 11–16 days. **Product decision pending** — see `docs/OFFLINE_BEHAVIOR.md` | owner decision |
+| iOS build | ❌ needs macOS/Xcode runner | environment |
 
-| Run | Commit | Result | Root cause / action |
-|-----|--------|--------|---------------------|
-| #220–#222 | 2bf578a / 91b0d5a | failed / superseded | pre-merge branch runs; branch merged as PR #272 and deleted |
-| #223 (main) | be220da | ❌ Mobile CI: Android build | same Kotlin-DSL failure as #224 — fix must reach main |
-| #224 | 93e6a92 | ❌ Android build only (Backend ✅, format ✅, analyze ✅, tests+E2E ✅) | `java.util.Properties()` in build.gradle.kts — Kotlin DSL shadows `java` → fixed in `f45cc65` |
-| #226 | f45cc65 | ❌ Android build only (everything else ✅) | google-services plugin hard-fails: google-services.json is gitignored → plugin now conditional (`c53d812`) |
-| **#227** | **c53d812** | ✅ **GREEN — full pipeline** | Backend CI ✅ (quality, migrations 0001→0034, full pytest, bandit) · Mobile CI ✅ (format, analyze, tests + hermetic E2E, **Android APK built + uploaded**) · CI Status ✅ |
-| Deployed-smoke #1/#3 | d2f09d0 / c53d812 | ❌ (production itself) | Railway edge: `{"status":"error","code":404,"message":"Application not found"}` |
+## Verified readiness
 
-## Deployment status — CRITICAL BLOCKER (needs the owner)
+- **Code readiness: ~92%.** Everything session 4 verified still holds at merged main, plus:
+  clean-environment production boot now actually works (it did **not** before `7cc0e12` — that
+  crash would have been the first Railway deploy's failure mode). Test totals at this lineage:
+  backend `tests/` 287 + `app/tests` 611+, Flutter 376 passed / 15 skipped, IAP suite 21, local
+  E2E smoke 19/19 (re-run this session on prod-requirements-only venv).
+- **Deployed readiness: 0%. There is still no deployment.** This remains the single gating
+  item, and it is an owner action (Railway account). The recipe is now complete and verified
+  as far as it can be without credentials: `docs/RAILWAY_DEPLOYMENT.md`.
+- **The app is NOT ready for closed beta** until: backend deployed → deployed smoke 19/19 →
+  release-signed Android build pointing at that backend (`--dart-define=API_BASE_URL=...`).
+  No other critical/high blocker is known in the code itself.
 
-**`https://mita-production-production.up.railway.app` no longer hosts any application.**
-Proven from GitHub runners (not a sandbox egress artifact): every path returns Railway's edge
-response `{"status":"error","code":404,"message":"Application not found"}`. That means no
-Railway service is bound to this domain — the service/environment was deleted, renamed, or its
-domain released. This cannot be diagnosed or fixed from the repository.
+## Remaining owner actions (nothing below can be done from the repo)
 
-**Owner actions needed (Railway dashboard):**
-1. Check the Railway project: does the backend service still exist? Was the domain regenerated?
-2. If gone: create a service from this repo (Dockerfile path works; `start.sh` validates env,
-   runs `alembic upgrade head` exactly once, fails closed on migration failure, binds
-   `0.0.0.0:$PORT`, workers from `WEB_CONCURRENCY`).
-3. Required env vars (production): `DATABASE_URL`, `SECRET_KEY`, `JWT_SECRET`,
-   `OPENAI_API_KEY` (start.sh hard-requires it), `REDIS_URL` (or Upstash vars),
-   `ENVIRONMENT=production`, `SENTRY_DSN` (recommended), `IAP_ALLOWED_PRODUCT_IDS`,
-   Apple/Google IAP vars per docs/FIX_ALL.md.
-4. Tell us the final base URL — then run the **Deployed Backend Smoke Test** workflow
-   (Actions → “Deployed Backend Smoke Test” → Run workflow → base_url), or push a commit
-   containing `[deployed-smoke]` to a `claude/**` branch. 19 checks verify the whole
-   closed-beta journey including non-zero calendar limits.
-5. The mobile default API URL (`mobile_app/lib/config.dart`) and the Android
-   network-security-config pin `mita-production-production.up.railway.app`; if the domain
-   changes, update both (build-time `--dart-define=API_BASE_URL=...` also works).
+1. **Create the Railway service** (project + PostgreSQL + Redis + variables) —
+   step-by-step: `docs/RAILWAY_DEPLOYMENT.md` §4. ~30 minutes.
+2. Report the staging/production base URL → we run the **Deployed Backend Smoke Test**
+   workflow against it (19 checks, one click).
+3. Approve (or reject) the open PR with `7cc0e12` — **without the jinja2 pin, step 1 will
+   crash-loop**, so merge this before deploying.
+4. Generate the Android release keystore and provide it per `docs/ANDROID_RELEASE.md` (or
+   accept debug-signed side-loading for the very first testers).
+5. Decide the offline question: ship beta online-first (recommended) or fund the 11–16 day
+   write-queue build first — `docs/OFFLINE_BEHAVIOR.md`.
+6. When ready for push/IAP: Firebase + store credentials (`docs/RAILWAY_DEPLOYMENT.md` §2.4/§2.8).
 
-## Fixed session 4 (2026-07-07, this branch)
+## Exact next task
 
-1. **Security Scanning red on main** — `github/codeql-action/upload-sarif@v2` is deprecation-
-   killed and the job lacked `security-events: write` (upload 403). v3 + permissions. (`93e6a92`)
-2. **Deployed-backend verification tooling** — `scripts/remote_smoke_test.py` (stdlib-only,
-   19-check journey incl. every calendar acceptance criterion) + `deployed-smoke.yml`
-   (workflow_dispatch + `[deployed-smoke]` commit-tag trigger, needed because this
-   environment's GitHub token cannot call the dispatch API). Verified 19/19 against a local
-   backend built from the exact merged code. (`93e6a92`, `d2f09d0`, `c53d812`)
-3. **Android APK build broken in CI (was never buildable)** — two independent causes:
-   a. Kotlin DSL: `java.util.Properties()` / `java.io.FileInputStream(...)` — `java` resolves
-      to the JavaPluginExtension accessor inside build scripts → script compilation error.
-      Imports at top of script (stock Flutter template pattern). (`f45cc65`)
-   b. google-services plugin hard-fails without `google-services.json`, which is gitignored →
-      every CI/credential-less build failed. Firebase runtime config comes from Dart
-      (`firebase_options.dart` via --dart-define), so the plugin is now applied only when the
-      file exists. (`c53d812`)
-4. **App crashed at startup without Firebase credentials** (HIGH, closed-beta gate):
-   `await _initFirebase()` in `main()` was uncaught; `DefaultFirebaseOptions` throws
-   `StateError` when FIREBASE_* dart-defines are absent → crash before `runApp`. Now caught
-   (budgeting works without push/Crashlytics); Crashlytics calls in both global error handlers
-   guarded by `Firebase.apps.isNotEmpty`; post-login push-token registration already had
-   graceful failure handling. (`c53d812`)
+**Owner: execute `docs/RAILWAY_DEPLOYMENT.md` §4 (staging service) after merging the open PR.**
+Everything code-side is done and verified; the next state change requires a Railway account.
+Once a URL exists: run the deployed smoke workflow, then build the staging APK
+(`docs/ANDROID_RELEASE.md`) and hand it to the first testers.
 
-## Offline-first — honest status (product decision needed)
+## Session history (compressed)
 
-`AdvancedOfflineService` implements a complete offline machine (sqflite response cache,
-`pending_sync` queue table with retry counts, connectivity-triggered `_processPendingSyncs`)
-— but **no code path ever enqueues a write**. The only wired consumer is calendar response
-caching in `api_service.dart` (2h expiry) plus the deterministic `CalendarFallbackService`.
-`createTransaction` (both ApiService and TransactionService) POSTs directly and rethrows on
-failure.
-
-Actual offline behavior today: cached/deterministic calendar reads work; transaction creation
-offline **fails loudly with an error state** (no silent loss, no corruption, no fake success);
-nothing is queued for later sync. That is an *online-first app with cached reads*, not
-offline-first. Wiring true offline write-queueing (client queue + server idempotency keys +
-dedup + conflict policy + sync-state UI) is a feature, not a fix — **product decision:** ship
-closed beta online-first (defensible; beta testers have connectivity) or build the queue first.
-
-## Remaining blockers
-
-### Critical — needs the owner
-- **Railway deployment gone** (“Application not found”) — see Deployment status. Until a
-  backend is deployed, every deployed-E2E criterion is unmeetable regardless of code state.
-
-### High — fixable here
-- ~~CI run green incl. APK artifact~~ ✅ DONE — run #227 green end-to-end.
-- Main branch itself is red (#223, same Android causes + old security.yml): the fixes on this
-  branch need a PR to main (not opened — merges to main require explicit approval).
-- Verified this session (no OpenAI/Firebase creds present): OCR+AI suites 100/100,
-  notification/Firebase backend 9/9, password reset/change 16/16, IAP 21/21 (isolated DB).
-
-### Blocked — environment (exact unblock condition documented)
-- **Local Android builds**: dl.google.com / maven.google.com 403-blocked in sandbox →
-  Android builds and artifact inspection happen in CI only (mobile-ci uploads
-  `mita-debug-apk`, 7-day retention).
-- **iOS build**: needs macOS/Xcode runner.
-- **Railway host & Azure blob (Actions log archive) egress-blocked from sandbox** — worked
-  around via GitHub-runner smoke workflow and the logs API.
-
-### Blocked — external credentials (code paths ready & fail closed)
-- Firebase: real `google-services.json` (Android), FIREBASE_* dart-defines
-  (`firebase_config.json` per `firebase_config.example.json`) — app now degrades gracefully
-  without them; push/Crashlytics off until provided.
-- Apple IAP: `APPLE_ROOT_CA_PATH` (AppleRootCA-G3.cer), `APPLE_BUNDLE_ID`,
-  `APPSTORE_SHARED_SECRET`, ASSN V2 URL → `POST /api/iap/webhook`.
-- Google IAP: `GOOGLE_SERVICE_ACCOUNT` JSON, `GOOGLE_PACKAGE_NAME`, RTDN Pub/Sub push with
-  OIDC (`GOOGLE_PUBSUB_AUDIENCE`, `GOOGLE_PUBSUB_SERVICE_ACCOUNT`).
-- `IAP_ALLOWED_PRODUCT_IDS` — required in production, otherwise IAP validation fails closed.
-- OpenAI (`OPENAI_API_KEY` — also hard-required by start.sh in production), Sentry DSN, SMTP.
-- Android release signing: `key.properties` or `KEYSTORE_FILE`/`KEYSTORE_PASSWORD`/
-  `KEY_ALIAS`/`KEY_PASSWORD` env vars (build.gradle.kts falls back to debug signing with a
-  loud warning — fine for closed beta via internal testing track, NOT for store release).
-
-## Production configuration review (verified this session)
-
-- CORS: explicit HTTPS origin allowlist, wildcard removed, localhost only outside production.
-- Security headers middleware: HSTS, nosniff, X-Frame-Options DENY, CSP, Referrer-Policy.
-- start.sh: production requires DATABASE_URL/SECRET_KEY/JWT_SECRET/OPENAI_API_KEY; migration
-  failure aborts startup in production; single migration point (no create_all in prod path).
-- Android: `usesCleartextTraffic=false`, network-security-config enforces HTTPS; versionCode 1,
-  versionName 1.0; permissions: INTERNET, NETWORK_STATE, CAMERA (OCR), media-read ≤SDK32,
-  VIBRATE, BOOT_COMPLETED, WAKE_LOCK, USE_BIOMETRIC, fine/coarse location (**Play review will
-  ask for location justification — income classification uses it; have the disclosure ready**).
-- JWT: issuer/audience/type/version enforced; refresh rotation + old-token blacklist verified
-  in the smoke journey (rotation + rotated-token works + logout).
-
-## Commits (session 4)
-`93e6a92` security.yml fix + smoke tooling · `d2f09d0` smoke [deployed-smoke] trigger ·
-`f45cc65` Kotlin DSL unshadow · `c53d812` Firebase graceful degradation + conditional
-google-services + smoke diagnostics
-
-## Readiness estimate
-
-**Code readiness: ~90%** — all suites green on real PG16+Redis, calendar correctness verified
-at four levels locally and in hermetic CI E2E, IAP fail-closed verified with fixtures, app now
-launches without any external credentials.
-**Deployed readiness: 0% — there is no deployment.** The single gating item for closed beta is
-restoring the Railway service (owner action) and then re-running the deployed smoke (19 checks,
-one click). After that: Firebase + store credentials for push/IAP, Android release signing for
-the Play internal-testing track.
-
-## Next task
-1. ~~Confirm CI green incl. APK artifact~~ ✅ run #227.
-2. **Owner: restore the Railway service** + env vars → provide base URL → run the deployed
-   smoke workflow (19 checks). This is THE gating item — everything else is code-ready.
-3. Open PR to main with this branch (needs explicit approval to merge) so main goes green
-   (#223's Android causes + security.yml are fixed here).
-4. Provision Firebase/IAP/OpenAI/Sentry credentials per the blocked list.
-5. Product decision: ship closed beta online-first, or build offline write-queue first.
+- **Session 3** (`claude/mita-finance-prod-ready-wqj2k9` → PR #272 `be220da`): calendar Decimal
+  500 fix, migration 0034, Flutter 3.35.4 pin, hermetic mobile CI.
+- **Session 4** (`claude/mita-closed-beta-readiness-4nn5q6` → PR #273 `73c1817`): Security
+  Scanning workflow fix (upload-sarif v3 + permissions), `scripts/remote_smoke_test.py` +
+  `deployed-smoke.yml`, Android CI build fixed (Kotlin-DSL java shadowing; conditional
+  google-services plugin), Firebase-less startup crash fixed. CI green end-to-end at run #227
+  (pre-merge) / #229 (main), debug APK artifact built.
+- **Session 5** (this branch): confirmed merge + green main; **found & fixed jinja2 clean-env
+  boot crash** (`7cc0e12`); verified empty-env production boot + 19/19 smoke on prod
+  requirements only; wrote `docs/RAILWAY_DEPLOYMENT.md`, `docs/ANDROID_RELEASE.md`,
+  `docs/OFFLINE_BEHAVIOR.md`; updated this tracker.
