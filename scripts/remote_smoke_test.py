@@ -101,11 +101,12 @@ def main():
     password = "Sm0ke!Test#2026x"
     tx_amount = 23.75
 
-    # 1-2. Liveness
-    status, _ = http("GET", f"{base}/")
-    record("GET /", status == 200, f"status={status}")
+    # 1-2. Liveness. On failure include the body — a Railway edge
+    # "Application not found" is very different from an app-level 404.
+    status, body = http("GET", f"{base}/")
+    record("GET /", status == 200, f"status={status} body={str(body)[:200]}")
     status, body = http("GET", f"{base}/health")
-    record("GET /health", status == 200, f"status={status}")
+    record("GET /health", status == 200, f"status={status} body={str(body)[:200]}")
 
     # 3. Register
     status, body = http(

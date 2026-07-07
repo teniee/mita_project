@@ -4,8 +4,15 @@ import java.util.Properties
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    id("com.google.gms.google-services")
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// Firebase runtime config comes from Dart (lib/firebase_options.dart via
+// --dart-define); the google-services plugin only re-processes
+// google-services.json, which is gitignored. Apply it only when that file
+// is present so local and CI builds work without Firebase credentials.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
 }
 
 android {
