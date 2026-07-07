@@ -11,6 +11,7 @@ pydantic==2.9.2                     # Updated with validation improvements
 pydantic[email]==2.9.2              # Explicit version for email validation
 pydantic-settings==2.6.1            # Settings management
 email-validator==2.2.0              # Email validation
+jinja2==3.1.6                       # Email HTML templates — imported at startup by app/services/email_service.py
 phonenumbers==8.13.48               # Phone number validation
 pycountry==24.6.1                   # Country data
 bleach==6.2.0                       # HTML sanitization
