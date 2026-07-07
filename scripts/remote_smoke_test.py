@@ -187,6 +187,9 @@ def main():
         status in (200, 401, 403, 404),
         f"status={status}",
     )
+    # Operational metrics must not be publicly readable in production.
+    status, _ = http("GET", f"{base}/metrics")
+    record("metrics endpoint not public", status != 200, f"status={status}")
 
     # 2e. Plain HTTP must not silently serve the API (redirect or refuse).
     if base.startswith("https://"):

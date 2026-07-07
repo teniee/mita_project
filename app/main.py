@@ -331,10 +331,19 @@ from app.middleware.standardized_error_middleware import (
     StandardizedErrorMiddleware,
 )
 
+# Interactive docs stay off in production unless ENABLE_DOCS is set
+# explicitly — a financial API should not advertise its surface publicly.
+_docs_enabled = settings.ENVIRONMENT != "production" or os.getenv(
+    "ENABLE_DOCS", ""
+).lower() in ("1", "true", "yes")
+
 # Create FastAPI app with enhanced documentation
 app = FastAPI(
     title="MITA Finance API",
     version="1.0.0",
+    docs_url="/docs" if _docs_enabled else None,
+    redoc_url="/redoc" if _docs_enabled else None,
+    openapi_url="/openapi.json" if _docs_enabled else None,
     description="""
 ## MITA Finance API
 
@@ -442,12 +451,22 @@ async def health_check():
 
 
 @app.get("/metrics")
-async def prometheus_metrics():
+async def prometheus_metrics(request: Request):
     """
     Prometheus metrics endpoint for monitoring and observability
     Returns metrics in Prometheus exposition format
+
+    In production the endpoint is hidden (404) unless METRICS_TOKEN is set
+    and presented as a bearer token — operational metrics are not public.
+    In-cluster scrapers must send `Authorization: Bearer $METRICS_TOKEN`.
     """
     from fastapi import Response
+
+    if settings.ENVIRONMENT == "production":
+        expected = os.getenv("METRICS_TOKEN", "")
+        provided = request.headers.get("Authorization", "")
+        if not expected or provided != f"Bearer {expected}":
+            raise StarletteHTTPException(status_code=404, detail="Not Found")
 
     metrics_data = get_metrics()
     return Response(content=metrics_data, media_type=CONTENT_TYPE_LATEST)
@@ -1077,6 +1096,8 @@ async def generic_exception_handler(request: Request, exc: Exception):
 @app.get("/openapi.json", include_in_schema=False)
 async def get_enhanced_openapi():
     """Return enhanced OpenAPI schema with comprehensive error documentation"""
+    if not _docs_enabled:
+        raise StarletteHTTPException(status_code=404, detail="Not Found")
     if not hasattr(app, "openapi_schema") or app.openapi_schema is None:
         app.openapi_schema = get_standardized_openapi_schema(
             app=app,
