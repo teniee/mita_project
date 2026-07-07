@@ -1,0 +1,31 @@
+name: Deployed Backend Smoke Test
+
+# Manually-dispatched verification of the ACTUAL deployed backend.
+# GitHub runners can reach the Railway host (unlike the development
+# sandbox, whose egress policy blocks it). Creates exactly one
+# throwaway smoke user per run.
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Deployed backend base URL'
+        required: true
+        default: 'https://mita-production-production.up.railway.app'
+
+jobs:
+  smoke:
+    name: Remote smoke (deployed backend)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run remote smoke test
+        run: python scripts/remote_smoke_test.py --base-url "${{ inputs.base_url }}"
