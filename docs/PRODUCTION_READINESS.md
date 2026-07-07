@@ -1,110 +1,177 @@
 # MITA — Production Readiness (Live)
 
-> **Owner:** production-readiness engineering · **Branch:** `claude/mita-finance-prod-ready-wqj2k9`
-> **Last updated:** 2026-07-07 (session 3 — continuation of the 2026-07-05/06 audit)
-> **Verification environment:** Python 3.11 venv · PostgreSQL 16 (real) · Redis 7 (real) · Flutter 3.35.4 / Dart 3.9.2 (real SDK, tests + analyze) · no Android SDK (dl.google.com blocked by sandbox egress policy) · no external Apple/Google/OpenAI/Firebase credentials · Railway production URL unreachable from sandbox (egress policy)
+> **Owner:** production-readiness engineering · **Branch:** `claude/mita-closed-beta-readiness-4nn5q6`
+> **Last updated:** 2026-07-07 (session 4 — post-merge closed-beta readiness)
+> **Latest commit:** `c53d812` (tracker update follows it)
+> **Verification environment:** Python 3.11 venv · PostgreSQL 16 (real) · Redis 7 (real) · Flutter 3.35.4 / Dart 3.9.2 (real SDK) · no Android SDK (dl.google.com blocked by sandbox egress) · Railway host blocked from sandbox but PROBED FROM GITHUB RUNNERS via the new deployed-smoke workflow
 
 This file is the single source of truth. Update **before** each change and **after** each verified fix.
 
 ---
 
-## Current verified status (this session)
+## Where things stand (session 4)
+
+The session-3 branch (`claude/mita-finance-prod-ready-wqj2k9`, commits `2bf578a` + `91b0d5a`)
+was **merged into main via PR #272** (squash commit `be220da`, 2026-07-07 07:25 UTC) and the
+branch deleted. All session-3 work (calendar fix, migration 0034, Flutter 3.35.4 pin, hermetic
+mobile CI) is on main. Follow-up work continues on `claude/mita-closed-beta-readiness-4nn5q6`
+(branched from `be220da`).
+
+## Current verified status
 
 | Gate | Status | Evidence |
 |------|--------|----------|
-| `tests/` root | ✅ **287/287** | re-verified 2026-07-07 |
-| `app/tests` root | ✅ **611/611** (incl. 7 new calendar-limit + 19 IAP security tests) + 6 new sync-session SSL tests verified separately | full run 2026-07-07, real PG16+Redis |
-| black / isort / ruff | ✅ PASS | whole repo |
-| bandit -ll | ✅ PASS (0 medium/high) | app/ |
-| Migrations from empty PG 16 | ✅ 0001→**0034** | re-verified in CI run #220 (migrations step green) |
-| Backend cold start | ✅ | uvicorn against migration-built DB |
-| `GET /` & `GET /health` | ✅ 200 / healthy | |
-| Backend E2E journey | ✅ register→onboarding→transaction→**saved calendar (31 days, non-zero limits, spent reflected)**→refresh→logout | raw HTTP + the app's real ApiService |
-| Flutter analyze | ✅ 0 errors, 0 warnings | |
-| Flutter tests | ✅ **376 passed / 15 skipped / 0 failed** (live-API tests skip without a backend; with local backend they run — see mobile↔backend row) | full suite 2026-07-07 |
-| Mobile ↔ backend E2E | ✅ full journey through real ApiService (dio, interceptors, secure storage) against local FastAPI: register→login→onboarding→transaction→getSavedCalendar (all limits > 0, today's spent ≥ tx amount)→refresh→persistence→logout | mobile_backend_journey_test.dart |
-| Android debug build | ❌ blocked in sandbox (dl.google.com 403) → built in CI mobile job | see CI row |
-| iOS build | ❌ blocked: no macOS/Xcode in environment | needs a macOS runner |
-| GitHub CI run | 🟡 run #220 (first run on branch) red → all 3 root causes fixed (see session-3 findings); green run pending next push | |
+| Backend CI (format, lint, migrations 0001→0034 from empty PG16, `pytest` full = tests/ 287 + app/tests 611+, bandit) | ✅ green | CI run #224 & #226 Backend CI job: **success** |
+| Migrations from empty PG 16 → **0034** | ✅ | re-verified locally this session AND in CI runs #224/#226/#227 |
+| Flutter format / analyze | ✅ 0 errors (3 pre-existing warnings, non-fatal) | local 3.35.4 + CI Verify code step green |
+| Flutter tests incl. hermetic live-API E2E vs this commit's backend | ✅ | CI run #224/#226 “Run tests” green; local: **376 passed / 15 skipped / 0 failed** |
+| Local backend E2E (remote_smoke_test.py vs local uvicorn, clean-DB migrations) | ✅ **19/19** | register→login→onboarding→transaction→saved calendar (31/31 days, all limits > 0, today present, spent 23.75 reflected, YYYY-MM-DD keys)→day detail→refresh rotation→logout→404/4xx never 500 |
+| IAP security suite | ✅ 21 passed (isolated DB) + green inside CI backend job | fixture-based: tampered JWS, unpinned chain, replay, ownership, fail-closed, grace/refund/revoke |
+| Android debug APK in CI | 🟡 fix chain in progress — see run history below | run #224 failed (Kotlin `java.util` shadowing → fixed `f45cc65`), #226 failed (google-services.json absent → fixed `c53d812`), #227 running |
+| Security Scanning workflow on main | ❌ red on main (deprecated upload-sarif@v2) → fixed on this branch (`93e6a92`: v3 + security-events permission) | lands on main with next merge |
+| **Deployed backend (Railway)** | ❌ **HARD DOWN — “Application not found”** | see Deployment status |
+| iOS build | ❌ blocked: no macOS/Xcode available anywhere in this setup | needs a macOS runner |
 
-## Fixed session 3 (2026-07-07) — calendar correctness end to end
+## CI run history (this session)
 
-1. **Calendar returned `limit: 0.0` for every day** (HIGH — core product). `DailyPlan.daily_budget` — summed into each day's `limit` by `GET /api/calendar/saved/{y}/{m}` and read by spending-prevention — was never written by ANY writer. The mobile traffic-light (`limit > 0 && spent > limit`) was silently disabled for every onboarded user. Fixed at every write point with the invariant *daily_budget follows the allocation*: onboarding save, day edits, realtime rebalancer (donor cuts + credit), budget redistributor, both expense trackers (explicit 0, never NULL, for unplanned categories), goal sync, user-data service. Read-side fallback to the planned total for legacy NULL rows. (`2bf578a`)
-2. **Saved-calendar endpoint emitted full timestamps** (`2026-07-06T00:00:00+00:00`) instead of the `YYYY-MM-DD` day keys the mobile app merges on. (`2bf578a`)
-3. **Mobile ApiService base URL missed the API path** (`AppConfig.baseUrl` → every request 404'd) and `_transformCalendarData` rejected the List contract `/calendar/shell` actually returns (every successful response surfaced as an empty calendar). (`2bf578a`)
-4. **Sync DB session forced `sslmode=require`** regardless of the URL's own `?sslmode=disable` — every deployment on non-SSL Postgres (CI containers, docker-compose, private networking) lost the whole sync-session path ("server does not support SSL"). Found via CI run #220; now honors the URL, defaulting to require only when unspecified. 6 regression tests.
-5. **CI live-API tests ran against production Railway** (reachable from GitHub runners, unlike this sandbox) — registering junk users in the production DB and testing the previously-deployed code instead of the commit under test. mobile-ci is now hermetic: PG16+Redis service containers, migrations, uvicorn on localhost, `flutter test --dart-define=API_BASE_URL=http://localhost:8000` → the full journey E2E runs in CI on every push.
-6. **CI Flutter version floated on `stable`** while the suite is verified on 3.35.4 (SnackBar timer semantics differed → phantom CI-only failure). Pinned.
-7. **Date-fragile test**: `calendar_integration_test.dart` "Spending patterns are realistic" failed on the 1st, 2nd and 7th of every month from date arithmetic alone (fixed thresholds over 0–6 past days). Rewritten proportionally; also removed the fallback service's factor bucket sitting exactly on the 1.1 'over' boundary (status flipped with income rounding).
-8. **Load tests raced the framework's default 30s timeout** (30s/20s load windows + wind-down). Explicit timeouts; assertions unchanged.
-9. Regression coverage for the calendar bug at four levels: backend service + API route (`app/tests/test_calendar_limits.py`, 7 tests), Flutter unit (`test/budget_provider_calendar_merge_test.dart`, 8 tests — merge extracted as pure `mergeSavedCalendarDay`, behavior unchanged), live integration (journey test asserts non-empty days, all limits > 0, today's spent ≥ transaction amount).
+| Run | Commit | Result | Root cause / action |
+|-----|--------|--------|---------------------|
+| #220–#222 | 2bf578a / 91b0d5a | failed / superseded | pre-merge branch runs; branch merged as PR #272 and deleted |
+| #223 (main) | be220da | ❌ Mobile CI: Android build | same Kotlin-DSL failure as #224 — fix must reach main |
+| #224 | 93e6a92 | ❌ Android build only (Backend ✅, format ✅, analyze ✅, tests+E2E ✅) | `java.util.Properties()` in build.gradle.kts — Kotlin DSL shadows `java` → fixed in `f45cc65` |
+| #226 | f45cc65 | ❌ Android build only (everything else ✅) | google-services plugin hard-fails: google-services.json is gitignored → plugin now conditional (`c53d812`) |
+| #227 | c53d812 | 🟡 in progress | expected green incl. APK artifact |
+| Deployed-smoke #1/#3 | d2f09d0 / c53d812 | ❌ (production itself) | Railway edge: `{"status":"error","code":404,"message":"Application not found"}` |
 
-## Fixed session 2 (2026-07-06) (all verified by tests)
+## Deployment status — CRITICAL BLOCKER (needs the owner)
 
-### Backend
-1. **Decimal/date/UUID responses 500'd** — `JSONResponse` used stdlib json; `GET /api/calendar/day/{y}/{m}/{d}` crashed right after onboarding (core journey). Fixed in the response wrapper with `jsonable_encoder`; 5 regression tests. (`890a20b`)
-2. **aiosqlite dev dep never installed** — line was concatenated into a comment in requirements-dev.txt → 17 collection errors locally and in CI. (`890a20b`)
-3. **IAP webhook accepted client-supplied `{user_id, expires_at}`** (HIGH — anyone could self-grant premium). Replaced with store-signed verification architecture (below). (`e05f270`)
+**`https://mita-production-production.up.railway.app` no longer hosts any application.**
+Proven from GitHub runners (not a sandbox egress artifact): every path returns Railway's edge
+response `{"status":"error","code":404,"message":"Application not found"}`. That means no
+Railway service is bound to this domain — the service/environment was deleted, renamed, or its
+domain released. This cannot be diagnosed or fixed from the repository.
 
-### IAP security architecture (`e05f270`, migration 0034)
-- Apple App Store Server Notifications V2: full JWS verification — x5c chain to a **pinned root CA** (`APPLE_ROOT_CA_PATH`), Apple marker OIDs, ES256 signature, bundleId + environment claims, nested signedTransactionInfo verified identically.
-- Google RTDN: Pub/Sub push OIDC token verified (issuer/audience/service-account email); entitlement state re-fetched from the Play Developer API — notification content never trusted.
-- Replay/idempotency: `iap_events` table, unique (provider, event_id).
-- Ownership: subscriptions matched by store transaction key (`originalTransactionId`/`purchaseToken`); unknown transactions change nothing; cross-account receipt reuse → 409.
-- Sandbox/production separation (Apple 21007 fallback; Play purchaseType); product-id allowlist `IAP_ALLOWED_PRODUCT_IDS` **required in production** (fails closed).
-- Entitlement state machine shared by validate + webhooks: grace keeps premium, cancel keeps until expiry, refund/revoke/hold end immediately; `GET /api/iap/status` for restore flows.
-- Fail closed: missing config → 503 and no entitlement change. Legacy payloads → 400.
-- 19 tests: tampered signature, unpinned chain, wrong bundle, sandbox rejection, replay, unmatched transaction, fail-closed, OIDC rejection, revoke/refund/grace flows, premium state matrix.
+**Owner actions needed (Railway dashboard):**
+1. Check the Railway project: does the backend service still exist? Was the domain regenerated?
+2. If gone: create a service from this repo (Dockerfile path works; `start.sh` validates env,
+   runs `alembic upgrade head` exactly once, fails closed on migration failure, binds
+   `0.0.0.0:$PORT`, workers from `WEB_CONCURRENCY`).
+3. Required env vars (production): `DATABASE_URL`, `SECRET_KEY`, `JWT_SECRET`,
+   `OPENAI_API_KEY` (start.sh hard-requires it), `REDIS_URL` (or Upstash vars),
+   `ENVIRONMENT=production`, `SENTRY_DSN` (recommended), `IAP_ALLOWED_PRODUCT_IDS`,
+   Apple/Google IAP vars per docs/FIX_ALL.md.
+4. Tell us the final base URL — then run the **Deployed Backend Smoke Test** workflow
+   (Actions → “Deployed Backend Smoke Test” → Run workflow → base_url), or push a commit
+   containing `[deployed-smoke]` to a `claude/**` branch. 19 checks verify the whole
+   closed-beta journey including non-zero calendar limits.
+5. The mobile default API URL (`mobile_app/lib/config.dart`) and the Android
+   network-security-config pin `mita-production-production.up.railway.app`; if the domain
+   changes, update both (build-time `--dart-define=API_BASE_URL=...` also works).
 
-### Flutter app (real product bugs)
-4. **executeWithRetry swallowed terminal errors** — screens using `executeRobustly` (login, daily budget) never showed their error state; only an explicit fallback may now absorb failures. (`7dd44b1`)
-5. **PII masking disabled in every debug build** regardless of the flag (emails/phones/cards/JWTs leaked to logs); masking now follows configuration only. Also: card/SSN masking ran after the phone pattern (which consumed card digits). (`7dd44b1`)
-6. **Error-pattern analytics never detected patterns** (counted windows, not repetitions) → pairwise co-occurrence counting; `clearAllData()` added (GDPR + test isolation). (`7dd44b1`)
-7. **buildLoadingWithError not embeddable** — error branch returned a full Scaffold → infinite-height overflow inside any Column. (`7dd44b1`)
-8. **Unhandled error types fell to generic "System"** — requestTimeout/invalidEmail/weakPassword/requiredField/dataCorrupted now have dedicated messaging; new securityBreach type (critical). (`7dd44b1`)
-9. **Context-taking formatters ignored the widget locale** — screens under an `es` MaterialApp could render US-formatted money; now synced to `Localizations.localeOf`. (`3632694`)
-10. **`parseCurrency` couldn't parse US-formatted input** (`$1,234.56`) — thousands separators never stripped. (`3632694`)
-11. **Login sign-up row overflowed** with longer translations (Flexible). (`3632694`)
-12. **Frontend income thresholds carried a 5th 'high' boundary key** that the backend contract explicitly does not define — removed from all 50 states + defaults (backend_consistency_test now passes). (`e4e50ea`)
-13. **Calendar status legend overflowed 136px on 320px-wide phones** — Wrap instead of Row. (uncommitted → this batch)
-14. **Missing offline-first feature `CalendarFallbackService`** implemented (37 tests define the contract): deterministic month of daily budgets from income+location when the backend is unreachable. (`f6a60b9`)
-15. **InstallmentsProvider not injectable** — screens' mocks were never wired; provider now accepts a service (DI). Category label + popup menu overflow fixes. (`0770048`)
-16. **Spanish translation inconsistency** rememberMe unified to "Recordarme". (`3632694`)
+## Fixed session 4 (2026-07-07, this branch)
 
-### Flutter test infrastructure
-- `test/helpers/test_app.dart` — provider tree mirroring `lib/main.dart` (screens throw ProviderNotFoundException without it; caused ~40 failures).
-- Stateful secure-storage mock (Keychain-like), SharedPreferences mocks, golden baselines for onboarding, illegal `testWidgets`-inside-`test` nests flattened, pumpAndSettle vs periodic-timer deadlocks replaced with bounded pumps.
-- Stale expectations updated **with documented reasons** (income tiers per 5-tier upper-bound semantics; login strings per current .arb).
+1. **Security Scanning red on main** — `github/codeql-action/upload-sarif@v2` is deprecation-
+   killed and the job lacked `security-events: write` (upload 403). v3 + permissions. (`93e6a92`)
+2. **Deployed-backend verification tooling** — `scripts/remote_smoke_test.py` (stdlib-only,
+   19-check journey incl. every calendar acceptance criterion) + `deployed-smoke.yml`
+   (workflow_dispatch + `[deployed-smoke]` commit-tag trigger, needed because this
+   environment's GitHub token cannot call the dispatch API). Verified 19/19 against a local
+   backend built from the exact merged code. (`93e6a92`, `d2f09d0`, `c53d812`)
+3. **Android APK build broken in CI (was never buildable)** — two independent causes:
+   a. Kotlin DSL: `java.util.Properties()` / `java.io.FileInputStream(...)` — `java` resolves
+      to the JavaPluginExtension accessor inside build scripts → script compilation error.
+      Imports at top of script (stock Flutter template pattern). (`f45cc65`)
+   b. google-services plugin hard-fails without `google-services.json`, which is gitignored →
+      every CI/credential-less build failed. Firebase runtime config comes from Dart
+      (`firebase_options.dart` via --dart-define), so the plugin is now applied only when the
+      file exists. (`c53d812`)
+4. **App crashed at startup without Firebase credentials** (HIGH, closed-beta gate):
+   `await _initFirebase()` in `main()` was uncaught; `DefaultFirebaseOptions` throws
+   `StateError` when FIREBASE_* dart-defines are absent → crash before `runApp`. Now caught
+   (budgeting works without push/Crashlytics); Crashlytics calls in both global error handlers
+   guarded by `Firebase.apps.isNotEmpty`; post-login push-token registration already had
+   graceful failure handling. (`c53d812`)
 
-## Per-file Flutter test status (each verified green this session)
-calendar_screen 18/18 · installments_screen 17/17 · onboarding_integration 10/10 (incl. goldens) · calendar_service+calendar_integration 37/37 · secure_token_storage 20/20 · security_services 19/19 · error_message 20/20 · error_handling_comprehensive 24/24 · edge_cases 17/17 · i18n_integration 16/16 · income_classification 17/17 · backend_consistency 9/9 · login_screen 1/1 · dashboard_screen 1/1 · comprehensive_api 12/12 (vs local backend) · ui_fixes_validation (calendar overflow fix in progress)
+## Offline-first — honest status (product decision needed)
+
+`AdvancedOfflineService` implements a complete offline machine (sqflite response cache,
+`pending_sync` queue table with retry counts, connectivity-triggered `_processPendingSyncs`)
+— but **no code path ever enqueues a write**. The only wired consumer is calendar response
+caching in `api_service.dart` (2h expiry) plus the deterministic `CalendarFallbackService`.
+`createTransaction` (both ApiService and TransactionService) POSTs directly and rethrows on
+failure.
+
+Actual offline behavior today: cached/deterministic calendar reads work; transaction creation
+offline **fails loudly with an error state** (no silent loss, no corruption, no fake success);
+nothing is queued for later sync. That is an *online-first app with cached reads*, not
+offline-first. Wiring true offline write-queueing (client queue + server idempotency keys +
+dedup + conflict policy + sync-state UI) is a feature, not a fix — **product decision:** ship
+closed beta online-first (defensible; beta testers have connectivity) or build the queue first.
 
 ## Remaining blockers
 
-### Fixable here (in progress)
-- Green GitHub Actions run on the branch (all known root causes of run #220 fixed; awaiting next push's run).
-- Production deploy of this branch's backend — the deployed Railway backend still serves zero-limit calendars until redeployed.
+### Critical — needs the owner
+- **Railway deployment gone** (“Application not found”) — see Deployment status. Until a
+  backend is deployed, every deployed-E2E criterion is unmeetable regardless of code state.
+
+### High — fixable here, in progress
+- CI run #227 green end-to-end incl. APK artifact (fix chain: `f45cc65` + `c53d812`).
+- Main branch itself is red (#223, same Android causes + old security.yml): the fixes on this
+  branch need a PR to main (not opened — merges to main require explicit approval).
 
 ### Blocked — environment (exact unblock condition documented)
-- **Android debug/release build**: sandbox egress policy 403-blocks dl.google.com (Android SDK cmdline-tools, platform tools, google() maven). Unblock: allowlist dl.google.com/maven.google.com in the Claude environment network policy, or rely on GitHub CI (ubuntu runners reach it) — the mobile-ci workflow already runs analyze+test; an `flutter build apk --debug` step can be added.
-- **iOS build**: requires macOS/Xcode (not available in Linux sandbox or ubuntu CI). Needs a macOS runner.
-- **Railway production verification**: `mita-production-production.up.railway.app` blocked by sandbox egress. Local backend used instead for mobile↔backend E2E.
+- **Local Android builds**: dl.google.com / maven.google.com 403-blocked in sandbox →
+  Android builds and artifact inspection happen in CI only (mobile-ci uploads
+  `mita-debug-apk`, 7-day retention).
+- **iOS build**: needs macOS/Xcode runner.
+- **Railway host & Azure blob (Actions log archive) egress-blocked from sandbox** — worked
+  around via GitHub-runner smoke workflow and the logs API.
 
 ### Blocked — external credentials (code paths ready & fail closed)
-- Apple: `APPLE_ROOT_CA_PATH` (download AppleRootCA-G3.cer from apple.com/certificateauthority — apple.com also blocked in sandbox), `APPLE_BUNDLE_ID`, `APPSTORE_SHARED_SECRET`, App Store Server Notifications V2 URL configured in App Store Connect → `POST /api/iap/webhook`.
-- Google Play: service-account JSON (`GOOGLE_SERVICE_ACCOUNT`), `GOOGLE_PACKAGE_NAME`, RTDN Pub/Sub push subscription with OIDC auth → set `GOOGLE_PUBSUB_AUDIENCE` + `GOOGLE_PUBSUB_SERVICE_ACCOUNT`.
-- `IAP_ALLOWED_PRODUCT_IDS` (comma-separated store product ids) — **required in production**, otherwise validation fails closed.
-- Firebase push (service-account JSON + APNs key), OpenAI (`OPENAI_API_KEY`), Sentry DSN, SMTP password, Railway env vars (docs/FIX_ALL.md R-01/02/03).
+- Firebase: real `google-services.json` (Android), FIREBASE_* dart-defines
+  (`firebase_config.json` per `firebase_config.example.json`) — app now degrades gracefully
+  without them; push/Crashlytics off until provided.
+- Apple IAP: `APPLE_ROOT_CA_PATH` (AppleRootCA-G3.cer), `APPLE_BUNDLE_ID`,
+  `APPSTORE_SHARED_SECRET`, ASSN V2 URL → `POST /api/iap/webhook`.
+- Google IAP: `GOOGLE_SERVICE_ACCOUNT` JSON, `GOOGLE_PACKAGE_NAME`, RTDN Pub/Sub push with
+  OIDC (`GOOGLE_PUBSUB_AUDIENCE`, `GOOGLE_PUBSUB_SERVICE_ACCOUNT`).
+- `IAP_ALLOWED_PRODUCT_IDS` — required in production, otherwise IAP validation fails closed.
+- OpenAI (`OPENAI_API_KEY` — also hard-required by start.sh in production), Sentry DSN, SMTP.
+- Android release signing: `key.properties` or `KEYSTORE_FILE`/`KEYSTORE_PASSWORD`/
+  `KEY_ALIAS`/`KEY_PASSWORD` env vars (build.gradle.kts falls back to debug signing with a
+  loud warning — fine for closed beta via internal testing track, NOT for store release).
 
-## Commits
-Session 2: `890a20b` backend Decimal/aiosqlite/cleanup-flake · `e05f270` IAP security · `0770048` calendar+installments tests · `f6a60b9` CalendarFallbackService · `7dd44b1` error handling/PII/recovery · `3632694` i18n · `e4e50ea` thresholds contract + onboarding · `4350a38` CI pipeline + format
-Session 3: `2bf578a` calendar non-zero limits end to end (4-level regression coverage) · (this commit) sync-session sslmode + hermetic mobile CI + version pin + date-fragile/timeout test fixes
+## Production configuration review (verified this session)
+
+- CORS: explicit HTTPS origin allowlist, wildcard removed, localhost only outside production.
+- Security headers middleware: HSTS, nosniff, X-Frame-Options DENY, CSP, Referrer-Policy.
+- start.sh: production requires DATABASE_URL/SECRET_KEY/JWT_SECRET/OPENAI_API_KEY; migration
+  failure aborts startup in production; single migration point (no create_all in prod path).
+- Android: `usesCleartextTraffic=false`, network-security-config enforces HTTPS; versionCode 1,
+  versionName 1.0; permissions: INTERNET, NETWORK_STATE, CAMERA (OCR), media-read ≤SDK32,
+  VIBRATE, BOOT_COMPLETED, WAKE_LOCK, USE_BIOMETRIC, fine/coarse location (**Play review will
+  ask for location justification — income classification uses it; have the disclosure ready**).
+- JWT: issuer/audience/type/version enforced; refresh rotation + old-token blacklist verified
+  in the smoke journey (rotation + rotated-token works + logout).
+
+## Commits (session 4)
+`93e6a92` security.yml fix + smoke tooling · `d2f09d0` smoke [deployed-smoke] trigger ·
+`f45cc65` Kotlin DSL unshadow · `c53d812` Firebase graceful degradation + conditional
+google-services + smoke diagnostics
 
 ## Readiness estimate
-**Backend: all suites green against real PG16+Redis (611 + 287), all critical journeys verified including saved-calendar correctness and IAP entitlements.**
-**Mobile: full suite green (376 pass / 15 env-skip); full app-code journey verified against a live backend; calendar traffic-light now backed by real limits.** Builds: Android via CI job; iOS needs a macOS runner. Remaining evidence: a green CI run on the branch (all #220 root causes fixed).
+
+**Code readiness: ~90%** — all suites green on real PG16+Redis, calendar correctness verified
+at four levels locally and in hermetic CI E2E, IAP fail-closed verified with fixtures, app now
+launches without any external credentials.
+**Deployed readiness: 0% — there is no deployment.** The single gating item for closed beta is
+restoring the Railway service (owner action) and then re-running the deployed smoke (19 checks,
+one click). After that: Firebase + store credentials for push/IAP, Android release signing for
+the Play internal-testing track.
 
 ## Next task
-1. Confirm the next CI run is green end to end (backend job, hermetic mobile job incl. E2E + APK build).
-2. Deploy the branch's backend to Railway so production stops serving zero-limit calendars.
-3. Provision external credentials (Apple/Google IAP, Firebase, OpenAI, Sentry) per the blocked-credentials list.
+1. Confirm CI run #227 green (incl. `mita-debug-apk` artifact) — in progress.
+2. Owner: restore Railway service + env vars → provide base URL → run deployed smoke.
+3. Open PR to main with this branch (needs explicit approval to merge) so main goes green
+   (#223's Android causes + security.yml are fixed here).
+4. Provision Firebase/IAP/OpenAI/Sentry credentials per the blocked list.
