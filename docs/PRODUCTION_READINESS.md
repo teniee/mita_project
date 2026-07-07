@@ -2,7 +2,8 @@
 
 > **Owner:** production-readiness engineering · **Branch:** `claude/mita-closed-beta-readiness-4nn5q6`
 > **Last updated:** 2026-07-07 (session 4 — post-merge closed-beta readiness)
-> **Latest commit:** `c53d812` (tracker update follows it)
+> **Latest code commit:** `c53d812` — **CI run #227 GREEN end-to-end**
+> https://github.com/teniee/mita_project/actions/runs/28864333526
 > **Verification environment:** Python 3.11 venv · PostgreSQL 16 (real) · Redis 7 (real) · Flutter 3.35.4 / Dart 3.9.2 (real SDK) · no Android SDK (dl.google.com blocked by sandbox egress) · Railway host blocked from sandbox but PROBED FROM GITHUB RUNNERS via the new deployed-smoke workflow
 
 This file is the single source of truth. Update **before** each change and **after** each verified fix.
@@ -27,7 +28,7 @@ mobile CI) is on main. Follow-up work continues on `claude/mita-closed-beta-read
 | Flutter tests incl. hermetic live-API E2E vs this commit's backend | ✅ | CI run #224/#226 “Run tests” green; local: **376 passed / 15 skipped / 0 failed** |
 | Local backend E2E (remote_smoke_test.py vs local uvicorn, clean-DB migrations) | ✅ **19/19** | register→login→onboarding→transaction→saved calendar (31/31 days, all limits > 0, today present, spent 23.75 reflected, YYYY-MM-DD keys)→day detail→refresh rotation→logout→404/4xx never 500 |
 | IAP security suite | ✅ 21 passed (isolated DB) + green inside CI backend job | fixture-based: tampered JWS, unpinned chain, replay, ownership, fail-closed, grace/refund/revoke |
-| Android debug APK in CI | 🟡 fix chain in progress — see run history below | run #224 failed (Kotlin `java.util` shadowing → fixed `f45cc65`), #226 failed (google-services.json absent → fixed `c53d812`), #227 running |
+| Android debug APK in CI | ✅ **built + artifact retained** | run #227: Android debug build success (6m Gradle); artifact `mita-debug-apk` 88.9 MB, sha256 `9fc43ac3…7833`, retained to 2026-07-14. Binary inspection blocked from sandbox (Azure blob egress) — source-verified: applicationId `mita.finance`, versionCode 1 / versionName 1.0, debug mode, API URL = Railway default via dart-define, cleartext off, no hardcoded secrets, 0 raw print() |
 | Security Scanning workflow on main | ❌ red on main (deprecated upload-sarif@v2) → fixed on this branch (`93e6a92`: v3 + security-events permission) | lands on main with next merge |
 | **Deployed backend (Railway)** | ❌ **HARD DOWN — “Application not found”** | see Deployment status |
 | iOS build | ❌ blocked: no macOS/Xcode available anywhere in this setup | needs a macOS runner |
@@ -40,7 +41,7 @@ mobile CI) is on main. Follow-up work continues on `claude/mita-closed-beta-read
 | #223 (main) | be220da | ❌ Mobile CI: Android build | same Kotlin-DSL failure as #224 — fix must reach main |
 | #224 | 93e6a92 | ❌ Android build only (Backend ✅, format ✅, analyze ✅, tests+E2E ✅) | `java.util.Properties()` in build.gradle.kts — Kotlin DSL shadows `java` → fixed in `f45cc65` |
 | #226 | f45cc65 | ❌ Android build only (everything else ✅) | google-services plugin hard-fails: google-services.json is gitignored → plugin now conditional (`c53d812`) |
-| #227 | c53d812 | 🟡 in progress | expected green incl. APK artifact |
+| **#227** | **c53d812** | ✅ **GREEN — full pipeline** | Backend CI ✅ (quality, migrations 0001→0034, full pytest, bandit) · Mobile CI ✅ (format, analyze, tests + hermetic E2E, **Android APK built + uploaded**) · CI Status ✅ |
 | Deployed-smoke #1/#3 | d2f09d0 / c53d812 | ❌ (production itself) | Railway edge: `{"status":"error","code":404,"message":"Application not found"}` |
 
 ## Deployment status — CRITICAL BLOCKER (needs the owner)
@@ -114,10 +115,12 @@ closed beta online-first (defensible; beta testers have connectivity) or build t
 - **Railway deployment gone** (“Application not found”) — see Deployment status. Until a
   backend is deployed, every deployed-E2E criterion is unmeetable regardless of code state.
 
-### High — fixable here, in progress
-- CI run #227 green end-to-end incl. APK artifact (fix chain: `f45cc65` + `c53d812`).
+### High — fixable here
+- ~~CI run green incl. APK artifact~~ ✅ DONE — run #227 green end-to-end.
 - Main branch itself is red (#223, same Android causes + old security.yml): the fixes on this
   branch need a PR to main (not opened — merges to main require explicit approval).
+- Verified this session (no OpenAI/Firebase creds present): OCR+AI suites 100/100,
+  notification/Firebase backend 9/9, password reset/change 16/16, IAP 21/21 (isolated DB).
 
 ### Blocked — environment (exact unblock condition documented)
 - **Local Android builds**: dl.google.com / maven.google.com 403-blocked in sandbox →
@@ -170,8 +173,10 @@ one click). After that: Firebase + store credentials for push/IAP, Android relea
 the Play internal-testing track.
 
 ## Next task
-1. Confirm CI run #227 green (incl. `mita-debug-apk` artifact) — in progress.
-2. Owner: restore Railway service + env vars → provide base URL → run deployed smoke.
+1. ~~Confirm CI green incl. APK artifact~~ ✅ run #227.
+2. **Owner: restore the Railway service** + env vars → provide base URL → run the deployed
+   smoke workflow (19 checks). This is THE gating item — everything else is code-ready.
 3. Open PR to main with this branch (needs explicit approval to merge) so main goes green
    (#223's Android causes + security.yml are fixed here).
 4. Provision Firebase/IAP/OpenAI/Sentry credentials per the blocked list.
+5. Product decision: ship closed beta online-first, or build offline write-queue first.
