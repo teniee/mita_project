@@ -473,8 +473,19 @@ async def prometheus_metrics(request: Request):
 
 
 async def _check_redis_health() -> str:
-    """Ping Redis with a short timeout: connected / unavailable / not_configured."""
+    """Ping Redis with a short timeout: connected / unavailable / not_configured.
+
+    Honors every supported provider config: REDIS_URL / UPSTASH_REDIS_URL
+    (direct protocol URLs) and UPSTASH_REDIS_REST_URL + token (converted to
+    a rediss:// URL the same way app/core/limiter_setup.py does).
+    """
     redis_url = settings.REDIS_URL or getattr(settings, "UPSTASH_REDIS_URL", "")
+    if not redis_url:
+        rest_url = os.getenv("UPSTASH_REDIS_REST_URL", "")
+        rest_token = os.getenv("UPSTASH_REDIS_REST_TOKEN", "")
+        if rest_url.startswith("https://") and rest_token:
+            host = rest_url.replace("https://", "").replace("http://", "")
+            redis_url = f"rediss://default:{rest_token}@{host}:6379"
     if not redis_url:
         return "not_configured"
     try:
@@ -542,11 +553,17 @@ async def detailed_health_check():
         or os.getenv("SOURCE_VERSION")
         or "unknown"
     )[:12]
+    # Only look up the migration head when the DB check above succeeded —
+    # a second 5s wait on an unreachable DB would push /health past the
+    # container healthcheck timeout instead of returning a degraded body.
     alembic_revision = "unknown"
-    try:
-        alembic_revision = await asyncio.wait_for(get_alembic_revision(), timeout=5.0)
-    except Exception:
-        pass
+    if database_status == "connected":
+        try:
+            alembic_revision = await asyncio.wait_for(
+                get_alembic_revision(), timeout=5.0
+            )
+        except Exception:
+            pass
     redis_status = await _check_redis_health()
 
     # Get performance cache statistics
