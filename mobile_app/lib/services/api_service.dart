@@ -210,7 +210,9 @@ class ApiService {
   // Prevents showing "Session expired" for old tokens from previous installs
   bool _hasActiveSession = false;
 
-  final String _baseUrl = AppConfig.baseUrl;
+  // All backend routes are mounted under /api (see backend app.main);
+  // using the bare host here 404'd every request the app made.
+  final String _baseUrl = AppConfig.fullApiUrl;
 
   // ---------------------------------------------------------------------------
   // Helpers
@@ -1340,8 +1342,44 @@ class ApiService {
 
   /// Transform backend calendar data to standard format
   List<dynamic> _transformCalendarData(
-      Map<String, dynamic> calendarData, double actualIncome) {
+      dynamic rawCalendarData, double actualIncome) {
     List<dynamic> calendarDays = [];
+
+    // The backend's /calendar/shell contract is a LIST of day entries:
+    // {calendar_id, date, planned_budget, limit, total}. (The previous
+    // Map-only signature made every successful response throw and the
+    // catch below returned an empty calendar.)
+    if (rawCalendarData is List) {
+      final now = DateTime.now();
+      for (final entry in rawCalendarData) {
+        if (entry is! Map) continue;
+        final map = Map<String, dynamic>.from(entry);
+        final date = DateTime.tryParse(map['date']?.toString() ?? '');
+        final limit = ((map['limit'] as num?) ?? 0).round();
+        final spent =
+            ((map['total'] as num?) ?? (map['spent'] as num?) ?? 0).round();
+        calendarDays.add({
+          'day': date?.day ?? 0,
+          'limit': limit,
+          'status': _calculateDayStatus(spent, limit),
+          'spent': spent,
+          'categories': Map<String, dynamic>.from(
+              (map['planned_budget'] as Map?) ??
+                  (map['categories'] as Map?) ??
+                  {}),
+          'is_today': date != null &&
+              date.year == now.year &&
+              date.month == now.month &&
+              date.day == now.day,
+          'is_weekend': date != null && date.weekday >= 6,
+        });
+      }
+      return calendarDays;
+    }
+
+    final calendarData = rawCalendarData is Map
+        ? Map<String, dynamic>.from(rawCalendarData)
+        : <String, dynamic>{};
 
     if (calendarData.containsKey('flexible')) {
       // Transform flexible budget format to daily calendar

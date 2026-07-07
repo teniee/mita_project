@@ -56,6 +56,7 @@ class UserDataService:
                     date=date_str,
                     category=category,
                     planned_amount=amount,
+                    daily_budget=amount,
                     spent_amount=0,
                 )
                 db.add(dp)

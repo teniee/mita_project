@@ -170,6 +170,9 @@ def rebalance_after_overspend(
             if not dry_run:
                 # Use Decimal throughout — never convert to float for financial data
                 entry.planned_amount = available - cut
+                # The enforceable limit moves with the allocation, otherwise
+                # spending checks and the calendar day limit go stale.
+                entry.daily_budget = entry.planned_amount
             actual += cut
 
         if actual > Decimal("0.01"):
@@ -232,6 +235,7 @@ def rebalance_after_overspend(
             overspent_entry.planned_amount = (
                 Decimal(str(overspent_entry.planned_amount or 0)) + plan.covered
             )
+            overspent_entry.daily_budget = overspent_entry.planned_amount
             logger.debug(
                 "rebalance: credited $%.2f to %s on %s",
                 float(plan.covered),

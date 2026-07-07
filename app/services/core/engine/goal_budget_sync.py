@@ -193,6 +193,7 @@ async def sync_goal_to_daily_plan(
             # Update planned_amount in case goal parameters changed.
             # Never touch spent_amount — it tracks actual savings deposits.
             existing.planned_amount = daily
+            existing.daily_budget = daily
         else:
             db.add(
                 DailyPlan(
@@ -201,6 +202,7 @@ async def sync_goal_to_daily_plan(
                     date=datetime(year, month, day_num, 0, 0, 0),
                     category=GOAL_SAVINGS_CATEGORY,
                     planned_amount=daily,
+                    daily_budget=daily,
                     spent_amount=Decimal("0"),
                     status="green",
                 )

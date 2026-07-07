@@ -75,6 +75,8 @@ def redistribute_budget_for_user(db: Session, user_id: UUID, year: int, month: i
                     donor_entry.planned_amount = (
                         Decimal(str(donor_entry.planned_amount)) - to_take
                     )
+                    # Enforceable limit moves with the allocation.
+                    donor_entry.daily_budget = donor_entry.planned_amount
                     transfer -= to_take
                     transferred_total += to_take
                     remaining_deficit -= to_take
@@ -117,6 +119,7 @@ def redistribute_budget_for_user(db: Session, user_id: UUID, year: int, month: i
                 receiver_entry.planned_amount = (
                     Decimal(str(receiver_entry.planned_amount)) + to_add
                 )
+                receiver_entry.daily_budget = receiver_entry.planned_amount
                 remaining -= to_add
             if remaining <= Decimal("0.01"):
                 break
@@ -125,6 +128,7 @@ def redistribute_budget_for_user(db: Session, user_id: UUID, year: int, month: i
             receiver_entries[0].planned_amount = (
                 Decimal(str(receiver_entries[0].planned_amount)) + remaining
             )
+            receiver_entries[0].daily_budget = receiver_entries[0].planned_amount
 
     db.commit()
     return {"status": "redistributed", "log": redistribution_log}

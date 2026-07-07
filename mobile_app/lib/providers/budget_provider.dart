@@ -13,6 +13,80 @@ enum BudgetState {
   error,
 }
 
+/// Merge one saved-calendar day (backend /calendar/saved/{year}/{month}
+/// contract: date, day, limit, planned_budget) with real transaction
+/// spending into the shape calendar_screen.dart renders.
+///
+/// Pure function so the traffic-light logic is unit-testable: a day only
+/// turns 'over'/'warning' against a non-zero limit, which is why the
+/// backend must never emit limit=0 for a planned day.
+Map<String, dynamic> mergeSavedCalendarDay(
+  Map<String, dynamic> d, {
+  required DateTime today,
+  required Map<int, double> spentByDay,
+  required Map<int, Map<String, double>> spentByDayCategory,
+}) {
+  final day = d['day'] as int? ?? 0;
+  final dateStr = d['date'] as String?;
+  final dayDate = dateStr != null ? DateTime.tryParse(dateStr) : null;
+  final dayOnly = dayDate != null
+      ? DateTime(dayDate.year, dayDate.month, dayDate.day)
+      : null;
+
+  final isToday = dayOnly == today;
+  final isPast = dayOnly != null && dayOnly.isBefore(today);
+
+  final limit = (d['limit'] as num?)?.toDouble() ?? 0.0;
+  final realSpent = spentByDay[day] ?? 0.0;
+
+  // Build per-category breakdown: planned (from DailyPlan) + real
+  final plannedCats = (d['planned_budget'] as Map?) ?? {};
+  final mergedCats = <String, dynamic>{};
+
+  for (final entry in plannedCats.entries) {
+    final cat = entry.key as String;
+    final val = entry.value;
+    final planned = val is Map
+        ? (val['planned'] as num?)?.toDouble() ?? 0.0
+        : (val as num?)?.toDouble() ?? 0.0;
+    final spent =
+        (isPast || isToday) ? (spentByDayCategory[day]?[cat] ?? 0.0) : 0.0;
+    mergedCats[cat] = {'planned': planned, 'spent': spent};
+  }
+
+  // Include transactions whose category wasn't in planned budget
+  if (isPast || isToday) {
+    (spentByDayCategory[day] ?? {}).forEach((cat, amt) {
+      if (!mergedCats.containsKey(cat)) {
+        mergedCats[cat] = {'planned': 0.0, 'spent': amt};
+      }
+    });
+  }
+
+  // Day status
+  String status;
+  if (!isPast && !isToday) {
+    status = 'planned';
+  } else if (limit > 0 && realSpent > limit) {
+    status = 'over';
+  } else if (limit > 0 && realSpent > limit * 0.85) {
+    status = 'warning';
+  } else {
+    status = 'good';
+  }
+
+  return {
+    'day': day,
+    'date': dateStr,
+    'limit': limit.round(), // int expected by calendar_screen.dart
+    'status': status,
+    'spent': realSpent.round(), // int expected by calendar_screen.dart
+    'categories': mergedCats,
+    'is_today': isToday,
+    'is_weekend': dayDate != null && dayDate.weekday >= 6,
+  };
+}
+
 /// Centralized budget state management provider
 /// Manages daily budgets, live status, suggestions, and redistribution
 class BudgetProvider extends ChangeNotifier {
@@ -393,69 +467,14 @@ class BudgetProvider extends ChangeNotifier {
       if (savedCalendar != null && savedCalendar.isNotEmpty) {
         final today = DateTime(now.year, now.month, now.day);
 
-        _calendarData = savedCalendar.map<Map<String, dynamic>>((dynamic raw) {
-          final d = Map<String, dynamic>.from(raw as Map);
-          final day = d['day'] as int? ?? 0;
-          final dateStr = d['date'] as String?;
-          final dayDate = dateStr != null ? DateTime.tryParse(dateStr) : null;
-          final dayOnly = dayDate != null
-              ? DateTime(dayDate.year, dayDate.month, dayDate.day)
-              : null;
-
-          final isToday = dayOnly == today;
-          final isPast = dayOnly != null && dayOnly.isBefore(today);
-
-          final limit = (d['limit'] as num?)?.toDouble() ?? 0.0;
-          final realSpent = spentByDay[day] ?? 0.0;
-
-          // Build per-category breakdown: planned (from DailyPlan) + real
-          final plannedCats = (d['planned_budget'] as Map?) ?? {};
-          final mergedCats = <String, dynamic>{};
-
-          for (final entry in plannedCats.entries) {
-            final cat = entry.key as String;
-            final val = entry.value;
-            final planned = val is Map
-                ? (val['planned'] as num?)?.toDouble() ?? 0.0
-                : (val as num?)?.toDouble() ?? 0.0;
-            final spent = (isPast || isToday)
-                ? (spentByDayCategory[day]?[cat] ?? 0.0)
-                : 0.0;
-            mergedCats[cat] = {'planned': planned, 'spent': spent};
-          }
-
-          // Include transactions whose category wasn't in planned budget
-          if (isPast || isToday) {
-            (spentByDayCategory[day] ?? {}).forEach((cat, amt) {
-              if (!mergedCats.containsKey(cat)) {
-                mergedCats[cat] = {'planned': 0.0, 'spent': amt};
-              }
-            });
-          }
-
-          // Day status
-          String status;
-          if (!isPast && !isToday) {
-            status = 'planned';
-          } else if (limit > 0 && realSpent > limit) {
-            status = 'over';
-          } else if (limit > 0 && realSpent > limit * 0.85) {
-            status = 'warning';
-          } else {
-            status = 'good';
-          }
-
-          return {
-            'day': day,
-            'date': dateStr,
-            'limit': limit.round(), // int expected by calendar_screen.dart
-            'status': status,
-            'spent': realSpent.round(), // int expected by calendar_screen.dart
-            'categories': mergedCats,
-            'is_today': isToday,
-            'is_weekend': dayDate != null && dayDate.weekday >= 6,
-          };
-        }).toList();
+        _calendarData = savedCalendar
+            .map<Map<String, dynamic>>((dynamic raw) => mergeSavedCalendarDay(
+                  Map<String, dynamic>.from(raw as Map),
+                  today: today,
+                  spentByDay: spentByDay,
+                  spentByDayCategory: spentByDayCategory,
+                ))
+            .toList();
 
         logInfo(
             'Calendar ready: ${_calendarData.length} days with real spending data',
