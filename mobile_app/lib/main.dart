@@ -152,14 +152,28 @@ void main() async {
     }
   }
 
-  // Initialize Firebase
-  await _initFirebase();
-  logInfo('Firebase initialized successfully', tag: 'MAIN');
+  // Initialize Firebase. Without build-time Firebase credentials
+  // (--dart-define / --dart-define-from-file) initialization throws;
+  // the app must still launch — budgeting works without push or
+  // Crashlytics, and every downstream Firebase call site already
+  // handles the uninitialized case.
+  try {
+    await _initFirebase();
+    logInfo('Firebase initialized successfully', tag: 'MAIN');
+  } catch (e) {
+    logWarning(
+      'Firebase unavailable — continuing without push notifications '
+      'and Crashlytics: $e',
+      tag: 'MAIN',
+    );
+  }
 
   // Enhanced error handling that integrates with all monitoring systems
   FlutterError.onError = (FlutterErrorDetails details) {
-    // Send to Firebase Crashlytics
-    FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+    // Send to Firebase Crashlytics (only when Firebase initialized)
+    if (Firebase.apps.isNotEmpty) {
+      FirebaseCrashlytics.instance.recordFlutterFatalError(details);
+    }
 
     // Send to our custom error handler
     AppErrorHandler.reportError(
@@ -194,8 +208,10 @@ void main() async {
   };
 
   PlatformDispatcher.instance.onError = (error, stack) {
-    // Send to Firebase Crashlytics
-    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    // Send to Firebase Crashlytics (only when Firebase initialized)
+    if (Firebase.apps.isNotEmpty) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    }
 
     // Send to our custom error handler
     AppErrorHandler.reportError(
