@@ -76,11 +76,14 @@ def http(method, url, body=None, token=None, timeout=30, follow_redirects=True):
         with opener.open(req, timeout=timeout) as resp:
             raw = resp.read()
             status = resp.status
-            LAST_HEADERS = dict(resp.headers)
+            # Lowercase keys: proxies (Railway edge) may lowercase names
+            LAST_HEADERS = {k.lower(): v for k, v in resp.headers.items()}
     except urllib.error.HTTPError as e:
         raw = e.read()
         status = e.code
-        LAST_HEADERS = dict(e.headers) if e.headers else {}
+        LAST_HEADERS = (
+            {k.lower(): v for k, v in e.headers.items()} if e.headers else {}
+        )
     except Exception as e:  # network-level failure
         LAST_HEADERS = {}
         return 0, {"_transport_error": str(e)}
@@ -168,10 +171,10 @@ def main():
     missing_headers = [
         name
         for name in (
-            "Strict-Transport-Security",
-            "X-Content-Type-Options",
-            "X-Frame-Options",
-            "Content-Security-Policy",
+            "strict-transport-security",
+            "x-content-type-options",
+            "x-frame-options",
+            "content-security-policy",
         )
         if name not in root_headers
     ]
@@ -191,7 +194,7 @@ def main():
             "GET", "http://" + base[len("https://"):] + "/health",
             follow_redirects=False,
         )
-        location = LAST_HEADERS.get("Location", "") if LAST_HEADERS else ""
+        location = LAST_HEADERS.get("location", "") if LAST_HEADERS else ""
         record(
             "plain HTTP redirects to HTTPS or is refused",
             status in (0, 301, 302, 307, 308) and (status == 0 or location.startswith("https://")),
