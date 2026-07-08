@@ -248,3 +248,27 @@ async def check_database_health() -> bool:
     except Exception as e:
         logger.error(f"Database health check failed: {type(e).__name__}: {e}")
         return False
+
+
+async def get_alembic_revision() -> str:
+    """Current alembic_version.version_num, or "unknown" if unreadable.
+
+    Read-only single-value lookup used by /health so a deployed instance
+    can prove which migration head its database is actually at.
+    """
+    try:
+        initialize_database()
+
+        if AsyncSessionLocal is None:
+            return "unknown"
+
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                text("SELECT version_num FROM alembic_version")
+            )
+            row = result.first()
+            return row[0] if row else "empty"
+
+    except Exception as e:
+        logger.error(f"Alembic revision check failed: {type(e).__name__}: {e}")
+        return "unknown"

@@ -456,13 +456,17 @@ class TokenBlacklistService:
                 logger.warning(f"Invalid JTI format for blacklist check: {jti[:20]}...")
                 return False
 
-            # Check local cache first
+            # Check local cache first — POSITIVE entries only. Serving a
+            # cached "not blacklisted" would mask a revocation performed
+            # via another worker/instance for up to CACHE_TTL (logout or
+            # rotation writes Redis, but a worker that verified the token
+            # pre-revocation would keep accepting it from its stale False).
             cache_key = hashlib.sha256(jti.encode()).hexdigest()[:16]
             if cache_key in self._local_cache:
                 cached_result, cache_time = self._local_cache[cache_key]
-                if cache_time + self.CACHE_TTL > time.time():
+                if cached_result and cache_time + self.CACHE_TTL > time.time():
                     self._metrics.cache_hits += 1
-                    return cached_result
+                    return True
 
             # Clean up cache periodically
             if len(self._local_cache) > self._cache_max_size * 0.8:
@@ -474,8 +478,13 @@ class TokenBlacklistService:
                 result = await client.get(blacklist_key)
                 is_blacklisted = result is not None
 
-            # Update local cache
-            self._local_cache[cache_key] = (is_blacklisted, time.time())
+            # Update local cache — positives only (see the cache read above;
+            # a blacklist entry never reverts before the token itself expires,
+            # so cached True is always safe).
+            if is_blacklisted:
+                self._local_cache[cache_key] = (True, time.time())
+            else:
+                self._local_cache.pop(cache_key, None)
             self._metrics.cache_misses += 1
             self._metrics.blacklist_checks += 1
 

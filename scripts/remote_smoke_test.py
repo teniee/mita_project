@@ -4,11 +4,14 @@
 Runs the full closed-beta journey against a live base URL and fails loudly
 on any contract violation:
 
-    GET / and /health -> register -> login -> onboarding (budget generation)
+    GET / and /health (incl. deployed commit, alembic revision, redis)
+    -> register -> login -> onboarding (budget generation)
     -> create transaction -> saved calendar (today present, YYYY-MM-DD keys,
     every limit > 0, today's spent reflects the transaction) -> calendar day
-    detail -> refresh token (rotation) -> logout -> 404 stays 404 ->
-    bad credentials stay 4xx (never 500).
+    detail -> refresh token (rotation) -> old refresh token rejected
+    -> rotated access token works -> logout -> access token rejected after
+    logout -> 404 stays 404 -> bad credentials stay 4xx (never 500)
+    -> security headers present -> plain HTTP does not serve the API.
 
 Stdlib only (urllib) so it runs on a bare CI runner:
 
@@ -29,7 +32,10 @@ import urllib.request
 from datetime import datetime, timezone
 
 DATE_KEY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+# Alembic head this repo ships; the deployed DB must match (drift detector).
+EXPECTED_ALEMBIC = "0034"
 RESULTS = []
+LAST_HEADERS = {}
 
 
 def record(name, ok, detail=""):
@@ -38,8 +44,21 @@ def record(name, ok, detail=""):
     return ok
 
 
-def http(method, url, body=None, token=None, timeout=30):
-    """Return (status, parsed-json-or-None). Never raises on HTTP errors."""
+def info(name, detail):
+    print(f"INFO  {name}  — {detail}")
+
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def http(method, url, body=None, token=None, timeout=30, follow_redirects=True):
+    """Return (status, parsed-json-or-None). Never raises on HTTP errors.
+
+    Response headers of the last call land in LAST_HEADERS.
+    """
+    global LAST_HEADERS
     headers = {"Accept": "application/json"}
     data = None
     if body is not None:
@@ -48,14 +67,23 @@ def http(method, url, body=None, token=None, timeout=30):
     if token:
         headers["Authorization"] = f"Bearer {token}"
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
+    opener = (
+        urllib.request.build_opener()
+        if follow_redirects
+        else urllib.request.build_opener(_NoRedirect())
+    )
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with opener.open(req, timeout=timeout) as resp:
             raw = resp.read()
             status = resp.status
+            # Lowercase keys: proxies (Railway edge) may lowercase names
+            LAST_HEADERS = {k.lower(): v for k, v in resp.headers.items()}
     except urllib.error.HTTPError as e:
         raw = e.read()
         status = e.code
+        LAST_HEADERS = {k.lower(): v for k, v in e.headers.items()} if e.headers else {}
     except Exception as e:  # network-level failure
+        LAST_HEADERS = {}
         return 0, {"_transport_error": str(e)}
     try:
         return status, json.loads(raw) if raw else None
@@ -105,8 +133,78 @@ def main():
     # "Application not found" is very different from an app-level 404.
     status, body = http("GET", f"{base}/")
     record("GET /", status == 200, f"status={status} body={str(body)[:200]}")
-    status, body = http("GET", f"{base}/health")
-    record("GET /health", status == 200, f"status={status} body={str(body)[:200]}")
+    root_headers = dict(LAST_HEADERS)
+    status, health = http("GET", f"{base}/health")
+    record("GET /health", status == 200, f"status={status} body={str(health)[:200]}")
+
+    # 2b. Deployed-instance diagnostics (added to /health for remote
+    # verification: commit provenance, migration head, dependency status).
+    h = health if isinstance(health, dict) else {}
+    cfg = h.get("config", {}) if isinstance(h.get("config"), dict) else {}
+    info("deployed commit", h.get("commit", "<absent>"))
+    info("environment", cfg.get("environment", "<absent>"))
+    info("health status", h.get("status", "<absent>"))
+    record(
+        "health: database connected",
+        h.get("database") == "connected",
+        f"database={h.get('database')} error={h.get('database_error')}",
+    )
+    record(
+        "health: alembic revision matches repo head",
+        h.get("alembic_revision") == EXPECTED_ALEMBIC,
+        f"deployed={h.get('alembic_revision', '<absent>')} expected={EXPECTED_ALEMBIC}",
+    )
+    record(
+        "health: redis connected",
+        h.get("redis") == "connected",
+        f"redis={h.get('redis', '<absent>')}",
+    )
+    record(
+        "health: environment is production",
+        cfg.get("environment") == "production",
+        f"environment={cfg.get('environment', '<absent>')}",
+    )
+
+    # 2c. Security headers on a real response.
+    missing_headers = [
+        name
+        for name in (
+            "strict-transport-security",
+            "x-content-type-options",
+            "x-frame-options",
+            "content-security-policy",
+        )
+        if name not in root_headers
+    ]
+    record(
+        "security headers present", not missing_headers, f"missing={missing_headers}"
+    )
+
+    # 2d. Docs surface: whatever the policy, it must never 500.
+    status, _ = http("GET", f"{base}/docs")
+    record(
+        "GET /docs never 500 (policy: open or 404)",
+        status in (200, 401, 403, 404),
+        f"status={status}",
+    )
+    # Operational metrics must not be publicly readable in production.
+    status, _ = http("GET", f"{base}/metrics")
+    record("metrics endpoint not public", status != 200, f"status={status}")
+
+    # 2e. Plain HTTP must not silently serve the API (redirect or refuse).
+    if base.startswith("https://"):
+        status, _ = http(
+            "GET",
+            "http://" + base[len("https://") :] + "/health",
+            follow_redirects=False,
+        )
+        location = LAST_HEADERS.get("location", "") if LAST_HEADERS else ""
+        record(
+            "plain HTTP redirects to HTTPS or is refused",
+            status in (0, 301, 302, 307, 308)
+            and (status == 0 or location.startswith("https://")),
+            f"status={status} location={location}",
+        )
 
     # 3. Register
     status, body = http(
@@ -207,6 +305,7 @@ def main():
     record("calendar day detail (no Decimal 500)", status == 200, f"status={status}")
 
     # 9. Refresh token rotation
+    old_refresh = refresh
     status, body = http(
         "POST", f"{base}/api/auth/refresh-token", {"refresh_token": refresh}
     )
@@ -220,9 +319,30 @@ def main():
         )
         record("rotated access token works", status == 200, f"status={status}")
 
-    # 10. Logout
+        # 9b. The rotated-out refresh token is blacklisted server-side;
+        # reusing it must fail. This is the live proof that Redis-backed
+        # revocation works in the deployed environment (the blacklist
+        # check fails open when Redis is down).
+        status, _ = http(
+            "POST", f"{base}/api/auth/refresh-token", {"refresh_token": old_refresh}
+        )
+        record(
+            "old refresh token rejected after rotation (revocation live)",
+            400 <= status < 500,
+            f"status={status}",
+        )
+
+    # 10. Logout, then the access token used for it must be dead.
     status, _ = http("POST", f"{base}/api/auth/logout", {}, token=access)
     record("logout", status == 200, f"status={status}")
+    status, _ = http(
+        "GET", f"{base}/api/calendar/saved/{now.year}/{now.month}", token=access
+    )
+    record(
+        "access token rejected after logout (blacklist live)",
+        status in (401, 403),
+        f"status={status}",
+    )
 
     # 11. Error-path contracts: 4xx must not become 500
     status, _ = http("GET", f"{base}/api/definitely-not-a-route-xyz")
@@ -244,6 +364,23 @@ def main():
         "protected route without token -> 401/403",
         status in (401, 403),
         f"status={status}",
+    )
+    # Malformed JSON body must be a client error, not a crash.
+    req = urllib.request.Request(
+        f"{base}/api/auth/login",
+        data=b"{not-json",
+        headers={"Content-Type": "application/json", "Accept": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            status = resp.status
+    except urllib.error.HTTPError as e:
+        status = e.code
+    except Exception:
+        status = 0
+    record(
+        "malformed JSON body -> 4xx (not 500)", 400 <= status < 500, f"status={status}"
     )
 
     finish()

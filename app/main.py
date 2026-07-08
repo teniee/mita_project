@@ -331,10 +331,19 @@ from app.middleware.standardized_error_middleware import (
     StandardizedErrorMiddleware,
 )
 
+# Interactive docs stay off in production unless ENABLE_DOCS is set
+# explicitly — a financial API should not advertise its surface publicly.
+_docs_enabled = settings.ENVIRONMENT != "production" or os.getenv(
+    "ENABLE_DOCS", ""
+).lower() in ("1", "true", "yes")
+
 # Create FastAPI app with enhanced documentation
 app = FastAPI(
     title="MITA Finance API",
     version="1.0.0",
+    docs_url="/docs" if _docs_enabled else None,
+    redoc_url="/redoc" if _docs_enabled else None,
+    openapi_url="/openapi.json" if _docs_enabled else None,
     description="""
 ## MITA Finance API
 
@@ -442,21 +451,62 @@ async def health_check():
 
 
 @app.get("/metrics")
-async def prometheus_metrics():
+async def prometheus_metrics(request: Request):
     """
     Prometheus metrics endpoint for monitoring and observability
     Returns metrics in Prometheus exposition format
+
+    In production the endpoint is hidden (404) unless METRICS_TOKEN is set
+    and presented as a bearer token — operational metrics are not public.
+    In-cluster scrapers must send `Authorization: Bearer $METRICS_TOKEN`.
     """
     from fastapi import Response
+
+    if settings.ENVIRONMENT == "production":
+        expected = os.getenv("METRICS_TOKEN", "")
+        provided = request.headers.get("Authorization", "")
+        if not expected or provided != f"Bearer {expected}":
+            raise StarletteHTTPException(status_code=404, detail="Not Found")
 
     metrics_data = get_metrics()
     return Response(content=metrics_data, media_type=CONTENT_TYPE_LATEST)
 
 
+async def _check_redis_health() -> str:
+    """Ping Redis with a short timeout: connected / unavailable / not_configured.
+
+    Honors every supported provider config: REDIS_URL / UPSTASH_REDIS_URL
+    (direct protocol URLs) and UPSTASH_REDIS_REST_URL + token (converted to
+    a rediss:// URL the same way app/core/limiter_setup.py does).
+    """
+    redis_url = settings.REDIS_URL or getattr(settings, "UPSTASH_REDIS_URL", "")
+    if not redis_url:
+        rest_url = os.getenv("UPSTASH_REDIS_REST_URL", "")
+        rest_token = os.getenv("UPSTASH_REDIS_REST_TOKEN", "")
+        if rest_url.startswith("https://") and rest_token:
+            host = rest_url.replace("https://", "").replace("http://", "")
+            redis_url = f"rediss://default:{rest_token}@{host}:6379"
+    if not redis_url:
+        return "not_configured"
+    try:
+        import redis.asyncio as aioredis
+
+        client = aioredis.from_url(
+            redis_url, socket_connect_timeout=3, socket_timeout=3
+        )
+        try:
+            pong = await asyncio.wait_for(client.ping(), timeout=3.0)
+            return "connected" if pong else "error"
+        finally:
+            await client.aclose()
+    except Exception:
+        return "unavailable"
+
+
 @app.get("/health")
 async def detailed_health_check():
     """Detailed health check with database status and performance metrics"""
-    from app.core.async_session import check_database_health
+    from app.core.async_session import check_database_health, get_alembic_revision
     from app.core.performance_cache import get_cache_stats
 
     # Check environment configuration
@@ -493,6 +543,29 @@ async def detailed_health_check():
         database_status = "error"
         database_error = str(e)
 
+    # Deployment provenance + dependency reachability (safe read-only
+    # diagnostics: a commit SHA and a migration revision id reveal no
+    # schema or secret material, and both are required to verify what is
+    # actually running on Railway from the outside).
+    deployed_commit = (
+        os.getenv("RAILWAY_GIT_COMMIT_SHA")
+        or os.getenv("GIT_COMMIT_SHA")
+        or os.getenv("SOURCE_VERSION")
+        or "unknown"
+    )[:12]
+    # Only look up the migration head when the DB check above succeeded —
+    # a second 5s wait on an unreachable DB would push /health past the
+    # container healthcheck timeout instead of returning a degraded body.
+    alembic_revision = "unknown"
+    if database_status == "connected":
+        try:
+            alembic_revision = await asyncio.wait_for(
+                get_alembic_revision(), timeout=5.0
+            )
+        except Exception:
+            pass
+    redis_status = await _check_redis_health()
+
     # Get performance cache statistics
     cache_stats = get_cache_stats()
 
@@ -518,7 +591,10 @@ async def detailed_health_check():
         "status": overall_status,
         "service": "Mita Finance API",
         "version": "1.0.0",
+        "commit": deployed_commit,
+        "alembic_revision": alembic_revision,
         "database": database_status,
+        "redis": redis_status,
         "firebase": firebase_status,
         "sentry": sentry_status,
         "config": config_status,
@@ -1037,6 +1113,8 @@ async def generic_exception_handler(request: Request, exc: Exception):
 @app.get("/openapi.json", include_in_schema=False)
 async def get_enhanced_openapi():
     """Return enhanced OpenAPI schema with comprehensive error documentation"""
+    if not _docs_enabled:
+        raise StarletteHTTPException(status_code=404, detail="Not Found")
     if not hasattr(app, "openapi_schema") or app.openapi_schema is None:
         app.openapi_schema = get_standardized_openapi_schema(
             app=app,
