@@ -140,13 +140,17 @@ async def refresh_token_standardized(
 @router.post("/logout", summary="Logout and invalidate tokens")
 @handle_auth_errors
 async def logout_user_standardized(
-    request: Request, current_user: User = Depends(get_current_user)
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    refresh_token: str = Body(None, embed=True),
 ):
     """
     Logout user and invalidate their tokens.
 
     Features:
-    - Token blacklisting
+    - Token blacklisting (access token, and the session's refresh token when
+      the client provides it — otherwise the refresh token would remain valid
+      after logout and could mint new access tokens)
     - Security audit logging
     - Comprehensive cleanup
     """
@@ -161,6 +165,10 @@ async def logout_user_standardized(
         # Blacklist the current access token
         if access_token:
             await blacklist_token(access_token, "access")
+
+        # Blacklist the session's refresh token as well
+        if refresh_token:
+            await blacklist_token(refresh_token, "refresh")
 
         # Log successful logout
         await log_security_event_async(
