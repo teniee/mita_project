@@ -22,8 +22,13 @@ from pydantic import condecimal, field_validator, validator
 logger = logging.getLogger(__name__)
 
 
-class ValidationError(Exception):
-    """Custom validation error"""
+class ValidationError(ValueError):
+    """Custom validation error.
+
+    Subclasses ValueError so that pydantic field validators using the
+    sanitizers convert rejections into 422 responses instead of letting
+    them escape request parsing as unhandled 500s.
+    """
 
     def __init__(self, message: str, field: str = None):
         self.message = message
@@ -452,14 +457,15 @@ class InputSanitizer:
             for date_format in date_formats:
                 try:
                     parsed_date = datetime.strptime(date_input, date_format).date()
-
-                    # Reasonable date range check
-                    if parsed_date.year < 1900 or parsed_date.year > 2100:
-                        raise ValidationError("Date is outside acceptable range")
-
-                    return parsed_date
                 except ValueError:
                     continue
+
+                # Reasonable date range check (outside the try so this
+                # rejection is not swallowed by the format-mismatch catch)
+                if parsed_date.year < 1900 or parsed_date.year > 2100:
+                    raise ValidationError("Date is outside acceptable range")
+
+                return parsed_date
 
             raise ValidationError(f"Invalid date format: {date_input}")
 

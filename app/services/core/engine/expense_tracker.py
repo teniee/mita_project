@@ -1,8 +1,9 @@
 import logging
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.date_utils import day_to_range
@@ -11,6 +12,72 @@ from app.services.core.engine.calendar_updater import update_day_status
 from app.services.core.engine.realtime_rebalancer import check_and_rebalance
 
 logger = logging.getLogger(__name__)
+
+
+def recalculate_plan_spent(
+    db: Session, user_id: UUID, day: date, category: str
+) -> None:
+    """Recompute DailyPlan.spent_amount for (user, day, category) from the
+    non-deleted transaction ledger.
+
+    Idempotent by construction — used after transaction edits and deletes so
+    the accrual cannot drift (the additive apply_transaction_to_plan path
+    would double-count an edit and never reverse a delete).
+    """
+    day_start, day_end = day_to_range(day)
+    total = (
+        db.query(func.coalesce(func.sum(Transaction.amount), 0))
+        .filter(
+            Transaction.user_id == user_id,
+            Transaction.deleted_at.is_(None),
+            Transaction.category == category,
+            Transaction.spent_at >= day_start,
+            Transaction.spent_at <= day_end,
+        )
+        .scalar()
+    )
+    total = Decimal(total or 0)
+
+    plan = (
+        db.query(DailyPlan)
+        .filter(
+            DailyPlan.user_id == user_id,
+            DailyPlan.date >= day_start,
+            DailyPlan.date <= day_end,
+            DailyPlan.category == category,
+        )
+        .first()
+    )
+    if plan:
+        plan.spent_amount = total
+    elif total:
+        db.add(
+            DailyPlan(
+                user_id=user_id,
+                date=day,
+                category=category,
+                planned_amount=Decimal("0.00"),
+                daily_budget=Decimal("0.00"),
+                spent_amount=total,
+            )
+        )
+
+    db.commit()
+    update_day_status(db, user_id, day)
+
+    # Keep the auto-rebalance promise consistent with the create path; a
+    # decreased spend simply makes this a no-op.
+    try:
+        rebalance_result = check_and_rebalance(
+            db=db,
+            user_id=user_id,
+            category=category,
+            transaction_date=day,
+        )
+        if rebalance_result is not None:
+            update_day_status(db, user_id, day)
+    except Exception as e:
+        logger.warning(f"Auto-rebalance failed in recalculate (non-critical): {e}")
 
 
 def apply_transaction_to_plan(db: Session, txn: Transaction) -> None:
@@ -106,11 +173,13 @@ def record_expense(
     amount: float,
     description: str = "",
 ):
+    # Transaction has no `date` column — the temporal column is spent_at.
+    # Decimal(str(...)) avoids importing binary-float error into money.
     txn = Transaction(
         user_id=user_id,
-        date=day,
+        spent_at=datetime(day.year, day.month, day.day, tzinfo=timezone.utc),
         category=category,
-        amount=Decimal(amount),
+        amount=Decimal(str(amount)),
         description=description,
     )
     db.add(txn)
@@ -127,7 +196,7 @@ def record_expense(
         .first()
     )
     if plan:
-        plan.spent_amount += Decimal(amount)
+        plan.spent_amount += Decimal(str(amount))
     else:
         new_plan = DailyPlan(
             user_id=user_id,
@@ -135,7 +204,7 @@ def record_expense(
             category=category,
             planned_amount=Decimal("0.00"),
             daily_budget=Decimal("0.00"),
-            spent_amount=Decimal(amount),
+            spent_amount=Decimal(str(amount)),
         )
         db.add(new_plan)
 

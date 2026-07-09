@@ -267,14 +267,62 @@ class TxnUpdate(BaseModel):
     spent_at: Optional[datetime] = None
     is_recurring: Optional[bool] = None
 
-    # Use the same validators as TxnIn for consistency
-    validate_amount = field_validator("amount", mode="before")(TxnIn.validate_amount)
-    validate_category = field_validator("category")(TxnIn.validate_category)
-    validate_description = field_validator("description")(TxnIn.validate_description)
-    validate_merchant = field_validator("merchant")(TxnIn.validate_merchant)
-    validate_location = field_validator("location")(TxnIn.validate_location)
-    validate_tags = field_validator("tags")(TxnIn.validate_tags)
-    validate_spent_at = field_validator("spent_at")(TxnIn.validate_spent_at)
+    # Delegate to TxnIn's validation logic with a None guard for partial updates.
+    # NOTE: re-registering an already-@field_validator-decorated classmethod
+    # (e.g. field_validator("amount")(TxnIn.validate_amount)) shifts the
+    # argument positions so the validator receives ValidationInfo as the value
+    # and rejects every input — every field on this model used to 500.
+
+    @field_validator("amount")
+    @classmethod
+    def validate_amount(cls, v):
+        if v is None:
+            return v
+        return TxnIn.validate_amount(v)
+
+    @field_validator("category")
+    @classmethod
+    def validate_category(cls, v):
+        if v is None:
+            return v
+        return TxnIn.validate_category(v)
+
+    @field_validator("description")
+    @classmethod
+    def validate_description(cls, v):
+        if v is None:
+            return v
+        return TxnIn.validate_description(v)
+
+    @field_validator("merchant")
+    @classmethod
+    def validate_merchant(cls, v):
+        if v is None:
+            return v
+        return TxnIn.validate_merchant(v)
+
+    @field_validator("location")
+    @classmethod
+    def validate_location(cls, v):
+        if v is None:
+            return v
+        return TxnIn.validate_location(v)
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, v):
+        if v is None:
+            return v
+        return TxnIn.validate_tags(v)
+
+    @field_validator("spent_at")
+    @classmethod
+    def validate_spent_at(cls, v):
+        # Unlike TxnIn (which defaults a missing spent_at to now), a partial
+        # update must leave spent_at untouched when it is not provided.
+        if v is None:
+            return v
+        return TxnIn.validate_spent_at(v)
 
 
 class BulkTxnIn(BaseModel):

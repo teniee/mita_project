@@ -59,6 +59,17 @@ class ErrorCode:
     VALIDATION_CURRENCY_INVALID = "VALIDATION_2008"
     VALIDATION_CATEGORY_INVALID = "VALIDATION_2009"
     VALIDATION_JSON_MALFORMED = "VALIDATION_2010"
+    VALIDATION_ID_INVALID = "VALIDATION_2011"
+    VALIDATION_INVALID_VALUE = "VALIDATION_2012"
+
+    # Aliases used by existing call sites; referencing a missing attribute
+    # here raised AttributeError inside error paths and converted intended
+    # 4xx responses into 500s.
+    MISSING_FIELD = VALIDATION_REQUIRED_FIELD
+    INVALID_CREDENTIALS = AUTH_INVALID_CREDENTIALS
+    AUTHENTICATION_TOKEN_EXPIRED = AUTH_TOKEN_EXPIRED
+    AUTHENTICATION_TOKEN_INVALID = AUTH_TOKEN_INVALID
+    AUTHENTICATION_GOOGLE_FAILED = "AUTH_1011"
 
     # Resource Errors (3000-3999)
     RESOURCE_NOT_FOUND = "RESOURCE_3001"
@@ -175,6 +186,13 @@ class ResourceNotFoundError(StandardizedAPIException):
         details = {"resource_type": resource}
         if identifier:
             details["identifier"] = identifier
+
+        # Callers may pass their own details=; merge instead of raising
+        # "got multiple values for keyword argument 'details'" (which turned
+        # every such 404 into a 500).
+        caller_details = kwargs.pop("details", None)
+        if caller_details:
+            details.update(caller_details)
 
         super().__init__(
             message,

@@ -281,15 +281,18 @@ async def get_transactions_standardized(
             )
 
     try:
-        # Get transactions using existing service
-        transactions = list_user_transactions(
-            user,
-            db,
-            skip=skip,
-            limit=limit,
-            start_date=start_date,
-            end_date=end_date,
-            category=category,
+        # Get transactions using existing service (sync function bridged via
+        # run_sync — the raw AsyncSession has no .query; see create route)
+        transactions = await db.run_sync(
+            lambda sync_session: list_user_transactions(
+                user,
+                sync_session,
+                skip=skip,
+                limit=limit,
+                start_date=start_date,
+                end_date=end_date,
+                category=category,
+            )
         )
 
         return success_response(
@@ -392,7 +395,10 @@ async def get_transactions_by_date(
     query_stmt = (
         select(Transaction)
         .options(joinedload(Transaction.user), joinedload(Transaction.goal))
-        .where(Transaction.user_id == user.id)
+        .where(
+            Transaction.user_id == user.id,
+            Transaction.deleted_at.is_(None),
+        )
     )
 
     if start:
@@ -815,7 +821,9 @@ async def get_transaction(
             details={"transaction_id": transaction_id},
         )
 
-    txn = get_transaction_by_id(user, txn_uuid, db)
+    txn = await db.run_sync(
+        lambda sync_session: get_transaction_by_id(user, txn_uuid, sync_session)
+    )
 
     if not txn:
         raise ResourceNotFoundError(
@@ -847,7 +855,11 @@ async def update_transaction_endpoint(
             details={"transaction_id": transaction_id},
         )
 
-    updated_txn = update_transaction(user, txn_uuid, txn_update, db)
+    updated_txn = await db.run_sync(
+        lambda sync_session: update_transaction(
+            user, txn_uuid, txn_update, sync_session
+        )
+    )
 
     if not updated_txn:
         raise ResourceNotFoundError(
@@ -855,7 +867,9 @@ async def update_transaction_endpoint(
             details={"transaction_id": transaction_id},
         )
 
-    return FinancialResponseHelper.transaction_updated(updated_txn)
+    # FinancialResponseHelper has no transaction_updated; use the same
+    # wrapped success shape as the get/delete endpoints.
+    return success_response(updated_txn, message="Transaction updated successfully")
 
 
 @router.delete("/{transaction_id}", summary="Delete transaction")
@@ -878,7 +892,9 @@ async def delete_transaction_endpoint(
             details={"transaction_id": transaction_id},
         )
 
-    success = delete_transaction(user, txn_uuid, db)
+    success = await db.run_sync(
+        lambda sync_session: delete_transaction(user, txn_uuid, sync_session)
+    )
 
     if not success:
         raise ResourceNotFoundError(
@@ -1056,14 +1072,15 @@ async def check_transaction_affordability(
             details={"amount": float(check_request.amount)},
         )
 
-    # Initialize prevention service
-    prevention_service = SpendingPreventionService(db, user.id)
-
-    # Check affordability
-    result = prevention_service.check_affordability(
-        category=check_request.category,
-        amount=check_request.amount,
-        transaction_date=check_request.date,
+    # SpendingPreventionService is sync (self.db.query) — bridge via run_sync
+    result = await db.run_sync(
+        lambda sync_session: SpendingPreventionService(
+            sync_session, user.id
+        ).check_affordability(
+            category=check_request.category,
+            amount=check_request.amount,
+            transaction_date=check_request.date,
+        )
     )
 
     # Return standardized response
@@ -1132,11 +1149,12 @@ async def get_budget_status(
                 details={"date": date, "expected_format": "YYYY-MM-DD"},
             )
 
-    # Initialize prevention service
-    prevention_service = SpendingPreventionService(db, user.id)
-
-    # Get all category status
-    status = prevention_service.get_all_category_status(transaction_date)
+    # SpendingPreventionService is sync (self.db.query) — bridge via run_sync
+    status = await db.run_sync(
+        lambda sync_session: SpendingPreventionService(
+            sync_session, user.id
+        ).get_all_category_status(transaction_date)
+    )
 
     return success_response(
         data=status, message=f"Budget status for {len(status)} categories"

@@ -7,7 +7,10 @@ from fastapi import BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.db.models import Transaction, User
-from app.services.core.engine.expense_tracker import apply_transaction_to_plan
+from app.services.core.engine.expense_tracker import (
+    apply_transaction_to_plan,
+    recalculate_plan_spent,
+)
 from app.services.notification_integration import get_notification_integration
 from app.utils.timezone_utils import from_user_timezone, to_user_timezone
 
@@ -219,6 +222,11 @@ def update_transaction(
     if not txn:
         return None
 
+    # Capture the pre-edit accrual key so the old (day, category) plan can be
+    # recomputed after the edit (an edit may move spend across days/categories).
+    old_day = txn.spent_at.date()
+    old_category = txn.category
+
     # Update fields that are provided
     if hasattr(data, "amount") and data.amount is not None:
         amount = (
@@ -262,9 +270,16 @@ def update_transaction(
     db.commit()
     db.refresh(txn)
 
-    # Re-apply transaction to budget plan
+    # Recompute the affected daily-plan accruals from the ledger.
+    # apply_transaction_to_plan is additive (spent += amount) and would
+    # double-count the edited amount; recalculate is idempotent and also
+    # clears the old (day, category) bucket when the edit moved the spend.
     try:
-        apply_transaction_to_plan(db, txn)
+        new_day = txn.spent_at.date()
+        new_category = txn.category
+        recalculate_plan_spent(db, user.id, old_day, old_category)
+        if (new_day, new_category) != (old_day, old_category):
+            recalculate_plan_spent(db, user.id, new_day, new_category)
     except Exception as e:
         from app.core.logging_config import get_logger
 
@@ -300,5 +315,16 @@ def delete_transaction(user: User, transaction_id: UUID, db: Session) -> bool:
     # Soft delete - set deleted_at timestamp
     txn.deleted_at = datetime.now(timezone.utc)
     db.commit()
+
+    # Reverse the daily-plan accrual: recompute (day, category) from the
+    # remaining non-deleted transactions so spent/remaining return to the
+    # pre-transaction values (INV-14).
+    try:
+        recalculate_plan_spent(db, user.id, txn.spent_at.date(), txn.category)
+    except Exception as e:
+        from app.core.logging_config import get_logger
+
+        logger = get_logger(__name__)
+        logger.warning(f"Failed to reverse budget plan accrual: {e}")
 
     return True

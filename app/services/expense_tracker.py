@@ -1,5 +1,5 @@
 import logging
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
@@ -20,12 +20,14 @@ def record_expense(
     amount: float,
     description: str = "",
 ):
-    # 1. Save into the transactions table
+    # 1. Save into the transactions table.
+    # Transaction has no `date` column — the temporal column is spent_at.
+    # Decimal(str(...)) avoids importing binary-float error into money.
     txn = Transaction(
         user_id=user_id,
-        date=day,
+        spent_at=datetime(day.year, day.month, day.day, tzinfo=timezone.utc),
         category=category,
-        amount=Decimal(amount),
+        amount=Decimal(str(amount)),
         description=description,
     )
     db.add(txn)
@@ -43,7 +45,7 @@ def record_expense(
         .first()
     )
     if plan:
-        plan.spent_amount += Decimal(amount)
+        plan.spent_amount += Decimal(str(amount))
     else:
         # Create plan row if category is missing
         new_plan = DailyPlan(
@@ -54,7 +56,7 @@ def record_expense(
             # Unplanned category for this day: explicit zero limit, not NULL,
             # so calendar limits and spending checks stay well-defined.
             daily_budget=Decimal("0.00"),
-            spent_amount=Decimal(amount),
+            spent_amount=Decimal(str(amount)),
         )
         db.add(new_plan)
 

@@ -60,6 +60,7 @@ async def get_dashboard(
         result = await db.execute(
             select(func.sum(Transaction.amount)).where(
                 Transaction.user_id == user_id,
+                Transaction.deleted_at.is_(None),
                 Transaction.spent_at >= first_day_of_month,
                 Transaction.spent_at < now,
             )
@@ -75,6 +76,7 @@ async def get_dashboard(
         result = await db.execute(
             select(func.sum(Transaction.amount)).where(
                 Transaction.user_id == user_id,
+                Transaction.deleted_at.is_(None),
                 Transaction.spent_at >= today_start,
                 Transaction.spent_at <= today_end,
             )
@@ -95,6 +97,7 @@ async def get_dashboard(
             select(Transaction.category, func.sum(Transaction.amount).label("total"))
             .where(
                 Transaction.user_id == user_id,
+                Transaction.deleted_at.is_(None),
                 Transaction.spent_at >= today_start,
                 Transaction.spent_at <= today_end,
             )
@@ -179,6 +182,7 @@ async def get_dashboard(
             result = await db.execute(
                 select(func.sum(Transaction.amount)).where(
                     Transaction.user_id == user_id,
+                    Transaction.deleted_at.is_(None),
                     Transaction.spent_at >= day_start,
                     Transaction.spent_at <= day_end,
                 )
@@ -212,7 +216,10 @@ async def get_dashboard(
         # Get recent transactions (last 10)
         result = await db.execute(
             select(Transaction)
-            .where(Transaction.user_id == user_id)
+            .where(
+                Transaction.user_id == user_id,
+                Transaction.deleted_at.is_(None),
+            )
             .order_by(Transaction.spent_at.desc())
             .limit(10)
         )
@@ -487,6 +494,7 @@ async def get_quick_stats(
         result = await db.execute(
             select(func.sum(Transaction.amount)).where(
                 Transaction.user_id == user_id,
+                Transaction.deleted_at.is_(None),
                 Transaction.spent_at >= first_day_of_month,
                 Transaction.spent_at < now,
             )
@@ -504,6 +512,7 @@ async def get_quick_stats(
             select(Transaction.category, func.sum(Transaction.amount).label("total"))
             .where(
                 Transaction.user_id == user_id,
+                Transaction.deleted_at.is_(None),
                 Transaction.spent_at >= first_day_of_month,
                 Transaction.spent_at < now,
             )
