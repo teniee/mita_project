@@ -1,10 +1,11 @@
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel
 
 
 class GoalState(BaseModel):
-    user_id: str
+    # Deprecated: identity is taken from the session; if sent it must match.
+    user_id: Optional[str] = None
     region: str = "US-CA"
     cohort: str = "unknown"
     behavior: str = "neutral"
@@ -20,7 +21,8 @@ class GoalProgressInput(BaseModel):
 
 
 class ProgressRequest(BaseModel):
-    user_id: str
+    # Deprecated: identity is taken from the session; if sent it must match.
+    user_id: Optional[str] = None
     year: int
     month: int
     locale: str = "en_US"

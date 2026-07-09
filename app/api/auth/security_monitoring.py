@@ -13,7 +13,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from app.api.dependencies import get_current_user
+from app.api.dependencies import get_current_user, require_admin_access
 from app.core.audit_logging import log_security_event_async
 from app.db.models import User
 from app.services.auth_jwt_service import blacklist_token, validate_token_security
@@ -110,6 +110,7 @@ async def validate_current_token(
 @router.get("/security/status")
 async def get_security_status(
     request: Request,
+    admin: User = Depends(require_admin_access),
 ):
     """Get current security status for monitoring (admin endpoint)."""
     # Apply monitoring rate limiting - More lenient for admin monitoring
@@ -145,8 +146,10 @@ async def get_security_status(
 
 
 @router.get("/security/password-config")
-async def get_password_security_config():
-    """Get password security configuration details (monitoring endpoint)."""
+async def get_password_security_config(
+    admin: User = Depends(require_admin_access),
+):
+    """Get password security configuration details (admin monitoring endpoint)."""
     from app.core.password_security import (
         test_password_performance,
         validate_bcrypt_configuration,
