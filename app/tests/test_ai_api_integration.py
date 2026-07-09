@@ -121,6 +121,9 @@ def mock_db():
     db.commit = Mock()
     db.refresh = Mock()
     db.execute = AsyncMock()
+    # Routes bridge sync services via run_sync(fn) — execute the callable
+    # with a plain Mock standing in for the bridged sync Session.
+    db.run_sync = AsyncMock(side_effect=lambda fn: fn(Mock()))
 
     # Mock query results
     mock_result = Mock()
@@ -277,9 +280,8 @@ class TestAISnapshotEndpoints:
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_async_db] = lambda: mock_db
 
-        with patch(
-            "app.api.ai.routes.save_ai_snapshot", new_callable=AsyncMock
-        ) as mock_save:
+        # save_ai_snapshot is sync and runs inside db.run_sync — plain Mock
+        with patch("app.api.ai.routes.save_ai_snapshot") as mock_save:
             mock_save.return_value = {
                 "status": "saved",
                 "snapshot_id": 123,
@@ -966,10 +968,9 @@ class TestAIIntegrationScenarios:
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_async_db] = lambda: mock_db
 
-        # Create snapshot (year/month are query params, not JSON body; mock must be AsyncMock)
-        with patch(
-            "app.api.ai.routes.save_ai_snapshot", new_callable=AsyncMock
-        ) as mock_save:
+        # Create snapshot (year/month are query params; save_ai_snapshot is
+        # sync and runs inside db.run_sync — plain Mock)
+        with patch("app.api.ai.routes.save_ai_snapshot") as mock_save:
             mock_save.return_value = {
                 "status": "saved",
                 "snapshot_id": 123,

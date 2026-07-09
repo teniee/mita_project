@@ -310,11 +310,15 @@ class GoalBudgetIntegration:
         else:
             last_day = date(year, month + 1, 1)
 
+        # The app stores expenses as POSITIVE amounts (schema enforces
+        # amount >= 0.01). Filtering amount < 0 always summed to zero, so
+        # available_for_goals silently equalled the full income.
         total_expenses = self.db.query(func.sum(Transaction.amount)).filter(
             Transaction.user_id == user_id,
+            Transaction.deleted_at.is_(None),
             Transaction.spent_at >= first_day,
             Transaction.spent_at < last_day,
-            Transaction.amount < 0,  # Expenses are negative
+            Transaction.amount > 0,
         ).scalar() or Decimal("0")
 
         return abs(float(total_expenses))

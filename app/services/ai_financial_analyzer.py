@@ -11,7 +11,7 @@ from typing import Dict, List, Tuple
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
-from app.db.models import Expense, Transaction, User
+from app.db.models import Transaction, User
 from app.services.core.dynamic_threshold_service import (
     ThresholdType,
     UserContext,
@@ -84,26 +84,36 @@ class AIFinancialAnalyzer:
         return self._dynamic_thresholds
 
     def _load_spending_data(self, months_back: int = 6) -> List[Dict]:
-        """Load user's spending data for analysis"""
+        """Load user's spending data for analysis.
+
+        Reads the real transaction ledger. The legacy `expenses` table this
+        used to query has neither `category` nor `description` columns and a
+        varchar user_id (UUID comparison raised in Postgres), so any data at
+        all made the analysis crash into the silent fallback.
+        """
         if self._spending_data is None:
             cutoff_date = datetime.now(timezone.utc) - timedelta(days=months_back * 30)
 
-            expenses = (
-                self.db.query(Expense)
+            transactions = (
+                self.db.query(Transaction)
                 .filter(
-                    and_(Expense.user_id == self.user_id, Expense.date >= cutoff_date)
+                    and_(
+                        Transaction.user_id == self.user_id,
+                        Transaction.deleted_at.is_(None),
+                        Transaction.spent_at >= cutoff_date,
+                    )
                 )
                 .all()
             )
 
             self._spending_data = [
                 {
-                    "amount": float(expense.amount),
-                    "category": expense.category,
-                    "date": expense.date,
-                    "description": expense.description or "",
+                    "amount": float(txn.amount),
+                    "category": txn.category or "other",
+                    "date": txn.spent_at,
+                    "description": txn.description or "",
                 }
-                for expense in expenses
+                for txn in transactions
             ]
 
         return self._spending_data
@@ -118,6 +128,7 @@ class AIFinancialAnalyzer:
                 .filter(
                     and_(
                         Transaction.user_id == self.user_id,
+                        Transaction.deleted_at.is_(None),
                         Transaction.created_at >= cutoff_date,
                     )
                 )

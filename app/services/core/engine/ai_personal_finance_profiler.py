@@ -42,9 +42,11 @@ def build_user_profile(user_id: int, db: Session, year: int, month: int) -> dict
     # Extract behavioral patterns using AI
     patterns = extract_patterns(str(user_id), year, month).get("patterns", [])
 
-    # Build user profile dictionary
+    # Build user profile dictionary. user_id must be a string — this dict is
+    # persisted into a JSON column (AIAnalysisSnapshot.full_profile) and a raw
+    # UUID is not JSON serializable.
     return {
-        "user_id": user.id,
+        "user_id": str(user.id),
         "email": user.email,
         "status_breakdown": dict(status_summary),
         "total_by_category": {k: float(v) for k, v in category_totals.items()},

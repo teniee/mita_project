@@ -597,15 +597,21 @@ async def allocate_budget_for_goals(
     Automatically allocate budget for active goals from monthly income
     """
     try:
-        integration = get_goal_budget_integration(db)
-        allocation = integration.allocate_budget_for_goals(user.id, month, year)
+        # GoalBudgetIntegration is sync (self.db.query) — bridge via run_sync
+        allocation = await db.run_sync(
+            lambda s: get_goal_budget_integration(s).allocate_budget_for_goals(
+                user.id, month, year
+            )
+        )
 
         return success_response(allocation)
     except Exception as e:
         import logging
 
         logging.error(f"Error allocating budget for goals: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500, detail="Failed to allocate budget for goals"
+        )
 
 
 @router.get("/budget/progress")
@@ -619,15 +625,18 @@ async def track_goal_progress_from_budget(
     Track goal progress based on budget allocations and actual spending
     """
     try:
-        integration = get_goal_budget_integration(db)
-        progress = integration.track_goal_progress_from_budget(user.id, month, year)
+        progress = await db.run_sync(
+            lambda s: get_goal_budget_integration(s).track_goal_progress_from_budget(
+                user.id, month, year
+            )
+        )
 
         return success_response(progress)
     except Exception as e:
         import logging
 
         logging.error(f"Error tracking goal progress from budget: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Failed to track goal progress")
 
 
 @router.get("/budget/adjustment_suggestions")
@@ -639,15 +648,20 @@ async def suggest_budget_adjustments(
     Get suggestions for budget adjustments to better support goals
     """
     try:
-        integration = get_goal_budget_integration(db)
-        suggestions = integration.suggest_budget_adjustments_for_goals(user.id)
+        suggestions = await db.run_sync(
+            lambda s: get_goal_budget_integration(
+                s
+            ).suggest_budget_adjustments_for_goals(user.id)
+        )
 
         return success_response({"suggestions": suggestions, "count": len(suggestions)})
     except Exception as e:
         import logging
 
         logging.error(f"Error suggesting budget adjustments: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500, detail="Failed to suggest budget adjustments"
+        )
 
 
 @router.get("/{goal_id}", response_model=GoalOut)

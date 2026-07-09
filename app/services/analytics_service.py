@@ -9,7 +9,12 @@ from app.services.core.analytics.monthly_aggregator import aggregate_monthly_dat
 from app.services.core.api.analytics_engine import detect_anomalies
 
 
-def get_monthly_category_totals(user_id: str, db: Session):
+async def get_monthly_category_totals(user_id: str, db):
+    """Category totals for the current month (AsyncSession).
+
+    The routes inject an AsyncSession; the previous sync body called
+    db.execute(...).all() on a coroutine and raised on every request.
+    """
     current_year = datetime.now(timezone.utc).year
     current_month = datetime.now(timezone.utc).month
 
@@ -17,19 +22,20 @@ def get_monthly_category_totals(user_id: str, db: Session):
         select(Transaction.category, func.sum(Transaction.amount).label("total"))
         .where(
             Transaction.user_id == user_id,
+            Transaction.deleted_at.is_(None),
             extract("year", Transaction.spent_at) == current_year,
             extract("month", Transaction.spent_at) == current_month,
         )
         .group_by(Transaction.category)
     )
 
-    result = db.execute(stmt).all()
+    result = (await db.execute(stmt)).all()
 
     return [{"category": row[0], "total": float(row[1])} for row in result]
 
 
-def get_monthly_trend(user_id: str, db: Session):
-    """Return daily totals for the current month."""
+async def get_monthly_trend(user_id: str, db):
+    """Return daily totals for the current month (AsyncSession)."""
 
     current_year = datetime.now(timezone.utc).year
     current_month = datetime.now(timezone.utc).month
@@ -41,6 +47,7 @@ def get_monthly_trend(user_id: str, db: Session):
         )
         .where(
             Transaction.user_id == user_id,
+            Transaction.deleted_at.is_(None),
             extract("year", Transaction.spent_at) == current_year,
             extract("month", Transaction.spent_at) == current_month,
         )
@@ -48,7 +55,7 @@ def get_monthly_trend(user_id: str, db: Session):
         .order_by("day")
     )
 
-    result = db.execute(stmt).all()
+    result = (await db.execute(stmt)).all()
 
     return [{"date": row[0].isoformat(), "amount": float(row[1])} for row in result]
 

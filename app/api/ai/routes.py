@@ -58,7 +58,11 @@ async def create_ai_snapshot(
     user=Depends(get_current_user),  # noqa: B008
     db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
-    result = await save_ai_snapshot(user.id, db, year, month)
+    # save_ai_snapshot is sync (db.query/db.commit) — bridge via run_sync;
+    # awaiting the sync def directly raised on every call.
+    result = await db.run_sync(
+        lambda sync_session: save_ai_snapshot(user.id, sync_session, year, month)
+    )
     return success_response(result)
 
 
@@ -71,10 +75,15 @@ async def get_spending_patterns(
 ):
     """Get AI-analyzed spending patterns for the user"""
     try:
-        analyzer = AIFinancialAnalyzer(db, user.id)
-        patterns_data = await analyzer.analyze_spending_patterns()
+        # AIFinancialAnalyzer is sync (self.db.query in __init__) — bridge via
+        # run_sync; passing the raw AsyncSession raised on every call and the
+        # broad except silently served the empty fallback.
+        patterns_data = await db.run_sync(
+            lambda s: AIFinancialAnalyzer(s, user.id).analyze_spending_patterns()
+        )
         return success_response(patterns_data)
     except Exception:
+        logger.exception("spending-patterns analysis failed for user %s", user.id)
         # Fallback to basic response if analysis fails
         return success_response(
             {
@@ -95,10 +104,12 @@ async def get_personalized_feedback(
 ):
     """Get personalized AI feedback for the user"""
     try:
-        analyzer = AIFinancialAnalyzer(db, user.id)
-        feedback_data = await analyzer.generate_personalized_feedback()
+        feedback_data = await db.run_sync(
+            lambda s: AIFinancialAnalyzer(s, user.id).generate_personalized_feedback()
+        )
         return success_response(feedback_data)
     except Exception:
+        logger.exception("personalized-feedback failed for user %s", user.id)
         # Fallback response
         return success_response(
             {
@@ -121,10 +132,12 @@ async def get_weekly_insights(
 ):
     """Get weekly AI insights for the user"""
     try:
-        analyzer = AIFinancialAnalyzer(db, user.id)
-        insights_data = await analyzer.generate_weekly_insights()
+        insights_data = await db.run_sync(
+            lambda s: AIFinancialAnalyzer(s, user.id).generate_weekly_insights()
+        )
         return success_response(insights_data)
     except Exception:
+        logger.exception("weekly-insights failed for user %s", user.id)
         # Fallback response
         return success_response(
             {
@@ -169,10 +182,12 @@ async def get_financial_health_score(
 ):
     """Get AI-calculated financial health score"""
     try:
-        analyzer = AIFinancialAnalyzer(db, user.id)
-        score_data = await analyzer.calculate_financial_health_score()
+        score_data = await db.run_sync(
+            lambda s: AIFinancialAnalyzer(s, user.id).calculate_financial_health_score()
+        )
         return success_response(score_data)
     except Exception:
+        logger.exception("financial-health-score failed for user %s", user.id)
         # Fallback response
         return success_response(
             {
@@ -201,10 +216,12 @@ async def get_spending_anomalies(
 ):
     """Get detected spending anomalies"""
     try:
-        analyzer = AIFinancialAnalyzer(db, user.id)
-        anomalies = await analyzer.detect_spending_anomalies()
+        anomalies = await db.run_sync(
+            lambda s: AIFinancialAnalyzer(s, user.id).detect_spending_anomalies()
+        )
         return success_response(anomalies)
     except Exception:
+        logger.exception("spending-anomalies failed for user %s", user.id)
         # Fallback response
         return success_response([])
 
@@ -216,10 +233,12 @@ async def get_savings_optimization(
 ):
     """Get AI-powered savings optimization suggestions"""
     try:
-        analyzer = AIFinancialAnalyzer(db, user.id)
-        optimization_data = await analyzer.generate_savings_optimization()
+        optimization_data = await db.run_sync(
+            lambda s: AIFinancialAnalyzer(s, user.id).generate_savings_optimization()
+        )
         return success_response(optimization_data)
     except Exception:
+        logger.exception("savings-optimization failed for user %s", user.id)
         # Fallback response
         return success_response(
             {
@@ -255,10 +274,10 @@ async def get_ai_profile(
         # Re-raise HTTP exceptions (auth errors, etc.) without modification
         raise
     except ImportError:
-        # Service not available, use AIFinancialAnalyzer
+        # Service not available — generate a basic profile from transaction
+        # data. (A bare AIFinancialAnalyzer(db, ...) construction here raised
+        # with the AsyncSession and turned this path into a 500.)
         try:
-            AIFinancialAnalyzer(db, user.id)
-            # Generate basic profile from transaction data
             from datetime import datetime, timedelta, timezone
 
             from app.db.models import Transaction
@@ -343,10 +362,12 @@ async def get_day_status_explanation(
 ):
     """Get AI explanation for a specific day's spending status"""
     try:
-        analyzer = AIFinancialAnalyzer(db, user.id)
-        explanation = await analyzer.explain_day_status(date)
+        explanation = await db.run_sync(
+            lambda s: AIFinancialAnalyzer(s, user.id).explain_day_status(date)
+        )
         return success_response(explanation)
     except Exception:
+        logger.warning("day-status-explanation unavailable for user %s", user.id)
         # Fallback response
         return success_response(
             {
@@ -478,12 +499,14 @@ async def get_category_suggestions(
 ):
     """Get AI-powered category suggestions for a transaction"""
     try:
-        analyzer = AIFinancialAnalyzer(db, user.id)
-        suggestions = await analyzer.suggest_category(
-            request.description, request.amount
+        suggestions = await db.run_sync(
+            lambda s: AIFinancialAnalyzer(s, user.id).suggest_category(
+                request.description, request.amount
+            )
         )
         return success_response(suggestions)
     except Exception:
+        logger.warning("category-suggestions unavailable for user %s", user.id)
         # Fallback response
         return success_response(
             {
@@ -506,12 +529,14 @@ async def ai_assistant(
         question = request.question
         context = request.context
 
-        # Use AIFinancialAnalyzer service
-        analyzer = AIFinancialAnalyzer(db, user.id)
-
-        # Try to use the answer_question method if available
-        if hasattr(analyzer, "answer_question"):
-            response = analyzer.answer_question(question, context)
+        # Try the analyzer's answer_question if the class provides it
+        # (class-level check — instantiating with the AsyncSession raised).
+        if hasattr(AIFinancialAnalyzer, "answer_question"):
+            response = await db.run_sync(
+                lambda s: AIFinancialAnalyzer(s, user.id).answer_question(
+                    question, context
+                )
+            )
             return success_response(response)
 
         # Otherwise, provide basic responses based on question keywords
@@ -619,10 +644,12 @@ async def get_spending_prediction(
 ):
     """Get AI prediction of future spending"""
     try:
-        analyzer = AIFinancialAnalyzer(db, user.id)
-        prediction = await analyzer.predict_spending(category, days)
+        prediction = await db.run_sync(
+            lambda s: AIFinancialAnalyzer(s, user.id).predict_spending(category, days)
+        )
         return success_response(prediction)
     except Exception:
+        logger.warning("spending-prediction unavailable for user %s", user.id)
         # Fallback response
         return success_response(
             {
@@ -647,10 +674,12 @@ async def get_goal_analysis(
 ):
     """Get AI analysis of financial goals progress"""
     try:
-        analyzer = AIFinancialAnalyzer(db, user.id)
-        analysis = analyzer.analyze_goal_progress(goal_id)
+        analysis = await db.run_sync(
+            lambda s: AIFinancialAnalyzer(s, user.id).analyze_goal_progress(goal_id)
+        )
         return success_response(analysis)
     except Exception:
+        logger.warning("goal-analysis unavailable for user %s", user.id)
         # Fallback response
         return success_response(
             {
@@ -673,10 +702,14 @@ async def get_monthly_report(
 ):
     """Get comprehensive AI-generated monthly report"""
     try:
-        analyzer = AIFinancialAnalyzer(db, user.id)
-        report = analyzer.generate_monthly_report(year, month)
+        report = await db.run_sync(
+            lambda s: AIFinancialAnalyzer(s, user.id).generate_monthly_report(
+                year, month
+            )
+        )
         return success_response(report)
     except Exception:
+        logger.warning("monthly-report unavailable for user %s", user.id)
         # Fallback response
         return success_response(
             {
@@ -717,9 +750,6 @@ async def get_financial_advice(
         # Extract validated request data
         question = request.question
         advice_type = request.advice_type or "general"
-
-        # Use AIFinancialAnalyzer to generate advice
-        AIFinancialAnalyzer(db, user.id)
 
         # Generate personalized advice based on question and context
         # This is a comprehensive response that uses the analyzer's capabilities
