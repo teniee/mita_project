@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "flutter": {
+      "command": "/path/to/.pub-cache/bin/mcp_server"
+    },
+    "supabase": {
+      "url": "https://mcp.supabase.com/mcp?project_ref=YOUR_PROJECT_REF",
+      "transport": "http",
+      "headers": {
+        "Authorization": "Bearer ${SUPABASE_MCP_SECRET_KEY}"
+      }
+    },
+    "redis": {
+      "command": "npx",
+      "args": ["-y", "@liangshanli/mcp-server-redis"],
+      "env": {
+        "REDIS_URL": "${MITA_REDIS_MCP_URL}"
+      }
+    }
+  }
+}

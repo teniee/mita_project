@@ -77,3 +77,7 @@ node_modules/
 # Redis runtime dump (created when running a local redis-server in-repo)
 dump.rdb
 *.rdb
+
+# MCP server config contains local credentials — never commit it.
+# Copy .mcp.json.example and fill in your own values.
+.mcp.json

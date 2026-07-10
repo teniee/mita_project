@@ -28,6 +28,7 @@ Legend: 🔴 blocks core MVP · 🟠 blocks closed beta · 🟢 deferrable
 - **Action:** delete `.mcp.json` from the working tree, add it to `.gitignore`, commit a `.mcp.json.example` with placeholders; then purge it from git history (`git filter-repo --path .mcp.json --invert-paths`) and force-push. Consider making the repo **private** until history is clean.
 - **Secret?** The file is; the example is not.
 - **Verify:** `gh api repos/teniee/mita_project/contents/.mcp.json` → 404; GitHub secret-scanning shows no live alerts.
+- **Status (Fable 5, 2026-07-10):** ✅ `.mcp.json` untracked from the repo, added to `.gitignore`, `.mcp.json.example` committed with `${ENV_VAR}` placeholders. ⚠️ **NOT resolved:** the credentials remain in git history of the public repo. Rotation (§1.1/§1.2) and the history purge / force-push remain **owner actions** — no rotation confirmation was found, so the exposure must still be treated as live. Fable did not print, copy, or rotate any value.
 
 ---
 
