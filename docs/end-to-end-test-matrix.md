@@ -122,18 +122,46 @@ cleared here). Executed:
 - `flutter test` → **388 passed, 1 pre-existing golden-pixel failure** (`onboarding_location_initial.png`, 1.48% diff — font rendering; also fails on the unmodified tree, not caused by these changes).
 - APK installed and launched on emulator `Medium_Phone_API_36.0` (Android 15 / API 36) against **production** Railway. Login screen renders and **email/password auth succeeds** (navigates away from login).
 
-**NEW mobile finding (P1, Flutter-state — not backend):** after a successful
-login for an **already-onboarded** account, the app routes to onboarding
-Step 1 instead of the dashboard. The backend contract is correct —
-`GET /api/users/me` returns `has_onboarded: true` and `income: 6000.0` for
-the same token — so `hasCompletedOnboarding()` / `getFinancialContext()` in
-`user_data_manager.dart` + `user_provider.dart` are misreading or
-cold-cache-defaulting the onboarding flag on session restore. This is a
-client state/caching defect (welcome_screen → UserProvider.initialize path),
-not one of the P0/P1 backend defects, and did not exist as a backend
-regression. Recommended: assert `hasCompletedOnboarding()` returns true when
-`/users/me.has_onboarded == true`, and stop defaulting to `needs_onboarding`
-on a transient profile-fetch miss. **Owner/next: fix before closed beta.**
+**Bugs found and FIXED via on-device verification** (the audit could not
+find these without a device):
+
+1. **Mobile login routing (P1, FIXED `f27ac13`)** — after login for an
+   already-onboarded account the app routed to onboarding instead of the
+   dashboard. Root cause: `UserProvider.initialize()` early-returned unless
+   state == initial; the welcome screen sets `unauthenticated` at cold start
+   (no token yet), so the post-login `initialize()` was a no-op and
+   `_hasCompletedOnboarding` stayed false. Fixed to re-load unless already
+   authenticated/loading. **Verified on device: login now reaches Home.**
+2. **Dashboard cast crash (P1, FIXED `f27ac13`)** — `main_screen`
+   `_buildDailyTargets` cast each calendar category value to
+   `Map<String,dynamic>`; the raw shell-calendar fallback supplies flat
+   numeric amounts → `double is not a subtype of Map` crashed the whole
+   dashboard. Fixed to handle both shapes. **Verified: no more red crash.**
+3. **`/api/budget/live_status` 500 (P1, FIXED `f27ac13`)** —
+   `scalar_one_or_none()` on today's DailyPlan (one row per category) →
+   MultipleResultsFound → 500 on every dashboard load. Now aggregates.
+4. **`/api/budget/remaining` + `/spent` 500 (P1, FIXED `d07c9da`)** — sync
+   BudgetTracker called with the AsyncSession. Bridged via run_sync.
+5. **`/api/cohort/insights` + `/income_classification` 500 (P1, FIXED
+   `8a298b7`)** — Decimal/float TypeError when the user had transactions.
+6. **Mobile dashboard resilience (FIXED `8a298b7`)** — `loadAllBudgetData`
+   used `Future.wait` over 7 loads and never cleared `_errorMessage`, so one
+   optional widget's failure blanked the whole dashboard permanently. Now
+   only the core budget load is critical; optional loads fail independently
+   and the error clears on retry. Also fixed `getAIBudgetOptimization` to GET
+   (was POST → 405).
+
+All six were verified fixed in production (Railway http logs show every
+dashboard endpoint returning 200; the "Server error" toast is gone).
+
+**Remaining mobile finding (P2, timing — follow-up):** in the DEBUG build a
+"Get User Profile for Calendar" operation is slow (~18s) and the dashboard
+shows its transient error card while providers are still loading. This is a
+Flutter provider-orchestration/timing issue in the calendar-load path (a
+slow/retrying profile fetch), NOT a backend defect — every backend endpoint
+returns 200. A release build (faster) and tightening the calendar-load
+profile fetch should resolve it. Recorded for follow-up; does not block the
+verified backend core journey.
 
 ## C. Flutter manual test cases (device/emulator — original audit plan)
 
