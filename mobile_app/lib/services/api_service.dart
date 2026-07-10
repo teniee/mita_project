@@ -2410,8 +2410,10 @@ class ApiService {
 
   Future<void> createExpense(Map<String, dynamic> data) async {
     final token = await getToken();
+    // Collection route is '/transactions/' — the slashless form triggers a
+    // 307 redirect and can drop the Authorization header (DEF-008).
     await _dio.post(
-      '/transactions',
+      '/transactions/',
       data: data,
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
@@ -4343,6 +4345,29 @@ class ApiService {
     try {
       logInfo('Performing secure logout with push token cleanup',
           tag: 'API_LOGOUT');
+
+      // SECURITY: Revoke the session server-side BEFORE clearing local
+      // tokens. Without this the access/refresh tokens stay valid until
+      // expiry even though the app looks logged out. The refresh token is
+      // sent so the backend can blacklist the whole session. Best-effort:
+      // local cleanup still runs if the network call fails.
+      try {
+        final accessToken = await getToken();
+        final refreshToken = await getRefreshToken();
+        if (accessToken != null) {
+          await _dio.post(
+            '/auth/logout',
+            data: {
+              if (refreshToken != null) 'refresh_token': refreshToken,
+            },
+            options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
+          );
+          logInfo('Server-side token revocation succeeded', tag: 'API_LOGOUT');
+        }
+      } catch (e) {
+        logError('Server-side logout failed (continuing local cleanup): $e',
+            tag: 'API_LOGOUT');
+      }
 
       // SECURITY: Clean up push tokens before clearing auth tokens
       await SecurePushTokenManager.instance.cleanupOnLogout();

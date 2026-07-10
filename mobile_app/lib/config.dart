@@ -18,9 +18,12 @@ class AppConfig {
   );
 
   /// Environment name — controls feature flags and behavior.
-  /// Override at build time with `--dart-define=ENV=production`.
+  /// Defaults to production (matching the default base URL) so a release
+  /// built without --dart-define cannot ship with SSL pinning and crash
+  /// reporting disabled (DEF-007). Developers opt in explicitly with
+  /// `--dart-define=ENV=development`.
   static const String environment =
-      String.fromEnvironment('ENV', defaultValue: 'development');
+      String.fromEnvironment('ENV', defaultValue: 'production');
 
   static const String apiPath = '/api';
 

@@ -40,7 +40,10 @@ class TransactionService {
         queryParams['category'] = category;
       }
 
-      final uri = Uri.parse('${AppConfig.fullApiUrl}/transactions')
+      // Collection route is '/transactions/' — the slashless form triggers a
+      // 307 redirect and some HTTP clients drop the Authorization header
+      // across redirects (DEF-008).
+      final uri = Uri.parse('${AppConfig.fullApiUrl}/transactions/')
           .replace(queryParameters: queryParams);
 
       final response = await http.get(
@@ -134,7 +137,8 @@ class TransactionService {
 
       final response = await http
           .post(
-            Uri.parse('${AppConfig.fullApiUrl}/transactions'),
+            // Trailing slash required — see DEF-008 note in getTransactions.
+            Uri.parse('${AppConfig.fullApiUrl}/transactions/'),
             headers: {
               'Authorization': 'Bearer $token',
               'Content-Type': 'application/json',
