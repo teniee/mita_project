@@ -1,7 +1,7 @@
 import json
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from unittest.mock import create_autospec
+from unittest.mock import AsyncMock, MagicMock, create_autospec
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,15 +10,22 @@ from app.api.budget import routes as budget_routes
 
 
 def make_async_db():
-    """Create a mock that passes isinstance(db, AsyncSession) check."""
-    return create_autospec(AsyncSession, instance=True)
+    """Mock AsyncSession whose run_sync executes the bridged sync callable.
+
+    /spent and /remaining now wrap the sync BudgetTracker services in
+    db.run_sync(lambda s: fetch(...)); the mock must run that lambda with a
+    stand-in sync session so the test exercises the real bridge.
+    """
+    db = create_autospec(AsyncSession, instance=True)
+    db.run_sync = AsyncMock(side_effect=lambda fn: fn(MagicMock()))
+    return db
 
 
 @pytest.mark.asyncio
 async def test_spent_defaults_to_current_date(monkeypatch):
     captured = {}
 
-    async def dummy_fetch(db, user_id, year, month):
+    def dummy_fetch(db, user_id, year, month):
         captured["args"] = (year, month)
         return {"ok": True}
 
@@ -41,7 +48,7 @@ async def test_spent_defaults_to_current_date(monkeypatch):
 async def test_remaining_accepts_custom_date(monkeypatch):
     captured = {}
 
-    async def dummy_fetch(db, user_id, year, month):
+    def dummy_fetch(db, user_id, year, month):
         captured["args"] = (year, month)
         return {"rem": True}
 
