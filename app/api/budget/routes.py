@@ -58,9 +58,11 @@ async def spent(
     now = datetime.now(timezone.utc)
     year = year or now.year
     month = month or now.month
-    result = fetch_spent_by_category(db, user.id, year, month)
-    if inspect.isawaitable(result):
-        result = await result
+    # fetch_spent_by_category is sync (BudgetTracker uses db.query) — bridge
+    # via run_sync; the raw AsyncSession would raise inside the tracker.
+    result = await db.run_sync(
+        lambda sync_session: fetch_spent_by_category(sync_session, user.id, year, month)
+    )
     return success_response(result)
 
 
@@ -80,9 +82,12 @@ async def remaining(
     now = datetime.now(timezone.utc)
     year = year or now.year
     month = month or now.month
-    result = fetch_remaining_budget(db, user.id, year, month)
-    if inspect.isawaitable(result):
-        result = await result
+    # fetch_remaining_budget is sync (BudgetTracker uses db.query) — bridge via
+    # run_sync; calling it with the raw AsyncSession raised inside the tracker
+    # and surfaced as a 500 on every dashboard load.
+    result = await db.run_sync(
+        lambda sync_session: fetch_remaining_budget(sync_session, user.id, year, month)
+    )
     return success_response(result)
 
 

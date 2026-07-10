@@ -107,3 +107,25 @@ def test_live_status_no_plan_rows(authed):
     resp = authed.get("/api/budget/live_status")
     assert resp.status_code == 200, resp.text
     assert resp.json()["data"]["status"] == "neutral"
+
+
+def test_remaining_and_spent_bridge_async_session(authed, db_session, user):
+    """/budget/remaining and /budget/spent call sync BudgetTracker services;
+    with the raw AsyncSession they 500'd on every dashboard load."""
+    today = datetime.now(timezone.utc)
+    db_session.add(
+        DailyPlan(
+            id=uuid4(),
+            user_id=user.id,
+            date=today,
+            category="food",
+            planned_amount=Decimal("50.00"),
+            daily_budget=Decimal("50.00"),
+            spent_amount=Decimal("12.00"),
+            status="green",
+        )
+    )
+    db_session.commit()
+
+    assert authed.get("/api/budget/remaining").status_code == 200
+    assert authed.get("/api/budget/spent").status_code == 200
