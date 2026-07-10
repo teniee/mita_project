@@ -1,5 +1,26 @@
 # MITA Finance — End-to-End Test Matrix
 
+> ## Re-run status (Fable 5, 2026-07-10)
+> `scripts/production_e2e_test.py` now automates the full journey (register →
+> onboard → dashboard/calendar baseline → create 42 → list/get → exact recalc
+> 5958/42 → edit 100 → 5900/100 → category move → delete → 6000/0 + 404 →
+> refresh rotation → old refresh rejected → logout → access AND refresh
+> rejected → re-login → state recovered).
+> - **A23/A24/A25 (txn list/update/delete): now PASS in production** (were the
+>   DEF-001/002 500s).
+> - **B5/B6 (edit/delete exact recalc): now PASS in production** — required
+>   fixing two additional defects: the edit path double-counted the daily-plan
+>   accrual and delete never reversed it (INV-13/14).
+> - **B8/B9/B10/B12/B13-class engine cases**: covered by
+>   `app/tests/test_budget_logic_invariants.py` (+ 300-case reconciliation
+>   property).
+> - **New A-step: refresh token after logout** — was ACCEPTED (defect), now
+>   rejected (fix `5beb440`).
+> - Local integration suites run against real PostgreSQL 15 through the real
+>   async DI (`test_transactions_crud_integration.py`,
+>   `test_async_sweep_integration.py`, `test_onboarding_idempotency.py`,
+>   `test_authz_regressions.py`).
+
 > Audit date: **2026-07-08/09** · Target: production `https://mita-production-production.up.railway.app` (commit `d682f3f969a6`)
 > "VERIFIED" = executed first-hand this session with the shown result. "NOT EXECUTED" = expected value derived from source; needs a test.
 > Evidence scripts live in the auditor scratchpad: `remote_smoke_deployed.py` (30 checks), `audit_opus_e2e.py` (gap-filling), `capture500b.py` (500 bodies).
@@ -93,7 +114,28 @@ Dashboard (`app/api/dashboard/routes.py`): `balance = monthly_income − Σ(this
 
 ---
 
-## C. Flutter manual test cases (device/emulator — NOT executed; no Android SDK this session)
+## C-bis. Android on-device verification (Fable 5, 2026-07-10)
+
+Android SDK is now available on the build machine (the prior owner blocker is
+cleared here). Executed:
+- `flutter pub get` ✅; `flutter analyze` ✅ **0 errors** (47 infos, unchanged class); `flutter build apk --debug` ✅ → `app-debug.apk` (221 MB).
+- `flutter test` → **388 passed, 1 pre-existing golden-pixel failure** (`onboarding_location_initial.png`, 1.48% diff — font rendering; also fails on the unmodified tree, not caused by these changes).
+- APK installed and launched on emulator `Medium_Phone_API_36.0` (Android 15 / API 36) against **production** Railway. Login screen renders and **email/password auth succeeds** (navigates away from login).
+
+**NEW mobile finding (P1, Flutter-state — not backend):** after a successful
+login for an **already-onboarded** account, the app routes to onboarding
+Step 1 instead of the dashboard. The backend contract is correct —
+`GET /api/users/me` returns `has_onboarded: true` and `income: 6000.0` for
+the same token — so `hasCompletedOnboarding()` / `getFinancialContext()` in
+`user_data_manager.dart` + `user_provider.dart` are misreading or
+cold-cache-defaulting the onboarding flag on session restore. This is a
+client state/caching defect (welcome_screen → UserProvider.initialize path),
+not one of the P0/P1 backend defects, and did not exist as a backend
+regression. Recommended: assert `hasCompletedOnboarding()` returns true when
+`/users/me.has_onboarded == true`, and stop defaulting to `needs_onboarding`
+on a transient profile-fetch miss. **Owner/next: fix before closed beta.**
+
+## C. Flutter manual test cases (device/emulator — original audit plan)
 
 | # | Flow | Expected | Depends on |
 |---|------|----------|-----------|

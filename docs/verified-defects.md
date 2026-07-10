@@ -4,6 +4,17 @@
 > Deployed commit audited: **`d682f3f969a6`** (Railway `mita-production`, matches GitHub `teniee/mita_project@main`)
 > Every defect below is backed by **first-hand evidence** (production HTTP response, server traceback from Railway logs, and/or local reproduction). Secrets are redacted everywhere.
 
+> ## Fix status (Fable 5, 2026-07-10)
+> - **DEF-001 ✅ FIXED** (`e36b7ef`): run_sync bridge on list/get/update/delete (+ affordability/budget-status, also broken and mobile-called). Production-verified: full CRUD journey with exact recalculation (`scripts/production_e2e_test.py`). Additional latent 500s fixed on the same path: `ResourceNotFoundError(details=)` kwarg collision (404s became 500s), missing `ErrorCode` members, nonexistent `FinancialResponseHelper.transaction_updated`, additive plan re-apply on edit (42→100 accrued 142) and non-reversed accrual on delete.
+> - **DEF-002 ✅ FIXED** (`e36b7ef`): the re-registered validators broke EVERY TxnUpdate field (not just amount); replaced with None-guarded delegating validators; invalid amounts (incl. NaN/Infinity/>1M) now 422, never 500.
+> - **DEF-003 ⚠️ PARTIAL** (`95193a3`): `.mcp.json` untracked/git-ignored, `.mcp.json.example` committed. Rotation + history purge remain **owner actions**; exposure in git history is still live.
+> - **DEF-004 ✅ RESOLVED**: all work done on a fresh checkout of `teniee/mita_project@main`.
+> - **DEF-005 ⏳ owner** (SMTP_PASSWORD) — unchanged.
+> - **DEF-006 ⏳ open** (health `degraded` on missing Sentry) — unchanged; either set SENTRY_DSN or adjust aggregation.
+> - **DEF-007 ✅ FIXED** (`1510071`): ENV defaults to production.
+> - **DEF-008 ✅ FIXED** (`1510071`): all Flutter collection calls use `/transactions/`.
+> - **NEW (found this pass): logout did not revoke the refresh token** — old refresh minted new sessions after logout. Fixed in `5beb440` (backend accepts+blacklists it) and `1510071` (Flutter logout now calls the backend with it; previously logout was local-only).
+
 ## Severity legend
 - **P0** — Blocks the defined core MVP journey or is a live security exposure. Fix before closed beta.
 - **P1** — Breaks an important feature or a defined core step through a second/independent cause.

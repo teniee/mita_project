@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Body, Depends
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user
@@ -649,30 +649,59 @@ async def get_live_budget_status(
     db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get real-time budget status"""
+    from app.core.date_utils import day_to_range
     from app.db.models import Transaction
 
     now = datetime.now(timezone.utc)
 
-    # Get today's plan
+    # Get today's plan rows. There is one DailyPlan row PER CATEGORY per day,
+    # so scalar_one_or_none() raised MultipleResultsFound -> 500 on every
+    # onboarded user. Aggregate across categories over the full day range
+    # (DailyPlan.date is timestamptz; an equality against a date misses rows
+    # stored at non-midnight times).
+    day_start, day_end = day_to_range(now.date())
     result = await db.execute(
-        select(DailyPlan).where(
-            DailyPlan.user_id == user.id, DailyPlan.date == now.date()
+        select(
+            func.coalesce(func.sum(DailyPlan.daily_budget), 0),
+            func.coalesce(func.sum(DailyPlan.spent_amount), 0),
+        ).where(
+            DailyPlan.user_id == user.id,
+            DailyPlan.date >= day_start,
+            DailyPlan.date <= day_end,
         )
     )
-    today_plan = result.scalar_one_or_none()
+    daily_budget_total, spent_today_total = result.one()
+    daily_budget_val = float(daily_budget_total or 0)
+    spent_today_val = float(spent_today_total or 0)
 
-    # Calculate monthly spending from transactions
+    # Overall day status: worst category status for today (over > warning > good)
+    status_result = await db.execute(
+        select(DailyPlan.status).where(
+            DailyPlan.user_id == user.id,
+            DailyPlan.date >= day_start,
+            DailyPlan.date <= day_end,
+        )
+    )
+    statuses = [s for (s,) in status_result.all() if s]
+    if "over" in statuses or "red" in statuses:
+        day_status = "over"
+    elif "warning" in statuses or "yellow" in statuses:
+        day_status = "warning"
+    elif statuses:
+        day_status = "good"
+    else:
+        day_status = "neutral"
+
+    # Calculate monthly spending from transactions (exclude soft-deleted)
     month_start = datetime(now.year, now.month, 1)
     result = await db.execute(
-        select(Transaction).where(
-            Transaction.user_id == user.id, Transaction.spent_at >= month_start
+        select(func.coalesce(func.sum(Transaction.amount), 0)).where(
+            Transaction.user_id == user.id,
+            Transaction.deleted_at.is_(None),
+            Transaction.spent_at >= month_start,
         )
     )
-    monthly_transactions = result.scalars().all()
-
-    monthly_spent = sum(
-        t.amount for t in monthly_transactions if t.amount is not None
-    ) or Decimal("0")
+    monthly_spent = Decimal(result.scalar() or 0)
     monthly_budget = float(user.monthly_income) if user.monthly_income else 0.0
     on_track = (
         float(monthly_spent) <= (monthly_budget * (now.day / 30.0))
@@ -682,22 +711,10 @@ async def get_live_budget_status(
 
     status_data = {
         "date": now.date().isoformat(),
-        "daily_budget": (
-            float(today_plan.daily_budget)
-            if today_plan and today_plan.daily_budget
-            else 0.0
-        ),
-        "spent_today": (
-            float(today_plan.spent_amount)
-            if today_plan and today_plan.spent_amount
-            else 0.0
-        ),
-        "remaining_today": (
-            float(today_plan.daily_budget - today_plan.spent_amount)
-            if today_plan and today_plan.daily_budget and today_plan.spent_amount
-            else 0.0
-        ),
-        "status": today_plan.status if today_plan else "neutral",
+        "daily_budget": daily_budget_val,
+        "spent_today": spent_today_val,
+        "remaining_today": daily_budget_val - spent_today_val,
+        "status": day_status,
         "monthly_budget": monthly_budget,
         "monthly_spent": round(float(monthly_spent), 2),
         "on_track": on_track,

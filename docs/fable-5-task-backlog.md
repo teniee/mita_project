@@ -1,5 +1,30 @@
 # MITA Finance — Fable 5 Implementation Backlog (second-pass audit)
 
+> ## Implementation status (Fable 5, 2026-07-10)
+> Historical audit content below is unchanged; this block records what shipped.
+>
+> | Item | Status | Commit | Evidence |
+> |---|---|---|---|
+> | DEF-002 (TxnUpdate validator) | ✅ FIXED | `e36b7ef` | every TxnUpdate field was broken, not only amount; 26 unit regressions; prod PUT verified |
+> | DEF-001 (txn CRUD async/sync) | ✅ FIXED | `e36b7ef` | run_sync bridge on list/get/update/delete + affordability/budget-status (both mobile-called); async-DI integration suite; prod E2E 29/30 → 30/30 |
+> | TASK-1 (dashboard soft-delete) | ✅ FIXED | `e36b7ef` | 7 aggregations filtered (audit's 6 + recent-transactions list) + /transactions/by-date; exact-number regressions |
+> | INV-13/14 (edit double-count, delete not reversed) | ✅ FIXED | `e36b7ef` | NEW defects found during implementation: update re-applied additively (42→100 gave 142), delete never reversed accrual; recalculate_plan_spent() recomputes from ledger |
+> | Latent 500s in error paths | ✅ FIXED | `e36b7ef` | ResourceNotFoundError(details=) crashed all 404s; 7 missing ErrorCode members; FinancialResponseHelper.transaction_updated didn't exist; validators.ValidationError now ValueError → 422 not 500 |
+> | TASK-2 (async sweep A–D) | ✅ FIXED | `51647d6` | ai/snapshot, 14 ai/* analyzer endpoints, analytics monthly/trend, goals/budget/*; analyzer also read the legacy expenses table (varchar user_id + missing columns) — now reads transactions; UUID-in-JSON snapshot insert fixed; content-asserting regressions |
+> | TASK-10 / V4 (goal expense sign) | ✅ FIXED | `51647d6` | amount>0 + deleted_at filter; exact-number regression (6000 income − 100 spent = 5900 available) |
+> | N-P2-IDOR-1 (/goal/* body user_id) | ✅ FIXED | `521ce39` | session-bound identity, 403 on mismatch; two-user tests |
+> | N-P2-SECMON (auth security monitoring) | ✅ FIXED | `521ce39` | require_admin_access on both endpoints; anon 401 + non-admin 403 tests |
+> | NEW: logout didn't revoke refresh token | ✅ FIXED | `5beb440` | found by prod E2E step 22; logout now blacklists the provided refresh token; Flutter sends it (`1510071`) |
+> | TASK-3 / V3 (daily_plan unique + onboarding idempotency) | ✅ FIXED | `74b6011` | migration 0035 (normalize→merge→constraint, tested with seeded dupes: 12+30→42 spent), upsert save, already_onboarded guard; prod-verified (re-submit idempotent, spend accrues once) |
+> | TASK-13 / V2 (budget float) | ✅ FIXED | `92ac95e` | Decimal + ROUND_HALF_UP; B1/B8/B9/B10 + 300-case reconciliation property; 100.005→100.01 |
+> | TASK-14 / V5 (record_expense) | ✅ FIXED | `e36b7ef` | spent_at + Decimal(str()) in both copies |
+> | DEF-003 (.mcp.json secrets) | ⚠️ PARTIAL | `95193a3` | untracked + gitignored + example committed; **rotation & history purge remain owner-blocked** (owner-actions §1) |
+> | TASK-5 / DEF-008 (Flutter slashes) | ✅ FIXED | `1510071` | all collection calls use /transactions/; P-CONTRACT-1 was a false positive (Navigator routes, not API calls) |
+> | DEF-007 (Flutter env default) | ✅ FIXED | `1510071` | ENV defaults to production; pinning auto-disabled until fingerprints configured |
+> | TASK-4 (async test harness) | ✅ DONE | `e36b7ef`+ | TestClient with real get_async_db against local PostgreSQL 15; pattern used by all new integration suites |
+> | Empty-DB migration on real PostgreSQL | ✅ VERIFIED | — | alembic upgrade head from empty PG15 → head 0035, 33 tables; downgrade/upgrade cycle idempotent |
+> | TASK-6/7/8/9/11-остальное, 15–19 | ⏳ OPEN | — | P2/P3; not core-journey blocking |
+
 > Auditor: Claude (Opus 4.8), 2026-07-09, base of truth **`teniee/mita_project@main` `d54667a`** (clone fresh; do not edit a stale copy — DEF-004).
 > Ordering (per mandate): **1** confirmed P0 security/data-loss → **2** confirmed P1 core-journey → **3** regression tests with each fix → **4** mobile/backend contract → **5** data-integrity/concurrency → **6** P2 cleanup.
 > **Baseline (already in `verified-defects.md`): DEF-001 (P0), DEF-002 (P1), DEF-003 (P0 secrets, owner), DEF-005/006/007/008.** They remain the top of the queue; the tasks below are the **new** work from this pass, sequenced against them. Nothing here is vague — each task is a concrete code change with evidence.

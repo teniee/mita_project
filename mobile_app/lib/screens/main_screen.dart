@@ -535,22 +535,38 @@ class _MainScreenState extends State<MainScreen> {
         orElse: () => <String, dynamic>{},
       );
 
-      if (todayEntry.isNotEmpty && todayEntry['categories'] != null) {
-        final categories = todayEntry['categories'] as Map<String, dynamic>;
+      final rawCategories = todayEntry['categories'];
+      if (rawCategories is Map && rawCategories.isNotEmpty) {
+        final categories = Map<String, dynamic>.from(rawCategories);
 
         logInfo(
             'Using REAL calendar data for today (${categories.length} categories)',
             tag: 'MAIN_SCREEN');
 
-        // Convert calendar categories to daily targets format
+        // Convert calendar categories to daily targets format.
+        // A category value may be either a nested map ({planned/limit, spent})
+        // from the merged calendar, or a flat numeric amount from the raw
+        // shell-calendar fallback. Casting the flat form to Map crashed the
+        // whole dashboard ("double is not a subtype of Map<String, dynamic>").
         return categories.entries.map((entry) {
           final categoryName = entry.key;
-          final categoryData = entry.value as Map<String, dynamic>;
+          final value = entry.value;
+          final double limit;
+          final double spent;
+          if (value is Map) {
+            limit = (value['limit'] as num?)?.toDouble() ??
+                (value['planned'] as num?)?.toDouble() ??
+                0.0;
+            spent = (value['spent'] as num?)?.toDouble() ?? 0.0;
+          } else {
+            limit = (value as num?)?.toDouble() ?? 0.0;
+            spent = 0.0;
+          }
 
           return {
             'category': _formatCategoryName(categoryName),
-            'limit': (categoryData['limit'] as num?)?.toDouble() ?? 0.0,
-            'spent': (categoryData['spent'] as num?)?.toDouble() ?? 0.0,
+            'limit': limit,
+            'spent': spent,
             'icon': _getCategoryIcon(categoryName),
             'color': _getCategoryColor(categoryName),
           };
