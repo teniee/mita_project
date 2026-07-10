@@ -82,11 +82,13 @@ def cohort_insights(
     # For now, use statistical estimates based on income tier
     estimated_peer_spending = user_income * 0.7 if user_income > 0 else 2500
 
-    # Generate insights based on real data
+    # Generate insights based on real data.
+    # user_total_spending is Decimal; estimated_peer_spending is float —
+    # mixing them in arithmetic raised TypeError -> 500. Compare in float.
     insights_list = []
     if user_income > 0:
         diff_percent = (
-            (user_total_spending - estimated_peer_spending)
+            (float(user_total_spending) - estimated_peer_spending)
             / estimated_peer_spending
             * 100
         )
@@ -110,7 +112,7 @@ def cohort_insights(
 
     # Recommendations based on actual data
     recommendations_list = []
-    if user_income > 0 and user_total_spending > user_income * 0.9:
+    if user_income > 0 and float(user_total_spending) > user_income * 0.9:
         recommendations_list.append(
             "Consider reducing discretionary spending to build emergency fund"
         )
@@ -216,9 +218,10 @@ def income_classification(
     else:
         spending_pattern = "irregular"
 
-    # Calculate savings rate
+    # Calculate savings rate. total_spending is Decimal; monthly_income is
+    # float — keep the arithmetic in float to avoid a Decimal/float TypeError.
     if monthly_income > 0:
-        monthly_spending = total_spending / 3  # 90 days / 3 months
+        monthly_spending = float(total_spending) / 3  # 90 days / 3 months
         savings_rate = ((monthly_income - monthly_spending) / monthly_income) * 100
         if savings_rate < 0:
             savings_rate_label = "negative"
@@ -242,7 +245,7 @@ def income_classification(
         elif savings_rate >= 20:
             recommendations.append(f"Excellent savings rate of {savings_rate:.1f}%!")
 
-        if total_spending / 3 > monthly_income * 0.9:
+        if float(total_spending) / 3 > monthly_income * 0.9:
             recommendations.append(
                 "Spending exceeds 90% of income - consider budget review"
             )

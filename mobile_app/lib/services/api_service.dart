@@ -2590,16 +2590,14 @@ class ApiService {
     return Map<String, dynamic>.from(response.data['data'] ?? {});
   }
 
-  /// Get AI-powered budget optimization suggestions
+  /// Get AI-powered budget optimization suggestions.
+  /// Backend route is GET /api/ai/budget-optimization; POSTing it returned
+  /// 405 and broke the whole dashboard load.
   Future<Map<String, dynamic>> getAIBudgetOptimization(
       {Map<String, dynamic>? calendar, double? income}) async {
     final token = await getToken();
-    final response = await _dio.post(
+    final response = await _dio.get(
       '/ai/budget-optimization',
-      data: {
-        'calendar': calendar,
-        'income': income,
-      },
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     return Map<String, dynamic>.from(response.data['data'] ?? {});

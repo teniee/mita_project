@@ -199,23 +199,42 @@ class BudgetProvider extends ChangeNotifier {
   Future<void> loadAllBudgetData() async {
     _setLoading(true);
     _state = BudgetState.loading;
+    // Clear any stale error so a retry can recover; previously errorMessage
+    // was never reset, so one failed load left the dashboard permanently on
+    // the "Unable to load dashboard" screen even after the cause was fixed.
+    _errorMessage = null;
     notifyListeners();
+
+    // Run each load independently. A single non-critical widget's data
+    // failing (AI optimization, suggestions, adaptations, redistribution)
+    // must NOT blank the entire dashboard — only a genuine failure of the
+    // core budget data should surface an error.
+    Future<void> guard(String name, Future<void> Function() load,
+        {bool critical = false}) async {
+      try {
+        await load();
+      } catch (e) {
+        logWarning('Budget sub-load "$name" failed: $e', tag: 'BUDGET_PROVIDER');
+        if (critical) rethrow;
+      }
+    }
 
     try {
       await Future.wait([
-        loadDailyBudgets(),
-        loadLiveBudgetStatus(),
-        loadBudgetSuggestions(),
-        loadBudgetMode(),
-        loadRedistributionHistory(),
-        loadAIOptimization(),
-        loadBudgetAdaptations(),
+        guard('dailyBudgets', loadDailyBudgets, critical: true),
+        guard('liveStatus', loadLiveBudgetStatus),
+        guard('suggestions', loadBudgetSuggestions),
+        guard('mode', loadBudgetMode),
+        guard('redistribution', loadRedistributionHistory),
+        guard('aiOptimization', loadAIOptimization),
+        guard('adaptations', loadBudgetAdaptations),
       ]);
 
+      _errorMessage = null;
       _state = BudgetState.loaded;
       logInfo('All budget data loaded successfully', tag: 'BUDGET_PROVIDER');
     } catch (e) {
-      logError('Failed to load budget data: $e', tag: 'BUDGET_PROVIDER');
+      logError('Failed to load core budget data: $e', tag: 'BUDGET_PROVIDER');
       _errorMessage = e.toString();
       _state = BudgetState.error;
     } finally {
