@@ -63,6 +63,23 @@ def submit_onboarding(
     logger.info(f"User has_onboarded: {current_user.has_onboarded}")
     logger.info(f"Request income: {request.income.monthly_income}")
 
+    # Idempotency guard (INV-16): a completed onboarding is not re-run. Mobile
+    # retries of the same request used to append a second full set of
+    # daily_plan rows, silently corrupting per-category budgets. has_onboarded
+    # is only committed after the whole submit succeeds, so a failed first
+    # attempt can still be retried.
+    if current_user.has_onboarded:
+        logger.info(
+            f"Onboarding already completed for user {current_user.id}; "
+            "returning existing state (idempotent re-submit)"
+        )
+        return success_response(
+            {
+                "status": "already_onboarded",
+                "message": "Onboarding already completed",
+            }
+        )
+
     # Extract validated data (FastAPI has already validated via Pydantic)
     # Persist TOTAL income — the generated budget/calendar are built from
     # monthly + additional income, so storing only the base would make every

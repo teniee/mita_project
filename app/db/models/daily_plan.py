@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import Column, DateTime, ForeignKey, Numeric, String
+from sqlalchemy import Column, DateTime, ForeignKey, Numeric, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 from .base import Base
@@ -10,6 +10,14 @@ from .base import Base
 
 class DailyPlan(Base):
     __tablename__ = "daily_plan"
+    # INV-16: at most one plan row per (user, day, category). Without this,
+    # onboarding re-submits appended duplicate rows and the .first()-based
+    # spend accrual silently split spending across them.
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id", "date", "category", name="uq_daily_plan_user_date_category"
+        ),
+    )
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(
         UUID(as_uuid=True),

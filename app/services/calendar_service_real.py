@@ -41,27 +41,58 @@ def save_calendar_for_user(
             logger.warning(f"Empty calendar data for user {user_id}")
             return
 
+        # UPSERT (INV-16): one row per (user, day, category). The previous
+        # append-only insert duplicated every plan row on onboarding
+        # re-submits/retries; with the DB unique constraint it would now
+        # raise instead. Load the rows covering the saved date span once and
+        # update in place, preserving accrued spent_amount.
+        day_dates = sorted(date.fromisoformat(d) for d in calendar.keys())
+        span_start, _ = day_to_range(day_dates[0])
+        _, span_end = day_to_range(day_dates[-1])
+        existing_rows = (
+            db.query(DailyPlan)
+            .filter(
+                DailyPlan.user_id == user_id,
+                DailyPlan.date >= span_start,
+                DailyPlan.date <= span_end,
+            )
+            .all()
+        )
+        existing = {}
+        for row in existing_rows:
+            row_day = row.date.date() if hasattr(row.date, "date") else row.date
+            existing[(row_day, row.category)] = row
+
         entries_created = 0
+        entries_updated = 0
 
         # Now process as dict format
         for day_str, categories in calendar.items():
             day_date = date.fromisoformat(day_str)
             for category, amount in categories.items():
-                # CRITICAL FIX: Explicit UUID generation to ensure id is never null
-                db_plan = DailyPlan(
-                    id=uuid.uuid4(),  # Explicit UUID - defensive programming
-                    user_id=user_id,
-                    date=day_date,
-                    category=category,
-                    planned_amount=Decimal(amount),
-                    # daily_budget is the enforceable per-category limit read by
-                    # the calendar (day "limit") and spending-prevention checks;
-                    # leaving it NULL renders every day limitless (limit=0).
-                    daily_budget=Decimal(amount),
-                    spent_amount=Decimal("0.00"),
-                )
-                db.add(db_plan)
-                entries_created += 1
+                row = existing.get((day_date, category))
+                if row is not None:
+                    row.planned_amount = Decimal(amount)
+                    # daily_budget is the enforceable per-category limit read
+                    # by the calendar (day "limit") and spending-prevention
+                    # checks; keep it in lockstep with the allocation.
+                    row.daily_budget = Decimal(amount)
+                    # spent_amount is accrued from real transactions — never
+                    # reset it on plan regeneration.
+                    entries_updated += 1
+                else:
+                    db_plan = DailyPlan(
+                        id=uuid.uuid4(),  # Explicit UUID - defensive programming
+                        user_id=user_id,
+                        date=day_date,
+                        category=category,
+                        planned_amount=Decimal(amount),
+                        daily_budget=Decimal(amount),
+                        spent_amount=Decimal("0.00"),
+                    )
+                    db.add(db_plan)
+                    existing[(day_date, category)] = db_plan
+                    entries_created += 1
 
         db.commit()
 
@@ -69,7 +100,8 @@ def save_calendar_for_user(
         saved_count = db.query(DailyPlan).filter_by(user_id=user_id).count()
         logger.info(
             f"Calendar saved successfully for user {user_id}: "
-            f"{entries_created} entries created, {saved_count} total in DB"
+            f"{entries_created} created, {entries_updated} updated, "
+            f"{saved_count} total in DB"
         )
 
         if saved_count == 0:
