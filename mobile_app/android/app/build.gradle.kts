@@ -67,13 +67,18 @@ android {
 
     buildTypes {
         release {
-            // Use release signing if credentials are available, otherwise fall back to debug
+            // Release builds MUST be release-signed. The old silent fallback
+            // to the debug key produced artifacts Play rejects (or worse,
+            // debuggable-key builds that look like releases).
+            // With no credentials the signing config stays null and the
+            // guard task at the bottom of this file fails any *release*
+            // build at execution time (a configuration-time throw would
+            // break debug builds too, since Gradle configures every build
+            // type on any build).
             signingConfig = if (signingConfigs.getByName("release").storeFile != null) {
                 signingConfigs.getByName("release")
             } else {
-                println("WARNING: Release keystore not configured. Using debug signing.")
-                println("To configure release signing, create key.properties file or set environment variables.")
-                signingConfigs.getByName("debug")
+                null
             }
 
             isMinifyEnabled = true
@@ -100,4 +105,25 @@ android {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+}
+
+
+// Fail RELEASE builds loudly when release signing is absent — executed only
+// when a release task actually runs, so debug builds stay unaffected.
+val releaseSigningConfigured = android.signingConfigs.getByName("release").storeFile != null
+tasks.configureEach {
+    if (name.contains("Release") &&
+        (name.startsWith("assemble") || name.startsWith("bundle") || name.startsWith("package"))
+    ) {
+        doFirst {
+            if (!releaseSigningConfigured) {
+                throw GradleException(
+                    "Release signing is not configured: provide android/key.properties " +
+                    "(storeFile/storePassword/keyAlias/keyPassword) or the " +
+                    "KEYSTORE_FILE/KEYSTORE_PASSWORD/KEY_ALIAS/KEY_PASSWORD environment " +
+                    "variables. Refusing to build an unsigned/debug-signed release."
+                )
+            }
+        }
+    }
 }

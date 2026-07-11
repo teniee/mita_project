@@ -1,5 +1,6 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CAMERA" />
@@ -10,13 +11,28 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Android 13+ (targetSdk 33+): notifications are invisible without this
+         runtime permission — FCM budget alerts silently drop otherwise. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- COARSE only: onboarding auto-detects country/state for the regional
+         income-tier thresholds (LocationService uses LocationAccuracy.low +
+         reverse geocoding to country/state). Precise GPS is not a product
+         requirement for a finance app and is a Play-policy risk, so
+         ACCESS_FINE_LOCATION was removed deliberately. tools:node="remove"
+         also strips the copy merged in from the geolocator plugin manifest. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION"
+        tools:node="remove" />
+
+    <!-- allowBackup=false: auth tokens / financial data must not be included
+         in device-to-device or cloud backups (secure storage can fall back to
+         shared preferences on some devices). -->
     <application
         android:label="MITA"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
         android:networkSecurityConfig="@xml/network_security_config"
         android:usesCleartextTraffic="false"
         android:enableOnBackInvokedCallback="true">
