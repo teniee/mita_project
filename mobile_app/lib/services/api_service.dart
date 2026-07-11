@@ -299,6 +299,8 @@ class ApiService {
 
   /// Save tokens using secure storage with enhanced security
   Future<void> saveTokens(String access, String refresh) async {
+    // New session may belong to a different user — drop the profile cache.
+    _invalidateUserProfileCache();
     final secureStorage = await _getSecureStorage();
 
     if (secureStorage != null) {
@@ -423,6 +425,7 @@ class ApiService {
 
   /// Clear tokens using secure storage with proper cleanup
   Future<void> clearTokens() async {
+    _invalidateUserProfileCache();
     final secureStorage = await _getSecureStorage();
 
     if (secureStorage != null) {
@@ -2082,7 +2085,55 @@ class ApiService {
   // Profile
   // ---------------------------------------------------------------------------
 
-  Future<Map<String, dynamic>> getUserProfile() async {
+  // /users/me is requested independently by the dashboard, calendar,
+  // budget engines and live-updates during a single screen load. Collapse
+  // those into ONE request: concurrent callers share the in-flight future
+  // and a short TTL serves immediate repeats. In debug builds the duplicate
+  // fetches serialized into an ~18s "Get User Profile for Calendar" stall
+  // with a transient dashboard error card.
+  Map<String, dynamic>? _cachedUserProfile;
+  DateTime? _userProfileFetchedAt;
+  Future<Map<String, dynamic>>? _userProfileInFlight;
+  static const Duration _userProfileTtl = Duration(seconds: 60);
+
+  void _invalidateUserProfileCache() {
+    _cachedUserProfile = null;
+    _userProfileFetchedAt = null;
+    _userProfileInFlight = null;
+  }
+
+  Future<Map<String, dynamic>> getUserProfile({
+    bool forceRefresh = false,
+  }) async {
+    final cached = _cachedUserProfile;
+    final fetchedAt = _userProfileFetchedAt;
+    if (!forceRefresh &&
+        cached != null &&
+        fetchedAt != null &&
+        DateTime.now().difference(fetchedAt) < _userProfileTtl) {
+      return cached;
+    }
+
+    final inFlight = _userProfileInFlight;
+    if (!forceRefresh && inFlight != null) {
+      return inFlight;
+    }
+
+    final future = _fetchUserProfile();
+    _userProfileInFlight = future;
+    try {
+      final profile = await future;
+      _cachedUserProfile = profile;
+      _userProfileFetchedAt = DateTime.now();
+      return profile;
+    } finally {
+      if (identical(_userProfileInFlight, future)) {
+        _userProfileInFlight = null;
+      }
+    }
+  }
+
+  Future<Map<String, dynamic>> _fetchUserProfile() async {
     final token = await getToken();
     final response = await _dio.get(
       '/users/me',
@@ -2478,6 +2529,8 @@ class ApiService {
       data: data,
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
+    // The cached copy is stale after a successful PATCH.
+    _invalidateUserProfileCache();
   }
 
   // ---------------------------------------------------------------------------
