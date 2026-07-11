@@ -1,3 +1,4 @@
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.users.schemas import UserUpdateIn
@@ -17,8 +18,22 @@ def update_user_profile(user: User, data: UserUpdateIn, db: Session) -> User:
         raise ValueError(f"User {user.id} not found in database")
 
     # Basic fields
-    if data.email is not None:
+    if data.email is not None and data.email != db_user.email:
+        # Email-change hygiene (TASK-19): pre-check uniqueness (a clean 409
+        # instead of an IntegrityError 500) and drop the verified flag — the
+        # new address has not been proven to belong to the user.
+        existing = (
+            db.query(User)
+            .filter(User.email == data.email, User.id != db_user.id)
+            .first()
+        )
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email address is already in use",
+            )
         db_user.email = data.email
+        db_user.email_verified = False
     if data.country is not None:
         db_user.country = data.country
     if data.timezone is not None:
