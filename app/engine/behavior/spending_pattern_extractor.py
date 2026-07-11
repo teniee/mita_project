@@ -29,7 +29,7 @@ def extract_patterns(user_id: str, year: int, month: int) -> dict:
         if "shopping" in categories and data.get("shopping", 0) > 100:
             emotional_spike = True
 
-        d = date.fromisoformat(day_str)
+        d = date.fromisoformat(day_str[:10])  # tolerate datetime keys
         if d.weekday() >= 5:
             weekend_spikes += 1
 

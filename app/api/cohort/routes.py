@@ -333,7 +333,10 @@ def get_peer_comparison(
             )
 
             if peer_spending_data:
-                peer_amounts = [float(s) for s in peer_spending_data if s]
+                # .all() returns Row tuples — take the summed column
+                peer_amounts = [
+                    float(s[0]) for s in peer_spending_data if s[0] is not None
+                ]
                 if peer_amounts:
                     peer_average = sum(peer_amounts) / len(peer_amounts)
                     peer_median = sorted(peer_amounts)[len(peer_amounts) // 2]

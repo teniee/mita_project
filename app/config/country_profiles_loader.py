@@ -44,7 +44,9 @@ def _load_yaml(path: Path) -> dict:
 
 @lru_cache(maxsize=32)
 def get_profile(country_code: str) -> dict:
-    code = country_code.upper()
+    # A null/empty code falls back to the DEFAULT profile instead of
+    # AttributeError — region is nullable on users.
+    code = (country_code or "DEFAULT").upper()
     path = CONFIG_DIR / f"{code}.yaml"
     if not path.exists():
         path = CONFIG_DIR / "DEFAULT.yaml"

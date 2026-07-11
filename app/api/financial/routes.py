@@ -129,7 +129,9 @@ def get_personalized_budget_method(
     user_context = UserContext(
         monthly_income=getattr(user, "monthly_income", 5000),
         age=getattr(user, "age", 35),
-        region=getattr(user, "region", "US"),
+        # region is a nullable column — None reached get_profile() and
+        # raised AttributeError for every user without a region set
+        region=getattr(user, "region", None) or getattr(user, "country", None) or "US",
         family_size=getattr(user, "family_size", 1),
         debt_to_income_ratio=getattr(user, "debt_to_income_ratio", 0.0),
         housing_status=getattr(user, "housing_status", "rent"),
@@ -162,7 +164,9 @@ def get_personalized_thresholds(
     user_context = UserContext(
         monthly_income=getattr(user, "monthly_income", 5000),
         age=getattr(user, "age", 35),
-        region=getattr(user, "region", "US"),
+        # region is a nullable column — None reached get_profile() and
+        # raised AttributeError for every user without a region set
+        region=getattr(user, "region", None) or getattr(user, "country", None) or "US",
         family_size=getattr(user, "family_size", 1),
         debt_to_income_ratio=getattr(user, "debt_to_income_ratio", 0.0),
         housing_status=getattr(user, "housing_status", "rent"),

@@ -111,7 +111,18 @@ async def redistribute(payload: RedistributeInput):
 
     The ``strategy`` field is currently unused but reserved for future modes.
     """
-    updated_calendar = redistribute_calendar_budget(payload.calendar)
+    try:
+        updated_calendar = redistribute_calendar_budget(payload.calendar)
+    except (KeyError, TypeError, ValueError) as e:
+        # The engine requires {day: {"total": x, "limit": y}} — a malformed
+        # payload is a 422, not a 500.
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "calendar must map day -> {total, limit} numeric fields "
+                f"(missing/invalid: {e})"
+            ),
+        )
     return success_response({"updated_calendar": updated_calendar})
 
 

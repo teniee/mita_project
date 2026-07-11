@@ -68,7 +68,11 @@ class UserDataService:
         Returns None if no profile exists.
         """
         try:
-            profile = db.query(UserProfile).filter_by(user_id=user_id).first()
+            # user_profiles.user_id is a varchar column — passing a raw UUID
+            # aborted the transaction ("can't adapt type UUID"), and the
+            # swallow below then left the shared session unusable
+            # (InFailedSqlTransaction on the caller's next statement).
+            profile = db.query(UserProfile).filter_by(user_id=str(user_id)).first()
             if profile and profile.data:
                 return profile.data
             return None
@@ -76,4 +80,9 @@ class UserDataService:
             logger.error(
                 f"Failed to get user financial profile for user {user_id}: {str(e)}"
             )
+            # Roll back so the shared session is not left in an aborted state.
+            try:
+                db.rollback()
+            except Exception:
+                pass
             return None

@@ -151,7 +151,9 @@ async def get_behavioral_insights(
     insights = []
     recommendations = []
 
-    if weekend_spending > weekday_spending * 0.5:
+    # weekend/weekday sums are Decimal — a float literal here raised
+    # TypeError (Decimal * float) for any user with transactions
+    if weekend_spending > weekday_spending * Decimal("0.5"):
         insights.append("You tend to spend more on weekends")
         recommendations.append("Set a weekend spending limit")
 

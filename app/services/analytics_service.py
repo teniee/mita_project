@@ -66,4 +66,10 @@ def analyze_aggregate(calendar: List[dict]):
 
 
 def analyze_anomalies(calendar: List[dict]):
-    return detect_anomalies(calendar)
+    # The detector iterates calendar.values() — the API payload is a list
+    # of day dicts, which raised AttributeError -> 500 on every call.
+    calendar_map = {
+        str(day.get("date") or day.get("day") or i): (day or {})
+        for i, day in enumerate(calendar)
+    }
+    return detect_anomalies(calendar_map)

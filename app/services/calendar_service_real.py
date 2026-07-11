@@ -128,7 +128,15 @@ def fetch_calendar(
 
     calendar = {}
     for plan in results:
-        key = plan.date.isoformat()
+        # DailyPlan.date is a DateTime column — key by the DAY so consumers
+        # (docs contract: calendar keys are YYYY-MM-DD) can parse them;
+        # datetime.isoformat() keys broke date.fromisoformat in the pattern
+        # extractor and merged nothing.
+        key = (
+            plan.date.date().isoformat()
+            if hasattr(plan.date, "date") and callable(plan.date.date)
+            else plan.date.isoformat()
+        )
         if key not in calendar:
             calendar[key] = {}
         calendar[key][plan.category] = float(plan.planned_amount)

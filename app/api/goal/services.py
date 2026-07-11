@@ -39,7 +39,24 @@ def compute_goal_progress(goal_data: dict) -> dict:
 
 
 def compute_calendar_progress(calendar: list, target: float) -> float:
-    return calculate_goal_progress(calendar, target)
+    """Percent progress toward a savings target from calendar-day savings.
+
+    Wired to goal_tracking.calculate_goal_progress (sums day["savings"]
+    against the target). The previous alias pointed at
+    goal_mode_ui_api.get_goal_progress(state) — a 1-argument function — so
+    every call raised TypeError -> 500.
+    """
+    if not target or target <= 0:
+        return 0.0
+    from app.services.core.engine.goal_tracking import (
+        calculate_goal_progress as _calendar_goal_progress,
+    )
+
+    result = _calendar_goal_progress(
+        {"name": "goal", "target_amount": target},
+        {i: (day or {}) for i, day in enumerate(calendar)},
+    )
+    return result["percent_complete"]
 
 
 def get_user_progress(
