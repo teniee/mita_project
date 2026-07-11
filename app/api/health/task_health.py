@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi_limiter.depends import RateLimiter
+from app.core.limiter_setup import optional_rate_limit
 
 from app.core.logger import get_logger
 from app.core.task_queue import get_task_queue
@@ -94,7 +94,9 @@ async def task_system_health():
 
 
 @router.get("/tasks/detailed")
-async def detailed_task_health(_: None = Depends(RateLimiter(times=5, seconds=60))):
+async def detailed_task_health(
+    _: None = Depends(optional_rate_limit(times=5, seconds=60))
+):
     """
     Detailed task system health check with extended metrics.
     Rate limited to prevent abuse.

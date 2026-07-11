@@ -141,3 +141,45 @@ async def get_redis_connection(app: FastAPI) -> Optional[redis.Redis]:
         logger.warning(f"Redis connection failed: {e} - using in-memory fallback")
         app.state.redis_available = False
         return None
+
+
+def optional_rate_limit(times: int, seconds: int):
+    """A RateLimiter dependency that degrades OPEN when the distributed
+    limiter is unavailable.
+
+    fastapi_limiter's RateLimiter raises
+    "You must call FastAPILimiter.init in startup event of fastapi!" when
+    Redis never connected — which turned EVERY limited route
+    (/transactions/budget-status, /transactions/check-affordability,
+    receipts, /iap/validate, task submissions) into a 500 in production the
+    moment the Redis host stopped resolving. Rate limiting is protection,
+    not a feature gate: if the backend for it is down, requests must still
+    be served (the mount-level check_api_rate_limit still applies its own
+    per-user budget with its own fallback).
+    """
+    from fastapi import Request, Response
+    from fastapi_limiter.depends import RateLimiter
+
+    limiter = RateLimiter(times=times, seconds=seconds)
+
+    async def _dependency(request: Request, response: Response):
+        if FastAPILimiter.redis is None:
+            logger.debug(
+                "Distributed rate limiter offline - serving %s without it",
+                request.url.path,
+            )
+            return
+        try:
+            await limiter(request, response)
+        except Exception as exc:
+            from fastapi import HTTPException
+
+            if isinstance(exc, HTTPException):
+                raise  # a real 429 (or configured callback response)
+            logger.warning(
+                "Rate limiter backend error on %s (%s) - serving request",
+                request.url.path,
+                exc,
+            )
+
+    return _dependency

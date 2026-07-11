@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
-from fastapi_limiter.depends import RateLimiter
+from app.core.limiter_setup import optional_rate_limit
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -305,7 +305,7 @@ async def get_transactions_standardized(
 
 @router.post(
     "/receipt",
-    dependencies=[Depends(RateLimiter(times=5, seconds=60))],
+    dependencies=[Depends(optional_rate_limit(times=5, seconds=60))],
 )
 async def process_receipt(
     file: UploadFile = file_upload,
@@ -838,7 +838,7 @@ async def validate_receipt_data(
         401: {"description": "Unauthorized"},
     },
     dependencies=[
-        Depends(RateLimiter(times=120, seconds=60))
+        Depends(optional_rate_limit(times=120, seconds=60))
     ],  # Max 120 requests per minute
 )
 @handle_financial_errors
@@ -1089,7 +1089,7 @@ class AffordabilityCheckRequest(BaseModel):
         429: {"description": "Rate limit exceeded"},
     },
     dependencies=[
-        Depends(RateLimiter(times=60, seconds=60))
+        Depends(optional_rate_limit(times=60, seconds=60))
     ],  # Max 60 checks per minute
 )
 @handle_financial_errors

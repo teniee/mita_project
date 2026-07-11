@@ -1379,7 +1379,8 @@ SPECS = {
         # No store secrets in test env: the service returns status=invalid
         # without a network call — the route must stay non-5xx.
         "json": {"receipt": "contract-fake-receipt", "platform": "ios"},
-        "expect": (200, 400, 422),
+        # 429: 5/60s window persists in Redis across rapid suite re-runs
+        "expect": (200, 400, 422, 429),
     },
     ("POST", "/api/iap/webhook"): {
         "json": {},

@@ -4,7 +4,7 @@ Provides endpoints for task status tracking and management.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi_limiter.depends import RateLimiter
+from app.core.limiter_setup import optional_rate_limit
 
 from app.api.dependencies import get_current_user
 from app.api.tasks.schemas import (
@@ -175,7 +175,7 @@ async def retry_task(task_id: str, user=current_user_dep):
 async def submit_notification_task(
     request: NotificationRequest,
     user=current_user_dep,
-    _: None = Depends(RateLimiter(times=10, seconds=60)),
+    _: None = Depends(optional_rate_limit(times=10, seconds=60)),
 ):
     """
     Submit a notification task (push or email).
@@ -225,7 +225,9 @@ async def submit_notification_task(
 async def submit_data_export_task(
     request: DataExportRequest,
     user=current_user_dep,
-    _: None = Depends(RateLimiter(times=2, seconds=300)),  # 2 exports per 5 minutes
+    _: None = Depends(
+        optional_rate_limit(times=2, seconds=300)
+    ),  # 2 exports per 5 minutes
 ):
     """
     Submit a data export task for the current user.
@@ -272,7 +274,9 @@ async def submit_data_export_task(
 async def submit_ai_analysis_task(
     request: AIAnalysisRequest,
     user=current_user_dep,
-    _: None = Depends(RateLimiter(times=5, seconds=300)),  # 5 analyses per 5 minutes
+    _: None = Depends(
+        optional_rate_limit(times=5, seconds=300)
+    ),  # 5 analyses per 5 minutes
 ):
     """
     Submit an AI analysis task for the current user.
@@ -312,7 +316,7 @@ async def submit_budget_redistribution_task(
     request: BudgetRedistributionRequest,
     user=current_user_dep,
     _: None = Depends(
-        RateLimiter(times=3, seconds=300)
+        optional_rate_limit(times=3, seconds=300)
     ),  # 3 redistributions per 5 minutes
 ):
     """
@@ -351,7 +355,7 @@ async def submit_budget_redistribution_task(
 
 @router.get("/system/stats", response_model=SystemStatsResponse)
 async def get_system_stats(
-    user=current_user_dep, _: None = Depends(RateLimiter(times=10, seconds=60))
+    user=current_user_dep, _: None = Depends(optional_rate_limit(times=10, seconds=60))
 ):
     """
     Get system statistics and health information.
@@ -384,7 +388,7 @@ async def get_system_stats(
 @router.post("/admin/daily-advice", response_model=BatchTaskResponse)
 async def submit_daily_advice_batch(
     user=current_user_dep,
-    _: None = Depends(RateLimiter(times=2, seconds=3600)),  # 2 per hour
+    _: None = Depends(optional_rate_limit(times=2, seconds=3600)),  # 2 per hour
 ):
     """
     Submit daily AI advice batch task.
@@ -423,7 +427,7 @@ async def submit_daily_advice_batch(
 @router.post("/admin/monthly-redistribution", response_model=BatchTaskResponse)
 async def submit_monthly_redistribution_batch(
     user=current_user_dep,
-    _: None = Depends(RateLimiter(times=1, seconds=7200)),  # 1 per 2 hours
+    _: None = Depends(optional_rate_limit(times=1, seconds=7200)),  # 1 per 2 hours
 ):
     """
     Submit monthly budget redistribution batch task.
@@ -466,7 +470,7 @@ async def submit_cleanup_batch(
         48, ge=1, le=168, description="Maximum age of tasks to keep (1-168 hours)"
     ),
     user=current_user_dep,
-    _: None = Depends(RateLimiter(times=3, seconds=3600)),  # 3 per hour
+    _: None = Depends(optional_rate_limit(times=3, seconds=3600)),  # 3 per hour
 ):
     """
     Submit cleanup batch task to remove old completed/failed tasks.

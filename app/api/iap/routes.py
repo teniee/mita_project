@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi_limiter.depends import RateLimiter
+from app.core.limiter_setup import optional_rate_limit
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
@@ -97,7 +97,7 @@ def _check_product_allowed(product_id: Optional[str]) -> None:
 @router.post(
     "/validate",
     response_model=dict,
-    dependencies=[Depends(RateLimiter(times=5, seconds=60))],
+    dependencies=[Depends(optional_rate_limit(times=5, seconds=60))],
 )
 async def validate(
     payload: IAPReceipt,

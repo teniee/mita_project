@@ -32,8 +32,35 @@ import urllib.request
 from datetime import datetime, timezone
 
 DATE_KEY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
 # Alembic head this repo ships; the deployed DB must match (drift detector).
-EXPECTED_ALEMBIC = "0034"
+def _repo_alembic_head(default: str = "0035") -> str:
+    """Derive the expected head from alembic/versions so the smoke test
+    never goes stale when a migration lands (it previously hardcoded 0034
+    and flagged a correct deploy)."""
+    import re
+    from pathlib import Path
+
+    versions = Path(__file__).resolve().parent.parent / "alembic" / "versions"
+    try:
+        revisions = {}
+        down_revs = set()
+        for f in versions.glob("*.py"):
+            text = f.read_text(errors="ignore")
+            m = re.search(r"^revision\s*=\s*['\"]([^'\"]+)", text, re.M)
+            d = re.search(r"^down_revision\s*=\s*['\"]([^'\"]+)", text, re.M)
+            if m:
+                revisions[m.group(1)] = f.name
+            if d:
+                down_revs.add(d.group(1))
+        heads = [r for r in revisions if r not in down_revs]
+        return heads[0] if len(heads) == 1 else default
+    except Exception:
+        return default
+
+
+EXPECTED_ALEMBIC = _repo_alembic_head()
 RESULTS = []
 LAST_HEADERS = {}
 
