@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Boolean, Column, DateTime, Numeric, String, func
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Numeric, String, func
 from sqlalchemy.dialects.postgresql import UUID
 
 from .base import Base
@@ -26,6 +26,7 @@ class IgnoredAlert(Base):
     )
     user_id = Column(
         UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )

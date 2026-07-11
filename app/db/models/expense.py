@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Date, Float, Integer, String
+from sqlalchemy import Column, Date, Integer, Numeric, String
 
 from .base import Base
 
@@ -9,5 +9,5 @@ class Expense(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String, index=True, nullable=False)
     action = Column(String, nullable=False)
-    amount = Column(Float, nullable=False)
+    amount = Column(Numeric(12, 2), nullable=False)
     date = Column(Date, nullable=False)

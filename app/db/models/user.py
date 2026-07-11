@@ -14,7 +14,7 @@ class User(Base):
     email = Column(String, nullable=False, unique=True)
     password_hash = Column(String, nullable=False)
     country = Column(String(2), default="US")
-    annual_income = Column(Numeric, default=0)
+    annual_income = Column(Numeric(12, 2), default=0)
     is_premium = Column(Boolean, default=False)
     premium_until = Column(DateTime(timezone=True), nullable=True)
     last_login = Column(DateTime(timezone=True), nullable=True)
@@ -44,14 +44,14 @@ class User(Base):
     email_verification_expires = Column(DateTime(timezone=True), nullable=True)
 
     # Additional fields for budget tracking
-    monthly_income = Column(Numeric, default=0)
+    monthly_income = Column(Numeric(12, 2), default=0)
 
     # Onboarding tracking
     has_onboarded = Column(Boolean, default=False, nullable=False)
 
     # User profile fields
     name = Column(String, nullable=True)
-    savings_goal = Column(Numeric, default=0)
+    savings_goal = Column(Numeric(12, 2), default=0)
     budget_method = Column(String, default="50/30/20 Rule")
     currency = Column(String(3), default="USD")
     region = Column(String, nullable=True)
