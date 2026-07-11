@@ -237,11 +237,15 @@ async def create_goal(
 
     # Send notification about goal creation
     try:
-        notifier = get_notification_integration(db)
-        notifier.notify_goal_created(
-            user_id=user.id,
-            goal_title=goal.title,
-            target_amount=float(goal.target_amount),
+        # NotificationService is sync (self.db.query) — bridge via run_sync;
+        # with the raw AsyncSession the notification silently failed on
+        # every goal creation.
+        await db.run_sync(
+            lambda s: get_notification_integration(s).notify_goal_created(
+                user_id=user.id,
+                goal_title=goal.title,
+                target_amount=float(goal.target_amount),
+            )
         )
     except Exception as e:
         # Don't fail goal creation if notification fails
@@ -391,7 +395,8 @@ async def get_income_based_suggestions(
     db: AsyncSession = Depends(get_db),  # noqa: B008
 ):
     """Get goal suggestions based on user's income level (Legacy - use /smart_recommendations instead)"""
-    monthly_income = user.monthly_income or 3000.0
+    # advisory display numbers — coerce once (Decimal * float raised)
+    monthly_income = float(user.monthly_income or 3000.0)
 
     suggestions = []
 
@@ -476,8 +481,12 @@ async def get_smart_recommendations(
     - Historical behavior
     """
     try:
-        advisor = get_smart_goal_advisor(db)
-        recommendations = advisor.generate_personalized_recommendations(user.id)
+        # SmartGoalAdvisor is sync (self.db.query) — bridge via run_sync
+        recommendations = await db.run_sync(
+            lambda s: get_smart_goal_advisor(s).generate_personalized_recommendations(
+                user.id
+            )
+        )
 
         return success_response(
             {
@@ -507,8 +516,10 @@ async def analyze_goal_health(
     - Actionable recommendations
     """
     try:
-        advisor = get_smart_goal_advisor(db)
-        health_analysis = advisor.analyze_goal_health(goal_id, user.id)
+        # SmartGoalAdvisor is sync (self.db.query) — bridge via run_sync
+        health_analysis = await db.run_sync(
+            lambda s: get_smart_goal_advisor(s).analyze_goal_health(goal_id, user.id)
+        )
 
         if "error" in health_analysis:
             raise HTTPException(status_code=404, detail=health_analysis["error"])
@@ -535,8 +546,10 @@ async def suggest_goal_adjustments(
     - Available funds
     """
     try:
-        advisor = get_smart_goal_advisor(db)
-        suggestions = advisor.suggest_goal_adjustments(user.id)
+        # SmartGoalAdvisor is sync (self.db.query) — bridge via run_sync
+        suggestions = await db.run_sync(
+            lambda s: get_smart_goal_advisor(s).suggest_goal_adjustments(user.id)
+        )
 
         return success_response(
             {
@@ -564,8 +577,10 @@ async def detect_goal_opportunities(
     - Surplus funds that could be saved
     """
     try:
-        advisor = get_smart_goal_advisor(db)
-        opportunities = advisor.detect_goal_opportunities(user.id)
+        # SmartGoalAdvisor is sync (self.db.query) — bridge via run_sync
+        opportunities = await db.run_sync(
+            lambda s: get_smart_goal_advisor(s).detect_goal_opportunities(user.id)
+        )
 
         return success_response(
             {
@@ -788,7 +803,6 @@ async def add_savings_to_goal(
 
     # Send notifications based on progress
     try:
-        notifier = get_notification_integration(db)
         new_progress = float(goal.progress)
 
         # Check if goal was just completed
@@ -798,20 +812,25 @@ async def add_savings_to_goal(
             if goal.created_at and goal.completed_at:
                 days_taken = (goal.completed_at - goal.created_at).days
 
-            notifier.notify_goal_completed(
-                user_id=user.id,
-                goal_title=goal.title,
-                final_amount=float(goal.saved_amount),
-                days_taken=days_taken,
+            # NotificationService is sync — bridge via run_sync
+            await db.run_sync(
+                lambda s: get_notification_integration(s).notify_goal_completed(
+                    user_id=user.id,
+                    goal_title=goal.title,
+                    final_amount=float(goal.saved_amount),
+                    days_taken=days_taken,
+                )
             )
         else:
-            # Send progress milestone notification
-            notifier.notify_goal_progress(
-                user_id=user.id,
-                goal_title=goal.title,
-                progress=new_progress,
-                saved_amount=float(goal.saved_amount),
-                target_amount=float(goal.target_amount),
+            # Send progress milestone notification (sync service — run_sync)
+            await db.run_sync(
+                lambda s: get_notification_integration(s).notify_goal_progress(
+                    user_id=user.id,
+                    goal_title=goal.title,
+                    progress=new_progress,
+                    saved_amount=float(goal.saved_amount),
+                    target_amount=float(goal.target_amount),
+                )
             )
     except Exception as e:
         # Don't fail savings addition if notification fails
@@ -854,16 +873,18 @@ async def mark_goal_completed(
 
     # Send completion notification
     try:
-        notifier = get_notification_integration(db)
         days_taken = None
         if goal.created_at and goal.completed_at:
             days_taken = (goal.completed_at - goal.created_at).days
 
-        notifier.notify_goal_completed(
-            user_id=user.id,
-            goal_title=goal.title,
-            final_amount=float(goal.saved_amount),
-            days_taken=days_taken,
+        # NotificationService is sync — bridge via run_sync
+        await db.run_sync(
+            lambda s: get_notification_integration(s).notify_goal_completed(
+                user_id=user.id,
+                goal_title=goal.title,
+                final_amount=float(goal.saved_amount),
+                days_taken=days_taken,
+            )
         )
     except Exception as e:
         # Don't fail completion if notification fails
@@ -957,9 +978,11 @@ async def auto_transfer_to_goal(
     try:
         from decimal import Decimal
 
-        integration = get_goal_budget_integration(db)
-        result = integration.auto_transfer_to_savings_goal(
-            user.id, goal_id, Decimal(str(data.amount))
+        # GoalBudgetIntegration is sync (self.db.query) — bridge via run_sync
+        result = await db.run_sync(
+            lambda s: get_goal_budget_integration(s).auto_transfer_to_savings_goal(
+                user.id, goal_id, Decimal(str(data.amount))
+            )
         )
 
         if "error" in result:

@@ -169,7 +169,9 @@ class NotificationService:
                         "title": notification.title,
                         "message": notification.message,
                         "action_url": notification.action_url or "",
-                        "user_name": user.full_name or user.email,
+                        # User has a `name` column (no full_name attribute —
+                        # the old access broke the email fallback entirely)
+                        "user_name": getattr(user, "name", None) or user.email,
                     }
 
                     # Send email

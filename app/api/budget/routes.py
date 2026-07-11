@@ -194,7 +194,8 @@ async def get_budget_suggestions(
     category_totals = defaultdict(float)
     for day in calendar.values():
         for cat, amt in day["actual_spending"].items():
-            category_totals[cat] += amt
+            # calendar amounts arrive as Decimal — float += Decimal raises
+            category_totals[cat] += float(amt)
 
     priority_areas = sorted(category_totals.items(), key=lambda x: x[1], reverse=True)[
         :3
@@ -494,13 +495,21 @@ async def get_behavioral_budget_allocation(
     db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get budget allocation based on behavioral analysis"""
-    total_amount = data.get("total_amount", user.monthly_income or 0)
+    # advisory display numbers — coerce once (Decimal * float raised in the
+    # fallback); accept the documented key plus the older total_budget alias
+    total_amount = float(
+        data.get("total_amount") or data.get("total_budget") or user.monthly_income or 0
+    )
     data.get("profile", {})
 
     # Use behavioral allocator service
     try:
-        allocation = allocate_behavioral_budget(
-            user_id=user.id, total_budget=total_amount, db=db
+        # allocate_behavioral_budget is sync (db.query) — bridge via run_sync;
+        # the raw AsyncSession sent every request into the fallback branch.
+        allocation = await db.run_sync(
+            lambda s: allocate_behavioral_budget(
+                user_id=user.id, total_budget=total_amount, db=s
+            )
         )
         return success_response(allocation)
     except Exception:

@@ -165,8 +165,21 @@ def unregister_device_delete(
 def _update_device_token(device_data: dict, db: Session, user):
     """Shared logic to update a push token."""
     old_token = device_data.get("old_push_token") or device_data.get("old_token")
-    new_token = device_data.get("new_push_token") or device_data.get("new_token")
+    new_token = (
+        device_data.get("new_push_token")
+        or device_data.get("new_token")
+        or device_data.get("token")
+        or device_data.get("push_token")
+    )
     platform = device_data.get("platform")
+
+    if not new_token:
+        # Creating a PushToken with token=None crashed with a DB error —
+        # a request without a usable token is a client error, not a 500.
+        raise HTTPException(
+            status_code=422,
+            detail="new_push_token (or token) is required",
+        )
 
     if old_token and new_token:
         existing = (
