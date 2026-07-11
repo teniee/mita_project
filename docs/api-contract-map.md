@@ -1,5 +1,27 @@
 # MITA Finance — API ↔ Flutter Contract Map
 
+> ## Status update — session 2 (Fable 5, 2026-07-11)
+> P-CONTRACT-4 ("broken backend endpoints escaped smoke because no mobile
+> caller") is **closed**: `app/tests/test_full_route_contract.py` now
+> enumerates and exercises **every mounted route** and fails when a new route
+> lands without a spec. Corrections to the table below, found by driving the
+> real routes:
+> - The note that `/goals/budget/*` and the `/goals/{id}/health`,
+>   `/goals/smart_recommendations`, `/goals/adjustments/suggestions`,
+>   `/goals/opportunities/detect` endpoints were "async-correct" was **wrong**
+>   — they used `AsyncSession.query` and 500'd; now run_sync-bridged
+>   (`2f161a4`).
+> - Three **client-side** contract mismatches found in the live Railway http
+>   logs during the on-device run and fixed (`d0698d1`): Flutter POSTed
+>   `/goals/income_based_suggestions` and `/insights/income_based_tips`
+>   (backend routes are GET → 405) and sent `/ai/snapshot` year/month in the
+>   body (backend reads query params → 422).
+> - `/challenge/*`, `/checkpoint/today`, `/cluster/fit|centroids`,
+>   `/referral/eligibility|claim`, `/behavior/calendar` were permanent 500s;
+>   challenge is now wired, the rest return an explicit 501 (deferred).
+>
+> ---
+>
 > Auditor: Claude (Opus 4.8), 2026-07-09, base `d54667a`. Read-only.
 > Backend routes extracted from `app/api/**/routes.py` (`@router.<method>` + `APIRouter(prefix=…)`, all mounted under `/api`, see `app/main.py`). Flutter callers extracted from `mobile_app/lib/services/*.dart` path literals (`_dio.<method>('…')`).
 > **Wrapper:** backend success bodies are `{"success": true, "data": {…}}` (`app/utils/response_wrapper.py`); Flutter must read `data`.

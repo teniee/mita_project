@@ -1,5 +1,21 @@
 # MITA Finance — Financial Invariants (Fable 5 must preserve)
 
+> ## Status update — session 2 (Fable 5, 2026-07-11)
+> - **V6 (money type)** — model side FIXED on branch
+>   `migrations/task-7-8-9-preflight`: `Expense.amount` `Float`→`Numeric(12,2)`,
+>   `users.monthly_income/savings_goal/annual_income` bare `Numeric`→
+>   `Numeric(12,2)`. The DB side (migration 0037) is preflighted and
+>   **owner-window-gated** (Railway auto-applies migrations, so it is kept off
+>   `main`). Verified on real PG15: `expenses.amount 12.345 → 12.35`.
+> - INV-11 (`Numeric(12,2)` for expenses) and the users income columns are
+>   enforced at the DB level by migration 0037 once the owner applies it.
+> - No financial invariant below was regressed by the session-2 fixes; the
+>   Decimal/float 500 fixes (analytics/budget/cohort/financial) only corrected
+>   type-mixing that *crashed* those endpoints — the money math they wrap is
+>   unchanged. The full-route contract suite asserts dashboard balance/spent
+>   and goals-budget allocation to exact numbers on every run.
+
+
 > Auditor: Claude (Opus 4.8), 2026-07-09, base `d54667a`. Values marked **[repro]** were produced by running the actual module locally (`python3`, pydantic 2.9.2). Values marked **[src]** are derived from source. Values marked **[BLOCKED]** could not be exercised because DEF-001/002 500 the endpoint.
 > Money convention in the app: **transactions are stored POSITIVE** (`amount >= 0.01`); `balance = income − Σ(positive spend)`. Any code assuming negative expenses is a bug (see V4).
 

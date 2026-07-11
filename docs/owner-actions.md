@@ -87,6 +87,44 @@ Legend: 🔴 blocks core MVP · 🟠 blocks closed beta · 🟢 deferrable
 | APNs auth key (.p8) for push | Apple Developer → Keys → upload to Firebase | **Yes** | push delivered on device | 🟢 |
 | Apple bundle ID | Apple Developer → Identifiers; match `ios/Runner` | No | provisioning profile builds | 🟢 |
 
+## 4b. NEW — session 2 (Fable 5, 2026-07-11)
+
+### 4b.1 Rotate `REDIS_URL` — it points at a DEAD Upstash host 🟠 (reliability)
+- **Why:** production Railway logs show
+  `Redis connection failed: Error -2 connecting to daring-moray-87435.upstash.io:6379. Name or service not known`.
+  The distributed rate limiter (`FastAPILimiter`) therefore never
+  initializes. Code fix `1edda4b` makes every rate-limited route **degrade
+  open** so this no longer 500s (it did: `/transactions/budget-status`,
+  `/transactions/check-affordability`, `/iap/validate`, task submits) — but
+  distributed rate limiting is OFF until the URL is fixed.
+- **Where:** Railway → `mita-production` → Variables → `REDIS_URL` (and/or
+  `UPSTASH_REDIS_URL`). Point it at a live Upstash/Redis instance.
+- **Verify:** `/health` shows redis healthy; a burst on `/api/iap/validate`
+  (5/60s) returns a `429` once the limiter is live
+  (`app/tests/test_rate_limiter_degradation.py` locks in both behaviours).
+
+### 4b.2 Apply TASK-7/8/9 data migrations in a maintenance window 🟠 (data)
+- **Why:** FK+CASCADE on 5 orphan-prone tables (TASK-7), `Numeric(12,2)` for
+  income/expense money columns (TASK-8), subscription store-identity
+  uniqueness (TASK-9). These are **data migrations** and Railway auto-runs
+  `alembic upgrade head` on deploy, so they are held on the branch
+  `migrations/task-7-8-9-preflight` (NOT merged to `main`).
+- **Where / how:** follow `scripts/migrations/README.md`. Run
+  `scripts/migrations/task_7_8_9_preflight.sql` (read-only) first to see the
+  exact orphan/rounding/duplicate counts; reconcile any subscription
+  duplicates by hand (0038 refuses to delete money rows and, because
+  `upgrade head` is one transaction, a duplicate blocks the whole chain);
+  then merge the branch / run `alembic upgrade head` in the window.
+- **Verify:** `alembic current == 0038`; re-run `remote_smoke_test.py`
+  (its expected head is now derived from `alembic/versions`, so it will
+  expect 0038 automatically).
+- **Secret?** No. **Blocks core MVP?** No — these harden data integrity.
+
+### 4b.3 DEF-005 still blocks password reset delivery 🟠 (email)
+- The reset **machinery** is now correct (`06da6b9` fixed a dead token hash +
+  a 500 in verify/reset), but `SMTP_PASSWORD` is still unset (§2.4), so reset
+  emails cannot send. Set it to exercise the now-working flow end to end.
+
 ## 5. DEFERRED — optional integrations (not needed for the core MVP journey)
 
 | Integration | Evidence | Owner action if/when needed |

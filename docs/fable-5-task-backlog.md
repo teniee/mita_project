@@ -1,6 +1,27 @@
 # MITA Finance — Fable 5 Implementation Backlog (second-pass audit)
 
-> ## Implementation status (Fable 5, 2026-07-10)
+> ## Implementation status — session 2 (Fable 5, 2026-07-11)
+> Deployed to production: `main` @ `1edda4b` (backend); mobile fixes on
+> `d0698d1`. Full-route contract suite + all fixes below are green; prod
+> smoke 30/30, prod E2E 30/30.
+>
+> | Item | Status | Commit | Evidence |
+> |---|---|---|---|
+> | TASK-6 (full-route contract suite) | ✅ DONE | `b8bd642` | all 290 mounted routes exercised through real async DI on PostgreSQL; completeness gate; content asserts on dashboard/txn/analytics/goals-budget/challenge/cohort/budget; real-token auth journey. This suite exposed every defect below. |
+> | TASK-15 (challenge endpoints) | ✅ FIXED | `51fc79f` | /eligibility·/check·/streak were 500 on every call (wrong fns/args) — rewired to the real engines, session-bound identity; leaderboard un-shadowed; 10 integration regressions |
+> | NEW: route shadowing | ✅ FIXED | `51fc79f` | `/transactions/budget-status`, `/installments/achievements`, `/challenge/leaderboard` were captured by their `/{id}` siblings (422/unreachable) — literal routes moved first |
+> | NEW: unimplementable routes → 501 | ✅ FIXED | `51fc79f` | checkpoint, cluster/fit·centroids, referral eligibility·claim, behavior/calendar never had a matching impl (permanent 500) — explicit 501 deprecation per TASK-15 policy |
+> | NEW: goals/budget async bridges | ✅ FIXED | `2f161a4` | 5 more `AsyncSession.query` 500s (smart_recommendations, goal health, adjustments, opportunities, auto_transfer, behavioral_allocation) — the contract map's "async-correct" note was wrong |
+> | NEW: silent notification failures | ✅ FIXED | `2f161a4` | goal create/progress/complete passed AsyncSession into the sync NotificationService (every goal notification silently failed); `User.full_name` didn't exist |
+> | NEW: Decimal/float + null-region 500s | ✅ FIXED | `0f45a6b` | analytics behavioral-insights, budget/suggestions, goals/income_based, cohort/peer_comparison, financial/dynamic-budget-method (nullable region → get_profile(None)); fetch_calendar keyed by datetime broke ai/snapshot |
+> | NEW: password reset was dead | ✅ FIXED | `06da6b9` | token hash mixed the generation timestamp (nothing could ever verify) + verify/reset imported a nonexistent fn (500). No user could reset a password. 6 regressions |
+> | TASK-17 (financial-path portion) | ✅ DONE | `00c6b35`,`1edda4b` | OCR unavailability → 503 / bad image → 400 (not 500+leak); cache-manager frozen-None 500s; audit health/flush; revoke-jti self-500; SQL-keyword blocklist rejected plain descriptions; **rate-limiter degrade-open (live prod incident: dead Upstash host 500'd budget-status/check-affordability/iap/tasks)** |
+> | TASK-19 (email hygiene) | ✅ FIXED | `acf97f1` | email change resets email_verified + 409 on duplicate (was IntegrityError 500); 3 regressions |
+> | TASK-16 (Android hardening) | ✅ DONE | `6a07f8e` | POST_NOTIFICATIONS, allowBackup=false, release signing fails without creds (debug still builds), FINE→COARSE location — verified on device (permission dialog shows "approximate", release build aborts) |
+> | PHASE-3 (mobile dashboard/timing) | ✅ FIXED | `b734652`,`d0698d1` | /users/me single-flight + TTL cache (the ~18s stall); dashboard error card no longer sticks after a successful load (found on device — worse than the "transient" P2); 3 wrong-verb client calls (405/422). C1-C7 + create→recalc verified on device |
+> | TASK-7/8/9 (db migrations) | ⏳ PREFLIGHTED, owner-window | branch `migrations/task-7-8-9-preflight` `f00514b` | 0036 FK+CASCADE, 0037 Numeric(12,2), 0038 subscription unique. **Kept off main** (Railway auto-applies). Verified on real PG15: empty-DB upgrade, downgrade, orphan-delete+CASCADE, rounding, subscription-dup blocker. Preflight SQL + runbook in `scripts/migrations/`. Owner runs in a window (owner-actions §7). |
+>
+> ## Implementation status — session 1 (Fable 5, 2026-07-10)
 > Historical audit content below is unchanged; this block records what shipped.
 >
 > | Item | Status | Commit | Evidence |
@@ -23,7 +44,7 @@
 > | DEF-007 (Flutter env default) | ✅ FIXED | `1510071` | ENV defaults to production; pinning auto-disabled until fingerprints configured |
 > | TASK-4 (async test harness) | ✅ DONE | `e36b7ef`+ | TestClient with real get_async_db against local PostgreSQL 15; pattern used by all new integration suites |
 > | Empty-DB migration on real PostgreSQL | ✅ VERIFIED | — | alembic upgrade head from empty PG15 → head 0035, 33 tables; downgrade/upgrade cycle idempotent |
-> | TASK-6/7/8/9/11-остальное, 15–19 | ⏳ OPEN | — | P2/P3; not core-journey blocking |
+> | TASK-6/7/8/9/11-остальное, 15–19 | ✅ done session 2 | — | see the session-2 block at the top; TASK-11 was already `521ce39` (N-P2-SECMON); TASK-18 (P3 schema cleanup) remains the only untouched P3 |
 
 > Auditor: Claude (Opus 4.8), 2026-07-09, base of truth **`teniee/mita_project@main` `d54667a`** (clone fresh; do not edit a stale copy — DEF-004).
 > Ordering (per mandate): **1** confirmed P0 security/data-loss → **2** confirmed P1 core-journey → **3** regression tests with each fix → **4** mobile/backend contract → **5** data-integrity/concurrency → **6** P2 cleanup.

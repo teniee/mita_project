@@ -4,7 +4,39 @@
 > Deployed commit audited: **`d682f3f969a6`** (Railway `mita-production`, matches GitHub `teniee/mita_project@main`)
 > Every defect below is backed by **first-hand evidence** (production HTTP response, server traceback from Railway logs, and/or local reproduction). Secrets are redacted everywhere.
 
-> ## Fix status (Fable 5, 2026-07-10)
+> ## Fix status — session 2 (Fable 5, 2026-07-11)
+> The TASK-6 full-route contract suite (`app/tests/test_full_route_contract.py`)
+> exercised **all 290 mounted routes** and surfaced a large batch of
+> production 500s invisible to the mobile-driven smoke (the FC-4 blind spot).
+> Fixed + deployed on `main` (`51fc79f`→`1edda4b`) and spot-verified against
+> production:
+> - **Challenge endpoints** (`/challenge/eligibility|check|streak`) 500'd on
+>   every call → rewired (`51fc79f`, TASK-15).
+> - **Route shadowing**: `/transactions/budget-status`,
+>   `/installments/achievements`, `/challenge/leaderboard` were captured by
+>   their `/{id}` siblings → literal routes moved first (`51fc79f`).
+> - **More AsyncSession/sync 500s** in goals/budget (5 sites) → run_sync
+>   bridged (`2f161a4`); silent goal-notification failures fixed.
+> - **Decimal×float / null-region 500s** across analytics/cohort/financial/
+>   budget/goals (`0f45a6b`); fetch_calendar datetime keys broke ai/snapshot.
+> - **Password reset was cryptographically dead** (hash mixed the generation
+>   timestamp) AND verify/reset imported a nonexistent function → 500. No
+>   user could reset a password. Fixed (`06da6b9`) — masked in prod by
+>   DEF-005 (reset emails can't send).
+> - **Error-status hygiene** (`00c6b35`): OCR unavailability→503, bad
+>   image→400 (no leak); frozen-None cache manager; audit health/flush;
+>   revoke-jti self-500; over-eager SQL-keyword blocklist.
+> - **NEW live prod incident** (`1edda4b`): dead Upstash host in REDIS_URL →
+>   `FastAPILimiter.init` never ran → every raw `RateLimiter` dependency
+>   500'd. All rate-limited routes now degrade open. **Owner must rotate
+>   REDIS_URL.**
+> - **TASK-19** (`acf97f1`): PATCH /users/me email change resets
+>   email_verified + 409 on duplicate (was IntegrityError 500).
+> - **Mobile** (`b734652`,`d0698d1`): /users/me single-flight+TTL (the ~18s
+>   stall); dashboard error card no longer sticks after success; 3 wrong-verb
+>   client calls (405/422).
+>
+> ## Fix status — session 1 (Fable 5, 2026-07-10)
 > - **DEF-001 ✅ FIXED** (`e36b7ef`): run_sync bridge on list/get/update/delete (+ affordability/budget-status, also broken and mobile-called). Production-verified: full CRUD journey with exact recalculation (`scripts/production_e2e_test.py`). Additional latent 500s fixed on the same path: `ResourceNotFoundError(details=)` kwarg collision (404s became 500s), missing `ErrorCode` members, nonexistent `FinancialResponseHelper.transaction_updated`, additive plan re-apply on edit (42→100 accrued 142) and non-reversed accrual on delete.
 > - **DEF-002 ✅ FIXED** (`e36b7ef`): the re-registered validators broke EVERY TxnUpdate field (not just amount); replaced with None-guarded delegating validators; invalid amounts (incl. NaN/Infinity/>1M) now 422, never 500.
 > - **DEF-003 ⚠️ PARTIAL** (`95193a3`): `.mcp.json` untracked/git-ignored, `.mcp.json.example` committed. Rotation + history purge remain **owner actions**; exposure in git history is still live.

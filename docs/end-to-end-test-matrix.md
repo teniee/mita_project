@@ -1,6 +1,45 @@
 # MITA Finance — End-to-End Test Matrix
 
-> ## Re-run status (Fable 5, 2026-07-10)
+> ## Re-run status — session 2 (Fable 5, 2026-07-11)
+> Backend deployed `main` @ `1edda4b`; `/health.commit == 1edda4b`, alembic
+> `0035`. `scripts/remote_smoke_test.py` **30/30**;
+> `scripts/production_e2e_test.py` **30/30**.
+>
+> - **TASK-6 full-route contract suite** (`app/tests/test_full_route_contract.py`,
+>   292 cases) now drives **all 290 mounted routes** through the real async
+>   DI on PostgreSQL. It surfaced ~30 additional production 500s that no
+>   mobile-driven smoke could see (FC-4) — all fixed this session and
+>   spot-verified against production with a throwaway `audit_*` account.
+> - **The C-bis P2 ("Get User Profile for Calendar ~18s" + transient
+>   dashboard error) is RESOLVED** (`b734652`, `d0698d1`): /users/me is now
+>   single-flighted with a TTL cache, and the dashboard error card no longer
+>   sticks after a successful load. On-device this was actually a
+>   **persistent** error card (Try Again couldn't recover) — worse than
+>   "transient"; the real cause was UserProvider never clearing errorMessage
+>   on success. Fixed and re-verified on device (dashboard loads $6000/$0
+>   clean where the pre-fix build showed the stuck card).
+> - **On-device C1-C12** (Android emulator API 36, production backend):
+>   C1 register, C2 login-routing, C3 onboarding (7 steps), C4 dashboard real
+>   numbers, C5 calendar, C6 create→recalc ($42 spent / $5958 remaining /
+>   "lunch" in recent) all verified by hand; C7 list verified; C8-C12
+>   (edit/delete/restart/logout/re-login) covered by the passing
+>   `mobile_backend_journey_test.dart` (real ApiService end-to-end against
+>   production) + the 30/30 production E2E. Release-optimized (profile AOT)
+>   build compiles, launches and registers clean.
+> - **TASK-16 verified on device**: the runtime permission dialog now reads
+>   "approximate location" (FINE removed); `flutter build apk --release`
+>   aborts without a keystore while `--debug`/`--profile` build.
+> - New backend regression suites: `test_full_route_contract.py`,
+>   `test_challenge_endpoints.py`, `test_password_reset_flow.py`,
+>   `test_users_me_email_hygiene.py`, `test_rate_limiter_degradation.py`.
+>   New mobile regression: `api_service_profile_dedupe_test.dart`.
+> - **Live prod incident found + fixed post-deploy** (`1edda4b`): the
+>   Upstash Redis host in REDIS_URL stopped resolving, so every route with a
+>   raw `Depends(RateLimiter(...))` 500'd (budget-status, check-affordability,
+>   iap/validate, task submits). All now degrade open. **Owner: REDIS_URL
+>   still points at a dead host — rotate it (owner-actions).**
+>
+> ## Re-run status — session 1 (Fable 5, 2026-07-10)
 > `scripts/production_e2e_test.py` now automates the full journey (register →
 > onboard → dashboard/calendar baseline → create 42 → list/get → exact recalc
 > 5958/42 → edit 100 → 5900/100 → category move → delete → 6000/0 + 404 →
