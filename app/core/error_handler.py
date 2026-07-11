@@ -3,6 +3,7 @@ Comprehensive error handling system for MITA backend
 Provides consistent error responses, logging, and user-friendly messages
 """
 
+import functools
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
@@ -279,6 +280,10 @@ class ErrorHandler:
 def handle_database_errors(func):
     """Decorator to handle common database errors"""
 
+    # functools.wraps is load-bearing on FastAPI endpoints: without it the
+    # route's visible signature becomes (*args, **kwargs) and FastAPI demands
+    # literal `args`/`kwargs` query parameters -> every call 422s.
+    @functools.wraps(func)
     def wrapper(*args, **kwargs):
         try:
             return func(*args, **kwargs)

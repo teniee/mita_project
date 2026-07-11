@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -17,7 +17,9 @@ class ChallengeResult(BaseModel):
 
 class StreakChallengeRequest(BaseModel):
     calendar: List[dict]
-    user_id: str
+    # Identity is session-bound; if a client still sends user_id it must
+    # match the authenticated user (403 otherwise).
+    user_id: Optional[str] = None
     log_data: Dict
 
 

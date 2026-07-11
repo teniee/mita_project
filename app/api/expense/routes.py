@@ -22,8 +22,14 @@ def add_expense(
 ):
     """Add a new expense with comprehensive validation"""
 
-    # Validate and sanitize input data
-    expense_data = InputValidator.validate_expense_data(entry.model_dump())
+    # Validate and sanitize input data. ExpenseEntry carries "action" while
+    # the validator requires "category" — without the mapping every call
+    # 400'd ("Category is required") and the validated dict dropped the
+    # action entirely.
+    raw = entry.model_dump()
+    raw.setdefault("category", raw.get("action") or "other")
+    expense_data = InputValidator.validate_expense_data(raw)
+    expense_data["action"] = raw.get("action") or expense_data.get("category")
     expense_data["user_id"] = user.id
 
     # Business logic validation

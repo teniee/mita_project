@@ -5,52 +5,91 @@ Connects challenge services to mobile app
 
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+# The calendar-based evaluators (pure, no DB) — these match the mounted
+# request schemas. The previous wiring imported the DB-backed
+# challenge_service functions with the wrong arguments, so every call 500'd
+# (TASK-15 / N-P2-CHALLENGE).
+from app.api.challenge.services import evaluate_challenge, run_streak_challenge
 from app.api.challenge.schemas import (
     ChallengeFullCheckRequest,
-    ChallengeResult,
     StreakChallengeRequest,
-    StreakChallengeResult,
 )
 from app.api.dependencies import get_current_user
 from app.core.async_session import get_async_db
 from app.db.models.user import User
-from app.schemas.challenge import (
-    ChallengeEligibilityRequest,
-    ChallengeEligibilityResponse,
-)
+from app.schemas.challenge import ChallengeEligibilityRequest
 from app.services.challenge_service import check_eligibility
-from app.services.challenge_service import check_eligibility as evaluate_challenge
-from app.services.challenge_service import run_streak_challenge
 from app.utils.response_wrapper import success_response
 
 router = APIRouter(prefix="/challenge", tags=["challenge"])
 
 
-@router.post("/eligibility", response_model=ChallengeEligibilityResponse)
-async def check_challenge_eligibility(request: ChallengeEligibilityRequest):
-    """Check if user is eligible for challenges"""
-    result = check_eligibility(request.user_id, request.current_month)
+def _enforce_own_user_id(payload_user_id, current_user) -> str:
+    """Identity comes from the session, never from the request body.
+
+    Mirrors app/api/goal/routes.py: a body-supplied user_id must match the
+    authenticated user (403 otherwise) so no B-scoped evaluation can be
+    requested by A.
+    """
+    if payload_user_id and str(payload_user_id) != str(current_user.id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="user_id does not match the authenticated user",
+        )
+    return str(current_user.id)
+
+
+@router.post("/eligibility")
+async def check_challenge_eligibility(
+    request: ChallengeEligibilityRequest,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_db),
+):
+    """Which challenges can the authenticated user join this month?
+
+    Returns ChallengeEligibilityResponse-shaped data:
+    {user_id, current_month, eligible, reason, available_challenges}.
+    """
+    user_id = _enforce_own_user_id(request.user_id, user)
+    # check_eligibility is sync SQLAlchemy — bridge through the async session.
+    result = await db.run_sync(
+        lambda sync_session: check_eligibility(
+            user_id, request.current_month, sync_session
+        )
+    )
     return success_response(result)
 
 
-@router.post("/check", response_model=ChallengeResult)
+@router.post("/check")
 async def check_challenge(payload: ChallengeFullCheckRequest):
-    """Check challenge completion status"""
+    """Evaluate the 30-day no-overspend challenge on a submitted calendar.
+
+    Pure calendar computation; returns
+    {eligible, streak_days, claimable[, reward, activation]}.
+    """
     result = evaluate_challenge(
         payload.calendar, payload.today_date, payload.challenge_log
     )
     return success_response(result)
 
 
-@router.post("/streak", response_model=StreakChallengeResult)
-async def streak_challenge(payload: StreakChallengeRequest):
-    """Run streak challenge evaluation"""
-    result = run_streak_challenge(payload.calendar, payload.user_id, payload.log_data)
+@router.post("/streak")
+async def streak_challenge(
+    payload: StreakChallengeRequest,
+    user: User = Depends(get_current_user),
+):
+    """Run the automatic streak evaluation on a submitted calendar.
+
+    Pure calendar computation; returns
+    {user_id, date, streak_eligible, claimable, reward, streak_days}.
+    """
+    user_id = _enforce_own_user_id(payload.user_id, user)
+    result = run_streak_challenge(payload.calendar, user_id, payload.log_data)
     return success_response(result)
 
 
@@ -503,37 +542,9 @@ async def get_active_challenges(
     return success_response(active_challenges)
 
 
-@router.get("/{challenge_id}")
-async def get_challenge_details(
-    challenge_id: str,
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_async_db),
-):
-    """Get detailed information about a specific challenge"""
-    from app.db.models import Challenge
-
-    result = await db.execute(select(Challenge).filter(Challenge.id == challenge_id))
-    challenge_obj = result.scalar_one_or_none()
-
-    if not challenge_obj:
-        return success_response({"error": "Challenge not found"})
-
-    challenge = {
-        "id": challenge_obj.id,
-        "name": challenge_obj.name,
-        "description": challenge_obj.description,
-        "type": challenge_obj.type,
-        "duration_days": challenge_obj.duration_days,
-        "reward_points": challenge_obj.reward_points,
-        "difficulty": challenge_obj.difficulty,
-        "start_month": challenge_obj.start_month,
-        "end_month": challenge_obj.end_month,
-        "rules": [],
-        "tips": [],
-    }
-    return success_response(challenge)
-
-
+# NOTE: /leaderboard must be declared BEFORE /{challenge_id} — FastAPI
+# matches in declaration order, and the literal segment would otherwise
+# be captured as a challenge_id (the leaderboard was unreachable).
 @router.get("/leaderboard")
 async def get_challenge_leaderboard(
     user: User = Depends(get_current_user),
@@ -577,3 +588,36 @@ async def get_challenge_leaderboard(
         "period": "all_time",
     }
     return success_response(leaderboard)
+
+
+@router.get("/{challenge_id}")
+async def get_challenge_details(
+    challenge_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_db),
+):
+    """Get detailed information about a specific challenge"""
+    from app.db.models import Challenge
+
+    result = await db.execute(select(Challenge).filter(Challenge.id == challenge_id))
+    challenge_obj = result.scalar_one_or_none()
+
+    if not challenge_obj:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Challenge not found"
+        )
+
+    challenge = {
+        "id": challenge_obj.id,
+        "name": challenge_obj.name,
+        "description": challenge_obj.description,
+        "type": challenge_obj.type,
+        "duration_days": challenge_obj.duration_days,
+        "reward_points": challenge_obj.reward_points,
+        "difficulty": challenge_obj.difficulty,
+        "start_month": challenge_obj.start_month,
+        "end_month": challenge_obj.end_month,
+        "rules": [],
+        "tips": [],
+    }
+    return success_response(challenge)

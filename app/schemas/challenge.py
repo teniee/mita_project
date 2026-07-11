@@ -11,7 +11,9 @@ class ChallengeEligibilityRequest(BaseModel):
     to join challenges in the given month.
     """
 
-    user_id: str
+    # Identity is session-bound; if a client still sends user_id it must
+    # match the authenticated user (403 otherwise).
+    user_id: Optional[str] = None
     current_month: str = Field(
         ...,
         pattern=r"^\d{4}-\d{2}$",  # example: "2025-05"

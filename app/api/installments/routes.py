@@ -401,6 +401,56 @@ async def get_all_installments(
         )
 
 
+# NOTE: /achievements must be declared BEFORE /{installment_id} — FastAPI
+# matches in declaration order, and the literal segment would otherwise be
+# captured as an installment UUID and 422.
+
+
+# ===== ACHIEVEMENTS ENDPOINT =====
+
+
+@router.get("/achievements", response_model=InstallmentAchievementOut)
+async def get_achievements(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_async_db),
+):
+    """
+    Get user's installment management achievements
+
+    Returns gamification data including:
+    - Installments completed
+    - Calculations performed
+    - Smart decisions (declined risky installments)
+    - Streak tracking (days without new installments)
+    - Interest saved by declining high-interest offers
+    - Achievement level (Beginner, Cautious, Wise, Master)
+    """
+    result = await db.execute(
+        select(InstallmentAchievement).where(InstallmentAchievement.user_id == user.id)
+    )
+    achievement = result.scalar_one_or_none()
+
+    if not achievement:
+        # Create initial achievement record
+        achievement = InstallmentAchievement(
+            user_id=user.id,
+            installments_completed=0,
+            calculations_performed=0,
+            calculations_declined=0,
+            days_without_new_installment=0,
+            max_days_streak=0,
+            interest_saved=Decimal("0.00"),
+            achievement_level="beginner",
+        )
+        db.add(achievement)
+        await db.commit()
+        await db.refresh(achievement)
+
+        logger.info(f"Created initial achievement record for user {user.id}")
+
+    return achievement
+
+
 @router.get("/{installment_id}", response_model=InstallmentOut)
 async def get_installment(
     installment_id: UUID,
@@ -622,10 +672,11 @@ async def get_monthly_calendar(
                 detail="Year must be between 2000 and 2100",
             )
 
-        # Get month boundaries
-        first_day = datetime(year, month, 1)
+        # Get month boundaries — timezone-aware: next_payment_date is
+        # timestamptz, and naive-vs-aware comparison raises TypeError.
+        first_day = datetime(year, month, 1, tzinfo=timezone.utc)
         last_day_num = monthrange(year, month)[1]
-        last_day = datetime(year, month, last_day_num, 23, 59, 59)
+        last_day = datetime(year, month, last_day_num, 23, 59, 59, tzinfo=timezone.utc)
 
         # Get active installments
         result = await db.execute(
@@ -716,48 +767,3 @@ async def get_monthly_calendar(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to generate calendar",
         )
-
-
-# ===== ACHIEVEMENTS ENDPOINT =====
-
-
-@router.get("/achievements", response_model=InstallmentAchievementOut)
-async def get_achievements(
-    user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_async_db),
-):
-    """
-    Get user's installment management achievements
-
-    Returns gamification data including:
-    - Installments completed
-    - Calculations performed
-    - Smart decisions (declined risky installments)
-    - Streak tracking (days without new installments)
-    - Interest saved by declining high-interest offers
-    - Achievement level (Beginner, Cautious, Wise, Master)
-    """
-    result = await db.execute(
-        select(InstallmentAchievement).where(InstallmentAchievement.user_id == user.id)
-    )
-    achievement = result.scalar_one_or_none()
-
-    if not achievement:
-        # Create initial achievement record
-        achievement = InstallmentAchievement(
-            user_id=user.id,
-            installments_completed=0,
-            calculations_performed=0,
-            calculations_declined=0,
-            days_without_new_installment=0,
-            max_days_streak=0,
-            interest_saved=Decimal("0.00"),
-            achievement_level="beginner",
-        )
-        db.add(achievement)
-        await db.commit()
-        await db.refresh(achievement)
-
-        logger.info(f"Created initial achievement record for user {user.id}")
-
-    return achievement

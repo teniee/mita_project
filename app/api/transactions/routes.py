@@ -493,13 +493,11 @@ async def get_receipt_image(
     ocr_job = result.scalar_one_or_none()
 
     if not ocr_job or not ocr_job.image_url:
-        return success_response(
-            {
-                "receipt_id": receipt_id,
-                "image_url": None,
-                "thumbnail_url": None,
-                "error": "Receipt image not found",
-            }
+        # A missing receipt is a 404, not a 200-with-error-marker — the
+        # swallow-to-success pattern hides real failures from clients.
+        raise ResourceNotFoundError(
+            f"Receipt image {receipt_id}",
+            details={"receipt_id": receipt_id},
         )
 
     return success_response(
@@ -801,6 +799,83 @@ async def validate_receipt_data(
 
 
 # CRUD endpoints for individual transactions
+# NOTE: specific paths must be declared BEFORE /{transaction_id} — FastAPI
+# matches in declaration order, and a later literal segment (budget-status)
+# would otherwise be captured as a transaction_id and 422.
+@router.get(
+    "/budget-status",
+    summary="Get current budget status for all categories",
+    description="""
+    Get real-time budget status for ALL categories for today.
+    
+    Useful for:
+    - Dashboard overview
+    - Budget summary widgets
+    - Category selection UI (show which categories have budget available)
+    
+    **Example Response:**
+    ```json
+    {
+        "food": {
+            "daily_budget": 50.00,
+            "spent": 35.00,
+            "remaining": 15.00,
+            "percentage_used": 70.0,
+            "status": "caution"
+        },
+        "transportation": {
+            "daily_budget": 30.00,
+            "spent": 5.00,
+            "remaining": 25.00,
+            "percentage_used": 16.7,
+            "status": "safe"
+        }
+    }
+    ```
+    """,
+    responses={
+        200: {"description": "Budget status retrieved successfully"},
+        401: {"description": "Unauthorized"},
+    },
+    dependencies=[
+        Depends(RateLimiter(times=120, seconds=60))
+    ],  # Max 120 requests per minute
+)
+@handle_financial_errors
+async def get_budget_status(
+    request: Request,
+    date: Optional[str] = None,  # Format: YYYY-MM-DD
+    user=current_user_dep,
+    db: AsyncSession = db_dep,
+):
+    """
+    Get current budget status for all categories
+    Useful for dashboard and category selection screens
+    """
+    # Parse date if provided
+    transaction_date = None
+    if date:
+        try:
+            transaction_date = datetime.strptime(date, "%Y-%m-%d").date()
+        except ValueError:
+            raise ValidationError(
+                "Invalid date format. Use YYYY-MM-DD",
+                ErrorCode.VALIDATION_INVALID_VALUE,
+                details={"date": date, "expected_format": "YYYY-MM-DD"},
+            )
+
+    # SpendingPreventionService is sync (self.db.query) — bridge via run_sync
+    status = await db.run_sync(
+        lambda sync_session: SpendingPreventionService(
+            sync_session, user.id
+        ).get_all_category_status(transaction_date)
+    )
+
+    return success_response(
+        data=status, message=f"Budget status for {len(status)} categories"
+    )
+
+
 @router.get("/{transaction_id}", response_model=TxnOut, summary="Get transaction by ID")
 @handle_financial_errors
 async def get_transaction(
@@ -1085,77 +1160,3 @@ async def check_transaction_affordability(
 
     # Return standardized response
     return success_response(data=result, message=result["impact_message"])
-
-
-@router.get(
-    "/budget-status",
-    summary="Get current budget status for all categories",
-    description="""
-    Get real-time budget status for ALL categories for today.
-    
-    Useful for:
-    - Dashboard overview
-    - Budget summary widgets
-    - Category selection UI (show which categories have budget available)
-    
-    **Example Response:**
-    ```json
-    {
-        "food": {
-            "daily_budget": 50.00,
-            "spent": 35.00,
-            "remaining": 15.00,
-            "percentage_used": 70.0,
-            "status": "caution"
-        },
-        "transportation": {
-            "daily_budget": 30.00,
-            "spent": 5.00,
-            "remaining": 25.00,
-            "percentage_used": 16.7,
-            "status": "safe"
-        }
-    }
-    ```
-    """,
-    responses={
-        200: {"description": "Budget status retrieved successfully"},
-        401: {"description": "Unauthorized"},
-    },
-    dependencies=[
-        Depends(RateLimiter(times=120, seconds=60))
-    ],  # Max 120 requests per minute
-)
-@handle_financial_errors
-async def get_budget_status(
-    request: Request,
-    date: Optional[str] = None,  # Format: YYYY-MM-DD
-    user=current_user_dep,
-    db: AsyncSession = db_dep,
-):
-    """
-    Get current budget status for all categories
-    Useful for dashboard and category selection screens
-    """
-    # Parse date if provided
-    transaction_date = None
-    if date:
-        try:
-            transaction_date = datetime.strptime(date, "%Y-%m-%d").date()
-        except ValueError:
-            raise ValidationError(
-                "Invalid date format. Use YYYY-MM-DD",
-                ErrorCode.VALIDATION_INVALID_VALUE,
-                details={"date": date, "expected_format": "YYYY-MM-DD"},
-            )
-
-    # SpendingPreventionService is sync (self.db.query) — bridge via run_sync
-    status = await db.run_sync(
-        lambda sync_session: SpendingPreventionService(
-            sync_session, user.id
-        ).get_all_category_status(transaction_date)
-    )
-
-    return success_response(
-        data=status, message=f"Budget status for {len(status)} categories"
-    )

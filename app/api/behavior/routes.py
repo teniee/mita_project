@@ -394,21 +394,26 @@ def get_spending_triggers(
     )
 
 
-@router.post("/calendar", response_model=dict)
+@router.post("/calendar", deprecated=True)
 def generate_behavior_calendar(
     payload: BehaviorPayload, user=Depends(get_current_user)  # noqa: B008
 ):
-    """Generate spending behavior calendar for a given user."""
-    result = generate_behavior(
-        user.id,
-        payload.year,
-        payload.month,
-        payload.profile,
-        payload.mood_log,
-        payload.challenge_log,
-        payload.calendar_log,
+    """DEFERRED — no backing implementation.
+
+    The mounted contract (year/month/profile/mood_log/challenge_log/
+    calendar_log) has never had a matching engine: generate_behavior
+    forwards seven arguments into get_behavioral_allocation(start_date,
+    num_days, budget_plan, user_context), so every call raised TypeError
+    -> 500 since it shipped. Per the TASK-15 policy a deferred feature
+    answers 501 explicitly instead of a permanent 500.
+    """
+    from fastapi import HTTPException
+
+    raise HTTPException(
+        status_code=501,
+        detail="Behavioral calendar generation is a deferred feature and is "
+        "not implemented yet",
     )
-    return success_response(result)
 
 
 @router.get("/cluster")

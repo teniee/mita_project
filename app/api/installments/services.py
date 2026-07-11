@@ -882,7 +882,9 @@ async def update_achievement_calculations(
         achievement = InstallmentAchievement(user_id=user_id)
         db.add(achievement)
 
-    achievement.calculations_performed += 1
+    # A freshly constructed row has None counters until the column default
+    # is applied at flush — guard the increments.
+    achievement.calculations_performed = (achievement.calculations_performed or 0) + 1
     achievement.last_calculation_date = datetime.now(timezone.utc)
 
     # Track declined calculations (user saw red/orange and hopefully won't proceed)
