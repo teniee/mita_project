@@ -81,3 +81,4 @@ dump.rdb
 # MCP server config contains local credentials — never commit it.
 # Copy .mcp.json.example and fill in your own values.
 .mcp.json
+data/
