@@ -261,31 +261,42 @@ async def forgot_password(
         )
 
 
+async def _find_user_by_reset_token(token: str, db: AsyncSession):
+    """Locate the user whose stored reset-token hash matches this token.
+
+    Tokens are stored as sha256("user_id:token") by
+    PasswordResetTokenManager (app/services/email_service.py). The previous
+    implementation imported a nonexistent
+    auth_jwt_service.verify_password_reset_token (ImportError -> 500 on
+    every call) and then cast the UUID user id through int(). Only users
+    with an in-flight reset request are candidates, so the scan is bounded.
+    """
+    from app.services.email_service import PasswordResetTokenManager
+
+    result = await db.execute(select(User).where(User.password_reset_token.isnot(None)))
+    for user in result.scalars():
+        if PasswordResetTokenManager.verify_reset_token(
+            token, user.password_reset_token, str(user.id)
+        ):
+            return user
+    return None
+
+
 async def _do_verify_reset_token(token: str, db: AsyncSession):
     """Shared logic for verifying a password reset token."""
-    from app.services.auth_jwt_service import verify_password_reset_token as _verify
-
-    user_id = _verify(token)
-    if not user_id:
-        return success_response({"valid": False, "message": "Invalid or expired token"})
-
-    result = await db.execute(select(User).where(User.id == int(user_id)))
-    user = result.scalar_one_or_none()
+    user = await _find_user_by_reset_token(token, db)
 
     if not user:
         return success_response({"valid": False, "message": "Invalid or expired token"})
 
-    if not hasattr(user, "password_reset_token") or user.password_reset_token != token:
-        return success_response({"valid": False, "message": "Invalid or expired token"})
-
-    if hasattr(user, "password_reset_expires") and user.password_reset_expires:
+    if user.password_reset_expires:
         if user.password_reset_expires < datetime.now(timezone.utc):
             return success_response(
                 {"valid": False, "message": "Reset token has expired"}
             )
 
     return success_response(
-        {"valid": True, "message": "Reset token is valid", "user_id": str(user_id)}
+        {"valid": True, "message": "Reset token is valid", "user_id": str(user.id)}
     )
 
 
@@ -321,34 +332,18 @@ async def reset_password(
         # Validate new password
         validate_password(new_password)
 
-        # Verify token
-        from app.services.auth_jwt_service import verify_password_reset_token
+        # Verify token against the stored per-user hash (see
+        # _find_user_by_reset_token for why this replaced the nonexistent
+        # auth_jwt_service import).
+        user = await _find_user_by_reset_token(token, db)
 
-        user_id = verify_password_reset_token(token)
-
-        if not user_id:
+        if not user:
             raise ValidationError(
                 "Invalid or expired reset token", ErrorCode.AUTHENTICATION_TOKEN_INVALID
             )
 
-        # Get user
-        result = await db.execute(select(User).where(User.id == int(user_id)))
-        user = result.scalar_one_or_none()
-
-        if not user:
-            raise ResourceNotFoundError("User not found")
-
-        # Verify token matches
-        if (
-            not hasattr(user, "password_reset_token")
-            or user.password_reset_token != token
-        ):
-            raise ValidationError(
-                "Invalid reset token", ErrorCode.AUTHENTICATION_TOKEN_INVALID
-            )
-
         # Check expiration
-        if hasattr(user, "password_reset_expires") and user.password_reset_expires:
+        if user.password_reset_expires:
             if user.password_reset_expires < datetime.now(timezone.utc):
                 raise ValidationError(
                     "Reset token has expired", ErrorCode.AUTHENTICATION_TOKEN_EXPIRED

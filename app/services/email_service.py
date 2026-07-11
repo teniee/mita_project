@@ -115,23 +115,28 @@ class PasswordResetTokenManager:
 
     @staticmethod
     def generate_reset_token(user_id: str) -> Tuple[str, str]:
-        """Generate secure password reset token and hash"""
+        """Generate secure password reset token and hash.
+
+        The stored hash binds the token to the user (sha256 over
+        "user_id:token") and MUST be reproducible at verification time.
+        The previous implementation mixed the generation timestamp into the
+        hash, so verification (which recomputed with the *verification*
+        timestamp) could never succeed and every reset was rejected. Expiry
+        is enforced separately via users.password_reset_expires.
+        """
         # Generate cryptographically secure token
         token = secrets.token_urlsafe(32)
 
         # Create token hash for database storage
-        token_data = f"{user_id}:{token}:{datetime.now(timezone.utc).timestamp()}"
-        token_hash = hashlib.sha256(token_data.encode()).hexdigest()
+        token_hash = hashlib.sha256(f"{user_id}:{token}".encode()).hexdigest()
 
         return token, token_hash
 
     @staticmethod
     def verify_reset_token(token: str, token_hash: str, user_id: str) -> bool:
-        """Verify password reset token"""
+        """Verify password reset token against the stored hash"""
         try:
-            # Reconstruct expected hash
-            token_data = f"{user_id}:{token}:{datetime.now(timezone.utc).timestamp()}"
-            expected_hash = hashlib.sha256(token_data.encode()).hexdigest()
+            expected_hash = hashlib.sha256(f"{user_id}:{token}".encode()).hexdigest()
 
             # Use constant-time comparison for security
             return secrets.compare_digest(token_hash, expected_hash)
