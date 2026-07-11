@@ -69,16 +69,24 @@ def test_send_push_notification_builds_message(monkeypatch):
         sent["msg"] = msg
         return "id-1"
 
+    # raising=False: in the aggregate run another test file may have
+    # force-replaced sys.modules["firebase_admin"] with a stub that lacks
+    # these attributes before push_service bound `messaging`; we replace the
+    # whole boundary here anyway, so create the attrs when absent.
     monkeypatch.setattr(
         "app.services.push_service.messaging.Message",
         DummyMessage,
+        raising=False,
     )
     monkeypatch.setattr(
-        "app.services.push_service.messaging.Notification", DummyNotification
+        "app.services.push_service.messaging.Notification",
+        DummyNotification,
+        raising=False,
     )
     monkeypatch.setattr(
         "app.services.push_service.messaging.send",
         dummy_send,
+        raising=False,
     )
 
     resp = send_push_notification(user_id=123, message="Hello", token="tok")
