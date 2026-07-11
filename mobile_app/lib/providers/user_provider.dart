@@ -119,6 +119,11 @@ class UserProvider extends ChangeNotifier {
       await loadFinancialContext();
 
       _state = UserState.authenticated;
+      // Clear any stale error so the dashboard error card can dismiss —
+      // MainScreen keys hasError off errorMessage != null, and a transient
+      // failure here used to pin "Unable to load dashboard" forever even
+      // after every later request returned 200.
+      _errorMessage = null;
       logInfo('UserProvider initialized successfully', tag: 'USER_PROVIDER');
     } catch (e) {
       logError('Failed to initialize UserProvider: $e', tag: 'USER_PROVIDER');
@@ -136,6 +141,7 @@ class UserProvider extends ChangeNotifier {
 
       final profile = await _userDataManager.getUserProfile();
       _userProfile = profile;
+      _errorMessage = null; // success clears any stale error
 
       logInfo('User profile loaded: ${profile['name']}', tag: 'USER_PROVIDER');
       notifyListeners();
@@ -216,6 +222,9 @@ class UserProvider extends ChangeNotifier {
       await loadUserProfile();
       await loadFinancialContext();
 
+      // A successful refresh clears any stale error (the retry path relies
+      // on this to dismiss the dashboard error card).
+      _errorMessage = null;
       logInfo('User data refreshed successfully', tag: 'USER_PROVIDER');
     } catch (e) {
       logError('Failed to refresh user data: $e', tag: 'USER_PROVIDER');

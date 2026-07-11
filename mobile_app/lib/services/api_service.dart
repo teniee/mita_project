@@ -2567,9 +2567,11 @@ class ApiService {
   Future<Map<String, dynamic>> createAISnapshot({int? year, int? month}) async {
     final token = await getToken();
     final now = DateTime.now();
+    // year/month are query parameters on the backend; sending them in the
+    // body answered 422 on every call.
     final response = await _dio.post(
       '/ai/snapshot',
-      data: {
+      queryParameters: {
         'year': year ?? now.year,
         'month': month ?? now.month,
       },
@@ -3600,9 +3602,10 @@ class ApiService {
       double monthlyIncome) async {
     final token = await getToken();
     try {
-      final response = await _dio.post(
+      // Backend route is GET (income comes from the authenticated profile);
+      // the previous POST answered 405 on every call.
+      final response = await _dio.get(
         '/goals/income_based_suggestions',
-        data: {'monthly_income': monthlyIncome},
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
       return List<Map<String, dynamic>>.from(response.data['data'] ?? []);
@@ -3682,9 +3685,10 @@ class ApiService {
   Future<List<String>> getIncomeBasedTips(double monthlyIncome) async {
     final token = await getToken();
     try {
-      final response = await _dio.post(
+      // Backend route is GET (income comes from the authenticated profile);
+      // the previous POST answered 405 on every call.
+      final response = await _dio.get(
         '/insights/income_based_tips',
-        data: {'monthly_income': monthlyIncome},
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
       return List<String>.from(response.data['data'] ?? []);
