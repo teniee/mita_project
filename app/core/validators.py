@@ -161,7 +161,11 @@ class InputSanitizer:
 
     # Enhanced SQL injection patterns for financial applications
     SQL_INJECTION_PATTERNS = [
-        r"(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE|UNION|SCRIPT)\b)",
+        # NOTE: no standalone-keyword pattern here. A bare \bCREATE\b (etc.)
+        # blocklist rejected innocent free text ("contract create", "deleted
+        # Netflix sub") on mobile-called transaction descriptions, while all
+        # queries are parameterized anyway. Compound patterns below still
+        # catch actual injection shapes.
         r"(--|;|/\*|\*/|xp_|sp_)",
         r"(\b(OR|AND)\s+\d+\s*=\s*\d+)",
         r"(\bUNION\s+(ALL\s+)?SELECT)",

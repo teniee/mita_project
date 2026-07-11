@@ -567,13 +567,13 @@ def cached(
             ).hexdigest()
 
             # Try to get from cache
-            cached_result = await cache_manager.get(cache_key)
+            cached_result = await get_cache_manager().get(cache_key)
             if cached_result is not None:
                 return cached_result
 
             # Execute function and cache result
             result = await func(*args, **kwargs)
-            await cache_manager.set(
+            await get_cache_manager().set(
                 cache_key, result, ttl=ttl, tags=tags, levels=levels
             )
 
@@ -621,7 +621,9 @@ def cache_query_result(ttl: int = 300):
 
 async def get_cache_statistics() -> Dict[str, Any]:
     """Get comprehensive cache statistics"""
-    return await cache_manager.get_comprehensive_stats()
+    # Always go through the lazy getter: the module-global starts as None
+    # and importing the bare name froze that None in consumers.
+    return await get_cache_manager().get_comprehensive_stats()
 
 
 async def warm_up_cache():
@@ -647,12 +649,12 @@ async def warm_up_cache():
 
 async def invalidate_user_cache(user_id: str):
     """Invalidate all cache entries for a specific user"""
-    await cache_manager.clear_by_tags([f"user:{user_id}", "user"])
+    await get_cache_manager().clear_by_tags([f"user:{user_id}", "user"])
 
 
 async def invalidate_table_cache(table_name: str):
     """Invalidate cache for a specific database table"""
-    await query_cache.invalidate_by_table(table_name)
+    await get_query_cache().invalidate_by_table(table_name)
 
 
 # Health check function

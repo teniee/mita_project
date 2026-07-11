@@ -113,11 +113,15 @@ async def admin_revoke_token_by_jti(
                 detail="Failed to revoke token - may be invalid or already expired",
             )
 
+    except HTTPException:
+        # The intentional 400 above must pass through — the broad handler
+        # was re-wrapping it into a 500.
+        raise
     except Exception as e:
         logger.error(f"Admin token revocation by JTI failed: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to revoke token: {str(e)}",
+            detail="Failed to revoke token",
         )
 
 

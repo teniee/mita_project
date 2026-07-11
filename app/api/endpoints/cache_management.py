@@ -10,9 +10,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from app.api.dependencies import get_current_user, require_admin_access
+
+# Import the lazy getter, not the bare name: the module-global starts as
+# None and binding it at import time made every endpoint here call methods
+# on None (500 on each request).
 from app.core.caching import (
-    cache_manager,
     check_cache_health,
+    get_cache_manager,
     get_cache_statistics,
     invalidate_table_cache,
     invalidate_user_cache,
@@ -133,7 +137,7 @@ async def get_cache_performance_metrics(
     """
     try:
         stats = await get_cache_statistics()
-        hit_ratios = cache_manager.get_hit_ratio()
+        hit_ratios = get_cache_manager().get_hit_ratio()
 
         performance_metrics = {
             "cache_efficiency": {
@@ -229,7 +233,7 @@ async def invalidate_cache(
 
         # Invalidate by tags
         if request.tags:
-            await cache_manager.clear_by_tags(request.tags)
+            await get_cache_manager().clear_by_tags(request.tags)
             operations.append(f"Cleared cache for tags: {', '.join(request.tags)}")
             invalidated_count += len(request.tags)
 
@@ -248,7 +252,7 @@ async def invalidate_cache(
         # Invalidate specific keys
         if request.keys:
             for key in request.keys:
-                await cache_manager.delete(key)
+                await get_cache_manager().delete(key)
             operations.append(f"Cleared specific keys: {', '.join(request.keys)}")
             invalidated_count += len(request.keys)
 
@@ -297,15 +301,15 @@ async def clear_all_cache(
 
     try:
         # Clear memory cache
-        cache_manager.memory_cache.cache.clear()
-        cache_manager.memory_cache.access_order.clear()
+        get_cache_manager().memory_cache.cache.clear()
+        get_cache_manager().memory_cache.access_order.clear()
 
         # Clear Redis cache (if available)
-        if cache_manager.redis_cache.redis_client:
-            await cache_manager.redis_cache.redis_client.flushdb()
+        if get_cache_manager().redis_cache.redis_client:
+            await get_cache_manager().redis_cache.redis_client.flushdb()
 
         # Reset hit statistics
-        cache_manager.hit_stats = {"memory_hits": 0, "redis_hits": 0, "misses": 0}
+        get_cache_manager().hit_stats = {"memory_hits": 0, "redis_hits": 0, "misses": 0}
 
         return {
             "status": "success",
@@ -336,7 +340,7 @@ async def get_top_cache_keys(
     try:
         # Get top keys from memory cache
         memory_entries = []
-        for key, entry in cache_manager.memory_cache.cache.items():
+        for key, entry in get_cache_manager().memory_cache.cache.items():
             memory_entries.append(
                 {
                     "key": key,
@@ -388,7 +392,7 @@ async def get_cache_optimization_report(
     """
     try:
         stats = await get_cache_statistics()
-        hit_ratios = cache_manager.get_hit_ratio()
+        hit_ratios = get_cache_manager().get_hit_ratio()
         health_data = await check_cache_health()
 
         # Generate optimization report
@@ -409,7 +413,7 @@ async def get_cache_optimization_report(
                     "cache_effectiveness": hit_ratios["total"],
                     "memory_efficiency": _calculate_memory_efficiency(stats),
                     "tier_distribution": _calculate_tier_distribution(
-                        cache_manager.hit_stats
+                        get_cache_manager().hit_stats
                     ),
                 },
             },

@@ -546,7 +546,16 @@ class ExternalServicesManager:
     def get_service_health(self) -> Dict[str, Any]:
         """Get overall service health"""
         if not self.health_status:
-            return {"status": "unknown", "services": {}}
+            # Same shape as the populated branch — the health route reads
+            # these keys unconditionally and 500'd before any check ran.
+            return {
+                "status": "unknown",
+                "total_services": len(self.services),
+                "enabled_services": 0,
+                "healthy_services": 0,
+                "last_check": None,
+                "services": {},
+            }
 
         total_services = len(self.services)
         enabled_services = len(

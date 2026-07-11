@@ -178,7 +178,18 @@ def process_receipt_ocr(
         raise
     except Exception as e:
         logger.error(f"OCR processing failed: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"OCR processing failed: {str(e)}")
+        # A missing OCR backend (tesseract binary / Vision credentials) is an
+        # unavailable dependency (503), and an undecodable image is a client
+        # error (400) — neither is an internal 500. Internal details are not
+        # echoed to the client.
+        message = str(e).lower()
+        if "not installed" in message or "not in your path" in message:
+            raise HTTPException(status_code=503, detail="OCR engine is not available")
+        if "image file" in message or "cannot identify" in message:
+            raise HTTPException(
+                status_code=400, detail="Uploaded file is not a readable image"
+            )
+        raise HTTPException(status_code=500, detail="OCR processing failed")
     finally:
         # Cleanup temp file
         try:
@@ -335,9 +346,14 @@ def enhance_receipt_image(
         raise
     except Exception as e:
         logger.error(f"Image enhancement failed: {e}")
-        raise HTTPException(
-            status_code=500, detail=f"Image enhancement failed: {str(e)}"
-        )
+        message = str(e).lower()
+        if "not installed" in message or "not in your path" in message:
+            raise HTTPException(status_code=503, detail="OCR engine is not available")
+        if "image file" in message or "cannot identify" in message:
+            raise HTTPException(
+                status_code=400, detail="Uploaded file is not a readable image"
+            )
+        raise HTTPException(status_code=500, detail="Image enhancement failed")
     finally:
         try:
             if os.path.exists(temp_path):

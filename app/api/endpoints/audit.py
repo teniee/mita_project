@@ -51,13 +51,15 @@ class AuditReportResponse(BaseModel):
 async def audit_health():
     """Check if audit logging system is working"""
     try:
-        buffer_size = len(audit_logger.buffer)
-        last_flush = audit_logger.last_flush
+        # AuditLogger dropped its in-object buffer for the module-level
+        # SecurityEventQueue — the old attribute access made this health
+        # check 503 unconditionally.
+        from app.core.audit_logging import _security_event_queue
 
         return {
             "status": "healthy",
-            "buffer_size": buffer_size,
-            "last_flush": datetime.fromtimestamp(last_flush).isoformat(),
+            "queue_size": len(_security_event_queue._queue),
+            "initialized": bool(getattr(audit_logger, "_initialized", False)),
             "system": "operational",
         }
     except Exception as e:
@@ -305,12 +307,14 @@ async def flush_audit_buffer(
     Requires admin access. Forces immediate flush of pending audit events.
     """
     try:
-        buffer_size_before = len(audit_logger.buffer)
-        await audit_logger._flush_buffer()
+        from app.core.audit_logging import _security_event_queue
+
+        queue_size_before = len(_security_event_queue._queue)
+        await _security_event_queue._process_batch()
 
         return {
             "status": "success",
-            "message": f"Flushed {buffer_size_before} audit events",
+            "message": f"Flushed up to {queue_size_before} audit events",
             "flushed_at": datetime.now().isoformat(),
         }
 
