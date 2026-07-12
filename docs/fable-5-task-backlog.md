@@ -1,5 +1,19 @@
 # MITA Finance — Fable 5 Implementation Backlog (second-pass audit)
 
+> ## Implementation status — session 3 (Fable 5, 2026-07-12)
+> Verification + fix pass. Deployed prod is `main` @ `e347c7b` (a real commit in
+> history; ahead of the last *runtime* deploy `1edda4b`/`d0698d1` only by docs +
+> the `d91b5bb` gitignore chore). Alembic head `0035` = repo head. Redis rotation
+> confirmed live (see below). New work on branch `fix/session-3-prod-defects`:
+>
+> | Item | Status | Commit | Evidence |
+> |---|---|---|---|
+> | NEW P2: `subscriptions.deleted_at` prod 500 | ✅ FIXED | `b3b8b78` | prod table lacks `deleted_at` (0022's conditional add never landed — appended after prod stamped past 0022); ORM mapped it → `UndefinedColumn` 500 on `/iap/status` + `/users/{id}/premium-*` (confirmed in Railway logs). Dropped the unused mapping (no filter/write uses it); no prod migration. Real-PG regression reproduces the drift and asserts 200. |
+> | Android COARSE location removed | ✅ FIXED | `3e5a790` | the "approximate location" prompt was `ACCESS_COARSE_LOCATION` (only FINE was removed in TASK-16); onboarding state auto-detect has a full manual fallback, so both are now `tools:node="remove"` + geolocator foreground-location service stripped. Merged manifest verified clean; static regression test (negative-checked). |
+> | "Flaky" golden test clarified | ✅ RESOLVED | `df9fbe7` | not a flake — the suite's only `matchesGoldenFile` test, deterministically ~1.5% off on non-baseline font rendering (be220da). Tagged `golden`, skipped by default. Full suite now `394 passed, 3 skipped, 0 failed` (was 391/2/1). |
+> | TASK-18 (P3) safe subset | ✅ DONE | `df9fbe7` | 0008/0009 `Revises:` docstrings fixed; orphan `app/migrations/` deleted; `render.yaml` deleted; offline `--sql` fails loudly. `daily_plan.date` already timestamptz on prod (no-op). DB-semantic items (push_tokens server_default, notification.retry_count→Integer + enum CHECKs) deferred to the owner migration window. |
+> | TASK-7/8/9 prod preflight | ✅ SAFE (0/0/0) | — | read-only against live DB 2026-07-12: 0 orphan rows, 0 money rows to round, 0 subscription dup groups. up/down/up clean on disposable PG. Still owner-gated (owner-actions §4c). |
+>
 > ## Implementation status — session 2 (Fable 5, 2026-07-11)
 > Deployed to production: `main` @ `1edda4b` (backend); mobile fixes on
 > `d0698d1`. Full-route contract suite + all fixes below are green; prod
@@ -183,8 +197,18 @@ Legend scope: **tiny** (<1h), **small** (~½ day), **medium** (~1–2 days), **l
 ### TASK-17 — Error-handling hygiene
 - **Severity:** P2 · **Scope:** medium · Remove `str(e)` from client-facing `HTTPException(detail=…)` (75 sites); tighten broad `except Exception` that returns success fallbacks so real failures surface (233 sites — prioritize financial paths). Do NOT swallow-then-200 on money paths.
 
-### TASK-18 — P3 schema/migration cleanup
-- **Severity:** P3 · **Scope:** small · `push_tokens.platform` add `server_default='fcm'`; align `daily_plan.date` timestamptz (or model to `Date`); constrain notification enum columns + `retry_count`→Integer; fix `0008/0009` `Revises:` docstrings + delete orphan `app/migrations/`; remove legacy `render.yaml`; guard inspection migrations for offline `--sql` or document unsupported. Each is independent and low-risk.
+### TASK-18 — P3 schema/migration cleanup  → PARTLY DONE (session 3, `df9fbe7`)
+- **Severity:** P3 · **Scope:** small · Each item independent and low-risk.
+- ✅ **Done (no prod migration):** fixed `0008/0009` `Revises:` docstrings;
+  deleted orphan `app/migrations/`; removed legacy `render.yaml`; offline `--sql`
+  now fails loudly in `env.py` (6 migrations inspect the live schema).
+- ✅ **Already satisfied:** `daily_plan.date` is `timestamptz` on production and
+  in the model — no change needed.
+- ⏳ **Owner-gated (needs a data migration window):** `push_tokens.platform`
+  `server_default='fcm'` (model has a Python-side default only); notification
+  enum columns → CHECK constraints and `retry_count` String→Integer (the model
+  stores the count as a String — cast requires a migration). Batch with
+  TASK-7/8/9 (owner-actions §4c).
 
 ### TASK-19 — PATCH /users/me email hygiene
 - **Severity:** P3 · **Scope:** tiny · In `app/services/users_service.py update_user_profile`, on email change set `email_verified=False` and pre-check uniqueness (the unused `app/api/users/services.py` variant shows the pattern).

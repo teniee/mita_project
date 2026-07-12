@@ -87,23 +87,39 @@ Legend: 🔴 blocks core MVP · 🟠 blocks closed beta · 🟢 deferrable
 | APNs auth key (.p8) for push | Apple Developer → Keys → upload to Firebase | **Yes** | push delivered on device | 🟢 |
 | Apple bundle ID | Apple Developer → Identifiers; match `ios/Runner` | No | provisioning profile builds | 🟢 |
 
-## 4b. NEW — session 2 (Fable 5, 2026-07-11)
+## 4c. NEW — session 3 (Fable 5, 2026-07-12)
 
-### 4b.1 Rotate `REDIS_URL` — it points at a DEAD Upstash host 🟠 (reliability)
-- **Why:** production Railway logs show
-  `Redis connection failed: Error -2 connecting to daring-moray-87435.upstash.io:6379. Name or service not known`.
-  The distributed rate limiter (`FastAPILimiter`) therefore never
-  initializes. Code fix `1edda4b` makes every rate-limited route **degrade
-  open** so this no longer 500s (it did: `/transactions/budget-status`,
-  `/transactions/check-affordability`, `/iap/validate`, task submits) — but
-  distributed rate limiting is OFF until the URL is fixed.
-- **Where:** Railway → `mita-production` → Variables → `REDIS_URL` (and/or
-  `UPSTASH_REDIS_URL`). Point it at a live Upstash/Redis instance.
-- **Verify:** `/health` shows redis healthy; a burst on `/api/iap/validate`
-  (5/60s) returns a `429` once the limiter is live
-  (`app/tests/test_rate_limiter_degradation.py` locks in both behaviours).
+### 4c.1 `REDIS_URL` rotation — ✅ DONE, verified (was 4b.1)
+- The owner repointed `REDIS_URL` / `UPSTASH_REDIS_URL` / `UPSTASH_REDIS_REST_URL`
+  at the live `wise-bonefish-101993.upstash.io` instance. Verified 2026-07-12:
+  no Railway variable still references the dead `daring-moray-87435` host;
+  startup logs show `✅ Redis initialized successfully`; `/health` reports
+  `redis: connected`; a burst on `/api/iap/validate` returns real `429`s after
+  5/60s (distributed limiting is **live**, not degrading open); token
+  blacklist + refresh-rotation revocation proven live (smoke 30/30, E2E 30/30).
+  No owner action remains here.
 
-### 4b.2 Apply TASK-7/8/9 data migrations in a maintenance window 🟠 (data)
+### 4c.2 `subscriptions.deleted_at` schema drift — code-fixed; optional DB backfill 🟢 (data)
+- **What:** the production `subscriptions` table has 12 columns and is missing
+  `deleted_at`; the ORM model mapped it, so every `db.query(Subscription)` 500'd
+  (`UndefinedColumn`) on `GET /api/iap/status` and `GET /users/{id}/premium-*`.
+  Confirmed in Railway logs. Fixed in code (`b3b8b78`) by dropping the unused
+  mapping — no production migration needed, and IAP is not yet live.
+- **Owner action (optional):** none required for the MVP. If subscription
+  soft-delete is ever wanted, add the column **and** re-add the model mapping in
+  the same migration window; do not add one without the other.
+
+### 4c.3 TASK-7/8/9 preflight ran against production — SAFE to apply 🟠 (data)
+- **Result (read-only, 2026-07-12, verified against the live DB):** TASK-7
+  orphan rows to delete = **0** across moods/budget_advice/notification_logs/
+  push_tokens/ignored_alerts; TASK-8 money rows to round = **0**
+  (users.monthly_income/savings_goal, expenses.amount); TASK-9 duplicate
+  `(platform, original_transaction_id)` groups that would block 0038 = **0**.
+  The three migrations would delete/round/block **nothing** on current prod data.
+- Up/down/up was exercised on a disposable Postgres (0038 → 0035 → 0038, clean).
+  See 4c.4 to apply.
+
+### 4c.4 Apply TASK-7/8/9 data migrations in a maintenance window 🟠 (data)
 - **Why:** FK+CASCADE on 5 orphan-prone tables (TASK-7), `Numeric(12,2)` for
   income/expense money columns (TASK-8), subscription store-identity
   uniqueness (TASK-9). These are **data migrations** and Railway auto-runs
@@ -138,8 +154,8 @@ Legend: 🔴 blocks core MVP · 🟠 blocks closed beta · 🟢 deferrable
 ---
 
 ## 6. What is already correctly configured (verified — no action)
-- `DATABASE_URL` (Postgres, Railway internal) — DB **connected**, migrations at head `0034`.
-- Production Redis (`REDIS_URL` / `UPSTASH_*`) — **connected**; token revocation/blacklist proven live.
+- `DATABASE_URL` (Postgres, Railway internal) — DB **connected**, migrations at head `0035` (verified 2026-07-12; deployed commit `e347c7b`).
+- Production Redis (`REDIS_URL` / `UPSTASH_*`) — **connected** on `wise-bonefish-101993`; distributed rate limiting **live** (real 429s), token revocation/blacklist proven live (verified 2026-07-12).
 - `FIREBASE_JSON` service account (with private key) — Firebase **initialized** (server side).
 - `JWT_SECRET`, `SECRET_KEY`, `ALGORITHM=HS256`, token expiry — auth working end-to-end.
 - `OPENAI_API_KEY` — configured.
