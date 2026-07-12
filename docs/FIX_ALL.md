@@ -69,11 +69,11 @@ The `render.yaml` file, which is committed to the git repository and visible to 
 
 ```yaml
 - key: SECRET_KEY
-  sync: false  # Set to: _2xehg0QmsjRElHCg7hRwAhEO9eYKeZ9EDDSFx9CgoI
+  sync: false  # Set to:
 - key: JWT_SECRET
-  sync: false  # Set to: LZaS6tha51MBwgBoHW6GbK4VbbboeQO12LsmEDdKp3s
+  sync: false  # Set to: 
 - key: JWT_PREVIOUS_SECRET
-  sync: false  # Set to: b0wJB1GuD13OBI3SEfDhtFBWA8KqM3ynI6Ce83xLTHs
+  sync: false  # Set to: 
 ```
 
 These were the actual production JWT signing secrets. With these, **anyone could:**
@@ -1229,7 +1229,7 @@ When the app tries to verify a token with the previous secret and it's `None` or
 
 In Railway Dashboard, set `JWT_PREVIOUS_SECRET` to the same value as `JWT_SECRET` (if no rotation has happened yet):
 ```
-JWT_PREVIOUS_SECRET = oPh-TW4BNM9vQc2S8DkP0XYhIMeJBS5vMBRT6s9aQ1_rBjhsSTP3adTUxKMZ-cvq6UabCJSEpUaaBMzqAHXbzA
+JWT_PREVIOUS_SECRET = 
 ```
 
 Or, if JWT rotation is not actually needed yet, disable it:
