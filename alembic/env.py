@@ -93,16 +93,20 @@ sync_url = final_url
 
 
 def run_migrations_offline():
-    """Run migrations in 'offline' mode."""
-    context.configure(
-        url=str(sync_url),
-        target_metadata=target_metadata,
-        literal_binds=True,
-        compare_type=True,
-    )
+    """Run migrations in 'offline' mode.
 
-    with context.begin_transaction():
-        context.run_migrations()
+    Unsupported: several migrations (0006, 0021, 0022, 0029, 0030, 0033)
+    inspect the live schema via ``inspect(op.get_bind())`` to stay idempotent
+    against production drift. Offline ``--sql`` has no connection to inspect,
+    so those migrations would emit an empty/incorrect script. Fail loudly with
+    an actionable message instead of generating SQL that silently omits DDL.
+    """
+    raise RuntimeError(
+        "Offline migration generation (alembic --sql / upgrade --sql) is not "
+        "supported: migrations 0006/0021/0022/0029/0030/0033 require a live "
+        "connection to inspect the schema and stay idempotent. Run migrations "
+        "online against the target database (this is what start.sh does)."
+    )
 
 
 def run_migrations_online():

@@ -28,6 +28,12 @@ class Subscription(Base):
     created_at = Column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
-    # Soft-delete column added by migration 0018; kept on the model so the
-    # ORM matches the migrated schema.
-    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    # NOTE: there is deliberately no `deleted_at` mapping here. Migration 0022
+    # adds subscriptions.deleted_at conditionally, but it was added to 0022
+    # *after* production had already stamped past 0022, so the live table never
+    # got the column. Every `db.query(Subscription)` therefore emitted
+    # `SELECT ... deleted_at` and 500'd on production (UndefinedColumn) across
+    # /iap/status and the three /users/{id}/premium-* routes. Nothing filters or
+    # writes the column, so the ORM must not reference it. If subscription
+    # soft-delete is ever needed, re-add the mapping *and* a migration that
+    # guarantees the column exists on production in the same window.

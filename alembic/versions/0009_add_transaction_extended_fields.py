@@ -1,7 +1,7 @@
 """add_transaction_extended_fields
 
 Revision ID: 0009_add_transaction_extended_fields
-Revises: f8e0108e3527
+Revises: 0008_add_user_profile_fields
 Create Date: 2025-10-22 22:30:00.000000
 
 """

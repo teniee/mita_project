@@ -1,0 +1,13 @@
+# Test suite configuration.
+#
+# The `golden` tag marks pixel-exact matchesGoldenFile screenshot tests. Golden
+# baselines are only valid on the exact font-rendering environment that
+# generated them, so these tests are skipped in the default `flutter test` run
+# to keep it deterministic across machines. Run them deliberately in the
+# baseline environment (regenerating first if the UI changed):
+#
+#   flutter test --update-goldens --tags golden
+#
+# Declaring the tag here also silences the "unknown tag" analyzer warning.
+tags:
+  golden:
