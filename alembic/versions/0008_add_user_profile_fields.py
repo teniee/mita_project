@@ -1,7 +1,7 @@
 """Add user profile fields to users table
 
 Revision ID: 0008_add_user_profile_fields
-Revises: f8e0108e3527
+Revises: 0007_email_password_reset_fields
 Create Date: 2025-10-22 20:00:00.000000
 
 This migration adds comprehensive user profile fields including:
