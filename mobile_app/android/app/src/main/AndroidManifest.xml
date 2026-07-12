@@ -14,13 +14,22 @@
     <!-- Android 13+ (targetSdk 33+): notifications are invisible without this
          runtime permission — FCM budget alerts silently drop otherwise. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    <!-- COARSE only: onboarding auto-detects country/state for the regional
-         income-tier thresholds (LocationService uses LocationAccuracy.low +
-         reverse geocoding to country/state). Precise GPS is not a product
-         requirement for a finance app and is a Play-policy risk, so
-         ACCESS_FINE_LOCATION was removed deliberately. tools:node="remove"
-         also strips the copy merged in from the geolocator plugin manifest. -->
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- No location permission is requested. The only consumer was onboarding
+         auto-detect of the user's US state for regional income-tier thresholds
+         (LocationService), but that screen already ships a full manual state
+         picker (search + all 50 states) and auto-detect is pure convenience —
+         the user confirms the state regardless. For a finance app, requesting
+         device location to guess a value the user confirms anyway is weak
+         justification and a Play Data-safety / review risk, and it surfaced an
+         unwanted "approximate location" prompt mid-onboarding. Both location
+         permissions are stripped with tools:node="remove" so the copies merged
+         in from the geolocator plugin manifest do not reach the shipped APK;
+         detectLocation() then returns "permission denied" and the screen falls
+         back to manual selection (its existing coded path).
+         Guarded by android_no_location_permission_test.dart. -->
+    <uses-permission
+        android:name="android.permission.ACCESS_COARSE_LOCATION"
+        tools:node="remove" />
     <uses-permission
         android:name="android.permission.ACCESS_FINE_LOCATION"
         tools:node="remove" />
@@ -64,6 +73,16 @@
             android:name="flutterEmbedding"
             android:value="2" />
             
+        <!-- Strip geolocator's foreground-service-location component merged in
+             from the plugin manifest. No location permission is granted and the
+             app only ever did a one-shot getCurrentPosition (never a foreground
+             location stream), so this service is inert — but a shipped
+             foregroundServiceType="location" declaration triggers a Play Console
+             foreground-location review form we have no basis to complete. -->
+        <service
+            android:name="com.baseflow.geolocator.GeolocatorLocationService"
+            tools:node="remove" />
+
         <!-- Firebase Cloud Messaging -->
         <service
             android:name="com.google.firebase.messaging.FirebaseMessagingService"
