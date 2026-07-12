@@ -1,3 +1,4 @@
+import os
 from datetime import date
 
 from sqlalchemy.orm import Session
@@ -11,6 +12,16 @@ from app.services.core.engine.budget_logic import generate_budget_from_answers
 from app.services.expense_tracker import record_expense
 
 
+def _require_test_user_password() -> str:
+    password = os.environ.get("TEST_USER_PASSWORD")
+    if not password:
+        raise SystemExit(
+            "TEST_USER_PASSWORD is not set; refusing to create the test user "
+            "with a hardcoded password."
+        )
+    return password
+
+
 def create_test_user():
     db: Session = next(get_db())
     existing = db.query(User).filter(User.email == "test@example.com").first()
@@ -21,9 +32,7 @@ def create_test_user():
     user = User(
         is_premium=True,
         email="test@example.com",
-        hashed_password=hash_password(
-            "oPh-TW4BNM9vQc2S8DkP0XYhIMeJBS5vMBRT6s9aQ1_rBjhsSTP3adTUxKMZ-cvq6UabCJSEpUaaBMzqAHXbzA"
-        ),
+        hashed_password=hash_password(_require_test_user_password()),
         full_name="Test User",
     )
     db.add(user)
