@@ -34,11 +34,9 @@ analyzer:
     # Excluding all files with type errors to achieve 0 issues
     
     # Screens with dynamic type issues
-    - lib/screens/add_expense_screen.dart
     - lib/screens/advice_history_screen.dart
     - lib/screens/behavioral_insights_screen.dart
     - lib/screens/challenges_screen.dart
-    - lib/screens/edit_expense_screen.dart
     - lib/screens/habits_screen.dart
     - lib/screens/installments_screen.dart
     - lib/screens/mood_screen.dart
@@ -63,7 +61,6 @@ analyzer:
     - lib/services/advanced_financial_engine.dart
     - lib/services/advanced_offline_service.dart
     - lib/services/cohort_service.dart
-    - lib/services/expense_state_service.dart
     - lib/services/iap_service.dart
     - lib/services/live_updates_service.dart
     - lib/services/location_service.dart
@@ -93,7 +90,6 @@ analyzer:
     - lib/widgets/predictive_analytics_widget.dart
     
     # Utils with type errors  
-    - lib/utils/expense_integration_helper.dart
     
     # Core files with type errors
     
@@ -105,7 +101,6 @@ analyzer:
     - lib/screens/insights_screen.dart
     - lib/screens/notifications_screen.dart
     - lib/screens/profile_screen.dart
-    - lib/screens/transactions_screen.dart
     
     # Additional services with issues
     - lib/services/api_service.dart

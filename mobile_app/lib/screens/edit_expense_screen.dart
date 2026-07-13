@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/json_utils.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
@@ -36,9 +37,13 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
   @override
   void initState() {
     super.initState();
-    _amount = widget.expense['amount']?.toDouble() ?? 0.0;
-    _action = widget.expense['action'] ?? _actions.first;
-    _selectedDate = DateTime.parse(widget.expense['date']);
+    _amount = asDouble(widget.expense['amount']);
+    // A category outside _actions would crash the DropdownButton assertion;
+    // map unknown/missing server categories to 'Other'.
+    final action = asString(widget.expense['action'], fallback: _actions.first);
+    _action = _actions.contains(action) ? action : 'Other';
+    _selectedDate =
+        asDateTimeOrNull(widget.expense['date']) ?? DateTime.now();
   }
 
   Future<void> _submit() async {
@@ -55,7 +60,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
     );
 
     final result = await transactionProvider.updateTransaction(
-      widget.expense['id'],
+      asString(widget.expense['id']),
       input,
     );
 
@@ -93,7 +98,8 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
       final transactionProvider =
           Provider.of<TransactionProvider>(context, listen: false);
       final success =
-          await transactionProvider.deleteTransaction(widget.expense['id']);
+          await transactionProvider
+              .deleteTransaction(asString(widget.expense['id']));
 
       if (!mounted) return;
 

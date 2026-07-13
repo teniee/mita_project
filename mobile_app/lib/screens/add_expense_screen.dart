@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/json_utils.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
@@ -54,8 +55,6 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
   DateTime _selectedDate = DateTime.now();
   List<Map<String, dynamic>> _aiSuggestions = [];
   bool _loadingSuggestions = false;
-  Map<String, dynamic>? _budgetStatus;
-  bool _loadingBudgetStatus = false;
 
   final List<Map<String, dynamic>> _categories = [
     {
@@ -226,7 +225,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
       orElse: () => {'subcategories': <String>[]},
     );
 
-    return List<String>.from(selectedCategory['subcategories'] ?? []);
+    return asStringList(selectedCategory['subcategories']);
   }
 
   @override
@@ -484,7 +483,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
         if (mounted) {
           final navigator = Navigator.of(context);
           // Wait a bit for animations to complete
-          await Future.delayed(const Duration(milliseconds: 500));
+          await Future<void>.delayed(const Duration(milliseconds: 500));
           if (mounted) {
             navigator.pop({
               'success': true,
@@ -593,7 +592,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
     }
 
     // Wait for animation to complete
-    await Future.delayed(const Duration(milliseconds: 400));
+    await Future<void>.delayed(const Duration(milliseconds: 400));
   }
 
   Future<void> _pickDate() async {
@@ -983,7 +982,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
                       : () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(
+                            MaterialPageRoute<void>(
                               builder: (context) =>
                                   const ReceiptCaptureScreen(),
                             ),

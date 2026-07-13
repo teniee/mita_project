@@ -3,9 +3,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../models/transaction_model.dart';
 import '../providers/transaction_provider.dart';
-import '../services/logging_service.dart';
 import 'add_transaction_screen.dart';
 
 class TransactionsScreen extends StatefulWidget {
@@ -268,7 +266,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                           onTap: () async {
                             final result = await Navigator.push(
                               context,
-                              MaterialPageRoute(
+                              MaterialPageRoute<dynamic>(
                                 builder: (context) => AddTransactionScreen(
                                   transaction: transaction,
                                 ),
@@ -361,7 +359,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                           padding: const EdgeInsets.symmetric(
                                               horizontal: 8, vertical: 2),
                                           decoration: BoxDecoration(
-                                            color: Colors.blue.withOpacity(0.1),
+                                            color: Colors.blue.withValues(alpha: 0.1),
                                             borderRadius:
                                                 BorderRadius.circular(8),
                                           ),
@@ -399,7 +397,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         onPressed: () async {
           final result = await Navigator.push(
             context,
-            MaterialPageRoute(
+            MaterialPageRoute<dynamic>(
               builder: (context) => const AddTransactionScreen(),
             ),
           );

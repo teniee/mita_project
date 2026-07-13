@@ -225,14 +225,14 @@ class ExpenseIntegrationHelper {
 
   /// Listen to expense state changes and provide callbacks
   static StreamSubscription<List<dynamic>> listenToCalendarUpdates(
-    Function(List<dynamic>) onUpdate,
+    void Function(List<dynamic>) onUpdate,
   ) {
     return _expenseStateService.calendarUpdates.listen(onUpdate);
   }
 
   /// Listen to expense additions and provide callbacks
   static StreamSubscription<Map<String, dynamic>> listenToExpenseAdditions(
-    Function(Map<String, dynamic>) onExpenseAdded,
+    void Function(Map<String, dynamic>) onExpenseAdded,
   ) {
     return _expenseStateService.expenseAdded.listen(onExpenseAdded);
   }
