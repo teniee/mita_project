@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -134,11 +133,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       _logoController.forward();
 
       // Start text animation after brief delay
-      await Future.delayed(const Duration(milliseconds: 400));
+      await Future<void>.delayed(const Duration(milliseconds: 400));
       _textController.forward();
 
       // Start progress animation
-      await Future.delayed(const Duration(milliseconds: 200));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
       _progressController.forward();
 
       // Check authentication status
@@ -153,7 +152,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       });
 
       // Navigate to login after error delay
-      await Future.delayed(const Duration(seconds: 2));
+      await Future<void>.delayed(const Duration(seconds: 2));
       if (mounted) {
         _navigateToLogin();
       }
@@ -168,7 +167,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
     try {
       setState(() => _statusText = l10n.initializingMita);
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future<void>.delayed(const Duration(milliseconds: 500));
 
       // Initialize SettingsProvider first for theme/locale preferences
       if (!settingsProvider.isInitialized) {
@@ -178,7 +177,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       }
 
       setState(() => _statusText = l10n.checkingAuthentication);
-      await Future.delayed(const Duration(milliseconds: 300));
+      await Future<void>.delayed(const Duration(milliseconds: 300));
 
       // Check for existing token first
       final token = await _api.getToken();
@@ -188,7 +187,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         logInfo('No authentication token found - redirecting to login',
             tag: 'WELCOME_SCREEN');
         setState(() => _statusText = l10n.welcomeToMita);
-        await Future.delayed(const Duration(milliseconds: 800));
+        await Future<void>.delayed(const Duration(milliseconds: 800));
         if (mounted) _navigateToLogin();
         return;
       }
@@ -198,7 +197,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       logInfo('UserProvider initialized successfully', tag: 'WELCOME_SCREEN');
 
       setState(() => _statusText = l10n.verifyingSession);
-      await Future.delayed(const Duration(milliseconds: 300));
+      await Future<void>.delayed(const Duration(milliseconds: 300));
 
       // Check if user has completed onboarding using provider
       final hasOnboarded = userProvider.hasCompletedOnboarding;
@@ -207,14 +206,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
       if (hasOnboarded) {
         setState(() => _statusText = l10n.loadingDashboard);
-        await Future.delayed(const Duration(milliseconds: 500));
+        await Future<void>.delayed(const Duration(milliseconds: 500));
 
         setState(() => _statusText = l10n.welcomeBackExclamation);
-        await Future.delayed(const Duration(milliseconds: 800));
+        await Future<void>.delayed(const Duration(milliseconds: 800));
         if (mounted) _navigateToMain();
       } else {
         setState(() => _statusText = l10n.continuingSetup);
-        await Future.delayed(const Duration(milliseconds: 800));
+        await Future<void>.delayed(const Duration(milliseconds: 800));
         if (mounted) _navigateToOnboarding();
       }
     } catch (e) {
@@ -226,7 +225,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       logInfo('User data cleared via UserProvider', tag: 'WELCOME_SCREEN');
 
       setState(() => _statusText = l10n.pleaseLoginToContinue);
-      await Future.delayed(const Duration(milliseconds: 1000));
+      await Future<void>.delayed(const Duration(milliseconds: 1000));
       if (mounted) _navigateToLogin();
     }
   }
@@ -269,11 +268,11 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                 Navigator.pushNamed(context, '/auth-test');
               },
               backgroundColor: theme.colorScheme.secondary,
+              tooltip: 'Auth Test Screen',
               child: Icon(
                 Icons.bug_report,
                 color: theme.colorScheme.onSecondary,
               ),
-              tooltip: 'Auth Test Screen',
             )
           : null,
       body: SafeArea(

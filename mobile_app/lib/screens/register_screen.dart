@@ -4,6 +4,7 @@ import '../theme/app_typography.dart';
 import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
 import '../services/api_service.dart';
+import '../utils/json_utils.dart';
 import '../services/logging_service.dart';
 import '../services/password_validation_service.dart';
 import '../services/timeout_manager_service.dart';
@@ -82,9 +83,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       // Extract tokens from standardized response structure
-      final responseData = response.data['data'] ?? response.data;
-      final accessToken = responseData['access_token'] as String?;
-      final refreshToken = responseData['refresh_token'] as String?;
+      final rawResponse = asStringKeyedMap(response.data);
+      final responseData =
+          asStringKeyedMapOrNull(rawResponse['data']) ?? rawResponse;
+      final accessToken = asStringOrNull(responseData['access_token']);
+      final refreshToken = asStringOrNull(responseData['refresh_token']);
 
       if (accessToken == null) {
         throw Exception('Registration response missing access token');
@@ -151,7 +154,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               'Server is experiencing issues. This is a temporary problem - please try again in a few minutes.';
         } else if (statusCode != null && statusCode >= 500) {
           errorMessage =
-              'Server error (${statusCode}). Please try again later.';
+              'Server error ($statusCode). Please try again later.';
         }
 
         // Handle timeout errors specifically
@@ -327,7 +330,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _showTimeoutRetryDialog() {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(

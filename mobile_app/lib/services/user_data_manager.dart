@@ -62,7 +62,7 @@ class UserDataManager {
               tag: 'USER_DATA_MANAGER');
           return <String, dynamic>{};
         },
-      ).catchError((error) {
+      ).catchError((Object error) {
         logWarning('getUserProfile error - using cached data: $error',
             tag: 'USER_DATA_MANAGER');
         return <String, dynamic>{};
@@ -103,7 +103,7 @@ class UserDataManager {
       await _saveCachedData();
 
       // Try to sync with backend
-      final success = await _apiService.updateUserProfile(profileData).timeout(
+      await _apiService.updateUserProfile(profileData).timeout(
             const Duration(seconds: 10),
             onTimeout: () => throw Exception('Profile update timeout'),
           );
@@ -293,10 +293,10 @@ class UserDataManager {
 
       return {
         'income': income,
-        'expenses': expenses is List ? expenses : [],
+        'expenses': expenses is List ? expenses : <dynamic>[],
         'goals':
-            goals is List ? goals : (goals is Map ? [goals] : ['budgeting']),
-        'habits': habits is List ? habits : [],
+            goals is List ? goals : (goals is Map ? <dynamic>[goals] : <dynamic>['budgeting']),
+        'habits': habits is List ? habits : <dynamic>[],
         'region': profile['region'] as String? ?? '',
         'countryCode': profile['countryCode'] as String? ?? '',
         'stateCode': profile['stateCode'] as String? ?? '',
@@ -316,9 +316,9 @@ class UserDataManager {
         'incomplete_onboarding': false,
         'needs_onboarding': false,
         'income': 0.0,
-        'expenses': [],
-        'goals': [],
-        'habits': [],
+        'expenses': <dynamic>[],
+        'goals': <dynamic>[],
+        'habits': <dynamic>[],
         'region': '',
         'countryCode': '',
         'stateCode': '',
@@ -388,16 +388,6 @@ class UserDataManager {
     }
   }
 
-  void _refreshFromApiBackground() {
-    Future.delayed(Duration.zero, () async {
-      try {
-        await refreshUserData();
-      } catch (e) {
-        logError('Background refresh failed: $e', tag: 'USER_DATA_MANAGER');
-      }
-    });
-  }
-
   Map<String, dynamic> _transformOnboardingToProfile(
       Map<String, dynamic> onboardingData) {
     final income = onboardingData['income'];
@@ -407,9 +397,9 @@ class UserDataManager {
 
     return {
       'income': income,
-      'expenses': onboardingData['expenses'] ?? [],
+      'expenses': onboardingData['expenses'] ?? <dynamic>[],
       'goals': onboardingData['goals'] ?? ['budgeting'],
-      'habits': onboardingData['habits'] ?? [],
+      'habits': onboardingData['habits'] ?? <dynamic>[],
       'region': onboardingData['region'] ?? 'United States',
       'countryCode': onboardingData['countryCode'] ?? 'US',
       'stateCode': onboardingData['stateCode'] ?? 'CA',
@@ -436,9 +426,9 @@ class UserDataManager {
 
     return {
       'income': income,
-      'expenses': onboardingData['expenses'] ?? [],
+      'expenses': onboardingData['expenses'] ?? <dynamic>[],
       'goals': onboardingData['goals'] ?? ['budgeting'],
-      'habits': onboardingData['habits'] ?? [],
+      'habits': onboardingData['habits'] ?? <dynamic>[],
       'region': onboardingData['region'] ?? '',
       'countryCode': onboardingData['countryCode'] ?? '',
       'stateCode': onboardingData['stateCode'] ?? '',
@@ -461,9 +451,9 @@ class UserDataManager {
       'name': 'MITA User',
       'email': 'user@mita.finance',
       'income': 0.0, // This will trigger onboarding flow in financial context
-      'expenses': [],
+      'expenses': <dynamic>[],
       'goals': ['budgeting'],
-      'habits': [],
+      'habits': <dynamic>[],
       'currency': 'USD',
       'region': 'United States',
       'countryCode': 'US',
@@ -475,25 +465,4 @@ class UserDataManager {
     };
   }
 
-  Map<String, dynamic> _getEmptyUserProfile() {
-    return {
-      'name': 'MITA User',
-      'email': 'user@mita.finance',
-      'expenses': [],
-      'goals': ['budgeting'],
-      'habits': [],
-      'currency': 'USD',
-      'region': 'United States',
-      'countryCode': 'US',
-      'stateCode': 'CA',
-      'incomeTier': 'middle',
-      'budgetMethod': '50/30/20 Rule',
-      'member_since':
-          DateTime.now().subtract(const Duration(days: 30)).toIso8601String(),
-      'profile_completion': 85,
-      'verified_email': true,
-      'dark_mode': false,
-      'notifications': true,
-    };
-  }
 }

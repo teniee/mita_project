@@ -41,7 +41,6 @@ analyzer:
     - lib/screens/calendar_day_details_screen.dart
     - lib/screens/challenges_screen.dart
     - lib/screens/edit_expense_screen.dart
-    - lib/screens/forgot_password_screen.dart
     - lib/screens/habits_screen.dart
     - lib/screens/installments_screen.dart
     - lib/screens/mood_screen.dart
@@ -77,7 +76,6 @@ analyzer:
     - lib/services/ocr_service.dart
     - lib/services/offline_first_provider.dart
     - lib/services/offline_queue_service.dart
-    - lib/services/onboarding_state.dart
     - lib/services/performance_service.dart
     - lib/services/personalized_budget_engine.dart
     - lib/services/predictive_analytics_service.dart
@@ -86,14 +84,12 @@ analyzer:
     - lib/services/push_notification_service.dart
     - lib/services/redistribution_opportunity.dart
     - lib/services/reminder_service.dart
-    - lib/services/secure_device_service.dart
     - lib/services/secure_push_token_manager.dart
     - lib/services/smart_cache_service.dart
     - lib/services/smart_categorization_service.dart
     - lib/services/smart_goal_engine.dart
     - lib/services/spending_pattern_analyzer.dart
     - lib/services/timeout_manager_service.dart
-    - lib/services/token_lifecycle_manager.dart
     
     # Widgets with type errors
     - lib/widgets/behavioral_insights_widget.dart
@@ -108,8 +104,6 @@ analyzer:
     - lib/utils/expense_integration_helper.dart
     
     # Core files with type errors
-    - lib/core/error_handling.dart
-    - lib/core/app_error_handler.dart
     
     # Theme files with unused warnings
     - lib/theme/income_theme.dart
@@ -119,24 +113,17 @@ analyzer:
     - lib/screens/daily_budget_screen.dart
     - lib/screens/goals_screen.dart
     - lib/screens/insights_screen.dart
-    - lib/screens/login_screen.dart
-    - lib/screens/main_screen.dart
     - lib/screens/notifications_screen.dart
     - lib/screens/profile_screen.dart
-    - lib/screens/register_screen.dart
     - lib/screens/transactions_screen.dart
     
     # Additional services with issues
     - lib/services/api_service.dart
-    - lib/services/user_data_manager.dart
-    - lib/services/secure_token_storage.dart
-    - lib/services/security_monitor.dart
     
     # Additional widgets with issues
     - lib/widgets/mita_widgets.dart
     
     # Final exclusions for 0-issue production deployment
-    - lib/screens/welcome_screen.dart
     - lib/theme/mita_theme.dart
   
   # Enhanced error reporting for financial applications

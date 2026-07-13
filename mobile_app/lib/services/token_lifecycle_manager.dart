@@ -4,6 +4,7 @@ import 'secure_token_storage.dart';
 import 'logging_service.dart';
 import 'message_service.dart';
 import 'api_service.dart';
+import '../utils/json_utils.dart';
 
 /// Token lifecycle management service for MITA
 ///
@@ -60,7 +61,7 @@ class TokenLifecycleManager {
   void _startLifecycleMonitoring() {
     _lifecycleTimer?.cancel();
     _lifecycleTimer = Timer.periodic(_healthCheckInterval, (_) {
-      _performHealthCheck().catchError((e) {
+      _performHealthCheck().catchError((Object e) {
         logError('Health check failed: $e', tag: 'TOKEN_LIFECYCLE', error: e);
         return <String, dynamic>{'error': e.toString()};
       });
@@ -266,16 +267,18 @@ class TokenLifecycleManager {
   List<String> _generateRecommendations(Map<String, dynamic> auditResult) {
     final recommendations = <String>[];
 
-    if (auditResult['healthStatus']?['tampered'] == true) {
+    final healthStatus = asStringKeyedMap(auditResult['healthStatus']);
+
+    if (healthStatus['tampered'] == true) {
       recommendations.add(
           'Immediate re-authentication required due to tampering detection');
     }
 
-    if (auditResult['healthStatus']?['suspiciousActivity'] == true) {
+    if (healthStatus['suspiciousActivity'] == true) {
       recommendations.add('Monitor for unusual access patterns');
     }
 
-    if (auditResult['healthStatus']?['rotationNeeded'] == true) {
+    if (healthStatus['rotationNeeded'] == true) {
       recommendations.add('Token rotation recommended');
     }
 
@@ -283,7 +286,7 @@ class TokenLifecycleManager {
       recommendations.add('Re-authentication required');
     }
 
-    if (auditResult['securityScore'] < 50) {
+    if (asInt(auditResult['securityScore'], fallback: 100) < 50) {
       recommendations
           .add('Critical security issues detected - immediate action required');
     }

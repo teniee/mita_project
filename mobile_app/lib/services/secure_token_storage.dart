@@ -7,6 +7,7 @@ import 'package:device_info_plus/device_info_plus.dart';
 
 import 'logging_service.dart';
 import 'security_monitor.dart';
+import '../utils/json_utils.dart';
 
 /// Secure token storage service specifically designed for financial applications
 ///
@@ -528,7 +529,7 @@ class SecureTokenStorage {
       final metadataString =
           await _metadataStorage.read(key: _securityMetadataKey);
       if (metadataString != null) {
-        return Map<String, dynamic>.from(jsonDecode(metadataString));
+        return asStringKeyedMap(jsonDecode(metadataString));
       }
     } catch (e) {
       logError('Failed to get security metadata: $e',
@@ -591,11 +592,12 @@ class SecureTokenStorage {
             final payload = parts[1];
             final normalized = base64Url.normalize(payload);
             final decoded = utf8.decode(base64Url.decode(normalized));
-            final Map<String, dynamic> claims = json.decode(decoded);
+            final claims = asStringKeyedMap(json.decode(decoded));
 
-            if (claims.containsKey('exp')) {
-              final expiry = DateTime.fromMillisecondsSinceEpoch(
-                  (claims['exp'] as int) * 1000);
+            final expSeconds = asIntOrNull(claims['exp']);
+            if (expSeconds != null) {
+              final expiry =
+                  DateTime.fromMillisecondsSinceEpoch(expSeconds * 1000);
               final minutesUntilExpiry =
                   expiry.difference(DateTime.now()).inMinutes;
 

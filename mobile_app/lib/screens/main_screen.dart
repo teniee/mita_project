@@ -2,13 +2,12 @@ import 'dart:developer' as dev;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../theme/app_colors.dart';
-import '../theme/app_typography.dart';
 import '../providers/user_provider.dart';
 import '../providers/budget_provider.dart';
 import '../providers/transaction_provider.dart';
 import '../services/income_service.dart';
 import '../services/logging_service.dart';
+import '../utils/json_utils.dart';
 import '../services/loading_service.dart';
 
 class MainScreen extends StatefulWidget {
@@ -257,7 +256,7 @@ class _MainScreenState extends State<MainScreen> {
       'peer_average': null,
       'peer_median': null,
       'percentile': null,
-      'categories': {},
+      'categories': <String, dynamic>{},
       'insights': [
         'Peer comparison data will be available once you start tracking expenses'
       ],
@@ -508,10 +507,10 @@ class _MainScreenState extends State<MainScreen> {
       'incomplete_profile': hasIncompleteProfile,
       'network_error': hasNetworkError,
       'data': {
-        'goals': [],
-        'goals_summary': {},
-        'challenges': [],
-        'challenges_summary': {},
+        'goals': <dynamic>[],
+        'goals_summary': <String, dynamic>{},
+        'challenges': <dynamic>[],
+        'challenges_summary': <String, dynamic>{},
       },
     };
   }
@@ -530,7 +529,7 @@ class _MainScreenState extends State<MainScreen> {
       final today = DateTime.now();
 
       // Find today's entry in calendar data
-      final todayEntry = budgetProvider.calendarData.firstWhere(
+      final todayEntry = asMapList(budgetProvider.calendarData).firstWhere(
         (day) => day['day'] == today.day,
         orElse: () => <String, dynamic>{},
       );
@@ -623,9 +622,9 @@ class _MainScreenState extends State<MainScreen> {
 
     return List.generate(7, (index) {
       final dayDate = weekStart.add(Duration(days: index));
-      final dayData = calendarData.firstWhere(
+      final dayData = asMapList(calendarData).firstWhere(
         (d) => d['day'] == dayDate.day,
-        orElse: () => {'spent': 0, 'limit': 0},
+        orElse: () => <String, dynamic>{'spent': 0, 'limit': 0},
       );
 
       // SAFE type casting for calendar data
@@ -1003,7 +1002,7 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildBudgetTargets(Map<String, dynamic> dashboardData) {
-    final targets = dashboardData['daily_targets'] ?? [];
+    final targets = asMapList(dashboardData['daily_targets']);
     final primaryColor = _incomeTier != null
         ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
         : const Color(0xFF193C57);
@@ -1117,7 +1116,8 @@ class _MainScreenState extends State<MainScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  target['category'] ?? 'Category',
+                                  asString(target['category'],
+                                      fallback: 'Category'),
                                   style: TextStyle(
                                     fontFamily: 'Sora',
                                     fontWeight: FontWeight.w600,
@@ -1219,13 +1219,13 @@ class _MainScreenState extends State<MainScreen> {
                 ),
               ),
             );
-          }).toList(),
+          }),
       ],
     );
   }
 
   Widget _buildMiniCalendar(Map<String, dynamic> dashboardData) {
-    final week = dashboardData['week'] ?? [];
+    final week = asMapList(dashboardData['week']);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1266,7 +1266,7 @@ class _MainScreenState extends State<MainScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               alignment: Alignment.center,
-              child: Text(day['day'],
+              child: Text(asString(day['day']),
                   style: const TextStyle(fontWeight: FontWeight.bold)),
             );
           }).toList(),
@@ -1280,17 +1280,14 @@ class _MainScreenState extends State<MainScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    // Get goals data from dashboard
-    // FIXED: Safe type casting to handle API response types
-    final goalsData =
-        (dashboardData['data']?['goals'] as List?)?.cast<dynamic>() ?? [];
-    final goalsSummary = (dashboardData['data']?['goals_summary'] as Map?)
-            ?.cast<String, dynamic>() ??
-        <String, dynamic>{};
+    // Get goals data from dashboard, normalized at the response boundary
+    final goalsSection = asStringKeyedMap(dashboardData['data']);
+    final goalsData = asMapList(goalsSection['goals']);
+    final goalsSummary = asStringKeyedMap(goalsSection['goals_summary']);
 
-    final totalActive = goalsSummary['total_active'] ?? 0;
-    final nearCompletion = goalsSummary['near_completion'] ?? 0;
-    final overdue = goalsSummary['overdue'] ?? 0;
+    final totalActive = asInt(goalsSummary['total_active']);
+    final nearCompletion = asInt(goalsSummary['near_completion']);
+    final overdue = asInt(goalsSummary['overdue']);
 
     // If no goals, show empty state
     if (goalsData.isEmpty && totalActive == 0) {
@@ -1473,9 +1470,8 @@ class _MainScreenState extends State<MainScreen> {
         const SizedBox(height: 12),
 
         // Goals list
-        ...goalsData.take(3).map((goalData) {
-          final goal = goalData as Map<String, dynamic>;
-          final title = goal['title'] ?? 'Untitled Goal';
+        ...goalsData.take(3).map((goal) {
+          final title = asString(goal['title'], fallback: 'Untitled Goal');
           // SAFE type casting for goal data
           final progressValue = goal['progress'];
           final progress = (progressValue is num)
@@ -1497,9 +1493,9 @@ class _MainScreenState extends State<MainScreen> {
               : (savedAmountValue is String
                   ? double.tryParse(savedAmountValue) ?? 0.0
                   : 0.0);
-          final isOverdue = goal['is_overdue'] as bool? ?? false;
-          final priority = goal['priority'] ?? 'medium';
-          final category = goal['category'] ?? 'Other';
+          final isOverdue = asBool(goal['is_overdue']);
+          final priority = asString(goal['priority'], fallback: 'medium');
+          final category = asString(goal['category'], fallback: 'Other');
 
           Color progressColor;
           if (isOverdue) {
@@ -1696,18 +1692,16 @@ class _MainScreenState extends State<MainScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    // Get challenges data from dashboard
-    // FIXED: Safe type casting to handle API response types
-    final challengesData =
-        (dashboardData['data']?['challenges'] as List?)?.cast<dynamic>() ?? [];
+    // Get challenges data from dashboard, normalized at the response boundary
+    final challengesSection = asStringKeyedMap(dashboardData['data']);
+    final challengesData = asMapList(challengesSection['challenges']);
     final challengesSummary =
-        (dashboardData['data']?['challenges_summary'] as Map?)
-                ?.cast<String, dynamic>() ??
-            <String, dynamic>{};
+        asStringKeyedMap(challengesSection['challenges_summary']);
 
-    final activeChallenges = challengesSummary['active_challenges'] ?? 0;
-    final completedThisMonth = challengesSummary['completed_this_month'] ?? 0;
-    final currentStreak = challengesSummary['current_streak'] ?? 0;
+    final activeChallenges = asInt(challengesSummary['active_challenges']);
+    final completedThisMonth =
+        asInt(challengesSummary['completed_this_month']);
+    final currentStreak = asInt(challengesSummary['current_streak']);
 
     // If no challenges, show empty state
     if (challengesData.isEmpty && activeChallenges == 0) {
@@ -1897,11 +1891,11 @@ class _MainScreenState extends State<MainScreen> {
         const SizedBox(height: 12),
 
         // Challenges list
-        ...challengesData.take(3).map((challengeData) {
-          final challenge = challengeData as Map<String, dynamic>;
-          final name = challenge['name'] ?? 'Challenge';
-          final description = challenge['description'] ?? '';
-          final difficulty = challenge['difficulty'] ?? 'medium';
+        ...challengesData.take(3).map((challenge) {
+          final name = asString(challenge['name'], fallback: 'Challenge');
+          final description = asString(challenge['description']);
+          final difficulty =
+              asString(challenge['difficulty'], fallback: 'medium');
           // SAFE type casting for challenge data
           final progressPercentageValue = challenge['progress_percentage'];
           final progressPercentage = (progressPercentageValue is num)
@@ -1909,9 +1903,9 @@ class _MainScreenState extends State<MainScreen> {
               : (progressPercentageValue is String
                   ? double.tryParse(progressPercentageValue) ?? 0.0
                   : 0.0);
-          final daysCompleted = challenge['days_completed'] ?? 0;
-          final durationDays = challenge['duration_days'] ?? 0;
-          final rewardPoints = challenge['reward_points'] ?? 0;
+          final daysCompleted = asInt(challenge['days_completed']);
+          final durationDays = asInt(challenge['duration_days']);
+          final rewardPoints = asInt(challenge['reward_points']);
 
           Color difficultyColor;
           IconData difficultyIcon;
@@ -2214,8 +2208,8 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildSnapshotPreview() {
-    final rating = aiSnapshot!['rating'] ?? 'B';
-    final summary = aiSnapshot!['summary'] ?? '';
+    final rating = asString(aiSnapshot!['rating'], fallback: 'B');
+    final summary = asString(aiSnapshot!['summary']);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2255,8 +2249,8 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildWeeklyInsightsPreview() {
-    final insights = weeklyInsights!['insights'] ?? '';
-    final trend = weeklyInsights!['trend'] ?? 'stable';
+    final insights = asString(weeklyInsights!['insights']);
+    final trend = asString(weeklyInsights!['trend'], fallback: 'stable');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2295,8 +2289,8 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   Widget _buildBudgetEngineInsightsPreview() {
-    final score = financialHealthScore!['score'] ?? 75;
-    final grade = financialHealthScore!['grade'] ?? 'B';
+    final score = asInt(financialHealthScore!['score'], fallback: 75);
+    final grade = asString(financialHealthScore!['grade'], fallback: 'B');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2369,7 +2363,7 @@ class _MainScreenState extends State<MainScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            advice['text'] ??
+            asStringOrNull(advice['text']) ??
                 'Complete your profile setup to get personalized financial insights and budget recommendations.',
             style: TextStyle(
               fontFamily: 'Manrope',
@@ -2409,7 +2403,7 @@ class _MainScreenState extends State<MainScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            advice['text'] ??
+            asStringOrNull(advice['text']) ??
                 'Unable to load your data. Please check your internet connection and try refreshing.',
             style: TextStyle(
               fontFamily: 'Manrope',
@@ -2425,7 +2419,7 @@ class _MainScreenState extends State<MainScreen> {
     } else {
       // Default advice content
       return Text(
-        advice['text'] ??
+        asStringOrNull(advice['text']) ??
             'Tap to view personalized AI insights based on your real financial data',
         style: TextStyle(
           fontFamily: 'Manrope',

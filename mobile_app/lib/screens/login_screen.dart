@@ -3,8 +3,6 @@ import 'dart:developer' as dev;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
-import '../theme/app_typography.dart';
 import 'package:flutter/services.dart';
 import 'package:dio/dio.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -12,15 +10,14 @@ import 'package:provider/provider.dart';
 import '../services/api_service.dart';
 import '../providers/user_provider.dart';
 import '../services/secure_push_token_manager.dart';
-import '../services/password_validation_service.dart';
 import '../services/accessibility_service.dart';
 import '../services/message_service.dart';
-import '../services/timeout_manager_service.dart';
 import '../theme/mita_theme.dart';
 import '../l10n/generated/app_localizations.dart';
 import '../core/enhanced_error_handling.dart';
 import '../core/app_error_handler.dart';
 import '../core/error_handling.dart';
+import '../utils/json_utils.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -141,91 +138,11 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  void _showError(String message) {
-    _errorAnimationController.forward().then((_) {
-      _errorAnimationController.reverse();
-    });
-
-    // Provide haptic feedback for errors
-    HapticFeedback.vibrate();
-
-    // Announce error to screen readers
-    _accessibilityService.announceToScreenReader(
-      'Login error: $message',
-      financialContext: 'Authentication Error',
-      isImportant: true,
-    );
-
-    // Show snackbar with retry option
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Semantics(
-          liveRegion: true,
-          label: 'Error message: $message',
-          child: Text(message),
-        ),
-        action: SnackBarAction(
-          label: AppLocalizations.of(context).dismiss,
-          onPressed: () {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
-            _accessibilityService
-                .announceToScreenReader('Error message dismissed');
-          },
-        ),
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-      ),
-    );
-  }
-
-  void _showTimeoutRetryDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: Row(
-            children: [
-              Icon(Icons.wifi_off,
-                  color: Theme.of(context).colorScheme.primary),
-              const SizedBox(width: 8),
-              const Text('Connection Timeout'),
-            ],
-          ),
-          content: const Text(
-            'The login request is taking longer than expected. This might be due to server load or network conditions.\n\nWe\'ve increased the timeout limit. Would you like to try again?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                setState(() {
-                  _loading = false;
-                });
-              },
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                // Retry the login with the same credentials
-                _handleEmailLogin();
-              },
-              child: const Text('Try Again'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Future<void> _handleGoogleSignIn() async {
     if (isLoading) return;
 
     // Provide haptic feedback
     HapticFeedback.selectionClick();
-    final l10n = AppLocalizations.of(context);
 
     // Set loading state immediately and start slow connection detection
     setState(() {
@@ -288,7 +205,7 @@ class _LoginScreenState extends State<LoginScreen>
             name: 'LoginScreen');
       if (kDebugMode)
         dev.log(
-            'Google login response data keys: ${response.data?.keys?.toList()}',
+            'Google login response data keys: ${asStringKeyedMapOrNull(response.data)?.keys.toList()}',
             name: 'LoginScreen');
 
       if (response.statusCode != 200) {
@@ -303,23 +220,23 @@ class _LoginScreenState extends State<LoginScreen>
       final responseData = response.data;
       if (responseData is Map<String, dynamic>) {
         // Pattern 1: Direct access
-        accessToken = responseData['access_token'];
-        refreshToken = responseData['refresh_token'];
+        accessToken = asStringOrNull(responseData['access_token']);
+        refreshToken = asStringOrNull(responseData['refresh_token']);
 
         // Pattern 2: Nested in 'data' object
         if (accessToken == null && responseData['data'] != null) {
-          final data = responseData['data'] as Map<String, dynamic>?;
-          accessToken = data?['access_token'];
-          refreshToken = data?['refresh_token'];
+          final data = asStringKeyedMapOrNull(responseData['data']);
+          accessToken = asStringOrNull(data?['access_token']);
+          refreshToken = asStringOrNull(data?['refresh_token']);
         }
 
         // Pattern 3: Different key names
         if (accessToken == null) {
-          accessToken = responseData['accessToken'] ??
-              responseData['access_token'] ??
-              responseData['token'];
-          refreshToken =
-              responseData['refreshToken'] ?? responseData['refresh_token'];
+          accessToken = asStringOrNull(responseData['accessToken']) ??
+              asStringOrNull(responseData['access_token']) ??
+              asStringOrNull(responseData['token']);
+          refreshToken = asStringOrNull(responseData['refreshToken']) ??
+              asStringOrNull(responseData['refresh_token']);
         }
 
         if (kDebugMode)
@@ -428,7 +345,7 @@ class _LoginScreenState extends State<LoginScreen>
               name: 'LoginScreen');
         // Show manual navigation instruction as final fallback
         if (mounted) {
-          showDialog(
+          showDialog<void>(
             context: context,
             builder: (context) => AlertDialog(
               title: const Text('Google Sign-In Successful'),
@@ -446,7 +363,7 @@ class _LoginScreenState extends State<LoginScreen>
           );
         }
       }
-    } catch (e, stackTrace) {
+    } catch (e) {
       if (kDebugMode)
         dev.log('Google sign-in process failed: $e',
             name: 'LoginScreen', error: e);
@@ -467,7 +384,7 @@ class _LoginScreenState extends State<LoginScreen>
           final statusCode = e.response?.statusCode;
           if (statusCode != null) {
             errorMsg =
-                'Google sign-in failed (${statusCode}). Please try again.';
+                'Google sign-in failed ($statusCode). Please try again.';
           }
         }
 
@@ -489,7 +406,6 @@ class _LoginScreenState extends State<LoginScreen>
   Future<void> _handleEmailLogin() async {
     if (isLoading) return;
 
-    final l10n = AppLocalizations.of(context);
 
     // Basic form validation — only check non-empty for login
     // (password strength validation is for registration, not login)
@@ -544,7 +460,7 @@ class _LoginScreenState extends State<LoginScreen>
         dev.log('Login API response received: ${response.statusCode}',
             name: 'LoginScreen');
       if (kDebugMode)
-        dev.log('Login response data keys: ${response.data?.keys?.toList()}',
+        dev.log('Login response data keys: ${asStringKeyedMapOrNull(response.data)?.keys.toList()}',
             name: 'LoginScreen');
 
       if (response.statusCode != 200) {
@@ -560,23 +476,23 @@ class _LoginScreenState extends State<LoginScreen>
       final responseData = response.data;
       if (responseData is Map<String, dynamic>) {
         // Pattern 1: Direct access
-        accessToken = responseData['access_token'];
-        refreshToken = responseData['refresh_token'];
+        accessToken = asStringOrNull(responseData['access_token']);
+        refreshToken = asStringOrNull(responseData['refresh_token']);
 
         // Pattern 2: Nested in 'data' object
         if (accessToken == null && responseData['data'] != null) {
-          final data = responseData['data'] as Map<String, dynamic>?;
-          accessToken = data?['access_token'];
-          refreshToken = data?['refresh_token'];
+          final data = asStringKeyedMapOrNull(responseData['data']);
+          accessToken = asStringOrNull(data?['access_token']);
+          refreshToken = asStringOrNull(data?['refresh_token']);
         }
 
         // Pattern 3: Different key names
         if (accessToken == null) {
-          accessToken = responseData['accessToken'] ??
-              responseData['access_token'] ??
-              responseData['token'];
-          refreshToken =
-              responseData['refreshToken'] ?? responseData['refresh_token'];
+          accessToken = asStringOrNull(responseData['accessToken']) ??
+              asStringOrNull(responseData['access_token']) ??
+              asStringOrNull(responseData['token']);
+          refreshToken = asStringOrNull(responseData['refreshToken']) ??
+              asStringOrNull(responseData['refresh_token']);
         }
 
         if (kDebugMode)
@@ -680,7 +596,7 @@ class _LoginScreenState extends State<LoginScreen>
           dev.log('Navigation failed: $navigationError', name: 'LoginScreen');
         // Show manual navigation instruction as final fallback
         if (mounted) {
-          showDialog(
+          showDialog<void>(
             context: context,
             builder: (context) => AlertDialog(
               title: const Text('Login Successful'),
@@ -698,7 +614,7 @@ class _LoginScreenState extends State<LoginScreen>
           );
         }
       }
-    } catch (e, stackTrace) {
+    } catch (e) {
       if (kDebugMode)
         dev.log('Login process failed: $e', name: 'LoginScreen', error: e);
 
@@ -722,7 +638,7 @@ class _LoginScreenState extends State<LoginScreen>
             errorMsg =
                 'Too many login attempts. Please try again in a few minutes.';
           } else if (statusCode != null) {
-            errorMsg = 'Login failed (${statusCode}). Please try again.';
+            errorMsg = 'Login failed ($statusCode). Please try again.';
           }
         } else if (e.toString().contains('timeout') ||
             e.toString().contains('TimeoutException')) {
@@ -760,11 +676,11 @@ class _LoginScreenState extends State<LoginScreen>
                 Navigator.pushNamed(context, '/auth-test');
               },
               backgroundColor: colorScheme.secondary,
+              tooltip: 'Auth Test Screen',
               child: Icon(
                 Icons.bug_report,
                 color: colorScheme.onSecondary,
               ),
-              tooltip: 'Auth Test Screen',
             )
           : null,
       body: SafeArea(

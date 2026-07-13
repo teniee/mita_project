@@ -65,7 +65,7 @@ class SecurityMonitor {
   void _startPeriodicMonitoring() {
     _monitoringTimer?.cancel();
     _monitoringTimer = Timer.periodic(_monitoringInterval, (_) {
-      _performMonitoringCycle().catchError((e) {
+      _performMonitoringCycle().catchError((Object e) {
         logError('Monitoring cycle failed: $e',
             tag: 'SECURITY_MONITOR', error: e);
       });

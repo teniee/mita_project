@@ -13,6 +13,7 @@ import 'dart:convert';
 import 'dart:async';
 
 import '../config.dart' show AppConfig;
+import '../utils/json_utils.dart';
 
 // Error severity levels
 enum ErrorSeverity {
@@ -322,12 +323,14 @@ class ErrorHandler {
       final reports = _prefs.getStringList('pending_error_reports') ?? [];
 
       for (final reportJson in reports) {
-        final reportData = jsonDecode(reportJson);
+        final reportData = asStringKeyedMap(jsonDecode(reportJson));
+        final timestamp = asDateTimeOrNull(reportData['timestamp']);
+        if (timestamp == null) continue; // corrupt entry; skip, don't drop all
         _pendingReports.add(ErrorReport(
-          id: reportData['id'],
-          timestamp: DateTime.parse(reportData['timestamp']),
-          error: reportData['error'],
-          stackTrace: reportData['stackTrace'],
+          id: asString(reportData['id']),
+          timestamp: timestamp,
+          error: asString(reportData['error']),
+          stackTrace: asStringOrNull(reportData['stackTrace']),
           severity: ErrorSeverity.values.firstWhere(
             (e) => e.toString().split('.').last == reportData['severity'],
             orElse: () => ErrorSeverity.medium,
@@ -336,12 +339,12 @@ class ErrorHandler {
             (e) => e.toString().split('.').last == reportData['category'],
             orElse: () => ErrorCategory.unknown,
           ),
-          context: Map<String, dynamic>.from(reportData['context'] ?? {}),
-          appVersion: reportData['appVersion'],
-          platform: reportData['platform'],
-          deviceInfo: reportData['deviceInfo'],
-          isConnected: reportData['isConnected'],
-          userId: reportData['userId'],
+          context: asStringKeyedMap(reportData['context']),
+          appVersion: asString(reportData['appVersion']),
+          platform: asString(reportData['platform']),
+          deviceInfo: asString(reportData['deviceInfo']),
+          isConnected: asBool(reportData['isConnected']),
+          userId: asStringOrNull(reportData['userId']),
         ));
       }
 
