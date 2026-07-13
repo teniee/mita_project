@@ -1,5 +1,5 @@
-/// MODULE 5: Budgeting Goals - Enhanced Goals Screen
-/// Complete UI for goal management with statistics and filtering
+// MODULE 5: Budgeting Goals - Enhanced Goals Screen
+// Complete UI for goal management with statistics and filtering
 
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
@@ -8,7 +8,6 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../models/goal.dart';
 import '../providers/goals_provider.dart';
-import '../services/logging_service.dart';
 import 'goal_insights_screen.dart';
 import 'smart_goal_recommendations_screen.dart';
 
@@ -85,7 +84,7 @@ class _GoalsScreenState extends State<GoalsScreen>
     String selectedPriority = goal?.priority ?? 'medium';
     DateTime? selectedDate = goal?.targetDate;
 
-    final result = await showDialog<bool>(
+    await showDialog<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
@@ -306,7 +305,7 @@ class _GoalsScreenState extends State<GoalsScreen>
   Future<void> _addSavings(Goal goal) async {
     final controller = TextEditingController();
 
-    final result = await showDialog<bool>(
+    await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Add Savings'),
@@ -374,7 +373,7 @@ class _GoalsScreenState extends State<GoalsScreen>
 
   void _showGoalInsights(Goal goal) {
     Navigator.of(context).push(
-      MaterialPageRoute(
+      MaterialPageRoute<void>(
         builder: (context) => GoalInsightsScreen(goal: goal),
       ),
     );
@@ -424,7 +423,7 @@ class _GoalsScreenState extends State<GoalsScreen>
             onPressed: () async {
               final result = await Navigator.push(
                 context,
-                MaterialPageRoute(
+                MaterialPageRoute<bool>(
                   builder: (context) => const SmartGoalRecommendationsScreen(),
                 ),
               );

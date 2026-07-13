@@ -457,22 +457,5 @@ class GoalsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Sample goals for fallback
-  List<Goal> _getSampleGoals() {
-    return [
-      Goal(
-        id: '1',
-        title: 'Emergency Fund',
-        description: 'Build a 3-month emergency fund',
-        category: 'Emergency',
-        targetAmount: 5000,
-        savedAmount: 1250,
-        status: 'active',
-        progress: 25.0,
-        createdAt: DateTime.now().subtract(const Duration(days: 30)),
-        lastUpdated: DateTime.now(),
-        priority: 'high',
-      ),
-    ];
-  }
+
 }

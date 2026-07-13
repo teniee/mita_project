@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'api_service.dart';
-import 'income_service.dart';
 import 'spending_pattern_analyzer.dart';
 import 'logging_service.dart';
+import '../utils/json_utils.dart';
 
 /// Advanced predictive analytics service that forecasts future spending,
 /// identifies upcoming financial challenges, and provides proactive recommendations.
@@ -15,7 +15,6 @@ class PredictiveAnalyticsService extends ChangeNotifier {
   PredictiveAnalyticsService._internal();
 
   final ApiService _apiService = ApiService();
-  final IncomeService _incomeService = IncomeService();
   final SpendingPatternAnalyzer _patternAnalyzer = SpendingPatternAnalyzer();
 
   // Prediction state
@@ -413,7 +412,7 @@ class PredictiveAnalyticsService extends ChangeNotifier {
               confidence: (data['confidence'] as num?)?.toDouble() ?? 0.5,
               timeframe: daysAhead,
               method: PredictionMethod.ai,
-              factors: List<String>.from(data['influencing_factors'] ?? []),
+              factors: asStringList(data['influencing_factors']),
             );
           }
         });

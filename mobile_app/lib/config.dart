@@ -110,4 +110,4 @@ class ApiConfig {
 
 /// @deprecated Use [AppConfig.fullApiUrl] instead.
 /// Kept for backward compatibility during migration.
-final String defaultApiBaseUrl = '${AppConfig.baseUrl}${AppConfig.apiPath}/';
+const String defaultApiBaseUrl = '${AppConfig.baseUrl}${AppConfig.apiPath}/';

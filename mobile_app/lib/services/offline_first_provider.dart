@@ -27,7 +27,6 @@ class OfflineFirstProvider {
   final ValueNotifier<bool> _isInitialized = ValueNotifier<bool>(false);
   final ValueNotifier<bool> _isBackgroundSyncing = ValueNotifier<bool>(false);
 
-  Timer? _backgroundSyncTimer;
   bool _hasInitialized = false;
 
   ValueNotifier<bool> get isInitialized => _isInitialized;
@@ -136,30 +135,7 @@ class OfflineFirstProvider {
     }
   }
 
-  /// Generate basic calendar fallback
-  List<dynamic> _generateBasicCalendar(double income) {
-    final today = DateTime.now();
-    final daysInMonth = DateTime(today.year, today.month + 1, 0).day;
-    final dailyBudget = (income * 0.55) / 30;
 
-    return List.generate(daysInMonth, (index) {
-      final day = index + 1;
-      final currentDate = DateTime(today.year, today.month, day);
-      final isToday = day == today.day;
-      final isPastDay = currentDate.isBefore(today);
-
-      return {
-        'day': day,
-        'limit': dailyBudget.round(),
-        'spent': isPastDay
-            ? (dailyBudget * 0.7).round()
-            : (isToday ? (dailyBudget * 0.5).round() : 0),
-        'status': 'good',
-        'is_today': isToday,
-        'is_weekend': currentDate.weekday >= 6,
-      };
-    });
-  }
 
   /// Generate safe default dashboard data
   Map<String, dynamic> _generateDefaultDashboard() {
@@ -252,103 +228,9 @@ class OfflineFirstProvider {
     return _cachedUserProfile!;
   }
 
-  /// Start background sync to update cached data
-  void _startBackgroundSync() {
-    // Start immediate background sync
-    _performBackgroundSync();
 
-    // Set up periodic background sync (every 5 minutes)
-    _backgroundSyncTimer = Timer.periodic(const Duration(minutes: 5), (_) {
-      _performBackgroundSync();
-    });
-  }
 
-  /// Perform background sync without affecting UI
-  Future<void> _performBackgroundSync() async {
-    if (_isBackgroundSyncing.value) return; // Avoid overlapping syncs
 
-    _isBackgroundSyncing.value = true;
-
-    try {
-      logDebug('Starting background sync', tag: 'OFFLINE_FIRST');
-
-      // Sync dashboard data in background
-      _timeoutManager.executeBackground<void>(
-        operation: () async {
-          try {
-            final dashboardData = await _apiService.getDashboard();
-            _cachedDashboard = dashboardData;
-
-            // Cache for next time
-            await _offlineService.cacheResponse(
-              key: 'dashboard_data',
-              data: jsonEncode(dashboardData),
-              expiry: const Duration(hours: 2),
-            );
-
-            logDebug('Dashboard data synced in background',
-                tag: 'OFFLINE_FIRST');
-          } catch (e) {
-            logDebug('Background dashboard sync failed (expected)',
-                tag: 'OFFLINE_FIRST');
-          }
-        },
-        timeout: const Duration(seconds: 8),
-        operationName: 'Background Dashboard Sync',
-      );
-
-      // Sync calendar data in background
-      _timeoutManager.executeBackground<void>(
-        operation: () async {
-          try {
-            final calendarData = await _apiService.getCalendar();
-            _cachedCalendar = calendarData;
-
-            // Cache for next time
-            await _offlineService.cacheResponse(
-              key: 'calendar_data',
-              data: jsonEncode(calendarData),
-              expiry: const Duration(hours: 2),
-            );
-
-            logDebug('Calendar data synced in background',
-                tag: 'OFFLINE_FIRST');
-          } catch (e) {
-            logDebug('Background calendar sync failed (expected)',
-                tag: 'OFFLINE_FIRST');
-          }
-        },
-        timeout: const Duration(seconds: 8),
-        operationName: 'Background Calendar Sync',
-      );
-
-      // Sync user profile in background
-      _timeoutManager.executeBackground<void>(
-        operation: () async {
-          try {
-            final profileData = await _apiService.getUserProfile();
-            _cachedUserProfile = profileData;
-
-            // Cache for next time
-            await _offlineService.cacheResponse(
-              key: 'user_profile',
-              data: jsonEncode(profileData),
-              expiry: const Duration(hours: 4),
-            );
-
-            logDebug('User profile synced in background', tag: 'OFFLINE_FIRST');
-          } catch (e) {
-            logDebug('Background profile sync failed (expected)',
-                tag: 'OFFLINE_FIRST');
-          }
-        },
-        timeout: const Duration(seconds: 5),
-        operationName: 'Background Profile Sync',
-      );
-    } finally {
-      _isBackgroundSyncing.value = false;
-    }
-  }
 
   /// Force refresh data (user-initiated)
   Future<void> refreshData() async {
@@ -430,7 +312,6 @@ class OfflineFirstProvider {
 
   /// Dispose resources
   void dispose() {
-    _backgroundSyncTimer?.cancel();
     _isInitialized.dispose();
     _isBackgroundSyncing.dispose();
   }

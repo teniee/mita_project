@@ -35,7 +35,6 @@ analyzer:
     
     # Screens with dynamic type issues
     - lib/screens/advice_history_screen.dart
-    - lib/screens/behavioral_insights_screen.dart
     - lib/screens/challenges_screen.dart
     - lib/screens/habits_screen.dart
     - lib/screens/installments_screen.dart
@@ -58,36 +57,16 @@ analyzer:
     
     # Services with type errors
     - lib/services/accessibility_service.dart
-    - lib/services/advanced_financial_engine.dart
-    - lib/services/advanced_offline_service.dart
-    - lib/services/cohort_service.dart
     - lib/services/iap_service.dart
-    - lib/services/live_updates_service.dart
     - lib/services/location_service.dart
     - lib/services/ocr_service.dart
-    - lib/services/offline_first_provider.dart
-    - lib/services/offline_queue_service.dart
-    - lib/services/performance_service.dart
-    - lib/services/predictive_analytics_service.dart
     - lib/services/premium_feature_service.dart
-    - lib/services/push_notification_service.dart
     - lib/services/redistribution_opportunity.dart
-    - lib/services/reminder_service.dart
-    - lib/services/secure_push_token_manager.dart
-    - lib/services/smart_cache_service.dart
     - lib/services/smart_categorization_service.dart
-    - lib/services/smart_goal_engine.dart
-    - lib/services/spending_pattern_analyzer.dart
-    - lib/services/timeout_manager_service.dart
     
     # Widgets with type errors
-    - lib/widgets/behavioral_insights_widget.dart
     - lib/widgets/enhanced_animations.dart
-    - lib/widgets/income_tier_widgets.dart
-    - lib/widgets/intelligent_notifications_widget.dart
     - lib/widgets/ocr_widgets.dart
-    - lib/widgets/peer_comparison_widgets.dart
-    - lib/widgets/predictive_analytics_widget.dart
     
     # Utils with type errors  
     
@@ -97,13 +76,9 @@ analyzer:
     - lib/theme/income_theme.dart
     
     # Additional screens and services with remaining issues
-    - lib/screens/goals_screen.dart
-    - lib/screens/insights_screen.dart
-    - lib/screens/notifications_screen.dart
     - lib/screens/profile_screen.dart
     
     # Additional services with issues
-    - lib/services/api_service.dart
     
     # Additional widgets with issues
     - lib/widgets/mita_widgets.dart

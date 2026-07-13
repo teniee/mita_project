@@ -298,7 +298,7 @@ class SecurePushTokenManager {
               value: DateTime.now().toIso8601String());
           await _handleTokenUpdate(newToken);
         },
-        onError: (error) {
+        onError: (Object error) {
           logError('FCM token refresh error: $error',
               tag: 'PUSH_TOKEN_SECURITY');
         },

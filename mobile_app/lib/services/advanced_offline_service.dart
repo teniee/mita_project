@@ -5,6 +5,7 @@ import 'package:path/path.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:crypto/crypto.dart';
 import 'logging_service.dart';
+import '../utils/json_utils.dart';
 
 /// Advanced offline service with intelligent caching and sync
 class AdvancedOfflineService {
@@ -295,12 +296,12 @@ class AdvancedOfflineService {
     if (results.isNotEmpty) {
       final row = results.first;
       return CacheEntry(
-        data: row['data'],
-        contentType: row['content_type'],
-        createdAt: DateTime.fromMillisecondsSinceEpoch(row['created_at']),
-        expiresAt: DateTime.fromMillisecondsSinceEpoch(row['expires_at']),
-        etag: row['etag'],
-        lastModified: row['last_modified'],
+        data: asString(row['data']),
+        contentType: asStringOrNull(row['content_type']),
+        createdAt: DateTime.fromMillisecondsSinceEpoch(asInt(row['created_at'])),
+        expiresAt: DateTime.fromMillisecondsSinceEpoch(asInt(row['expires_at'])),
+        etag: asStringOrNull(row['etag']),
+        lastModified: asStringOrNull(row['last_modified']),
       );
     }
 
@@ -402,11 +403,12 @@ class AdvancedOfflineService {
     if (results.isNotEmpty) {
       final row = results.first;
       return {
-        'profile_data': jsonDecode(row['profile_data']),
-        'settings':
-            row['settings'] != null ? jsonDecode(row['settings']) : null,
+        'profile_data': jsonDecode(asString(row['profile_data'])),
+        'settings': row['settings'] != null
+            ? jsonDecode(asString(row['settings']))
+            : null,
         'last_updated':
-            DateTime.fromMillisecondsSinceEpoch(row['last_updated']),
+            DateTime.fromMillisecondsSinceEpoch(asInt(row['last_updated'])),
       };
     }
 
@@ -502,11 +504,11 @@ class AdvancedOfflineService {
         tag: 'OFFLINE');
 
     // Simulate API call
-    await Future.delayed(const Duration(milliseconds: 500));
+    await Future<void>.delayed(const Duration(milliseconds: 500));
 
     // Mark as synced in local database if it's a local record
     if (sync.data != null && sync.data!.containsKey('local_id')) {
-      await _markLocalRecordAsSynced(sync.data!['local_id']);
+      await _markLocalRecordAsSynced(asString(sync.data!['local_id']));
     }
   }
 
@@ -715,18 +717,22 @@ class PendingSync {
 
   factory PendingSync.fromMap(Map<String, dynamic> map) {
     return PendingSync(
-      id: map['id'],
-      endpoint: map['endpoint'],
-      method: map['method'],
-      data: map['data'] != null ? jsonDecode(map['data']) : null,
-      headers: map['headers'] != null
-          ? Map<String, String>.from(jsonDecode(map['headers']))
+      id: asInt(map['id']),
+      endpoint: asString(map['endpoint']),
+      method: asString(map['method']),
+      data: map['data'] != null
+          ? asStringKeyedMapOrNull(jsonDecode(asString(map['data'])))
           : null,
-      priority: map['priority'],
-      retryCount: map['retry_count'],
-      maxRetries: map['max_retries'],
-      createdAt: DateTime.fromMillisecondsSinceEpoch(map['created_at']),
-      scheduledAt: DateTime.fromMillisecondsSinceEpoch(map['scheduled_at']),
+      headers: map['headers'] != null
+          ? asStringKeyedMap(jsonDecode(asString(map['headers'])))
+              .map((k, v) => MapEntry(k, asString(v)))
+          : null,
+      priority: asInt(map['priority']),
+      retryCount: asInt(map['retry_count']),
+      maxRetries: asInt(map['max_retries']),
+      createdAt: DateTime.fromMillisecondsSinceEpoch(asInt(map['created_at'])),
+      scheduledAt:
+          DateTime.fromMillisecondsSinceEpoch(asInt(map['scheduled_at'])),
     );
   }
 }

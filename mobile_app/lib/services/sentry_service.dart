@@ -242,7 +242,7 @@ class SentryFinancialService {
       } else if (data is List) {
         return data.map(sanitizeData).toList();
       } else if (data is String && data.length > 1000) {
-        return data.substring(0, 1000) + '... [TRUNCATED]';
+        return '${data.substring(0, 1000)}... [TRUNCATED]';
       }
       return data;
     }
@@ -647,10 +647,8 @@ final sentryService = SentryFinancialService();
 
 /// No-op Sentry span for when Sentry is not initialized
 class NoOpSentrySpan implements ISentrySpan {
-  @override
   SentryId get traceId => SentryId.empty();
 
-  @override
   SpanId get spanId => SpanId.empty();
 
   @override
@@ -679,18 +677,22 @@ class NoOpSentrySpan implements ISentrySpan {
   @override
   DateTime get startTimestamp => DateTime.now();
 
+  @override
   DateTime? get endTimestamp => DateTime.now();
 
+  @override
   bool get finished => true;
 
   Map<String, String> get tags => {};
 
   Map<String, dynamic> get data => {};
 
+  @override
   SpanStatus? get status => SpanStatus.ok();
 
   String? get description => null;
 
+  @override
   String get origin => 'manual';
 
   void setStatus(SpanStatus status) {}

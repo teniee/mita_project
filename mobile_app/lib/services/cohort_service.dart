@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'income_service.dart';
 import 'api_service.dart';
+import '../utils/json_utils.dart';
 
 /// Cohort-based recommendations service for MITA
 /// Provides personalized recommendations based on user's income tier and peer behavior
@@ -311,7 +312,7 @@ class CohortService {
     final categories = peerData['categories'] as Map<String, dynamic>? ?? {};
 
     categories.forEach((category, data) {
-      final peerAverage = data['peer_average'] as double? ?? 0.0;
+      final peerAverage = asDouble(asStringKeyedMap(data)['peer_average']);
       final userAmount = currentSpending?[category] ?? 0.0;
 
       if (userAmount > peerAverage * 1.2) {
@@ -537,8 +538,9 @@ class CohortService {
     if (optimizations.isEmpty) return 100.0;
 
     final penalties = optimizations.values.map((opt) {
-      final difference = opt['difference'] as double;
-      final recommended = opt['recommended'] as double;
+      final optMap = asStringKeyedMap(opt);
+      final difference = asDouble(optMap['difference']);
+      final recommended = asDouble(optMap['recommended'], fallback: 1.0);
       return (difference / recommended * 100).clamp(0.0, 50.0);
     }).fold<double>(0.0, (sum, penalty) => sum + penalty);
 
@@ -579,7 +581,9 @@ class CohortService {
 
   String _getOverallPeerComparison(Map<String, dynamic> comparison) {
     final aboveCount =
-        comparison.values.where((c) => c['comparison'] == 'above').length;
+        comparison.values
+            .where((c) => asStringKeyedMap(c)['comparison'] == 'above')
+            .length;
     final totalCount = comparison.length;
     final percentage = (aboveCount / totalCount * 100).round();
 

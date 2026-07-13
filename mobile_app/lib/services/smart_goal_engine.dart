@@ -20,12 +20,14 @@ class SmartGoalEngine {
   factory SmartGoalEngine() => _instance;
   SmartGoalEngine._internal();
 
-  final IncomeService _incomeService = IncomeService();
-  final AdvancedFinancialEngine _financialEngine = AdvancedFinancialEngine();
 
   // ===========================================================================
   // SMART GOAL OPTIMIZATION
   // ===========================================================================
+
+  /// Assumed age when the caller has no user age available; keeps the
+  /// dynamic-timeline thresholds meaningful for a typical adult user.
+  static const int _defaultPlanningAge = 35;
 
   /// Optimize goal using SMART criteria and behavioral insights
   ///
@@ -35,7 +37,7 @@ class SmartGoalEngine {
   /// - Realistic timeline optimization
   /// - Motivational milestone creation
   /// - Risk assessment and mitigation
-  OptimizedGoal optimizeGoal({
+  Future<OptimizedGoal> optimizeGoal({
     required String title,
     required double targetAmount,
     required DateTime targetDate,
@@ -45,13 +47,13 @@ class SmartGoalEngine {
     double currentAmount = 0.0,
     BehavioralProfile? behavioralProfile,
     List<FinancialGoal>? existingGoals,
-  }) {
+  }) async {
     try {
       logInfo(
           'Optimizing goal: $title, target: \$${targetAmount.toStringAsFixed(2)}');
 
       // Step 1: Validate and enhance SMART criteria
-      final smartValidation = _validateAndEnhanceSMARTCriteria(
+      final smartValidation = await _validateAndEnhanceSMARTCriteria(
           title, targetAmount, targetDate, category, monthlyIncome, incomeTier);
 
       // Step 2: Apply behavioral optimizations
@@ -75,7 +77,7 @@ class SmartGoalEngine {
           currentAmount);
 
       // Step 5: Assess goal feasibility and risks
-      final feasibilityAssessment = _assessGoalFeasibility(
+      final feasibilityAssessment = await _assessGoalFeasibility(
           behavioralOptimization,
           contributionStrategy,
           monthlyIncome,
@@ -294,13 +296,13 @@ class SmartGoalEngine {
   // PRIVATE HELPER METHODS
   // ===========================================================================
 
-  SMARTGoalValidation _validateAndEnhanceSMARTCriteria(
+  Future<SMARTGoalValidation> _validateAndEnhanceSMARTCriteria(
       String title,
       double targetAmount,
       DateTime targetDate,
       String category,
       double monthlyIncome,
-      IncomeTier incomeTier) {
+      IncomeTier incomeTier) async {
     final validation = SMARTGoalValidation();
 
     // Specific: Enhance title with specific details
@@ -311,14 +313,14 @@ class SmartGoalEngine {
         targetAmount, monthlyIncome, incomeTier, category);
 
     // Achievable: Validate feasibility
-    validation.isAchievable = _validateGoalAchievability(
-        validation.targetAmount, monthlyIncome, incomeTier);
+    validation.isAchievable = await _validateGoalAchievability(
+        validation.targetAmount, monthlyIncome, _defaultPlanningAge);
 
     // Relevant: Ensure goal aligns with tier priorities
     validation.isRelevant = _validateGoalRelevance(category, incomeTier);
 
     // Time-bound: Optimize timeline
-    validation.targetDate = _optimizeGoalTimeline(
+    validation.targetDate = await _optimizeGoalTimeline(
         targetDate, validation.targetAmount, monthlyIncome, incomeTier);
 
     return validation;
@@ -367,7 +369,7 @@ class SmartGoalEngine {
           await ThresholdHelper.getMaxGoalTimelineYears(monthlyIncome, age);
       return yearsNeeded <= maxTimelineYears;
     } catch (e) {
-      LoggingService.logError('Failed to get dynamic timeline: $e');
+      logError('Failed to get dynamic timeline: $e');
       // Fallback based on age
       final maxYears = age < 30
           ? 7.0
@@ -386,7 +388,7 @@ class SmartGoalEngine {
           await dynamicService.getSavingsRateTarget(monthlyIncome);
       return (savingsRate * 1.5).clamp(0.05, 0.50); // 150% of target as maximum
     } catch (e) {
-      LoggingService.logError('Failed to get dynamic savings rate: $e');
+      logError('Failed to get dynamic savings rate: $e');
       // Fallback to income-based calculation
       if (monthlyIncome < 3000) return 0.10;
       if (monthlyIncome < 5000) return 0.15;
@@ -416,8 +418,8 @@ class SmartGoalEngine {
     }
   }
 
-  DateTime _optimizeGoalTimeline(DateTime targetDate, double targetAmount,
-      double monthlyIncome, IncomeTier tier) {
+  Future<DateTime> _optimizeGoalTimeline(DateTime targetDate,
+      double targetAmount, double monthlyIncome, IncomeTier tier) async {
     final now = DateTime.now();
     final monthsToTarget = targetDate.difference(now).inDays / 30.44;
 
@@ -554,17 +556,17 @@ class SmartGoalEngine {
     return 'major';
   }
 
-  FeasibilityAssessment _assessGoalFeasibility(
+  Future<FeasibilityAssessment> _assessGoalFeasibility(
       SMARTGoalValidation goal,
       ContributionStrategy strategy,
       double monthlyIncome,
       IncomeTier tier,
-      List<FinancialGoal>? existingGoals) {
+      List<FinancialGoal>? existingGoals) async {
     final assessment = FeasibilityAssessment();
 
     // Check contribution as percentage of income
     final contributionPercentage = strategy.monthlyContribution / monthlyIncome;
-    final maxSafePercentage = _getMaxSavingsRate(tier);
+    final maxSafePercentage = await _getMaxSavingsRate(monthlyIncome);
 
     if (contributionPercentage <= maxSafePercentage * 0.5) {
       assessment.score = 0.9; // Very feasible

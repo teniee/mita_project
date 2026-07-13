@@ -15,7 +15,7 @@ class PushNotificationService {
         navigatorKey.currentState?.pushNamed(link);
       } else {
         navigatorKey.currentState?.push(
-          MaterialPageRoute(builder: (_) => const AdviceHistoryScreen()),
+          MaterialPageRoute<void>(builder: (_) => const AdviceHistoryScreen()),
         );
       }
     });

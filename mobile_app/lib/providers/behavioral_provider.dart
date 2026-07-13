@@ -1,3 +1,4 @@
+import '../utils/json_utils.dart';
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
@@ -23,7 +24,7 @@ class BehavioralProvider extends ChangeNotifier {
   // Behavioral data
   Map<String, dynamic> _patterns = {};
   Map<String, dynamic> _predictions = {};
-  List<dynamic> _anomalies = [];
+  List<Map<String, dynamic>> _anomalies = [];
   Map<String, dynamic> _insights = {};
   Map<String, dynamic> _behavioralPredictions = {};
   Map<String, dynamic> _adaptiveRecommendations = {};
@@ -45,7 +46,7 @@ class BehavioralProvider extends ChangeNotifier {
   // Data getters
   Map<String, dynamic> get patterns => _patterns;
   Map<String, dynamic> get predictions => _predictions;
-  List<dynamic> get anomalies => _anomalies;
+  List<Map<String, dynamic>> get anomalies => _anomalies;
   Map<String, dynamic> get insights => _insights;
   Map<String, dynamic> get behavioralPredictions => _behavioralPredictions;
   Map<String, dynamic> get adaptiveRecommendations => _adaptiveRecommendations;
@@ -96,7 +97,7 @@ class BehavioralProvider extends ChangeNotifier {
 
       _patterns = Map<String, dynamic>.from(results[0] as Map);
       _predictions = Map<String, dynamic>.from(results[1] as Map);
-      _anomalies = List<dynamic>.from(results[2] as List);
+      _anomalies = asMapList(results[2]);
       _insights = Map<String, dynamic>.from(results[3] as Map);
       _behavioralPredictions = Map<String, dynamic>.from(results[4] as Map);
       _adaptiveRecommendations = Map<String, dynamic>.from(results[5] as Map);

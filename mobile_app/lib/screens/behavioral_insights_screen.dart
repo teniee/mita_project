@@ -4,6 +4,7 @@ import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/behavioral_provider.dart';
+import '../utils/json_utils.dart';
 
 class BehavioralInsightsScreen extends StatefulWidget {
   const BehavioralInsightsScreen({super.key});
@@ -126,14 +127,14 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
             if (analysis.isNotEmpty) ...[
               _buildAnalysisCard(
                   'Weekend Spending',
-                  '${((analysis['weekend_spending_ratio'] ?? 0.0) * 100).toInt()}%',
+                  '${(asDouble(analysis['weekend_spending_ratio']) * 100).toInt()}%',
                   'of your spending happens on weekends',
                   Icons.weekend,
                   AppColors.categoryEntertainment),
               const SizedBox(height: 12),
               _buildAnalysisCard(
                   'Food Focused',
-                  '${((analysis['food_spending_ratio'] ?? 0.0) * 100).toInt()}%',
+                  '${(asDouble(analysis['food_spending_ratio']) * 100).toInt()}%',
                   'of your budget goes to food',
                   Icons.restaurant,
                   AppColors.success),
@@ -206,7 +207,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                           ),
                         ),
                         Text(
-                          '${((predictions['confidence'] ?? 0.0) * 100).toInt()}% confident',
+                          '${(asDouble(predictions['confidence']) * 100).toInt()}% confident',
                           style: const TextStyle(
                             fontFamily: AppTypography.fontBody,
                             color: Colors.white70,
@@ -217,7 +218,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '\$${(predictions['next_month_spending'] ?? 0.0).toStringAsFixed(2)}',
+                      '\$${asDouble(predictions['next_month_spending']).toStringAsFixed(2)}',
                       style: const TextStyle(
                         fontFamily: AppTypography.fontHeading,
                         color: Colors.white,
@@ -241,7 +242,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                                 ),
                               ),
                               Text(
-                                '\$${(predictions['recommended_budget'] ?? 0.0).toStringAsFixed(2)}',
+                                '\$${asDouble(predictions['recommended_budget']).toStringAsFixed(2)}',
                                 style: const TextStyle(
                                   fontFamily: AppTypography.fontHeading,
                                   color: Colors.white,
@@ -265,7 +266,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                                 ),
                               ),
                               Text(
-                                '+\$${(predictions['savings_potential'] ?? 0.0).toStringAsFixed(2)}',
+                                '+\$${asDouble(predictions['savings_potential']).toStringAsFixed(2)}',
                                 style: const TextStyle(
                                   fontFamily: AppTypography.fontHeading,
                                   color: Colors.white,
@@ -289,7 +290,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
             if (predictions['risk_factors'] != null) ...[
               _buildSectionHeader('Risk Factors', Icons.warning),
               const SizedBox(height: 12),
-              ...(predictions['risk_factors'] as List)
+              ...asMapList(predictions['risk_factors'])
                   .map((risk) => _buildRiskFactorTile(risk)),
             ],
           ],
@@ -383,7 +384,8 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      insights['spending_personality'] ?? 'Analyzing...',
+                      asString(insights['spending_personality'],
+                    fallback: 'Analyzing...'),
                       style: const TextStyle(
                         fontFamily: AppTypography.fontHeading,
                         color: Colors.white,
@@ -657,7 +659,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    risk['factor'] ?? '',
+                    asString(risk['factor']),
                     style: const TextStyle(
                       fontFamily: AppTypography.fontHeading,
                       fontWeight: FontWeight.w600,
@@ -685,7 +687,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
   }
 
   Widget _buildAnomalyCard(Map<String, dynamic> anomaly) {
-    final date = DateTime.parse(anomaly['date']);
+    final date = asDateTimeOrNull(anomaly['date']) ?? DateTime.now();
     final anomalyScore = (anomaly['anomaly_score'] ?? 0.0) as double;
 
     Color severityColor;
@@ -739,7 +741,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
             ),
             const SizedBox(height: 8),
             Text(
-              anomaly['description'] ?? '',
+              asString(anomaly['description']),
               style: const TextStyle(
                 fontFamily: AppTypography.fontBody,
                 fontSize: 14,
@@ -762,7 +764,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                         ),
                       ),
                       Text(
-                        anomaly['category'] ?? '',
+                        asString(anomaly['category']),
                         style: const TextStyle(
                           fontFamily: AppTypography.fontHeading,
                           fontSize: 14,
@@ -786,7 +788,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                         ),
                       ),
                       Text(
-                        '\$${(anomaly['amount'] ?? 0.0).toStringAsFixed(2)}',
+                        '\$${asDouble(anomaly['amount']).toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontFamily: AppTypography.fontHeading,
                           fontSize: 14,
@@ -810,7 +812,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                         ),
                       ),
                       Text(
-                        '\$${(anomaly['expected_amount'] ?? 0.0).toStringAsFixed(2)}',
+                        '\$${asDouble(anomaly['expected_amount']).toStringAsFixed(2)}',
                         style: const TextStyle(
                           fontFamily: AppTypography.fontHeading,
                           fontSize: 14,
@@ -915,8 +917,8 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        behavioralProgress['progress_message'] ??
-                            'Keep up the great work!',
+                        asString(behavioralProgress['progress_message'],
+                                fallback: 'Keep up the great work!',),
                         style: const TextStyle(
                           fontFamily: AppTypography.fontBody,
                           color: Colors.white,
@@ -934,7 +936,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
             if (behavioralProgress['metrics'] != null) ...[
               _buildSectionHeader('Monthly Metrics', Icons.assessment),
               const SizedBox(height: 12),
-              ...(behavioralProgress['metrics'] as List)
+              ...asMapList(behavioralProgress['metrics'])
                   .map((metric) => _buildMetricCard(metric)),
               const SizedBox(height: 24),
             ],
@@ -1001,7 +1003,8 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        behavioralCluster['cluster_name'] ?? 'Unknown',
+                        asString(behavioralCluster['cluster_name'],
+                      fallback: 'Unknown'),
                         style: const TextStyle(
                           fontFamily: AppTypography.fontHeading,
                           color: Colors.white,
@@ -1011,7 +1014,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        behavioralCluster['description'] ?? '',
+                        asString(behavioralCluster['description']),
                         style: const TextStyle(
                           fontFamily: AppTypography.fontBody,
                           color: Colors.white,
@@ -1051,7 +1054,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                   'Your Spending Triggers', Icons.warning_amber),
               const SizedBox(height: 12),
               if (spendingTriggers['triggers'] != null)
-                ...(spendingTriggers['triggers'] as List)
+                ...asMapList(spendingTriggers['triggers'])
                     .map((trigger) => _buildTriggerCard(trigger)),
             ],
           ],
@@ -1085,7 +1088,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    metric['name'] ?? '',
+                    asString(metric['name']),
                     style: const TextStyle(
                       fontFamily: AppTypography.fontHeading,
                       fontWeight: FontWeight.w600,
@@ -1143,7 +1146,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    trigger['trigger_name'] ?? '',
+                    asString(trigger['trigger_name']),
                     style: const TextStyle(
                       fontFamily: AppTypography.fontHeading,
                       fontWeight: FontWeight.w600,
@@ -1156,7 +1159,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
             ),
             const SizedBox(height: 12),
             Text(
-              trigger['description'] ?? '',
+              asString(trigger['description']),
               style: const TextStyle(
                 fontFamily: AppTypography.fontBody,
                 fontSize: 14,

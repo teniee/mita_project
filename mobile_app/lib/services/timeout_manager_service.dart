@@ -14,7 +14,6 @@ class TimeoutManagerService {
   static const Duration _shortTimeout = Duration(seconds: 10);
   static const Duration _mediumTimeout = Duration(seconds: 30);
   static const Duration _longTimeout = Duration(seconds: 90);
-  static const Duration _maxTimeout = Duration(seconds: 120);
 
   // Retry configurations
   static const int _maxRetries = 3;
@@ -102,7 +101,7 @@ class TimeoutManagerService {
             },
           );
 
-          await Future.delayed(currentDelay);
+          await Future<void>.delayed(currentDelay);
           currentDelay = Duration(
             milliseconds:
                 (currentDelay.inMilliseconds * _backoffMultiplier).round(),

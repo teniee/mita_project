@@ -4,6 +4,7 @@ import '../config.dart' show AppConfig;
 import '../models/transaction_model.dart';
 import 'api_service.dart';
 import 'logging_service.dart';
+import '../utils/json_utils.dart';
 
 /// Transaction Service
 /// Handles all transaction-related API calls
@@ -63,8 +64,9 @@ class TransactionService {
           if (data['data'] is List) {
             transactionList = data['data'] as List<dynamic>;
           } else if (data['data'] is Map &&
-              data['data']['transactions'] != null) {
-            transactionList = data['data']['transactions'] as List<dynamic>;
+              asStringKeyedMap(data['data'])['transactions'] != null) {
+            transactionList =
+                asList(asStringKeyedMap(data['data'])['transactions']);
           } else {
             transactionList = [];
           }
@@ -159,8 +161,9 @@ class TransactionService {
       } else if (response.statusCode == 401) {
         throw Exception('Unauthorized - please log in again');
       } else if (response.statusCode == 400) {
-        final error = json.decode(response.body);
-        throw Exception(error['detail'] ?? 'Invalid transaction data');
+        final error = asStringKeyedMap(json.decode(response.body));
+        throw Exception(
+            asString(error['detail'], fallback: 'Invalid transaction data'));
       } else {
         throw Exception('Failed to create transaction: ${response.statusCode}');
       }
@@ -206,8 +209,9 @@ class TransactionService {
       } else if (response.statusCode == 401) {
         throw Exception('Unauthorized - please log in again');
       } else if (response.statusCode == 400) {
-        final error = json.decode(response.body);
-        throw Exception(error['detail'] ?? 'Invalid transaction data');
+        final error = asStringKeyedMap(json.decode(response.body));
+        throw Exception(
+            asString(error['detail'], fallback: 'Invalid transaction data'));
       } else {
         throw Exception('Failed to update transaction: ${response.statusCode}');
       }

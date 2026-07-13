@@ -11,6 +11,7 @@ import '../models/installment_models.dart';
 import '../providers/installments_provider.dart';
 import '../services/installment_service.dart';
 import '../services/logging_service.dart';
+import '../utils/json_utils.dart';
 
 class InstallmentCalculatorScreen extends StatefulWidget {
   const InstallmentCalculatorScreen({super.key});
@@ -979,8 +980,9 @@ class _InstallmentCalculatorScreenState
                   final index = entry.key;
                   final payment = entry.value;
                   final paymentNumber = payment['payment_number'] ?? index + 1;
-                  final amount = payment['amount'] ?? result.monthlyPayment;
-                  final interest = payment['interest'] ?? 0.0;
+                  final amount = asDouble(payment['amount'],
+                      fallback: result.monthlyPayment);
+                  final interest = asDouble(payment['interest']);
 
                   return Container(
                     margin:
@@ -1014,7 +1016,7 @@ class _InstallmentCalculatorScreenState
                                 color: AppColors.textPrimary,
                               ),
                             ),
-                            if ((interest > 0) == true)
+                            if (interest > 0)
                               Text(
                                 'Interest: \$${interest.toStringAsFixed(2)}',
                                 style: TextStyle(

@@ -7,11 +7,10 @@
 // with calls to this service for personalized, income-appropriate values.
 
 import 'dart:async';
-import 'package:logging/logging.dart';
 
 import 'api_service.dart';
+import 'logging_service.dart';
 
-final _logger = Logger('DynamicThresholdService');
 
 enum ThresholdType {
   budgetAllocation('budget_allocation'),
@@ -172,12 +171,12 @@ class DynamicThresholdService {
 
     // Check cache first
     if (_isValidCache() && _thresholdCache.containsKey(cacheKey)) {
-      _logger.info('Returning cached thresholds for ${type.value}');
+      logInfo('Returning cached thresholds for ${type.value}');
       return _thresholdCache[cacheKey]!;
     }
 
     try {
-      _logger.info('Fetching dynamic thresholds for ${type.value}');
+      logInfo('Fetching dynamic thresholds for ${type.value}');
 
       final response = await _apiService.post(
         '/financial/dynamic-thresholds',
@@ -193,13 +192,13 @@ class DynamicThresholdService {
         _thresholdCache[cacheKey] = thresholds;
         _lastCacheUpdate = DateTime.now();
 
-        _logger.info('Successfully fetched dynamic thresholds');
+        logInfo('Successfully fetched dynamic thresholds');
         return thresholds;
       } else {
         throw Exception('Failed to fetch thresholds: ${response.statusCode}');
       }
     } catch (e) {
-      _logger.severe('Error fetching dynamic thresholds: $e');
+      logError('Error fetching dynamic thresholds: $e');
 
       // Return fallback thresholds based on type
       return _getFallbackThresholds(type, userContext);
@@ -233,7 +232,7 @@ class DynamicThresholdService {
             'Failed to fetch housing thresholds: ${response.statusCode}');
       }
     } catch (e) {
-      _logger.severe('Error fetching housing thresholds: $e');
+      logError('Error fetching housing thresholds: $e');
       return _getFallbackHousingThresholds(userContext);
     }
   }
@@ -342,7 +341,7 @@ class DynamicThresholdService {
     _thresholdCache.clear();
     _housingCache.clear();
     _lastCacheUpdate = null;
-    _logger.info('Threshold cache cleared');
+    logInfo('Threshold cache cleared');
   }
 
   bool _isValidCache() {
@@ -353,7 +352,7 @@ class DynamicThresholdService {
   /// Fallback thresholds when API is unavailable
   DynamicThresholds _getFallbackThresholds(
       ThresholdType type, UserContext userContext) {
-    _logger.warning('Using fallback thresholds for ${type.value}');
+    logWarning('Using fallback thresholds for ${type.value}');
 
     switch (type) {
       case ThresholdType.budgetAllocation:

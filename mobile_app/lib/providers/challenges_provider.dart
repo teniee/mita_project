@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
+import '../utils/json_utils.dart';
 
 /// State enum for challenges management
 enum ChallengesState {
@@ -152,7 +153,7 @@ class ChallengesProvider extends ChangeNotifier {
 
       // Load progress for each active challenge
       for (final challenge in _activeChallenges) {
-        final challengeId = challenge['id']?.toString();
+        final challengeId = asStringKeyedMap(challenge)['id']?.toString();
         if (challengeId != null) {
           loadChallengeProgress(challengeId);
         }

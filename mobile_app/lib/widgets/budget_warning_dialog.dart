@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
+import '../utils/json_utils.dart';
 
 /// Budget Warning Dialog Widget
 /// Shows real-time budget warnings when user tries to exceed budget
@@ -207,8 +208,9 @@ class BudgetWarningDialog extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: alternativeCategories.take(3).map((alt) {
-                  final categoryName = (alt['category'] ?? '') as String;
-                  final available = (alt['available'] ?? 0.0) as double;
+                  final altMap = asStringKeyedMap(alt);
+                  final categoryName = asString(altMap['category']);
+                  final available = asDouble(altMap['available']);
                   return ActionChip(
                     label: Text(
                       '$categoryName (\$${available.toStringAsFixed(0)} free)',

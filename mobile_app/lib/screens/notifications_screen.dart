@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
-import '../theme/app_typography.dart';
 import '../providers/notifications_provider.dart';
 import '../models/notification_model.dart';
 
@@ -29,7 +28,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void _showFilterMenu() {
     final provider = context.read<NotificationsProvider>();
 
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.background,
       shape: const RoundedRectangleBorder(

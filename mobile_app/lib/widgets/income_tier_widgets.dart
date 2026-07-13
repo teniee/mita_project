@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/income_service.dart';
 import '../theme/app_typography.dart';
+import '../utils/json_utils.dart';
 
 /// Income tier display card with Material 3 styling
 class IncomeTierCard extends StatelessWidget {
@@ -368,7 +369,7 @@ class PeerComparisonCard extends StatelessWidget {
       final yourSpending = comparisonData['your_spending'] as double? ?? 0.0;
       final peerAverage = comparisonData['peer_average'] as double? ?? 0.0;
       final percentile = comparisonData['percentile'] as int? ?? 50;
-      final insights = List<String>.from(comparisonData['insights'] ?? []);
+      final insights = asStringList(comparisonData['insights']);
 
       final isAboveAverage = yourSpending > peerAverage;
       final difference = peerAverage > 0

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/json_utils.dart';
 import '../services/income_service.dart';
 import '../services/api_service.dart';
 import '../theme/app_typography.dart';
@@ -24,14 +25,14 @@ class PeerSpendingInsightsWidget extends StatelessWidget {
     final tier = incomeService.classifyIncome(monthlyIncome);
     final primaryColor = incomeService.getIncomeTierPrimaryColor(tier);
 
-    final peerAverage = peerData?['categories']?[category.toLowerCase()]
-            ?['peer_average'] ??
+    final peerAverage = asDoubleOrNull(asStringKeyedMap(
+            asStringKeyedMap(peerData?['categories'])[
+                category.toLowerCase()])['peer_average']) ??
         userAmount * 1.2;
     final userPercentage =
         incomeService.getIncomePercentage(userAmount, monthlyIncome);
     final peerPercentage =
         incomeService.getIncomePercentage(peerAverage, monthlyIncome);
-    final difference = ((userAmount - peerAverage) / peerAverage * 100);
 
     final isUserBetter = userAmount < peerAverage;
     final comparison = incomeService.getPeerComparisonMessage(
@@ -275,12 +276,11 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
     final primaryColor = _incomeService.getIncomeTierPrimaryColor(tier);
     final tierName = _incomeService.getIncomeTierName(tier);
 
-    final cohortSize = _cohortData!['cohort_size'] ?? 0;
-    final yourRank = _cohortData!['your_rank'] ?? 0;
-    final percentile = _cohortData!['percentile'] ?? 0;
-    final insights = List<String>.from(_cohortData!['top_insights'] ?? []);
-    final recommendations =
-        List<String>.from(_cohortData!['recommendations'] ?? []);
+    final cohortSize = asInt(_cohortData!['cohort_size']);
+    final yourRank = asInt(_cohortData!['your_rank']);
+    final percentile = asInt(_cohortData!['percentile']);
+    final insights = asStringList(_cohortData!['top_insights']);
+    final recommendations = asStringList(_cohortData!['recommendations']);
 
     return Card(
       elevation: 3,
@@ -539,8 +539,9 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
             ...userSpending.entries.map((entry) {
               final category = entry.key;
               final userAmount = entry.value;
-              final peerAmount = peerData?['categories']?[category]
-                      ?['peer_average'] ??
+              final peerAmount = asDoubleOrNull(asStringKeyedMap(
+                          asStringKeyedMap(peerData?['categories'])[category])[
+                      'peer_average']) ??
                   userAmount * 1.15;
               final userPercentage =
                   incomeService.getIncomePercentage(userAmount, monthlyIncome);

@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'api_service.dart';
-import 'income_service.dart';
 import 'logging_service.dart';
+import '../utils/json_utils.dart';
 
 /// Advanced spending pattern analysis engine that identifies user behavioral patterns,
 /// spending habits, and provides actionable insights for financial improvement.
@@ -13,7 +13,6 @@ class SpendingPatternAnalyzer extends ChangeNotifier {
   SpendingPatternAnalyzer._internal();
 
   final ApiService _apiService = ApiService();
-  final IncomeService _incomeService = IncomeService();
 
   // Analysis state
   Map<String, SpendingPattern>? _patterns;
@@ -82,11 +81,12 @@ class SpendingPatternAnalyzer extends ChangeNotifier {
             medianAmount: (data['median_amount'] as num?)?.toDouble() ?? 0.0,
             frequency: (data['frequency'] as num?)?.toInt() ?? 0,
             trend: _parseTrend(data['trend'] as String?),
-            seasonality: Map<String, double>.from(data['seasonality'] ?? {}),
-            dayOfWeekPatterns:
-                Map<String, double>.from(data['day_patterns'] ?? {}),
-            timeOfDayPatterns:
-                Map<String, double>.from(data['time_patterns'] ?? {}),
+            seasonality: asStringKeyedMap(data['seasonality'])
+                .map((k, v) => MapEntry(k, asDouble(v))),
+            dayOfWeekPatterns: asStringKeyedMap(data['day_patterns'])
+                .map((k, v) => MapEntry(k, asDouble(v))),
+            timeOfDayPatterns: asStringKeyedMap(data['time_patterns'])
+                .map((k, v) => MapEntry(k, asDouble(v))),
             merchantConcentration:
                 (data['merchant_concentration'] as num?)?.toDouble() ?? 0.0,
             variability: (data['variability'] as num?)?.toDouble() ?? 0.0,
@@ -134,7 +134,7 @@ class SpendingPatternAnalyzer extends ChangeNotifier {
               DateTime.now(),
           merchant: anomaly['merchant'] as String?,
           description: anomaly['description'] as String? ?? '',
-          possibleCauses: List<String>.from(anomaly['possible_causes'] ?? []),
+          possibleCauses: asStringList(anomaly['possible_causes']),
           severity: _calculateSeverity(anomaly['anomaly_score'] as num? ?? 0),
           confidence: (anomaly['confidence'] as num?)?.toDouble() ?? 0.5,
         ));
@@ -183,10 +183,8 @@ class SpendingPatternAnalyzer extends ChangeNotifier {
             impact: _parseImpactLevel(insight['impact'] as String?),
             confidence: (insight['confidence'] as num?)?.toDouble() ?? 0.5,
             actionable: insight['actionable'] as bool? ?? false,
-            recommendations:
-                List<String>.from(insight['recommendations'] ?? []),
-            relatedPatterns:
-                List<String>.from(insight['related_patterns'] ?? []),
+            recommendations: asStringList(insight['recommendations']),
+            relatedPatterns: asStringList(insight['related_patterns']),
             timeframe: insight['timeframe'] as String? ?? 'current',
           ));
         }

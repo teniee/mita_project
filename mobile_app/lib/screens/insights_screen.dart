@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../models/transaction_model.dart';
+import '../utils/json_utils.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
@@ -13,7 +15,6 @@ import '../services/cohort_service.dart';
 import '../widgets/income_tier_widgets.dart';
 import '../widgets/peer_comparison_widgets.dart';
 import '../widgets/insights_empty_state_widgets.dart';
-import '../theme/income_theme.dart';
 import '../utils/string_extensions.dart';
 import '../services/logging_service.dart';
 
@@ -58,8 +59,6 @@ class _InsightsScreenState extends State<InsightsScreen>
   Map<String, dynamic>? _peerComparison;
   List<String> _incomeBasedTips = [];
   Map<String, dynamic>? _budgetOptimization;
-  Map<String, dynamic>? _incomeClassification;
-  List<Map<String, dynamic>> _incomeBasedGoals = [];
 
   @override
   void initState() {
@@ -170,15 +169,10 @@ class _InsightsScreenState extends State<InsightsScreen>
         _apiService.getPeerComparison(),
         _apiService.getCohortInsights(),
         _apiService.getIncomeBasedTips(_monthlyIncome),
-        _apiService.getIncomeClassification(),
-        _apiService.getIncomeBasedGoals(_monthlyIncome),
       ]);
 
-      _peerComparison = futures[0] as Map<String, dynamic>;
-      _incomeBasedTips = List<String>.from(futures[2] as List);
-      _incomeClassification = futures[3] as Map<String, dynamic>;
-      _incomeBasedGoals =
-          List<Map<String, dynamic>>.from(futures[4] as List? ?? []);
+      _peerComparison = asStringKeyedMap(futures[0]);
+      _incomeBasedTips = asStringList(futures[2]);
 
       // Generate budget optimization insights using provider data
       final transactionProvider = context.read<TransactionProvider>();
@@ -194,7 +188,7 @@ class _InsightsScreenState extends State<InsightsScreen>
     }
   }
 
-  void _computeDailyTotals(List<dynamic> transactions) {
+  void _computeDailyTotals(List<TransactionModel> transactions) {
     final now = DateTime.now();
     final Map<String, double> daily = {};
 
@@ -373,22 +367,26 @@ class _InsightsScreenState extends State<InsightsScreen>
     // Use enhanced budget insights from provider if available
     if (budgetProvider.budgetSuggestions.isNotEmpty &&
         budgetProvider.budgetSuggestions['confidence'] != null) {
-      final confidence = budgetProvider.budgetSuggestions['confidence'];
+      final confidence =
+          asDouble(budgetProvider.budgetSuggestions['confidence']);
+      final intelligentInsights =
+          asMapList(budgetProvider.budgetSuggestions['intelligent_insights']);
       financialHealthScore ??= {
         'score': (confidence * 100).round(),
         'grade': _getGradeFromConfidence(confidence),
-        'improvements': budgetProvider.budgetSuggestions['intelligent_insights']
-                ?.map((insight) => insight['message'] ?? insight.toString())
-                .toList() ??
-            [],
+        'improvements': intelligentInsights
+            .map((insight) =>
+                asStringOrNull(insight['message']) ?? insight.toString())
+            .toList(),
       };
 
-      if (budgetProvider.budgetSuggestions['intelligent_insights'] != null) {
+      if (intelligentInsights.isNotEmpty) {
         personalizedFeedback ??= {
           'feedback':
               'Based on your spending patterns and financial goals, here are personalized insights from our enhanced budget intelligence system.',
-          'tips': budgetProvider.budgetSuggestions['intelligent_insights']
-              .map((insight) => insight['message'] ?? insight.toString())
+          'tips': intelligentInsights
+              .map((insight) =>
+                  asStringOrNull(insight['message']) ?? insight.toString())
               .toList(),
         };
       }
@@ -399,7 +397,8 @@ class _InsightsScreenState extends State<InsightsScreen>
         spendingPatterns ??= {
           'patterns': categoryInsights
               .map((insight) =>
-                  insight['message'] ?? 'Smart category optimization detected')
+                  asStringOrNull(asStringKeyedMap(insight)['message']) ??
+                  'Smart category optimization detected')
               .toList(),
         };
       }
@@ -788,7 +787,8 @@ class _InsightsScreenState extends State<InsightsScreen>
                           if (index < 0 || index >= dailyTotals.length)
                             return Container();
                           final label = DateFormat('MM/dd').format(
-                              DateTime.parse(dailyTotals[index]['date']));
+                              DateTime.parse(
+                                  asString(dailyTotals[index]['date'])));
                           return Text(
                             label,
                             style: const TextStyle(
@@ -813,7 +813,7 @@ class _InsightsScreenState extends State<InsightsScreen>
                       x: i,
                       barRods: [
                         BarChartRodData(
-                          toY: dailyTotals[i]['amount'],
+                          toY: asDouble(dailyTotals[i]['amount']),
                           width: 14,
                           borderRadius: BorderRadius.circular(6),
                           gradient: LinearGradient(
@@ -897,8 +897,7 @@ class _InsightsScreenState extends State<InsightsScreen>
 
     final score = financialHealthScore!['score'] ?? 75;
     final grade = financialHealthScore!['grade'] ?? 'B+';
-    final improvements =
-        List<String>.from(financialHealthScore!['improvements'] ?? []);
+    final improvements = asStringList(financialHealthScore!['improvements']);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1024,9 +1023,10 @@ class _InsightsScreenState extends State<InsightsScreen>
       );
     }
 
-    final rating = aiSnapshot!['rating'] ?? 'B';
-    final risk = aiSnapshot!['risk'] ?? 'moderate';
-    final summary = aiSnapshot!['summary'] ?? 'No summary available';
+    final rating = asString(aiSnapshot!['rating'], fallback: 'B');
+    final risk = asString(aiSnapshot!['risk'], fallback: 'moderate');
+    final summary =
+        asString(aiSnapshot!['summary'], fallback: 'No summary available');
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1103,7 +1103,7 @@ class _InsightsScreenState extends State<InsightsScreen>
       );
     }
 
-    final patterns = List<String>.from(spendingPatterns!['patterns'] ?? []);
+    final patterns = asStringList(spendingPatterns!['patterns']);
 
     if (patterns.isEmpty) {
       return InsightsEmptyStateWidgets.buildSectionEmptyCard(
@@ -1195,9 +1195,9 @@ class _InsightsScreenState extends State<InsightsScreen>
       );
     }
 
-    final insights =
-        weeklyInsights!['insights'] ?? 'No insights available this week.';
-    final trend = weeklyInsights!['trend'] ?? 'stable';
+    final insights = asString(weeklyInsights!['insights'],
+        fallback: 'No insights available this week.');
+    final trend = asString(weeklyInsights!['trend'], fallback: 'stable');
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1324,7 +1324,8 @@ class _InsightsScreenState extends State<InsightsScreen>
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        anomaly['description'] ?? 'Unusual spending detected',
+                        asString(anomaly['description'],
+                            fallback: 'Unusual spending detected'),
                         style: const TextStyle(
                           fontFamily: AppTypography.fontBody,
                           fontSize: 14,
@@ -1351,9 +1352,9 @@ class _InsightsScreenState extends State<InsightsScreen>
       );
     }
 
-    final feedback =
-        personalizedFeedback!['feedback'] ?? 'No feedback available';
-    final tips = List<String>.from(personalizedFeedback!['tips'] ?? []);
+    final feedback = asString(personalizedFeedback!['feedback'],
+        fallback: 'No feedback available');
+    final tips = asStringList(personalizedFeedback!['tips']);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1464,9 +1465,9 @@ class _InsightsScreenState extends State<InsightsScreen>
       );
     }
 
-    final potentialSavings = savingsOptimization!['potential_savings'] ?? 0.0;
-    final suggestions =
-        List<String>.from(savingsOptimization!['suggestions'] ?? []);
+    final potentialSavings =
+        asDouble(savingsOptimization!['potential_savings']);
+    final suggestions = asStringList(savingsOptimization!['suggestions']);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1692,9 +1693,9 @@ class _InsightsScreenState extends State<InsightsScreen>
       );
     }
 
-    final suggestions =
-        List<String>.from(_budgetOptimization!['suggestions'] ?? []);
-    final overallScore = _budgetOptimization!['overall_score'] ?? 100.0;
+    final suggestions = asStringList(_budgetOptimization!['suggestions']);
+    final overallScore =
+        asDouble(_budgetOptimization!['overall_score'], fallback: 100.0);
     final primaryColor = _incomeTier != null
         ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
         : AppColors.textPrimary;
@@ -1872,113 +1873,116 @@ class _InsightsScreenState extends State<InsightsScreen>
           ),
           const SizedBox(height: 20),
           ...habits.map(
-            (habit) => Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border:
-                    Border.all(color: habit['color'].withValues(alpha: 0.3)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: habit['color'].withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          habit['icon'],
-                          color: habit['color'],
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              habit['title'],
-                              style: TextStyle(
-                                fontFamily: AppTypography.fontHeading,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                                color: habit['color'],
-                              ),
-                            ),
-                            Text(
-                              habit['frequency'].toString().toUpperCase(),
-                              style: TextStyle(
-                                fontFamily: AppTypography.fontBody,
-                                fontSize: 11,
-                                color: Colors.grey.shade600,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '${habit['peer_adoption']} adopt',
-                          style: const TextStyle(
-                            fontFamily: AppTypography.fontBody,
-                            fontSize: 10,
-                            color: Colors.green,
-                            fontWeight: FontWeight.w600,
+            (habit) {
+              final habitColor = habit['color'] as Color? ?? AppColors.primary;
+              final habitIcon = habit['icon'] as IconData? ?? Icons.star;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: habitColor.withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: habitColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            habitIcon,
+                            color: habitColor,
+                            size: 20,
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    habit['description'],
-                    style: const TextStyle(
-                      fontFamily: AppTypography.fontBody,
-                      fontSize: 14,
-                      height: 1.4,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                asString(habit['title']),
+                                style: TextStyle(
+                                  fontFamily: AppTypography.fontHeading,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                  color: habitColor,
+                                ),
+                              ),
+                              Text(
+                                habit['frequency'].toString().toUpperCase(),
+                                style: TextStyle(
+                                  fontFamily: AppTypography.fontBody,
+                                  fontSize: 11,
+                                  color: Colors.grey.shade600,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            '${habit['peer_adoption']} adopt',
+                            style: const TextStyle(
+                              fontFamily: AppTypography.fontBody,
+                              fontSize: 10,
+                              color: Colors.green,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.trending_up,
-                        size: 14,
-                        color: habit['impact'] == 'high'
-                            ? Colors.green
-                            : Colors.blue,
+                    const SizedBox(height: 12),
+                    Text(
+                      asString(habit['description']),
+                      style: const TextStyle(
+                        fontFamily: AppTypography.fontBody,
+                        fontSize: 14,
+                        height: 1.4,
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${habit['impact'].toString().toUpperCase()} IMPACT',
-                        style: TextStyle(
-                          fontFamily: AppTypography.fontBody,
-                          fontSize: 10,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.trending_up,
+                          size: 14,
                           color: habit['impact'] == 'high'
                               ? Colors.green
                               : Colors.blue,
-                          fontWeight: FontWeight.bold,
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${habit['impact'].toString().toUpperCase()} IMPACT',
+                          style: TextStyle(
+                            fontFamily: AppTypography.fontBody,
+                            fontSize: 10,
+                            color: habit['impact'] == 'high'
+                                ? Colors.green
+                                : Colors.blue,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -2075,7 +2079,7 @@ class _InsightsScreenState extends State<InsightsScreen>
                         children: [
                           Expanded(
                             child: Text(
-                              goal['title'],
+                              asString(goal['title']),
                               style: TextStyle(
                                 fontFamily: AppTypography.fontHeading,
                                 fontWeight: FontWeight.w600,
@@ -2092,7 +2096,7 @@ class _InsightsScreenState extends State<InsightsScreen>
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              '${(goal['peer_adoption'] * 100).toStringAsFixed(0)}% adopt',
+                              '${(asDouble(goal['peer_adoption']) * 100).toStringAsFixed(0)}% adopt',
                               style: const TextStyle(
                                 fontFamily: AppTypography.fontBody,
                                 fontSize: 10,
@@ -2105,7 +2109,7 @@ class _InsightsScreenState extends State<InsightsScreen>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        goal['description'],
+                        asString(goal['description']),
                         style: const TextStyle(
                           fontFamily: AppTypography.fontBody,
                           fontSize: 14,
@@ -2115,7 +2119,7 @@ class _InsightsScreenState extends State<InsightsScreen>
                       if (goal['target_amount'] != null) ...[
                         const SizedBox(height: 8),
                         Text(
-                          'Target: \$${goal['target_amount'].toStringAsFixed(0)}',
+                          'Target: \$${asDouble(goal['target_amount']).toStringAsFixed(0)}',
                           style: TextStyle(
                             fontFamily: AppTypography.fontHeading,
                             fontWeight: FontWeight.bold,
@@ -2140,7 +2144,7 @@ class _InsightsScreenState extends State<InsightsScreen>
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                goal['cohort_context'],
+                                asString(goal['cohort_context']),
                                 style: TextStyle(
                                   fontFamily: AppTypography.fontBody,
                                   fontSize: 12,
@@ -2177,11 +2181,10 @@ class _InsightsScreenState extends State<InsightsScreen>
       );
     }
 
-    final summary =
-        aiMonthlyReport!['summary'] ?? 'No monthly summary available';
-    final highlights = List<String>.from(aiMonthlyReport!['highlights'] ?? []);
-    final recommendations =
-        List<String>.from(aiMonthlyReport!['recommendations'] ?? []);
+    final summary = asString(aiMonthlyReport!['summary'],
+        fallback: 'No monthly summary available');
+    final highlights = asStringList(aiMonthlyReport!['highlights']);
+    final recommendations = asStringList(aiMonthlyReport!['recommendations']);
 
     return Container(
       padding: const EdgeInsets.all(20),

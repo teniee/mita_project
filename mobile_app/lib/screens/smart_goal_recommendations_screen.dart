@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../providers/goals_provider.dart';
+import '../utils/json_utils.dart';
 
 class SmartGoalRecommendationsScreen extends StatefulWidget {
   const SmartGoalRecommendationsScreen({super.key});
@@ -277,7 +278,7 @@ class _SmartGoalRecommendationsScreenState
                   Expanded(
                     child: _buildInfoChip(
                       'Target',
-                      '\$${(rec['target_amount'] ?? 0).toStringAsFixed(0)}',
+                      '\$${asDouble(rec['target_amount']).toStringAsFixed(0)}',
                       Icons.flag,
                     ),
                   ),
@@ -285,7 +286,7 @@ class _SmartGoalRecommendationsScreenState
                   Expanded(
                     child: _buildInfoChip(
                       'Monthly',
-                      '\$${(rec['monthly_contribution'] ?? 0).toStringAsFixed(0)}',
+                      '\$${asDouble(rec['monthly_contribution']).toStringAsFixed(0)}',
                       Icons.calendar_month,
                     ),
                   ),
@@ -368,12 +369,12 @@ class _SmartGoalRecommendationsScreenState
               children: [
                 _buildInfoChip(
                   'Amount',
-                  '\$${(opp['target_amount'] ?? 0).toStringAsFixed(0)}',
+                  '\$${asDouble(opp['target_amount']).toStringAsFixed(0)}',
                   Icons.attach_money,
                 ),
                 _buildInfoChip(
                   'Monthly',
-                  '\$${(opp['monthly_contribution'] ?? 0).toStringAsFixed(0)}',
+                  '\$${asDouble(opp['monthly_contribution']).toStringAsFixed(0)}',
                   Icons.trending_up,
                 ),
                 if (opp['category'] != null)
@@ -388,8 +389,8 @@ class _SmartGoalRecommendationsScreenState
   }
 
   Widget _buildAdjustmentCard(Map<String, dynamic> adj) {
-    final currentMonthly = adj['current_monthly'] ?? 0;
-    final suggestedMonthly = adj['suggested_monthly'] ?? 0;
+    final currentMonthly = asDouble(adj['current_monthly']);
+    final suggestedMonthly = asDouble(adj['suggested_monthly']);
     final increase = suggestedMonthly - currentMonthly;
 
     return Card(
@@ -495,7 +496,7 @@ class _SmartGoalRecommendationsScreenState
                 ],
               ),
             ),
-            if ((increase > 0) == true) ...[
+            if (increase > 0) ...[
               const SizedBox(height: 8),
               Text(
                 '+ \$${increase.toStringAsFixed(0)}/month increase',
@@ -664,10 +665,10 @@ class _SmartGoalRecommendationsScreenState
                         'Category', (rec['category'] ?? 'General') as String),
                     const SizedBox(height: 16),
                     _buildDetailRow('Target Amount',
-                        '\$${(rec['target_amount'] ?? 0).toStringAsFixed(2)}'),
+                        '\$${asDouble(rec['target_amount']).toStringAsFixed(2)}'),
                     const SizedBox(height: 16),
                     _buildDetailRow('Monthly Contribution',
-                        '\$${(rec['monthly_contribution'] ?? 0).toStringAsFixed(2)}'),
+                        '\$${asDouble(rec['monthly_contribution']).toStringAsFixed(2)}'),
                     const SizedBox(height: 16),
                     _buildDetailRow(
                         'Priority', (rec['priority'] ?? 'medium') as String),
