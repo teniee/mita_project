@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/settings_provider.dart';
@@ -8,6 +7,7 @@ import '../providers/user_provider.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
 import '../config.dart' show AppConfig;
+import '../utils/json_utils.dart';
 
 class UserSettingsScreen extends StatefulWidget {
   const UserSettingsScreen({super.key});
@@ -35,7 +35,6 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   bool _weeklyInsights = true;
 
   // Behavioral preferences
-  Map<String, dynamic> _behavioralPreferences = {};
 
   final List<String> _dateFormats = ['MM/dd/yyyy', 'dd/MM/yyyy', 'yyyy-MM-dd'];
 
@@ -128,17 +127,18 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
             .catchError((e) => <String, dynamic>{}),
       ]);
 
-      final settings = results[0] as Map<String, dynamic>;
-      final behavioralNotifications = results[1] as Map<String, dynamic>;
-      final behavioralPrefs = results[2] as Map<String, dynamic>;
+      final settings = asStringKeyedMap(results[0]);
+      final behavioralNotifications = asStringKeyedMap(results[1]);
 
       if (mounted) {
         setState(() {
           // Settings not managed by provider - load from API
           if (settings.isNotEmpty) {
-            _autoSyncEnabled = settings['auto_sync'] ?? true;
-            _offlineModeEnabled = settings['offline_mode'] ?? true;
-            _dateFormat = settings['date_format'] ?? 'MM/dd/yyyy';
+            _autoSyncEnabled = asBool(settings['auto_sync'], fallback: true);
+            _offlineModeEnabled =
+                asBool(settings['offline_mode'], fallback: true);
+            _dateFormat =
+                asString(settings['date_format'], fallback: 'MM/dd/yyyy');
             _budgetAlertThreshold =
                 (settings['budget_alert_threshold'] as num?)?.toDouble() ??
                     80.0;
@@ -146,17 +146,17 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
 
           // Behavioral notification settings
           if (behavioralNotifications.isNotEmpty) {
-            _patternAlerts = behavioralNotifications['pattern_alerts'] ?? true;
-            _anomalyDetection =
-                behavioralNotifications['anomaly_detection'] ?? true;
-            _budgetAdaptation =
-                behavioralNotifications['budget_adaptation'] ?? true;
-            _weeklyInsights =
-                behavioralNotifications['weekly_insights'] ?? true;
+            _patternAlerts = asBool(behavioralNotifications['pattern_alerts'],
+                fallback: true);
+            _anomalyDetection = asBool(
+                behavioralNotifications['anomaly_detection'],
+                fallback: true);
+            _budgetAdaptation = asBool(
+                behavioralNotifications['budget_adaptation'],
+                fallback: true);
+            _weeklyInsights = asBool(behavioralNotifications['weekly_insights'],
+                fallback: true);
           }
-
-          // Behavioral preferences
-          _behavioralPreferences = behavioralPrefs;
 
           _isLoading = false;
         });
@@ -558,7 +558,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     String subtitle,
     IconData icon,
     bool value,
-    Function(bool) onChanged,
+    void Function(bool) onChanged,
   ) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
@@ -585,7 +585,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     IconData icon,
     String value,
     List<String> options,
-    Function(String?) onChanged,
+    void Function(String?) onChanged,
   ) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
@@ -617,7 +617,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
     String subtitle,
     IconData icon,
     double value,
-    Function(double) onChanged,
+    void Function(double) onChanged,
   ) {
     return Column(
       children: [
@@ -752,7 +752,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
 
   // Dialog methods
   void _showChangePasswordDialog() {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Change Password'),
@@ -776,7 +776,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   }
 
   void _showExportDialog() {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Export Data'),
@@ -802,7 +802,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   }
 
   void _showHelpDialog() {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Help & Support'),
@@ -819,7 +819,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   }
 
   void _showPrivacyPolicy() {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Privacy Policy'),
@@ -843,7 +843,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   }
 
   void _showTermsOfService() {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Terms of Service'),
@@ -867,7 +867,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   }
 
   void _showDeleteAccountDialog() {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Account'),
@@ -892,7 +892,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
   }
 
   void _showSignOutDialog() {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Sign Out'),
@@ -964,7 +964,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       // Navigate to password change screen with proper form validation
       final result = await Navigator.push(
         context,
-        MaterialPageRoute(
+        MaterialPageRoute<bool>(
           builder: (context) => const PasswordChangeScreen(),
         ),
       );
@@ -998,7 +998,7 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
       setState(() => _isLoading = true);
 
       final response = await _apiService.deleteAccount();
-      if (response.data['success'] == true) {
+      if (asStringKeyedMap(response.data)['success'] == true) {
         logInfo('Account deleted successfully', tag: 'USER_SETTINGS');
 
         // Clear all local data using UserProvider
@@ -1232,7 +1232,7 @@ class _PasswordChangeScreenState extends State<PasswordChangeScreen> {
         newPassword: _newPasswordController.text,
       );
 
-      if (response.data['success'] == true) {
+      if (asStringKeyedMap(response.data)['success'] == true) {
         logInfo('Password changed successfully', tag: 'PASSWORD_CHANGE');
 
         ScaffoldMessenger.of(context).showSnackBar(

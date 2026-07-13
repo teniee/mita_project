@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../services/location_service.dart';
 import '../services/onboarding_state.dart';
 import '../services/logging_service.dart';
-import '../providers/user_provider.dart';
 import '../widgets/onboarding_progress_indicator.dart';
 
 class OnboardingLocationScreen extends StatefulWidget {

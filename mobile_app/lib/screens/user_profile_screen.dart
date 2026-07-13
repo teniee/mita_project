@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
-import '../services/logging_service.dart';
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({super.key});
@@ -703,7 +701,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   }
 
   void _showExportDialog() {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Export Data'),
@@ -728,7 +726,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   }
 
   void _showHelpDialog() {
-    showDialog(
+    showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Help & Support'),

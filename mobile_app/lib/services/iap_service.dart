@@ -6,6 +6,7 @@ import 'package:in_app_purchase/in_app_purchase.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'api_service.dart';
 import 'logging_service.dart';
+import '../utils/json_utils.dart';
 
 /// Premium features available in MITA
 enum PremiumFeature {
@@ -58,24 +59,19 @@ class SubscriptionInfo {
 
   factory SubscriptionInfo.fromJson(Map<String, dynamic> json) {
     return SubscriptionInfo(
-      subscriptionId: json['subscription_id'] ?? '',
-      productId: json['product_id'] ?? '',
+      subscriptionId: asString(json['subscription_id']),
+      productId: asString(json['product_id']),
       status: SubscriptionStatus.values.firstWhere(
         (e) => e.toString().split('.').last == json['status'],
         orElse: () => SubscriptionStatus.expired,
       ),
-      expiresAt: DateTime.parse(
-          json['expires_at'] ?? DateTime.now().toIso8601String()),
-      autoRenew: json['auto_renew'] ?? false,
-      trialPeriod: json['trial_period'] ?? false,
-      platform: json['platform'] ?? Platform.operatingSystem,
-      gracePeriodExpiresAt: json['grace_period_expires_at'] != null
-          ? DateTime.parse(json['grace_period_expires_at'])
-          : null,
-      billingRetryUntil: json['billing_retry_until'] != null
-          ? DateTime.parse(json['billing_retry_until'])
-          : null,
-      metadata: json['metadata'] ?? {},
+      expiresAt: asDateTimeOrNull(json['expires_at']) ?? DateTime.now(),
+      autoRenew: asBool(json['auto_renew']),
+      trialPeriod: asBool(json['trial_period']),
+      platform: asString(json['platform'], fallback: Platform.operatingSystem),
+      gracePeriodExpiresAt: asDateTimeOrNull(json['grace_period_expires_at']),
+      billingRetryUntil: asDateTimeOrNull(json['billing_retry_until']),
+      metadata: asStringKeyedMap(json['metadata']),
     );
   }
 
@@ -334,8 +330,8 @@ class IapService {
       final response = await _apiService.getUserPremiumStatus(userId);
 
       if (response['subscription'] != null) {
-        final subscriptionInfo =
-            SubscriptionInfo.fromJson(response['subscription']);
+        final subscriptionInfo = SubscriptionInfo.fromJson(
+            asStringKeyedMap(response['subscription']));
         await _cacheSubscriptionInfo(
             {'subscription': subscriptionInfo.toJson()});
 
@@ -365,7 +361,7 @@ class IapService {
       if (userId == null) return {};
 
       final response = await _apiService.getUserPremiumFeatures(userId);
-      final featureNames = List<String>.from(response['features'] ?? []);
+      final featureNames = asStringList(response['features']);
 
       return featureNames
           .map((name) => _parseFeatureName(name))
@@ -421,7 +417,7 @@ class IapService {
 
       if (data['subscription'] != null) {
         _cachedSubscriptionInfo =
-            SubscriptionInfo.fromJson(data['subscription']);
+            SubscriptionInfo.fromJson(asStringKeyedMap(data['subscription']));
       }
       _lastCacheUpdate = DateTime.now();
 
@@ -442,7 +438,7 @@ class IapService {
         final data = jsonDecode(cachedData) as Map<String, dynamic>;
         if (data['subscription'] != null) {
           _cachedSubscriptionInfo =
-              SubscriptionInfo.fromJson(data['subscription']);
+              SubscriptionInfo.fromJson(asStringKeyedMap(data['subscription']));
         }
         _lastCacheUpdate =
             DateTime.fromMillisecondsSinceEpoch(lastVerification);

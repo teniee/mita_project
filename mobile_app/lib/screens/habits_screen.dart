@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../providers/habits_provider.dart';
-import '../services/logging_service.dart';
 
 class HabitsScreen extends StatefulWidget {
   const HabitsScreen({super.key});

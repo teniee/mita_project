@@ -55,7 +55,6 @@ class MitaWidgets {
     String? message,
     bool showLogo = true,
   }) {
-    final accessibilityService = AccessibilityService.instance;
     final loadingMessage = message ?? 'Loading MITA financial data';
 
     return Scaffold(

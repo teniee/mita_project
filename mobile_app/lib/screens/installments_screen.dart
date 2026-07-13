@@ -16,7 +16,6 @@ class InstallmentsScreen extends StatefulWidget {
 
 class _InstallmentsScreenState extends State<InstallmentsScreen> {
   final LocalizationService _localizationService = LocalizationService.instance;
-  bool _showMonthlyView = true;
 
   @override
   void initState() {
@@ -395,7 +394,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                 width: 120,
                 height: 120,
                 decoration: BoxDecoration(
-                  color: AppColors.textPrimary.withOpacity(0.1),
+                  color: AppColors.textPrimary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(60),
                 ),
                 child: const Icon(
@@ -468,7 +467,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -524,7 +523,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                     height: 80,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: loadColor.withOpacity(0.1),
+                      color: loadColor.withValues(alpha: 0.1),
                     ),
                     child: Center(
                       child: Column(
@@ -563,7 +562,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.secondary.withOpacity(0.1),
+                color: AppColors.secondary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
                   color: AppColors.secondary,
@@ -739,7 +738,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                                       decoration: BoxDecoration(
                                         color:
                                             _getStatusColor(installment.status)
-                                                .withOpacity(0.2),
+                                                .withValues(alpha: 0.2),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Text(
@@ -762,7 +761,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                           // More menu
                           PopupMenuButton(
                             itemBuilder: (context) => [
-                              PopupMenuItem(
+                              PopupMenuItem<void>(
                                 child: const Row(
                                   children: [
                                     Icon(Icons.info_outline, size: 18),
@@ -775,7 +774,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                                 },
                               ),
                               if (installment.status.isActive)
-                                PopupMenuItem(
+                                PopupMenuItem<void>(
                                   child: const Row(
                                     children: [
                                       Icon(Icons.check_circle_outline,
@@ -790,7 +789,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                                   },
                                 ),
                               if (installment.status.isActive)
-                                PopupMenuItem(
+                                PopupMenuItem<void>(
                                   child: const Row(
                                     children: [
                                       Icon(Icons.cancel_outlined, size: 18),
@@ -802,7 +801,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                                     _handleCancelInstallment(installment);
                                   },
                                 ),
-                              PopupMenuItem(
+                              PopupMenuItem<void>(
                                 child: const Row(
                                   children: [
                                     Icon(Icons.delete_outline, size: 18),
@@ -1001,7 +1000,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
   }
 
   void _showInstallmentDetails(Installment installment) {
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
@@ -1042,7 +1041,7 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: _getStatusColor(installment.status).withOpacity(0.2),
+                  color: _getStatusColor(installment.status).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -1218,7 +1217,7 @@ class _ShimmerLoaderState extends State<_ShimmerLoader>
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 10,
               ),
             ],

@@ -519,7 +519,6 @@ class _EnhancedCardState extends State<EnhancedCard>
   late AnimationController _controller;
   late Animation<double> _elevationAnimation;
   late Animation<double> _scaleAnimation;
-  bool _isHovered = false;
 
   @override
   void initState() {
@@ -554,10 +553,6 @@ class _EnhancedCardState extends State<EnhancedCard>
 
   void _onHover(bool isHovered) {
     if (widget.enableHoverEffect) {
-      setState(() {
-        _isHovered = isHovered;
-      });
-
       if (isHovered) {
         _controller.forward();
       } else {
@@ -601,7 +596,7 @@ class _EnhancedCardState extends State<EnhancedCard>
 }
 
 /// Smooth page transition
-class SmoothPageTransition extends PageRouteBuilder {
+class SmoothPageTransition extends PageRouteBuilder<void> {
   final Widget child;
   final Duration duration;
   final Curve curve;
@@ -882,7 +877,6 @@ class _FinancialMilestoneAnimationState
   late AnimationController _particleController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _rotationAnimation;
-  late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
@@ -911,14 +905,6 @@ class _FinancialMilestoneAnimationState
     ).animate(CurvedAnimation(
       parent: _controller,
       curve: const Interval(0.2, 0.8, curve: Curves.easeInOut),
-    ));
-
-    _pulseAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.1,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOut,
     ));
   }
 

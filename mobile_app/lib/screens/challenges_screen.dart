@@ -4,6 +4,7 @@ import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/challenges_provider.dart';
+import '../utils/json_utils.dart';
 
 class ChallengesScreen extends StatefulWidget {
   const ChallengesScreen({super.key});
@@ -226,15 +227,16 @@ class _ChallengesScreenState extends State<ChallengesScreen>
   }
 
   Widget _buildActiveChallengeCard(Map<String, dynamic> challenge) {
-    final progress = (challenge['current_progress'] ?? 0).toDouble();
-    final target = (challenge['target_value'] ?? 1).toDouble();
+    final progress = asDouble(challenge['current_progress']);
+    final target = asDouble(challenge['target_value'], fallback: 1);
     final progressPercentage =
         target > 0 ? (progress / target).clamp(0.0, 1.0) : 0.0;
 
-    final endDate = DateTime.parse(challenge['end_date']);
+    final endDate = asDateTimeOrNull(challenge['end_date']) ?? DateTime.now();
     final daysLeft = endDate.difference(DateTime.now()).inDays;
 
-    Color difficultyColor = _getDifficultyColor(challenge['difficulty']);
+    Color difficultyColor =
+        _getDifficultyColor(asString(challenge['difficulty']));
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -263,7 +265,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                 children: [
                   Expanded(
                     child: Text(
-                      challenge['title'] ?? '',
+                      asString(challenge['title']),
                       style: const TextStyle(
                         fontFamily: AppTypography.fontHeading,
                         fontSize: 18,
@@ -295,7 +297,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
               const SizedBox(height: 8),
 
               Text(
-                challenge['description'] ?? '',
+                asString(challenge['description']),
                 style: TextStyle(
                   fontFamily: AppTypography.fontBody,
                   fontSize: 14,
@@ -414,7 +416,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                 width: double.infinity,
                 height: 40,
                 child: OutlinedButton(
-                  onPressed: () => _leaveChallenge(challenge['id']),
+                  onPressed: () => _leaveChallenge(asString(challenge['id'])),
                   style: OutlinedButton.styleFrom(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -439,8 +441,9 @@ class _ChallengesScreenState extends State<ChallengesScreen>
   }
 
   Widget _buildAvailableChallengeCard(Map<String, dynamic> challenge) {
-    Color difficultyColor = _getDifficultyColor(challenge['difficulty']);
-    final successRate = (challenge['success_rate'] ?? 0.0) * 100;
+    Color difficultyColor =
+        _getDifficultyColor(asString(challenge['difficulty']));
+    final successRate = asDouble(challenge['success_rate']) * 100;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -457,7 +460,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
               children: [
                 Expanded(
                   child: Text(
-                    challenge['title'] ?? '',
+                    asString(challenge['title']),
                     style: const TextStyle(
                       fontFamily: AppTypography.fontHeading,
                       fontSize: 18,
@@ -489,7 +492,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
             const SizedBox(height: 8),
 
             Text(
-              challenge['description'] ?? '',
+              asString(challenge['description']),
               style: TextStyle(
                 fontFamily: AppTypography.fontBody,
                 fontSize: 14,
@@ -579,7 +582,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
               width: double.infinity,
               height: 48,
               child: ElevatedButton(
-                onPressed: () => _joinChallenge(challenge['id']),
+                onPressed: () => _joinChallenge(asString(challenge['id'])),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.secondary,
                   foregroundColor: AppColors.textPrimary,
@@ -885,8 +888,8 @@ class _ChallengesScreenState extends State<ChallengesScreen>
   }
 
   Widget _buildBadgeCard(Map<String, dynamic> badge) {
-    Color rarityColor = _getRarityColor(badge['rarity']);
-    IconData badgeIcon = _getBadgeIcon(badge['icon']);
+    Color rarityColor = _getRarityColor(asString(badge['rarity']));
+    IconData badgeIcon = _getBadgeIcon(asString(badge['icon']));
 
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -910,7 +913,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
             Icon(badgeIcon, color: rarityColor, size: 32),
             const SizedBox(height: 8),
             Text(
-              badge['name'] ?? '',
+              asString(badge['name']),
               style: const TextStyle(
                 fontFamily: AppTypography.fontHeading,
                 fontSize: 14,
@@ -960,7 +963,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
               final isCurrentUser = entry['is_current_user'] == true;
               return ListTile(
                 leading: CircleAvatar(
-                  backgroundColor: _getRankColor(entry['rank']),
+                  backgroundColor: _getRankColor(asInt(entry['rank'])),
                   child: Text(
                     '#${entry['rank']}',
                     style: const TextStyle(
@@ -972,7 +975,7 @@ class _ChallengesScreenState extends State<ChallengesScreen>
                   ),
                 ),
                 title: Text(
-                  entry['username'] ?? 'User',
+                  asString(entry['username'], fallback: 'User'),
                   style: TextStyle(
                     fontFamily: AppTypography.fontHeading,
                     fontWeight:

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../services/onboarding_state.dart';
 import '../services/income_service.dart';
-import '../providers/user_provider.dart';
 import '../theme/income_theme.dart';
+import '../utils/json_utils.dart';
 
 class OnboardingBudgetScreen extends StatefulWidget {
   const OnboardingBudgetScreen({super.key});
@@ -43,8 +42,8 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen>
     // Generate budget template
     _budgetTemplate =
         _incomeService.getBudgetTemplate(_incomeTier, _monthlyIncome);
-    _customAllocations =
-        Map<String, double>.from(_budgetTemplate['allocations']);
+    _customAllocations = asStringKeyedMap(_budgetTemplate['allocations'])
+        .map((k, v) => MapEntry(k, asDouble(v)));
 
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 600),
@@ -66,8 +65,8 @@ class _OnboardingBudgetScreenState extends State<OnboardingBudgetScreen>
 
   void _resetToRecommended() {
     setState(() {
-      _customAllocations =
-          Map<String, double>.from(_budgetTemplate['allocations']);
+      _customAllocations = asStringKeyedMap(_budgetTemplate['allocations'])
+          .map((k, v) => MapEntry(k, asDouble(v)));
       _useCustomBudget = false;
     });
   }

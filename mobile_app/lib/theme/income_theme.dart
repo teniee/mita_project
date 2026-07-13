@@ -347,9 +347,6 @@ class IncomeTheme {
 
   /// Get budget category colors based on income tier
   static Map<String, Color> getBudgetCategoryColors(IncomeTier tier) {
-    final primary = _incomeService.getIncomeTierPrimaryColor(tier);
-    final secondary = _incomeService.getIncomeTierSecondaryColor(tier);
-
     switch (tier) {
       case IncomeTier.low:
         return {
@@ -411,7 +408,6 @@ class IncomeTheme {
 
   /// Get tier-specific gradients
   static LinearGradient getTierGradient(IncomeTier tier) {
-    final primary = _incomeService.getIncomeTierPrimaryColor(tier);
     final secondary = _incomeService.getIncomeTierSecondaryColor(tier);
 
     return LinearGradient(

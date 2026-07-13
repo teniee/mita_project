@@ -18,20 +18,20 @@ class ChallengesProvider extends ChangeNotifier {
 
   // State
   ChallengesState _state = ChallengesState.initial;
-  List<dynamic> _activeChallenges = [];
-  List<dynamic> _availableChallenges = [];
+  List<Map<String, dynamic>> _activeChallenges = [];
+  List<Map<String, dynamic>> _availableChallenges = [];
   Map<String, dynamic> _gamificationStats = {};
-  List<dynamic> _leaderboard = [];
+  List<Map<String, dynamic>> _leaderboard = [];
   final Map<String, Map<String, dynamic>> _challengeProgress = {};
   String? _errorMessage;
   bool _isLoading = false;
 
   // Getters
   ChallengesState get state => _state;
-  List<dynamic> get activeChallenges => _activeChallenges;
-  List<dynamic> get availableChallenges => _availableChallenges;
+  List<Map<String, dynamic>> get activeChallenges => _activeChallenges;
+  List<Map<String, dynamic>> get availableChallenges => _availableChallenges;
   Map<String, dynamic> get gamificationStats => _gamificationStats;
-  List<dynamic> get leaderboard => _leaderboard;
+  List<Map<String, dynamic>> get leaderboard => _leaderboard;
   Map<String, Map<String, dynamic>> get challengeProgress => _challengeProgress;
   String? get errorMessage => _errorMessage;
   bool get isLoading => _isLoading;
@@ -100,8 +100,8 @@ class ChallengesProvider extends ChangeNotifier {
             : (valueData is String ? int.tryParse(valueData) ?? 0 : 0);
   }
 
-  List<dynamic> get badgesEarned =>
-      _gamificationStats['badges_earned'] as List<dynamic>? ?? [];
+  List<Map<String, dynamic>> get badgesEarned =>
+      asMapList(_gamificationStats['badges_earned']);
 
   /// Initialize the provider and load initial data
   Future<void> initialize() async {
@@ -141,10 +141,10 @@ class ChallengesProvider extends ChangeNotifier {
         _apiService.getLeaderboard(),
       ]);
 
-      _activeChallenges = results[0] as List<dynamic>;
-      _availableChallenges = results[1] as List<dynamic>;
+      _activeChallenges = asMapList(results[0]);
+      _availableChallenges = asMapList(results[1]);
       _gamificationStats = results[2] as Map<String, dynamic>;
-      _leaderboard = results[3] as List<dynamic>;
+      _leaderboard = asMapList(results[3]);
 
       logInfo(
           'Loaded ${_activeChallenges.length} active challenges, ${_availableChallenges.length} available',

@@ -196,7 +196,7 @@ class OCRDataField extends StatefulWidget {
   final OCRConfidence confidence;
   final TextInputType? keyboardType;
   final List<String>? suggestions;
-  final Function(String) onChanged;
+  final void Function(String) onChanged;
   final String? helperText;
   final IconData? prefixIcon;
 
@@ -554,7 +554,7 @@ class ReceiptScanOverlay extends StatelessWidget {
 /// Receipt item list with confidence indicators
 class OCRReceiptItemsList extends StatelessWidget {
   final List<ReceiptItem> items;
-  final Function(int, ReceiptItem) onItemChanged;
+  final void Function(int, ReceiptItem) onItemChanged;
   final VoidCallback? onAddItem;
 
   const OCRReceiptItemsList({
@@ -635,9 +635,6 @@ class OCRReceiptItemsList extends StatelessWidget {
   }
 
   Widget _buildItemCard(BuildContext context, int index, ReceiptItem item) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
     return Card(
       elevation: 1.0,
       child: Padding(

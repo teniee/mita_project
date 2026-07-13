@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
-import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/advice_provider.dart';

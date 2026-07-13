@@ -34,57 +34,24 @@ analyzer:
     # Excluding all files with type errors to achieve 0 issues
     
     # Screens with dynamic type issues
-    - lib/screens/advice_history_screen.dart
-    - lib/screens/challenges_screen.dart
-    - lib/screens/habits_screen.dart
-    - lib/screens/installments_screen.dart
-    - lib/screens/mood_screen.dart
-    - lib/screens/onboarding_budget_screen.dart
-    - lib/screens/onboarding_expenses_screen.dart
-    - lib/screens/onboarding_finish_screen.dart
-    - lib/screens/onboarding_goal_screen.dart
-    - lib/screens/onboarding_habits_screen.dart
-    - lib/screens/onboarding_income_screen.dart
-    - lib/screens/onboarding_location_screen.dart
-    - lib/screens/onboarding_peer_comparison_screen.dart
-    - lib/screens/onboarding_region_screen.dart
-    - lib/screens/profile_settings_screen.dart
-    - lib/screens/receipt_capture_screen.dart
-    - lib/screens/referral_screen.dart
-    - lib/screens/subscription_screen.dart
-    - lib/screens/user_profile_screen.dart
-    - lib/screens/user_settings_screen.dart
     
     # Services with type errors
-    - lib/services/accessibility_service.dart
-    - lib/services/iap_service.dart
-    - lib/services/location_service.dart
-    - lib/services/ocr_service.dart
-    - lib/services/premium_feature_service.dart
-    - lib/services/redistribution_opportunity.dart
-    - lib/services/smart_categorization_service.dart
     
     # Widgets with type errors
-    - lib/widgets/enhanced_animations.dart
-    - lib/widgets/ocr_widgets.dart
     
     # Utils with type errors  
     
     # Core files with type errors
     
     # Theme files with unused warnings
-    - lib/theme/income_theme.dart
     
     # Additional screens and services with remaining issues
-    - lib/screens/profile_screen.dart
     
     # Additional services with issues
     
     # Additional widgets with issues
-    - lib/widgets/mita_widgets.dart
     
     # Final exclusions for 0-issue production deployment
-    - lib/theme/mita_theme.dart
   
   # Enhanced error reporting for financial applications
   errors:

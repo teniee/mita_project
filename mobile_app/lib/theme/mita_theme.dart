@@ -6,7 +6,6 @@ class MitaTheme {
   // MITA Brand Colors
   static const Color _mitaPrimary = Color(0xFF193C57); // Deep navy blue
   static const Color _mitaSecondary = Color(0xFFFFD25F); // Warm yellow
-  static const Color _mitaBackground = Color(0xFFFFF9F0); // Warm cream
   static const Color _mitaSurface = Color(0xFFFFFFFF); // Pure white
 
   /// Material 3 Light Color Scheme

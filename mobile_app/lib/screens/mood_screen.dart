@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
-import '../theme/app_typography.dart';
 import '../providers/mood_provider.dart';
 import '../services/reminder_service.dart';
 
@@ -175,7 +174,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                     return Transform.scale(
                       scale: _scaleAnimation.value,
                       child: Text(
-                        _moodData[mood.round()]!['emoji'],
+                        _moodData[mood.round()]!['emoji'] as String,
                         style: const TextStyle(fontSize: 80),
                       ),
                     );
@@ -186,17 +185,17 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
 
                 // Mood label and description
                 Text(
-                  _moodData[mood.round()]!['label'],
+                  _moodData[mood.round()]!['label'] as String,
                   style: TextStyle(
                     fontFamily: 'Sora',
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: _moodData[mood.round()]!['color'],
+                    color: _moodData[mood.round()]!['color'] as Color,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  _moodData[mood.round()]!['description'],
+                  _moodData[mood.round()]!['description'] as String,
                   style: const TextStyle(
                     fontFamily: 'Manrope',
                     fontSize: 16,
@@ -209,9 +208,10 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                 // Mood slider
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
-                    activeTrackColor: _moodData[mood.round()]!['color'],
-                    thumbColor: _moodData[mood.round()]!['color'],
-                    overlayColor: _moodData[mood.round()]!['color']
+                    activeTrackColor:
+                        _moodData[mood.round()]!['color'] as Color,
+                    thumbColor: _moodData[mood.round()]!['color'] as Color,
+                    overlayColor: (_moodData[mood.round()]!['color'] as Color)
                         .withValues(alpha: 0.2),
                     trackHeight: 8.0,
                     thumbShape:
@@ -340,7 +340,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                   children: [
                     Icon(
                       Icons.lightbulb_outline,
-                      color: currentMoodData['color'],
+                      color: currentMoodData['color'] as Color,
                       size: 24,
                     ),
                     const SizedBox(width: 8),
@@ -366,7 +366,7 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                             height: 6,
                             margin: const EdgeInsets.only(top: 8),
                             decoration: BoxDecoration(
-                              color: currentMoodData['color'],
+                              color: currentMoodData['color'] as Color,
                               shape: BoxShape.circle,
                             ),
                           ),

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../services/onboarding_state.dart';
-import '../providers/user_provider.dart';
 import '../widgets/onboarding_progress_indicator.dart';
 import '../mixins/onboarding_session_mixin.dart';
+import '../utils/json_utils.dart';
 
 class OnboardingHabitsScreen extends StatefulWidget {
   const OnboardingHabitsScreen({super.key});
@@ -107,7 +106,7 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 16),
                         child: GestureDetector(
-                          onTap: () => _toggleHabit(habit['id']),
+                          onTap: () => _toggleHabit(asString(habit['id'])),
                           child: Card(
                             elevation: isSelected ? 4 : 1,
                             color:
@@ -126,12 +125,12 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
                                   vertical: 20, horizontal: 16),
                               child: Row(
                                 children: [
-                                  Icon(habit['icon'],
+                                  Icon(habit['icon'] as IconData,
                                       color: AppColors.textPrimary),
                                   const SizedBox(width: 16),
                                   Expanded(
                                     child: Text(
-                                      habit['label'],
+                                      asString(habit['label']),
                                       style: const TextStyle(
                                         fontFamily: AppTypography.fontBody,
                                         fontWeight: FontWeight.w600,

@@ -106,7 +106,7 @@ class AccessibilityService {
       try {
         SemanticsService.announce(message, TextDirection.ltr);
         // Wait between announcements to avoid overwhelming screen readers
-        await Future.delayed(const Duration(milliseconds: 1000));
+        await Future<void>.delayed(const Duration(milliseconds: 1000));
       } catch (e) {
         logError('Error announcing to screen reader: $e', tag: 'ACCESSIBILITY');
       }

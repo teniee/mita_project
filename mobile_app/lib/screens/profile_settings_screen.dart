@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../providers/user_provider.dart';
 import '../providers/settings_provider.dart';
 import '../core/enhanced_error_handling.dart';
+import '../core/app_error_handler.dart';
 
 class ProfileSettingsScreen extends StatefulWidget {
   const ProfileSettingsScreen({super.key});

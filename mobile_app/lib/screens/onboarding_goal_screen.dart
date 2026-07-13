@@ -3,6 +3,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../services/onboarding_state.dart';
 import '../widgets/onboarding_progress_indicator.dart';
+import '../utils/json_utils.dart';
 
 class OnboardingGoalScreen extends StatefulWidget {
   const OnboardingGoalScreen({super.key});
@@ -98,7 +99,7 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
                     final goal = goals[index];
                     final isSelected = selectedGoals.contains(goal['id']);
                     return GestureDetector(
-                      onTap: () => _toggleGoal(goal['id']),
+                      onTap: () => _toggleGoal(asString(goal['id'])),
                       child: Card(
                         elevation: isSelected ? 4 : 1,
                         color: isSelected ? AppColors.secondary : Colors.white,
@@ -116,11 +117,12 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
                               vertical: 20, horizontal: 16),
                           child: Row(
                             children: [
-                              Icon(goal['icon'], color: AppColors.textPrimary),
+                              Icon(goal['icon'] as IconData,
+                                  color: AppColors.textPrimary),
                               const SizedBox(width: 16),
                               Expanded(
                                 child: Text(
-                                  goal['label'],
+                                  asString(goal['label']),
                                   style: const TextStyle(
                                     fontFamily: AppTypography.fontBody,
                                     fontWeight: FontWeight.w600,

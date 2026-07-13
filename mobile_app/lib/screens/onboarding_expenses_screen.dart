@@ -76,7 +76,7 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
     return Card(
       elevation: expense.isSelected ? 3 : 1,
       color: expense.isSelected
-          ? AppColors.secondary.withOpacity(0.3)
+          ? AppColors.secondary.withValues(alpha: 0.3)
           : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
@@ -96,7 +96,7 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: AppColors.textPrimary.withOpacity(0.1),
+                    color: AppColors.textPrimary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -230,7 +230,7 @@ class _OnboardingExpensesScreenState extends State<OnboardingExpensesScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 8),
                           decoration: BoxDecoration(
-                            color: AppColors.textPrimary.withOpacity(0.1),
+                            color: AppColors.textPrimary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(

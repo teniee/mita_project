@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../services/onboarding_state.dart';
 import '../services/income_service.dart';
-import '../providers/user_provider.dart';
 import '../widgets/income_tier_widgets.dart';
 import '../widgets/onboarding_progress_indicator.dart';
 
@@ -109,7 +107,7 @@ class _OnboardingIncomeScreenState extends State<OnboardingIncomeScreen>
     final message = _incomeService.getOnboardingMessage(tier);
     final primaryColor = _incomeService.getIncomeTierPrimaryColor(tier);
 
-    await showDialog(
+    await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
