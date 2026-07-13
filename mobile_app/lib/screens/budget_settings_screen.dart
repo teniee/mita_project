@@ -4,10 +4,29 @@ import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../providers/budget_provider.dart';
 import '../providers/user_provider.dart';
+import '../utils/json_utils.dart';
 import '../services/logging_service.dart';
 import '../services/income_service.dart';
 import '../widgets/income_tier_widgets.dart';
 import '../theme/income_theme.dart';
+
+class _BudgetMode {
+  const _BudgetMode({
+    required this.id,
+    required this.name,
+    required this.description,
+    required this.icon,
+    required this.color,
+    required this.features,
+  });
+
+  final String id;
+  final String name;
+  final String description;
+  final IconData icon;
+  final Color color;
+  final List<String> features;
+}
 
 class BudgetSettingsScreen extends StatefulWidget {
   const BudgetSettingsScreen({super.key});
@@ -23,59 +42,59 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
   double _monthlyIncome = 0.0;
   IncomeTier? _incomeTier;
 
-  final List<Map<String, dynamic>> _budgetModes = [
-    {
-      'id': 'default',
-      'name': 'Standard Budget',
-      'description': 'Traditional budget tracking with basic redistribution',
-      'icon': Icons.account_balance_wallet,
-      'color': Colors.grey,
-      'features': [
+  final List<_BudgetMode> _budgetModes = [
+    _BudgetMode(
+      id: 'default',
+      name: 'Standard Budget',
+      description: 'Traditional budget tracking with basic redistribution',
+      icon: Icons.account_balance_wallet,
+      color: Colors.grey,
+      features: [
         'Basic tracking',
         'Manual redistribution',
         'Standard alerts'
       ],
-    },
-    {
-      'id': 'flexible',
-      'name': 'Flexible Budget',
-      'description': 'Adaptive budget that adjusts to your spending patterns',
-      'icon': Icons.auto_fix_high,
-      'color': AppColors.successLight,
-      'features': [
+    ),
+    _BudgetMode(
+      id: 'flexible',
+      name: 'Flexible Budget',
+      description: 'Adaptive budget that adjusts to your spending patterns',
+      icon: Icons.auto_fix_high,
+      color: AppColors.successLight,
+      features: [
         'Auto-adjustment',
         'Smart redistribution',
         'Flexible limits'
       ],
-    },
-    {
-      'id': 'strict',
-      'name': 'Strict Budget',
-      'description': 'Rigid budget control with firm spending limits',
-      'icon': Icons.lock,
-      'color': AppColors.danger,
-      'features': ['Hard limits', 'Strict alerts', 'No overspending'],
-    },
-    {
-      'id': 'behavioral',
-      'name': 'Behavioral Adaptive',
-      'description': 'AI-powered budget that learns from your behavior',
-      'icon': Icons.psychology,
-      'color': AppColors.accent,
-      'features': [
+    ),
+    _BudgetMode(
+      id: 'strict',
+      name: 'Strict Budget',
+      description: 'Rigid budget control with firm spending limits',
+      icon: Icons.lock,
+      color: AppColors.danger,
+      features: ['Hard limits', 'Strict alerts', 'No overspending'],
+    ),
+    _BudgetMode(
+      id: 'behavioral',
+      name: 'Behavioral Adaptive',
+      description: 'AI-powered budget that learns from your behavior',
+      icon: Icons.psychology,
+      color: AppColors.accent,
+      features: [
         'AI learning',
         'Behavioral insights',
         'Predictive adjustments'
       ],
-    },
-    {
-      'id': 'goal',
-      'name': 'Goal-Oriented',
-      'description': 'Budget optimized for achieving your savings goals',
-      'icon': Icons.flag,
-      'color': AppColors.secondary,
-      'features': ['Goal tracking', 'Savings priority', 'Target optimization'],
-    },
+    ),
+    _BudgetMode(
+      id: 'goal',
+      name: 'Goal-Oriented',
+      description: 'Budget optimized for achieving your savings goals',
+      icon: Icons.flag,
+      color: AppColors.secondary,
+      features: ['Goal tracking', 'Savings priority', 'Target optimization'],
+    ),
   ];
 
   @override
@@ -183,24 +202,18 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
     }
   }
 
-  String _getBudgetModeByIdName(String id) {
-    final mode = _budgetModes.firstWhere(
-      (mode) => mode['id'] == id,
-      orElse: () => _budgetModes[0],
-    );
-    return mode['name'];
-  }
+  String _getBudgetModeByIdName(String id) => _getBudgetModeById(id).name;
 
-  Map<String, dynamic> _getBudgetModeById(String id) {
+  _BudgetMode _getBudgetModeById(String id) {
     return _budgetModes.firstWhere(
-      (mode) => mode['id'] == id,
+      (mode) => mode.id == id,
       orElse: () => _budgetModes[0],
     );
   }
 
   Widget _buildBudgetModeCard(
-      Map<String, dynamic> mode, String currentBudgetMode, bool isUpdating) {
-    final isSelected = mode['id'] == currentBudgetMode;
+      _BudgetMode mode, String currentBudgetMode, bool isUpdating) {
+    final isSelected = mode.id == currentBudgetMode;
     final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
@@ -209,12 +222,12 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: isSelected
-            ? BorderSide(color: mode['color'], width: 2)
+            ? BorderSide(color: mode.color, width: 2)
             : BorderSide.none,
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
-        onTap: isUpdating ? null : () => _updateBudgetMode(mode['id']),
+        onTap: isUpdating ? null : () => _updateBudgetMode(mode.id),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -225,12 +238,12 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: mode['color'].withValues(alpha: 0.1),
+                      color: mode.color.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
-                      mode['icon'],
-                      color: mode['color'],
+                      mode.icon,
+                      color: mode.color,
                       size: 24,
                     ),
                   ),
@@ -242,7 +255,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                         Row(
                           children: [
                             Text(
-                              mode['name'],
+                              mode.name,
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
@@ -256,7 +269,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: mode['color'],
+                                  color: mode.color,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: const Text(
@@ -273,7 +286,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          mode['description'],
+                          mode.description,
                           style: TextStyle(
                             fontSize: 14,
                             color: colorScheme.onSurface.withValues(alpha: 0.7),
@@ -291,7 +304,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                   else if (isSelected)
                     Icon(
                       Icons.check_circle,
-                      color: mode['color'],
+                      color: mode.color,
                       size: 24,
                     ),
                 ],
@@ -300,7 +313,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
-                children: (mode['features'] as List<String>)
+                children: mode.features
                     .map<Widget>(
                       (feature) => Container(
                         padding: const EdgeInsets.symmetric(
@@ -309,13 +322,13 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                           color: colorScheme.surface,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                              color: mode['color'].withValues(alpha: 0.3)),
+                              color: mode.color.withValues(alpha: 0.3)),
                         ),
                         child: Text(
                           feature,
                           style: TextStyle(
                             fontSize: 12,
-                            color: mode['color'],
+                            color: mode.color,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -504,7 +517,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                 'Automatically redistribute budget when overspending occurs',
                 style: TextStyle(fontSize: 12),
               ),
-              value: automationSettings['auto_redistribution'] ?? false,
+              value: asBool(automationSettings['auto_redistribution']),
               onChanged: (bool value) {
                 _updateAutomationSettings({'auto_redistribution': value});
               },
@@ -521,7 +534,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                 'Receive AI-powered budget recommendations',
                 style: TextStyle(fontSize: 12),
               ),
-              value: automationSettings['smart_suggestions'] ?? true,
+              value: asBool(automationSettings['smart_suggestions'], fallback: true),
               onChanged: (bool value) {
                 _updateAutomationSettings({'smart_suggestions': value});
               },
@@ -538,7 +551,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                 'Allow AI to learn from your spending patterns',
                 style: TextStyle(fontSize: 12),
               ),
-              value: automationSettings['behavioral_learning'] ?? true,
+              value: asBool(automationSettings['behavioral_learning'], fallback: true),
               onChanged: (bool value) {
                 _updateAutomationSettings({'behavioral_learning': value});
               },
@@ -555,7 +568,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                 'Get instant notifications for budget changes',
                 style: TextStyle(fontSize: 12),
               ),
-              value: automationSettings['realtime_alerts'] ?? true,
+              value: asBool(automationSettings['realtime_alerts'], fallback: true),
               onChanged: (bool value) {
                 _updateAutomationSettings({'realtime_alerts': value});
               },
@@ -863,8 +876,9 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                           borderRadius: BorderRadius.circular(16),
                           gradient: LinearGradient(
                             colors: [
-                              _getBudgetModeById(currentBudgetMode)['color'],
-                              _getBudgetModeById(currentBudgetMode)['color']
+                              _getBudgetModeById(currentBudgetMode).color,
+                              _getBudgetModeById(currentBudgetMode)
+                                  .color
                                   .withValues(alpha: 0.8),
                             ],
                             begin: Alignment.topLeft,
@@ -874,7 +888,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                         child: Row(
                           children: [
                             Icon(
-                              _getBudgetModeById(currentBudgetMode)['icon'],
+                              _getBudgetModeById(currentBudgetMode).icon,
                               color: Colors.white,
                               size: 32,
                             ),
@@ -892,8 +906,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    _getBudgetModeById(
-                                        currentBudgetMode)['name'],
+                                    _getBudgetModeById(currentBudgetMode).name,
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 20,

@@ -1,3 +1,4 @@
+import '../utils/json_utils.dart';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import 'country_profiles_service.dart';
@@ -572,7 +573,7 @@ class IncomeService {
   Map<String, dynamic> getBudgetTemplate(
       IncomeTier tier, double monthlyIncome) {
     final weights = getDefaultBudgetWeights(tier);
-    final template = <String, dynamic>{};
+    final template = <String, double>{};
 
     weights.forEach((category, weight) {
       template[category] = (monthlyIncome * weight).round().toDouble();
@@ -767,6 +768,8 @@ class IncomeService {
   List<Map<String, dynamic>> getTierSpecificNudges(IncomeTier tier,
       Map<String, double>? currentSpending, double monthlyIncome) {
     final patterns = getBehavioralSpendingPatterns(tier);
+    final nudgeResponsiveness =
+        asStringKeyedMap(patterns['nudge_responsiveness']);
     final nudges = <Map<String, dynamic>>[];
 
     switch (tier) {
@@ -776,22 +779,21 @@ class IncomeService {
             'type': 'loss_framing',
             'message':
                 'Protect your \$${_calculateWeeklyProgress(currentSpending, monthlyIncome).toStringAsFixed(0)} weekly progress',
-            'effectiveness': patterns['nudge_responsiveness']['loss_framing'],
+            'effectiveness': nudgeResponsiveness['loss_framing'],
             'frequency': 'daily',
           },
           {
             'type': 'social_proof',
             'message':
                 '73% of Foundation Builders cook dinner at home to save money',
-            'effectiveness': patterns['nudge_responsiveness']['social_proof'],
+            'effectiveness': nudgeResponsiveness['social_proof'],
             'frequency': 'weekly',
           },
           {
             'type': 'micro_savings',
             'message':
                 'Save your spare change automatically - every \$5 counts!',
-            'effectiveness': patterns['nudge_responsiveness']
-                ['automated_savings'],
+            'effectiveness': nudgeResponsiveness['automated_savings'],
             'frequency': 'daily',
           },
         ]);
@@ -802,16 +804,14 @@ class IncomeService {
             'type': 'progress_framing',
             'message':
                 'You\'re ${_calculateEmergencyFundProgress(currentSpending, monthlyIncome).toStringAsFixed(0)}% to your \$1,000 safety net',
-            'effectiveness': patterns['nudge_responsiveness']
-                ['progress_tracking'],
+            'effectiveness': nudgeResponsiveness['progress_tracking'],
             'frequency': 'weekly',
           },
           {
             'type': 'peer_comparison',
             'message':
                 'Others at your level save \$${_calculatePeerAverageSavings(tier, monthlyIncome).toStringAsFixed(0)}/month on average',
-            'effectiveness': patterns['nudge_responsiveness']
-                ['peer_comparison'],
+            'effectiveness': nudgeResponsiveness['peer_comparison'],
             'frequency': 'monthly',
           },
         ]);
@@ -822,16 +822,14 @@ class IncomeService {
             'type': 'opportunity_cost',
             'message':
                 'That \$200 dinner could be \$600 in your investment account in 10 years',
-            'effectiveness': patterns['nudge_responsiveness']
-                ['opportunity_cost'],
+            'effectiveness': nudgeResponsiveness['opportunity_cost'],
             'frequency': 'contextual',
           },
           {
             'type': 'status_enhancement',
             'message':
                 'Smart strategists max their 401k match - don\'t leave free money on the table',
-            'effectiveness': patterns['nudge_responsiveness']
-                ['status_enhancement'],
+            'effectiveness': nudgeResponsiveness['status_enhancement'],
             'frequency': 'quarterly',
           },
         ]);
@@ -842,14 +840,14 @@ class IncomeService {
             'type': 'tax_efficiency',
             'message':
                 'Save \$${_calculateTaxSavingsOpportunity(monthlyIncome).toStringAsFixed(0)} annually with this tax strategy',
-            'effectiveness': patterns['nudge_responsiveness']['tax_efficiency'],
+            'effectiveness': nudgeResponsiveness['tax_efficiency'],
             'frequency': 'quarterly',
           },
           {
             'type': 'legacy_framing',
             'message':
                 'Build generational wealth systematically with your current income level',
-            'effectiveness': patterns['nudge_responsiveness']['legacy_framing'],
+            'effectiveness': nudgeResponsiveness['legacy_framing'],
             'frequency': 'annually',
           },
         ]);
@@ -860,15 +858,14 @@ class IncomeService {
             'type': 'impact_framing',
             'message':
                 'Your wealth can change lives for generations - make it count',
-            'effectiveness': patterns['nudge_responsiveness']['impact_framing'],
+            'effectiveness': nudgeResponsiveness['impact_framing'],
             'frequency': 'quarterly',
           },
           {
             'type': 'legacy_protection',
             'message':
                 'Preserve and grow what you\'ve built through strategic planning',
-            'effectiveness': patterns['nudge_responsiveness']
-                ['legacy_protection'],
+            'effectiveness': nudgeResponsiveness['legacy_protection'],
             'frequency': 'annually',
           },
         ]);

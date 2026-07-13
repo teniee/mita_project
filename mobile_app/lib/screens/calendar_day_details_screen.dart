@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'dart:math' as math;
 import '../providers/budget_provider.dart';
+import '../utils/json_utils.dart';
 import '../providers/transaction_provider.dart';
 import '../services/predictive_analytics_service.dart';
 import '../services/budget_adapter_service.dart';
@@ -267,7 +267,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
         if (!anyTxForDay && catsMap != null) {
           catsMap.forEach((cat, val) {
             if (val is Map) {
-              spentByCategory[cat as String] =
+              spentByCategory[cat] =
                   (val['spent'] as num?)?.toDouble() ?? 0.0;
             }
           });
@@ -1050,13 +1050,16 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
 
           // Prediction Items
           ...(_predictions!.entries.map((entry) => _buildPredictionItem(
-              entry.key, entry.value, colorScheme, textTheme))),
+              entry.key,
+              asStringKeyedMap(entry.value),
+              colorScheme,
+              textTheme))),
         ],
       ),
     );
   }
 
-  Widget _buildPredictionItem(String category, dynamic prediction,
+  Widget _buildPredictionItem(String category, Map<String, dynamic> prediction,
       ColorScheme colorScheme, TextTheme textTheme) {
     final predictedAmount =
         (prediction['predicted_amount'] as num?)?.toDouble() ?? 0.0;
@@ -1402,7 +1405,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     return _predictions!.values.fold<double>(
         0.0,
         (sum, pred) =>
-            sum + ((pred['predicted_amount'] as num?)?.toDouble() ?? 0.0));
+            sum +
+            asDouble(asStringKeyedMap(pred)['predicted_amount']));
   }
 
   String _formatCategoryName(String category) {

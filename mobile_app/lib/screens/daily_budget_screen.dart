@@ -4,11 +4,9 @@ import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
 import '../services/accessibility_service.dart';
 import 'package:intl/intl.dart';
-import '../services/logging_service.dart';
 import '../core/enhanced_error_handling.dart';
-import '../core/app_error_handler.dart';
-import '../core/error_handling.dart';
 import '../providers/budget_provider.dart';
+import '../utils/json_utils.dart';
 
 class DailyBudgetScreen extends StatefulWidget {
   const DailyBudgetScreen({super.key});
@@ -170,8 +168,8 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
     final liveBudgetStatus = budgetProvider.liveBudgetStatus;
     if (liveBudgetStatus.isEmpty) return const SizedBox.shrink();
 
-    final totalBudget = liveBudgetStatus['total_budget']?.toDouble() ?? 0.0;
-    final totalSpent = liveBudgetStatus['total_spent']?.toDouble() ?? 0.0;
+    final totalBudget = asDouble(liveBudgetStatus['total_budget']);
+    final totalSpent = asDouble(liveBudgetStatus['total_spent']);
     final remaining = totalBudget - totalSpent;
     final percentage = totalBudget > 0 ? (totalSpent / totalBudget) : 0.0;
 
@@ -459,8 +457,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
     final budgetSuggestions = budgetProvider.budgetSuggestions;
     if (budgetSuggestions.isEmpty) return const SizedBox.shrink();
 
-    final suggestions =
-        budgetSuggestions['suggestions'] as List<dynamic>? ?? [];
+    final suggestions = asMapList(budgetSuggestions['suggestions']);
     if (suggestions.isEmpty) return const SizedBox.shrink();
 
     return Card(
@@ -489,7 +486,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
             ),
             const SizedBox(height: 12),
             ...suggestions.take(3).map<Widget>(
-                  (suggestion) => Container(
+                  (Map<String, dynamic> suggestion) => Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -504,7 +501,8 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            suggestion['message'] ?? suggestion.toString(),
+                            asStringOrNull(suggestion['message']) ??
+                                suggestion.toString(),
                             style: const TextStyle(
                                 fontSize: 14, color: AppColors.textPrimary),
                           ),
@@ -565,7 +563,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                               fontSize: 14, fontWeight: FontWeight.w500),
                         ),
                         Text(
-                          '\$${(transfer['amount'] ?? 0).toStringAsFixed(2)}',
+                          '\$${asDouble(transfer['amount']).toStringAsFixed(2)}',
                           style: const TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
@@ -684,11 +682,14 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                       )
                     else
                       ...(budgets.map<Widget>((budget) {
-                        final date = DateFormat('MMMM d, yyyy')
-                            .format(DateTime.parse(budget['date']));
-                        final status = budget['status'] ?? 'unknown';
-                        final spent = (budget['spent'] ?? 0).toDouble();
-                        final limit = (budget['limit'] ?? 1).toDouble();
+                        final parsedDate =
+                            asDateTimeOrNull(budget['date']) ?? DateTime.now();
+                        final date =
+                            DateFormat('MMMM d, yyyy').format(parsedDate);
+                        final status =
+                            asString(budget['status'], fallback: 'unknown');
+                        final spent = asDouble(budget['spent']);
+                        final limit = asDouble(budget['limit'], fallback: 1);
                         final percentage = ((spent / limit) * 100).round();
 
                         return Semantics(
@@ -734,7 +735,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                                           'out of ${_accessibilityService.formatCurrency(limit)} limit',
                                     ),
                                     child: Text(
-                                      'Spent: \$${budget['spent']} / Limit: \$${budget['limit']}',
+                                      'Spent: \$${spent.toStringAsFixed(2)} / Limit: \$${limit.toStringAsFixed(2)}',
                                       style: const TextStyle(
                                           fontFamily: AppTypography.fontBody),
                                     ),
@@ -744,9 +745,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                                     label:
                                         'Progress indicator: $percentage percent of budget used',
                                     child: LinearProgressIndicator(
-                                      value: ((budget['spent'] ?? 0) /
-                                              (budget['limit'] ?? 1))
-                                          .clamp(0.0, 1.0),
+                                      value: (spent / limit).clamp(0.0, 1.0),
                                       backgroundColor: Colors.grey[300],
                                       valueColor: AlwaysStoppedAnimation<Color>(
                                           getStatusColor(status)),

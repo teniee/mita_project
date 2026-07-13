@@ -1,3 +1,4 @@
+import '../utils/json_utils.dart';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
@@ -164,7 +165,8 @@ class BudgetAdapterService {
 
       // Get user income first
       final profile = await _apiService.getUserProfile();
-      final income = (profile['data']?['income'] as num?)?.toDouble() ?? 0.0;
+      final income =
+          asDouble(asStringKeyedMap(profile['data'])['income']);
 
       if (income <= 0) {
         throw Exception('Income data required for budget insights');
@@ -852,20 +854,22 @@ class BudgetAdapterService {
 
       if (transactions.isNotEmpty) {
         return transactions
-            .map<Map<String, dynamic>>((tx) => {
-                  'action':
-                      tx['description'] ?? tx['merchant'] ?? 'Transaction',
-                  'amount': tx['amount']?.toString() ?? '0.00',
-                  'date': tx['date'] ??
-                      tx['created_at'] ??
-                      DateTime.now().toIso8601String(),
-                  'category': tx['category'] ?? 'Other',
-                  'icon':
-                      _getCategoryIcon((tx['category'] ?? 'other').toString()),
-                  'color':
-                      _getCategoryColor((tx['category'] ?? 'other').toString()),
-                })
-            .toList();
+            .map<Map<String, dynamic>>((tx) {
+              final txMap = asStringKeyedMap(tx);
+              final category = asString(txMap['category'], fallback: 'Other');
+              return {
+                'action': asStringOrNull(txMap['description']) ??
+                    asStringOrNull(txMap['merchant']) ??
+                    'Transaction',
+                'amount': asDouble(txMap['amount']).toStringAsFixed(2),
+                'date': asStringOrNull(txMap['date']) ??
+                    asStringOrNull(txMap['created_at']) ??
+                    DateTime.now().toIso8601String(),
+                'category': category,
+                'icon': _getCategoryIcon(category.toLowerCase()),
+                'color': _getCategoryColor(category.toLowerCase()),
+              };
+            }).toList();
       }
     } catch (e) {
       logWarning('Failed to get actual transactions: $e',
@@ -1153,9 +1157,9 @@ class BudgetAdapterService {
     return {
       'balance': 0.0,
       'spent': 0.0,
-      'daily_targets': [],
-      'week': [],
-      'transactions': [],
+      'daily_targets': <Map<String, dynamic>>[],
+      'week': <Map<String, dynamic>>[],
+      'transactions': <Map<String, dynamic>>[],
     };
   }
 

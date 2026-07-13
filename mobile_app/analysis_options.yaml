@@ -37,8 +37,6 @@ analyzer:
     - lib/screens/add_expense_screen.dart
     - lib/screens/advice_history_screen.dart
     - lib/screens/behavioral_insights_screen.dart
-    - lib/screens/budget_settings_screen.dart
-    - lib/screens/calendar_day_details_screen.dart
     - lib/screens/challenges_screen.dart
     - lib/screens/edit_expense_screen.dart
     - lib/screens/habits_screen.dart
@@ -64,23 +62,17 @@ analyzer:
     - lib/services/accessibility_service.dart
     - lib/services/advanced_financial_engine.dart
     - lib/services/advanced_offline_service.dart
-    - lib/services/budget_adapter_service.dart
-    - lib/services/calendar_fallback_service.dart
     - lib/services/cohort_service.dart
-    - lib/services/country_profiles_service.dart
     - lib/services/expense_state_service.dart
     - lib/services/iap_service.dart
-    - lib/services/income_service.dart
     - lib/services/live_updates_service.dart
     - lib/services/location_service.dart
     - lib/services/ocr_service.dart
     - lib/services/offline_first_provider.dart
     - lib/services/offline_queue_service.dart
     - lib/services/performance_service.dart
-    - lib/services/personalized_budget_engine.dart
     - lib/services/predictive_analytics_service.dart
     - lib/services/premium_feature_service.dart
-    - lib/services/production_budget_engine.dart
     - lib/services/push_notification_service.dart
     - lib/services/redistribution_opportunity.dart
     - lib/services/reminder_service.dart
@@ -109,8 +101,6 @@ analyzer:
     - lib/theme/income_theme.dart
     
     # Additional screens and services with remaining issues
-    - lib/screens/calendar_screen.dart
-    - lib/screens/daily_budget_screen.dart
     - lib/screens/goals_screen.dart
     - lib/screens/insights_screen.dart
     - lib/screens/notifications_screen.dart

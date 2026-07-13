@@ -175,7 +175,7 @@ class _CalendarScreenState extends State<CalendarScreen>
     );
   }
 
-  Widget _buildEnhancedCalendarGrid(List<dynamic> calendarData) {
+  Widget _buildEnhancedCalendarGrid(List<Map<String, dynamic>> calendarData) {
     final colorScheme = Theme.of(context).colorScheme;
     final today = DateTime.now();
 
@@ -498,7 +498,7 @@ class _CalendarScreenState extends State<CalendarScreen>
             orElse: () => <String, dynamic>{})
         : null;
 
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -658,7 +658,7 @@ class _CalendarScreenState extends State<CalendarScreen>
     );
   }
 
-  Widget _buildMonthSummaryCard(List<dynamic> calendarData) {
+  Widget _buildMonthSummaryCard(List<Map<String, dynamic>> calendarData) {
     if (calendarData.isEmpty) return const SizedBox.shrink();
 
     // Calculate month statistics

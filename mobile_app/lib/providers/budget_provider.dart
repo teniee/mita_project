@@ -4,6 +4,7 @@ import '../services/api_service.dart';
 import '../services/budget_adapter_service.dart';
 import '../services/live_updates_service.dart';
 import '../services/logging_service.dart';
+import '../utils/json_utils.dart';
 
 /// Budget state enum for tracking loading states
 enum BudgetState {
@@ -101,14 +102,14 @@ class BudgetProvider extends ChangeNotifier {
   String? _errorMessage;
 
   // Budget data
-  List<dynamic> _dailyBudgets = [];
+  List<Map<String, dynamic>> _dailyBudgets = [];
   Map<String, dynamic> _liveBudgetStatus = {};
   Map<String, dynamic> _budgetSuggestions = {};
-  List<dynamic> _redistributionHistory = [];
+  List<Map<String, dynamic>> _redistributionHistory = [];
   String _budgetMode = 'default';
   Map<String, dynamic>? _aiOptimization;
   Map<String, dynamic>? _budgetAdaptations;
-  List<dynamic> _calendarData = [];
+  List<Map<String, dynamic>> _calendarData = [];
 
   // Budget settings data
   Map<String, dynamic> _automationSettings = {};
@@ -125,14 +126,14 @@ class BudgetProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isRedistributing => _isRedistributing;
   String? get errorMessage => _errorMessage;
-  List<dynamic> get dailyBudgets => _dailyBudgets;
+  List<Map<String, dynamic>> get dailyBudgets => _dailyBudgets;
   Map<String, dynamic> get liveBudgetStatus => _liveBudgetStatus;
   Map<String, dynamic> get budgetSuggestions => _budgetSuggestions;
-  List<dynamic> get redistributionHistory => _redistributionHistory;
+  List<Map<String, dynamic>> get redistributionHistory => _redistributionHistory;
   String get budgetMode => _budgetMode;
   Map<String, dynamic>? get aiOptimization => _aiOptimization;
   Map<String, dynamic>? get budgetAdaptations => _budgetAdaptations;
-  List<dynamic> get calendarData => _calendarData;
+  List<Map<String, dynamic>> get calendarData => _calendarData;
   Map<String, dynamic> get automationSettings => _automationSettings;
   Map<String, dynamic>? get budgetRecommendations => _budgetRecommendations;
   Map<String, dynamic>? get budgetRemaining => _budgetRemaining;
@@ -246,7 +247,7 @@ class BudgetProvider extends ChangeNotifier {
   Future<void> loadDailyBudgets() async {
     try {
       final data = await _apiService.getDailyBudgets();
-      _dailyBudgets = data;
+      _dailyBudgets = asMapList(data);
       logInfo('Daily budgets loaded: ${_dailyBudgets.length} items',
           tag: 'BUDGET_PROVIDER');
       notifyListeners();
@@ -427,7 +428,7 @@ class BudgetProvider extends ChangeNotifier {
   Future<void> loadRedistributionHistory() async {
     try {
       final history = await _apiService.getBudgetRedistributionHistory();
-      _redistributionHistory = history;
+      _redistributionHistory = asMapList(history);
       logDebug(
           'Redistribution history loaded: ${_redistributionHistory.length} items',
           tag: 'BUDGET_PROVIDER');
@@ -504,7 +505,7 @@ class BudgetProvider extends ChangeNotifier {
         logWarning(
             'No saved calendar for $targetYear-$targetMonth — using shell preview',
             tag: 'BUDGET_PROVIDER');
-        _calendarData = await _apiService.getCalendar();
+        _calendarData = asMapList(await _apiService.getCalendar());
       }
 
       _state = BudgetState.loaded;
@@ -525,20 +526,20 @@ class BudgetProvider extends ChangeNotifier {
     try {
       // Get calendar data for AI context
       final calendarData = await _apiService.getCalendar();
-      _calendarData = calendarData;
+      _calendarData = asMapList(calendarData);
 
       Map<String, dynamic> calendarDict = {};
-      for (var day in calendarData) {
-        final dayNum = day['day'].toString();
+      for (final day in asMapList(calendarData)) {
+        final dayNum = asInt(day['day']).toString();
         calendarDict[dayNum] = {
-          'spent': (day['spent'] ?? 0).toDouble(),
-          'limit': (day['limit'] ?? 0).toDouble(),
+          'spent': asDouble(day['spent']),
+          'limit': asDouble(day['limit']),
         };
       }
 
       // Get user income
       final profile = await _apiService.getUserProfile();
-      final incomeData = profile['data']?['income'];
+      final incomeData = asStringKeyedMap(profile['data'])['income'];
       final income = (incomeData == null)
           ? null
           : (incomeData is num)
@@ -591,11 +592,11 @@ class BudgetProvider extends ChangeNotifier {
 
       // Convert to expected format
       Map<String, Map<String, dynamic>> calendarDict = {};
-      for (var day in calendarData) {
-        final dayNum = day['day'].toString();
+      for (final day in asMapList(calendarData)) {
+        final dayNum = asInt(day['day']).toString();
         calendarDict[dayNum] = {
-          'total': (day['spent'] ?? 0).toDouble(),
-          'limit': (day['limit'] ?? 0).toDouble(),
+          'total': asDouble(day['spent']),
+          'limit': asDouble(day['limit']),
         };
       }
 

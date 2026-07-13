@@ -1,3 +1,5 @@
+import '../utils/json_utils.dart';
+
 /// Country profiles service providing income thresholds and financial parameters by country/region
 class CountryProfilesService {
   static final CountryProfilesService _instance =
@@ -339,28 +341,30 @@ class CountryProfilesService {
 
     // Check for state-specific thresholds (e.g., US states)
     if (stateCode != null && profile['states'] != null) {
-      final stateThresholds = profile['states'][stateCode.toUpperCase()];
+      final states = asStringKeyedMap(profile['states']);
+      final stateThresholds =
+          asStringKeyedMapOrNull(states[stateCode.toUpperCase()]);
       if (stateThresholds != null) {
-        return Map<String, double>.from(stateThresholds
-            .map((key, value) => MapEntry(key, value.toDouble())));
+        return stateThresholds
+            .map((key, value) => MapEntry(key, asDouble(value)));
       }
     }
 
     // Return country-level thresholds
-    return Map<String, double>.from(profile['class_thresholds']
-        .map((key, value) => MapEntry(key, value.toDouble())));
+    return asStringKeyedMap(profile['class_thresholds'])
+        .map((key, value) => MapEntry(key, asDouble(value)));
   }
 
   /// Get default behavior for a country
   String getDefaultBehavior(String countryCode) {
     final profile = getCountryProfile(countryCode);
-    return profile?['default_behavior'] ?? 'balanced';
+    return asString(profile?['default_behavior'], fallback: 'balanced');
   }
 
   /// Get currency code for a country
   String getCurrency(String countryCode) {
     final profile = getCountryProfile(countryCode);
-    return profile?['currency'] ?? 'USD';
+    return asString(profile?['currency'], fallback: 'USD');
   }
 
   /// Convert annual income to monthly

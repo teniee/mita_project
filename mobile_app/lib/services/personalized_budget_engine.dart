@@ -1,4 +1,6 @@
 import 'api_service.dart';
+import 'redistribution_opportunity.dart';
+import '../utils/json_utils.dart';
 import 'income_service.dart';
 import 'logging_service.dart';
 
@@ -13,8 +15,6 @@ class PersonalizedBudgetEngine {
   final IncomeService _incomeService = IncomeService();
 
   // User financial profile data
-  Map<String, dynamic>? _userProfile;
-  Map<String, dynamic>? _spendingHistory;
   Map<String, dynamic>? _behaviorProfile;
   Map<String, dynamic>? _peerData;
 
@@ -24,8 +24,6 @@ class PersonalizedBudgetEngine {
       logInfo('Initializing Personalized Budget Engine', tag: 'BUDGET_ENGINE');
 
       // Load user profile and financial data
-      await _loadUserProfile();
-      await _loadSpendingHistory();
       await _loadBehaviorProfile();
       await _loadPeerData();
 
@@ -257,26 +255,6 @@ class PersonalizedBudgetEngine {
   // PRIVATE HELPER METHODS
   // ============================================================================
 
-  /// Load user profile data
-  Future<void> _loadUserProfile() async {
-    try {
-      _userProfile = await _apiService.getUserProfile();
-    } catch (e) {
-      logWarning('Failed to load user profile: $e', tag: 'BUDGET_ENGINE');
-      _userProfile = null;
-    }
-  }
-
-  /// Load spending history data
-  Future<void> _loadSpendingHistory() async {
-    try {
-      _spendingHistory = await _apiService.getSpendingPatternAnalysis();
-    } catch (e) {
-      logWarning('Failed to load spending history: $e', tag: 'BUDGET_ENGINE');
-      _spendingHistory = null;
-    }
-  }
-
   /// Load behavioral profile data
   Future<void> _loadBehaviorProfile() async {
     try {
@@ -304,7 +282,8 @@ class PersonalizedBudgetEngine {
       // Get backend recommendations
       final backendRecs =
           await _apiService.getIncomeBasedBudgetRecommendations(income);
-      return Map<String, double>.from(backendRecs['allocations'] ?? {});
+      return asStringKeyedMap(backendRecs['allocations'])
+          .map((key, value) => MapEntry(key, asDouble(value)));
     } catch (e) {
       // Fallback to service-based recommendations
       final weights = _incomeService.getDefaultBudgetWeights(tier);
@@ -322,7 +301,7 @@ class PersonalizedBudgetEngine {
     final adjusted = Map<String, double>.from(baseAmounts);
     final spendingPersonality =
         behaviorProfile['spending_personality'] as String? ?? 'balanced';
-    final keyTraits = List<String>.from(behaviorProfile['key_traits'] ?? []);
+    final keyTraits = asStringList(behaviorProfile['key_traits']);
 
     // Apply personality-based adjustments
     switch (spendingPersonality) {
