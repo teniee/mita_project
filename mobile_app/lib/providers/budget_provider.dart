@@ -214,7 +214,8 @@ class BudgetProvider extends ChangeNotifier {
       try {
         await load();
       } catch (e) {
-        logWarning('Budget sub-load "$name" failed: $e', tag: 'BUDGET_PROVIDER');
+        logWarning('Budget sub-load "$name" failed: $e',
+            tag: 'BUDGET_PROVIDER');
         if (critical) rethrow;
       }
     }

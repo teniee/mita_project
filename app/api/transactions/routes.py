@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
-from app.core.limiter_setup import optional_rate_limit
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -11,6 +10,7 @@ from sqlalchemy.orm import joinedload
 from app.api.dependencies import get_current_user
 from app.api.transactions.schemas import TxnIn, TxnOut, TxnUpdate
 from app.core.error_decorators import ErrorHandlingMixin, handle_financial_errors
+from app.core.limiter_setup import optional_rate_limit
 
 # Import standardized error handling system
 from app.core.standardized_error_handler import (

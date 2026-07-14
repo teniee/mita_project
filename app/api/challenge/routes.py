@@ -10,15 +10,13 @@ from sqlalchemy import and_, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from app.api.challenge.schemas import ChallengeFullCheckRequest, StreakChallengeRequest
+
 # The calendar-based evaluators (pure, no DB) — these match the mounted
 # request schemas. The previous wiring imported the DB-backed
 # challenge_service functions with the wrong arguments, so every call 500'd
 # (TASK-15 / N-P2-CHALLENGE).
 from app.api.challenge.services import evaluate_challenge, run_streak_challenge
-from app.api.challenge.schemas import (
-    ChallengeFullCheckRequest,
-    StreakChallengeRequest,
-)
 from app.api.dependencies import get_current_user
 from app.core.async_session import get_async_db
 from app.db.models.user import User

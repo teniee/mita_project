@@ -37,7 +37,7 @@ def upgrade():
     conn.exec_driver_sql("UPDATE daily_plan SET date = date_trunc('day', date)")
 
     # 2. Merge duplicates into the keeper row (earliest created_at, then id).
-    result = conn.exec_driver_sql(
+    conn.exec_driver_sql(
         """
         WITH ranked AS (
             SELECT id, user_id, date, category,

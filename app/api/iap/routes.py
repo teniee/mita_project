@@ -4,13 +4,13 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from app.core.limiter_setup import optional_rate_limit
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_current_user
 from app.api.iap.schemas import IAPReceipt
 from app.api.iap.services import validate_receipt
 from app.core.config import settings
+from app.core.limiter_setup import optional_rate_limit
 from app.core.session import get_db
 from app.db.models import Subscription, User
 from app.services.iap.apple_verifier import (

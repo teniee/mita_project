@@ -20,7 +20,7 @@ Redis at REDIS_URL (rate limiter + task queue).
 """
 
 import io
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from uuid import uuid4
 
