@@ -1,92 +1,99 @@
 # MITA — Production Readiness (Live)
 
-> **Owner:** production-readiness engineering · **Branch:** `claude/mita-closed-beta-readiness-95q19q`
-> **Last updated:** 2026-07-07 (session 5 — deployability)
-> **Latest code commit:** `7cc0e12` (jinja2 clean-env boot fix + deployment docs) on top of main `73c1817`
-> **Verification environment:** Python 3.11 venv (prod requirements only) · PostgreSQL 16 (real, empty) · Redis 7 (real) · no Android SDK (dl.google.com blocked) · Railway host unreachable from sandbox (probe via GitHub runners)
+> **Owner:** production-readiness engineering · **Branch:** `claude/verify-production-deployment-adcjj7`
+> **Last updated:** 2026-07-14 (session 6 — deployed production verified end to end)
+> **Production URL:** https://mita-production-production.up.railway.app
+> **Deployed commit:** `69b0fdb30e53` (= current `main`) · **Alembic:** `0035` (= repo head)
+> **Verification method:** GitHub Actions runners (sandbox egress blocks the Railway host) + local `ENVIRONMENT=production` boots (PG16+SSL, real Redis, 2 uvicorn workers)
 
 This file is the single source of truth. Update **before** each change and **after** each verified fix.
 
 ---
 
-## Where things stand (session 5)
+## Where things stand (session 6)
 
-Session-4 work **is merged**: PR #273 (squash `73c1817`) landed on main 2026-07-07 12:23 UTC and
-**main CI is green** — Main CI/CD Pipeline run **#229** ✅ and Security Scanning run **#169** ✅ on
-`73c1817`. (Run #227 was the same pipeline going green on the pre-merge branch.) The "PR the fixes
-to main" item from session 4 is **done**.
+**The Railway deployment exists, is current, and passes the full remote verification.**
 
-This session moved from "locally verified" toward "deployable": booting the backend in
-`ENVIRONMENT=production` from an **empty** database with **only documented env vars** exposed a
-real deployment blocker — `jinja2` was missing from `requirements.txt` (only present transitively
-via dev deps; a Railway/Docker image crashes at import, before binding the port). Fixed in
-`7cc0e12`; the same clean-env boot then ran migrations 0001→0034 and passed the full **19/19**
-smoke journey.
+- **Remote smoke vs production: 36/36** — Actions run [29320751589](https://github.com/teniee/mita_project/actions/runs/29320751589), 2026-07-14 09:10 UTC.
+- **Mobile-to-production E2E: PASSED** — the app's real `ApiService`/`TransactionService` (dio,
+  interceptors, secure token storage) ran the full journey against the live backend in the same
+  Actions run: register → login → onboarding → create/edit/delete transaction (calendar `spent`
+  follows each step) → saved calendar → token refresh → session persistence → logout.
+- Production `/health` now self-reports the facts needed for remote verification:
+  `commit=69b0fdb30e53`, `alembic_revision=0035`, `database=connected`, `redis=connected`,
+  `environment=production`, `firebase=initialized`. Overall status is "degraded" **only**
+  because `SENTRY_DSN` is not set.
+
+### What this session found and fixed in the deployed environment
+
+1. **Revoked tokens kept working for up to 5 minutes** (PR #275, deployed): the blacklist's
+   per-worker cache served stale negative entries, so with `WEB_CONCURRENCY ≥ 2` a logged-out
+   access token or rotated-out refresh token stayed valid on other workers. Caught by the
+   strengthened smoke against the real Railway service (coin-flip failures across runs was the
+   telltale). Now verified live: old refresh → 401, post-logout access → 401.
+2. **/docs, /openapi.json, /metrics were public in production** (PR #275, deployed): now 404
+   unless `ENABLE_DOCS` / `METRICS_TOKEN` are set. Verified live.
+3. **`/health` had no deploy provenance** (PR #275, deployed): added commit SHA, Alembic
+   revision, Redis ping (honors `REDIS_URL`, `UPSTASH_REDIS_URL`, and Upstash REST config).
+4. **Transaction list/get/edit/delete 500'd** (sync services on AsyncSession) and the calendar's
+   `spent` double-counted edits / never subtracted deletes — fixed on `main` (#276/#277 line)
+   while this session ran; this branch added the permanent smoke gates that prove all of it in
+   production (edit replaces spent, delete subtracts, unknown id → 404).
+5. **Main CI had gone red** with the #276/#277 merges (isort ×5 files, ruff ×8 findings,
+   dart-format ×1 file) — fixed on this branch with the CI-pinned toolchain.
 
 ## Status dashboard
 
-| Item | Status | Evidence / blocker |
-|------|--------|--------------------|
-| Branch | `claude/mita-closed-beta-readiness-95q19q` (from main `73c1817`) | — |
-| Latest commit | `7cc0e12` + tracker update commit | this branch |
-| PR status | Session-4 fixes: **merged** (PR #273). This session's jinja2 fix + docs: PR to main **open** (see PR list; do not merge without owner approval) | GitHub |
-| Main CI | ✅ green — run #229 + Security #169 on `73c1817` | Actions |
-| Railway deployment | ❌ **none exists** — old service returns Railway-edge 404. Complete recreation recipe ready: `docs/RAILWAY_DEPLOYMENT.md` | owner action |
-| Staging URL | ❌ none — exact creation steps in `docs/RAILWAY_DEPLOYMENT.md` §4 | owner action |
-| Remote E2E (deployed) | ❌ blocked on a URL. Locally: **19/19** vs clean-env production boot at this commit (register→login→onboarding→budget→transaction→calendar 31/31 days, today present, all limits > 0, spent 23.75 reflected, YYYY-MM-DD keys→day detail→refresh rotation→rotated token works→logout→404 stays 404→4xx never 500). One-click re-run vs any URL: Actions → "Deployed Backend Smoke Test" | this session |
-| Clean-env production boot | ✅ **verified** with only `ENVIRONMENT`, `DATABASE_URL`, `JWT_SECRET`, `SECRET_KEY`, `OPENAI_API_KEY`(placeholder), `REDIS_URL`, `PORT` — after `7cc0e12` | this session |
-| Android release | ⚠️ debug APK only (CI artifact `mita-debug-apk`). Release hygiene source-verified ✅ (applicationId `mita.finance`, v1.0+1, dart-define API URL, no localhost, no bundled secrets, cleartext off, logging gated, Firebase degrades gracefully, pinning safely off). Release APK/AAB needs the owner's keystore — exact requirements in `docs/ANDROID_RELEASE.md` | owner keystore |
-| Firebase | ❌ not connected (by design, fail-safe): app boots without it; push/Crashlytics off until `google-services.json` + FIREBASE_* dart-defines (mobile) and `GOOGLE_APPLICATION_CREDENTIALS` (backend) | owner credentials |
-| IAP production | ❌ not configured; **fails closed** (safe). Not required for a free closed beta. Vars in `docs/RAILWAY_DEPLOYMENT.md` §2.8 | owner store setup |
-| Offline reads | ✅ cached calendar reads (sqflite, 2h) + deterministic fallback | code-verified |
-| Offline writes | ❌ **not queued** — offline transaction creation fails **visibly**, no silent loss. Estimate for true queue: 11–16 days. **Product decision pending** — see `docs/OFFLINE_BEHAVIOR.md` | owner decision |
+| Item | Status | Evidence |
+|------|--------|----------|
+| Railway deployment | ✅ live, serving current `main` (`69b0fdb30e53`) | `/health` commit field, smoke run 29320751589 |
+| Health | ✅ `GET /` 200, `GET /health` 200, DB connected, port bound, HTTPS enforced (HTTP → 301 https), Railway edge OK | smoke 36/36 |
+| Database / migrations | ✅ Alembic `0035` (= repo head), schema Alembic-built (startup runs `alembic upgrade head`, aborts prod boot on failure; no `create_all` at startup), `daily_plan` columns + `transactions.description` verified by the live journey (limits > 0 on all days, spent updates on create/edit/delete) | smoke + `scripts/deployment/start.sh` |
+| Redis | ✅ `redis=connected`; **token revocation live** (rotated-out refresh 401), **logout blacklist live** (access 401 after logout); rate limiting Redis-backed; degrades fail-open with loud startup warning if Redis vanishes | smoke 36/36 |
+| Remote smoke (deployed) | ✅ **36/36** — liveness, provenance, security headers, docs/metrics gated, register→login→onboarding→31/31 calendar days, today present, all limits > 0, spent tracks create/edit/delete, day detail, refresh rotation + revocation, logout + blacklist, 404/422/401 contracts, malformed JSON, plain-HTTP redirect | run 29320751589 |
+| Mobile → production E2E | ✅ real `ApiService` journey passed vs live backend (same run, `mobile-journey` job); error contracts stay typed exceptions (nonexistent-id 404 path asserted) | run 29320751589 |
+| Deployed-smoke automation | ✅ workflow has the current URL as default, runs daily (cron `17 6 * * *`), manual dispatch, and `[deployed-smoke]` push fallback; needs **no secrets** (public URL, one throwaway account per job per run); failures keep full check-by-check logs | `.github/workflows/deployed-smoke.yml` |
+| Android build vs production | ✅ default `AppConfig.baseUrl` IS the production URL; CI now builds the debug APK explicitly with `--dart-define=API_BASE_URL=<railway> --dart-define=ENV=production` (debug logging off) and records path/size/SHA-256/applicationId/version in the job log; artifact `mita-debug-apk` (7-day retention). applicationId `mita.finance`, versionCode 1, versionName 1.0, pubspec `1.0.0+1`, HTTPS-only, no localhost/stale URLs, no bundled secrets | `.github/workflows/main-ci.yml` |
+| Release-signed APK/AAB | ⚠️ still needs the owner's keystore (`docs/ANDROID_RELEASE.md`); debug-signed sideload works for first testers | owner action |
+| Firebase | ✅ backend Firebase Admin **initialized in production** (`/health`); mobile push/Crashlytics still need `google-services.json` in the app build | owner action (mobile only) |
+| IAP | ⚠️ fails closed without store credentials; prod IAP/premium 500 fixed in #277. Not required for a free closed beta | owner store setup |
+| Sentry | ❌ `SENTRY_DSN` not set — the only reason `/health` says "degraded". Recommended before inviting testers | owner action |
+| Security posture | ✅ headers (HSTS/nosniff/frame-deny/CSP) verified live; docs+metrics gated; CORS allowlist = mitafinance.com domains (+localhost only in dev); JWT rotation + revocation verified live; 4xx never became 500 across the whole journey; secrets from env only (start.sh refuses prod boot without them) | smoke + code |
+| Offline writes | ❌ not queued — fails visibly, no silent loss (`docs/OFFLINE_BEHAVIOR.md`); product decision pending | owner decision |
 | iOS build | ❌ needs macOS/Xcode runner | environment |
 
 ## Verified readiness
 
-- **Code readiness: ~92%.** Everything session 4 verified still holds at merged main, plus:
-  clean-environment production boot now actually works (it did **not** before `7cc0e12` — that
-  crash would have been the first Railway deploy's failure mode). Test totals at this lineage:
-  backend `tests/` 287 + `app/tests` 611+, Flutter 376 passed / 15 skipped, IAP suite 21, local
-  E2E smoke 19/19 (re-run this session on prod-requirements-only venv).
-- **Deployed readiness: 0%. There is still no deployment.** This remains the single gating
-  item, and it is an owner action (Railway account). The recipe is now complete and verified
-  as far as it can be without credentials: `docs/RAILWAY_DEPLOYMENT.md`.
-- **The app is NOT ready for closed beta** until: backend deployed → deployed smoke 19/19 →
-  release-signed Android build pointing at that backend (`--dart-define=API_BASE_URL=...`).
-  No other critical/high blocker is known in the code itself.
-
-## Remaining owner actions (nothing below can be done from the repo)
-
-1. **Create the Railway service** (project + PostgreSQL + Redis + variables) —
-   step-by-step: `docs/RAILWAY_DEPLOYMENT.md` §4. ~30 minutes.
-2. Report the staging/production base URL → we run the **Deployed Backend Smoke Test**
-   workflow against it (19 checks, one click).
-3. Approve (or reject) the open PR with `7cc0e12` — **without the jinja2 pin, step 1 will
-   crash-loop**, so merge this before deploying.
-4. Generate the Android release keystore and provide it per `docs/ANDROID_RELEASE.md` (or
-   accept debug-signed side-loading for the very first testers).
-5. Decide the offline question: ship beta online-first (recommended) or fund the 11–16 day
-   write-queue build first — `docs/OFFLINE_BEHAVIOR.md`.
-6. When ready for push/IAP: Firebase + store credentials (`docs/RAILWAY_DEPLOYMENT.md` §2.4/§2.8).
+- **Deployed readiness: ~95% for a free closed beta.** Every gate below is green:
+  deployed health ✅ · remote smoke passes completely ✅ · calendar limits correct in
+  production ✅ · today present ✅ · spent updates on create/edit/delete ✅ · refresh +
+  logout + revocation work in production ✅ · Redis-dependent behavior works ✅ · Android
+  build points at production ✅ · mobile-to-production E2E ✅ · no unresolved critical or
+  high-severity blocker.
+- Remaining items are **owner actions, none code-blocking**: Sentry DSN (observability),
+  release keystore (store distribution; sideloading works now), mobile Firebase config
+  (push), store credentials (paid IAP later), offline-writes product decision.
 
 ## Exact next task
 
-**Owner: execute `docs/RAILWAY_DEPLOYMENT.md` §4 (staging service) after merging the open PR.**
-Everything code-side is done and verified; the next state change requires a Railway account.
-Once a URL exists: run the deployed smoke workflow, then build the staging APK
-(`docs/ANDROID_RELEASE.md`) and hand it to the first testers.
+1. **Owner:** set `SENTRY_DSN` on the Railway service (5 min; flips `/health` to "healthy").
+2. **Owner:** merge this branch's PR so the daily deployed-smoke schedule, the mobile-journey
+   job, the production-pointed APK build, and the CI lint fixes land on `main`.
+3. Distribute the `mita-debug-apk` artifact from the latest green Main CI run to the first
+   closed-beta testers (or provide the keystore for a release-signed build).
 
 ## Session history (compressed)
 
-- **Session 3** (`claude/mita-finance-prod-ready-wqj2k9` → PR #272 `be220da`): calendar Decimal
-  500 fix, migration 0034, Flutter 3.35.4 pin, hermetic mobile CI.
-- **Session 4** (`claude/mita-closed-beta-readiness-4nn5q6` → PR #273 `73c1817`): Security
-  Scanning workflow fix (upload-sarif v3 + permissions), `scripts/remote_smoke_test.py` +
-  `deployed-smoke.yml`, Android CI build fixed (Kotlin-DSL java shadowing; conditional
-  google-services plugin), Firebase-less startup crash fixed. CI green end-to-end at run #227
-  (pre-merge) / #229 (main), debug APK artifact built.
-- **Session 5** (this branch): confirmed merge + green main; **found & fixed jinja2 clean-env
-  boot crash** (`7cc0e12`); verified empty-env production boot + 19/19 smoke on prod
-  requirements only; wrote `docs/RAILWAY_DEPLOYMENT.md`, `docs/ANDROID_RELEASE.md`,
-  `docs/OFFLINE_BEHAVIOR.md`; updated this tracker.
+- **Sessions 3–5** (#272–#274): calendar Decimal 500 fix, deployed-smoke workflow, Security
+  Scanning fix, Android CI build, jinja2 clean-env boot crash, Railway recreation recipe.
+- **Session 6 pt.1** (#275, merged + deployed): /health deploy diagnostics (commit, alembic,
+  Redis incl. Upstash REST), 5-minute revocation-gap fix (positive-only blacklist cache),
+  /docs + /metrics gated in production, smoke hardened (revocation, headers, HTTPS redirect,
+  malformed JSON, metrics/docs policy).
+- **Parallel sessions** (#276/#277, merged + deployed): transaction list/get/edit/delete
+  AsyncSession 500s, TxnUpdate validator mis-binding, ValidationError → 422, plan-spent
+  recalculation on edit/delete, migration 0035, prod IAP/premium 500.
+- **Session 6 pt.2** (this branch): production verified green end to end (smoke 36/36 +
+  mobile journey vs the live URL), edit/delete smoke gates, daily schedule + mobile-journey
+  job in deployed-smoke, production-pointed beta APK with recorded metadata, main CI
+  restored to green (isort/ruff/dart-format debt from the parallel merges).
