@@ -1,5 +1,25 @@
 # MITA Finance — End-to-End Test Matrix
 
+> ## Re-run status — session 4 (Fable 5, 2026-07-14)
+> **Flutter analysis blind spot closed.** The earlier "`flutter analyze` → 0 errors"
+> lines below (C-bis, §F) were measured with **~80 files excluded** in
+> `analysis_options.yaml` — "0 errors" only because the erroring files were not
+> analyzed. That exclusion list is now down to generated files only; a full
+> analyze of every shipped Dart file is **0 errors, 0 warnings** (was **379
+> errors**). See the session-4 block in `fable-5-task-backlog.md`.
+>
+> **Android C1–C12 on-device (emulator-5554, Android 16 / API 36):** the whole
+> core journey — register, login, onboarding, dashboard, calendar, transaction
+> create/list/edit/delete (UUID ids), restart (Keystore persistence), logout,
+> re-login — runs as an on-device integration test through the real
+> ApiService + TransactionService against live prod: **1/1 passed**
+> (`integration_test/android_c1_c12_journey_test.dart`, commit `4e6ff4d`).
+> Standalone app launch reaches the real Login screen with no red screen or
+> cast crash. Debug APK builds; release AAB compiles to the owner signing
+> boundary. `flutter test` full suite: **411 passed / 3 skipped (goldens) / 0
+> failed.** Prod backend unchanged since session 3: smoke 30/30, E2E 30/30,
+> `/health.commit=69b0fdb`, alembic `0035`.
+>
 > ## Re-run status — session 2 (Fable 5, 2026-07-11)
 > Backend deployed `main` @ `1edda4b`; `/health.commit == 1edda4b`, alembic
 > `0035`. `scripts/remote_smoke_test.py` **30/30**;
@@ -157,7 +177,7 @@ Dashboard (`app/api/dashboard/routes.py`): `balance = monthly_income − Σ(this
 
 Android SDK is now available on the build machine (the prior owner blocker is
 cleared here). Executed:
-- `flutter pub get` ✅; `flutter analyze` ✅ **0 errors** (47 infos, unchanged class); `flutter build apk --debug` ✅ → `app-debug.apk` (221 MB).
+- `flutter pub get` ✅; `flutter analyze` ✅ **0 errors** (47 infos, unchanged class); `flutter build apk --debug` ✅ → `app-debug.apk` (221 MB). ⚠️ **Superseded (session 4):** this "0 errors" was with ~80 files excluded; a full analyze of all shipped files was **379 errors**, now fixed to **0 errors / 0 warnings** — see the session-4 block at the top.
 - `flutter test` → **388 passed, 1 pre-existing golden-pixel failure** (`onboarding_location_initial.png`, 1.48% diff — font rendering; also fails on the unmodified tree, not caused by these changes).
 - APK installed and launched on emulator `Medium_Phone_API_36.0` (Android 15 / API 36) against **production** Railway. Login screen renders and **email/password auth succeeds** (navigates away from login).
 
@@ -232,3 +252,4 @@ verified backend core journey.
 
 ## F. Flutter analyze (Phase 7)
 - `flutter analyze` → **49 issues, 0 errors** (info/warnings only): `avoid_dynamic_calls`, deprecated `value`→`initialValue`, Sentry SDK deprecations, and unused `_getSampleGoals` (dead sample-data, not wired). Compiles clean.
+- ⚠️ **Superseded (session 4):** the "0 errors / 49 issues" here was measured with ~80 files excluded from analysis. With the exclusion list reduced to generated files only, a full analyze reported **379 errors** (now all fixed): **0 errors, 0 warnings**, 5 residual info-level Sentry-SDK deprecations. `avoid_dynamic_calls` is fully cleared; `_getSampleGoals` removed.

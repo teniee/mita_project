@@ -136,6 +136,59 @@ Legend: 🔴 blocks core MVP · 🟠 blocks closed beta · 🟢 deferrable
   expect 0038 automatically).
 - **Secret?** No. **Blocks core MVP?** No — these harden data integrity.
 
+## 4d. NEW — session 4 (Fable 5, 2026-07-14)
+
+### 4d.1 Rotate `JWT_SECRET` (and `SECRET_KEY`) — 🔴 OWNER BLOCKER (security)
+- **Why:** the production JWT signing secret is **exposed in public git history** and
+  the value currently live on Railway **still matches** it. Verified this session
+  without printing either value: the `JWT_SECRET` fingerprint on Railway
+  (`sha256[0:16]=e13b9a1d…`) is byte-identical to the secret that was committed in
+  `docs/FIX_ALL.md` history and hardcoded (until `69b0fdb`) in
+  `app/init_test_user.py`. Anyone with the public history can forge valid access
+  tokens for any user.
+- **What was fixed in code (not a rotation):** `69b0fdb` removed the hardcoded
+  secret from `app/init_test_user.py` at HEAD (it now requires
+  `TEST_USER_PASSWORD` from the env). The value remains in history and on Railway.
+- **Where:** Railway → service `mita-production` → Variables → set a **new** random
+  `JWT_SECRET` (and `SECRET_KEY`). Before flipping, set `JWT_PREVIOUS_SECRET` to the
+  **current** `JWT_SECRET` so tokens signed with the old key still verify during the
+  grace window (the app already tries the previous secret), then remove it after
+  ACCESS_TOKEN_EXPIRE_MINUTES has elapsed.
+- **Secret?** Yes — never paste in a public place.
+- **Verify:** tokens minted before rotation are rejected once the grace window
+  closes; login/refresh still work; `/health` stays `jwt_secret_configured:true`.
+- **Auditor did NOT rotate it** (owner-gated, and rotating mid-session would have
+  invalidated live sessions).
+
+### 4d.2 TASK-18 schema cleanup prepared on a branch — apply with TASK-7/8/9 🟠 (data)
+- The three remaining TASK-18 items are **schema-changing**, so they are held on the
+  branch **`migrations/task-18-schema-cleanup`** (commit `699d7c4`, **NOT merged**,
+  **NOT applied**). Alembic head on `main` stays `0035`.
+- Migration `0036` (idempotent, inspection-guarded): `push_tokens.platform` gets a
+  DB `DEFAULT 'fcm'`; `notifications.retry_count` `VARCHAR → INTEGER` (garbage/NULL
+  coerced to 0); `notifications.type/priority/status` get enum `CHECK` constraints.
+  Models on the branch are realigned to match.
+- **Owner action:** review + apply `0036` in the **same maintenance window** as
+  TASK-7/8/9 (§4c.4). Order does not matter (0036 chains from 0035; the 7/8/9 branch
+  is separate — rebase whichever you apply second onto the new head). Re-run the
+  read-only preflight only if prod data changed since 2026-07-12 (it has not this
+  session — no migration was applied; head is still 0035).
+- **Verify after applying:** `alembic current` includes `0036`; a raw insert into
+  `push_tokens` without `platform` succeeds; `notifications.retry_count` is
+  `integer`; inserting a bad `status` is rejected by the CHECK.
+
+### 4d.3 Android build machine is now ready (supersedes §2.1) 🟢 (build)
+- The Android SDK is installed on the build machine this session: `flutter build apk
+  --debug` produces `app-debug.apk`, `flutter build appbundle --release` compiles up
+  to the owner signing-keystore boundary (fails only with "Release signing is not
+  configured" — expected, see §3 signing), and the app installs + runs on an
+  Android 16 emulator. The on-device **C1–C12 journey passed** (register→login→
+  onboarding→dashboard→calendar→create/list/edit/delete→restart→logout→re-login),
+  and a standalone launch reaches the real Login screen with no red screen.
+- **Remaining owner build item:** the release **signing keystore** + `key.properties`
+  (or `KEYSTORE_*` env) — still owner-supplied. Firebase config (§2.2) also still
+  owner-supplied (the app runs without it; push/Crashlytics stay off).
+
 ### 4b.3 DEF-005 still blocks password reset delivery 🟠 (email)
 - The reset **machinery** is now correct (`06da6b9` fixed a dead token hash +
   a 500 in verify/reset), but `SMTP_PASSWORD` is still unset (§2.4), so reset
@@ -154,10 +207,10 @@ Legend: 🔴 blocks core MVP · 🟠 blocks closed beta · 🟢 deferrable
 ---
 
 ## 6. What is already correctly configured (verified — no action)
-- `DATABASE_URL` (Postgres, Railway internal) — DB **connected**, migrations at head `0035` (verified 2026-07-12; deployed commit `e347c7b`).
+- `DATABASE_URL` (Postgres, Railway internal) — DB **connected**, migrations at head `0035` (verified 2026-07-14; deployed commit `69b0fdb`).
 - Production Redis (`REDIS_URL` / `UPSTASH_*`) — **connected** on `wise-bonefish-101993`; distributed rate limiting **live** (real 429s), token revocation/blacklist proven live (verified 2026-07-12).
 - `FIREBASE_JSON` service account (with private key) — Firebase **initialized** (server side).
-- `JWT_SECRET`, `SECRET_KEY`, `ALGORITHM=HS256`, token expiry — auth working end-to-end.
+- `JWT_SECRET`, `SECRET_KEY`, `ALGORITHM=HS256`, token expiry — auth working end-to-end. ⚠️ **but `JWT_SECRET` must be rotated** — its live value is exposed in public git history (§4d.1).
 - `OPENAI_API_KEY` — configured.
 - CORS `ALLOWED_ORIGINS`, security headers, HTTPS redirect — verified in production.
 - All production secrets are **externalized to Railway** (not in the repo) except the two in `.mcp.json` (see §1).

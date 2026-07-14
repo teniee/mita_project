@@ -1,5 +1,22 @@
 # MITA Finance — Fable 5 Implementation Backlog (second-pass audit)
 
+> ## Implementation status — session 4 (Fable 5, 2026-07-14)
+> Verification + Flutter-analysis + TASK-18 pass. GitHub `main` HEAD `4e6ff4d`
+> (pushed: `69b0fdb`; the five mobile batch commits + the C1–C12 test are local,
+> not yet pushed). Railway deployed `69b0fdb`; `/health.commit=69b0fdb`, alembic
+> head `0035`, `redis: connected` (wise-bonefish-101993, no daring-moray refs);
+> prod smoke 30/30 + E2E 30/30 green; live 429 rate-limiting confirmed;
+> token rotation/revocation/logout all verified; `/api/iap/status` +
+> `/users/*/premium-*` return 200 (PR #277 fixes live); Android manifest has no
+> location permission.
+>
+> | Item | Status | Commit | Evidence |
+> |---|---|---|---|
+> | **Flutter analysis blind spot** — all shipped Dart files analyzed | ✅ DONE | `eabd1fb` `03f1172` `c69ddd5` `3bac296` `57db2aa` | `analysis_options.yaml` went from **83 exclusions** (≈80 files, ~65 shipped) to **4** (generated only: `l10n/generated`, `firebase_options.dart`, `examples`, `docs`). Full analyze: **379 → 0 errors, 0 warnings**; only 5 info-level Sentry-SDK `extra→Contexts` deprecations remain (Sentry unconfigured in prod). Root cause everywhere: dynamic JSON/API-boundary values into typed contexts — fixed with a runtime-validating `lib/utils/json_utils.dart` coercer set (+14 unit tests) applied at each boundary; providers (Budget/Challenges/Behavioral) typed `List<Map<String,dynamic>>` and normalized at assignment. Real bugs surfaced: smart_goal_engine assigned `Future<bool>`→`bool` / did Future arithmetic / called a nonexistent log method (chain made honestly async); `dynamic_threshold_service` imported a non-dependency `package:logging`; getCalendar/getDashboard shell-list handling (regressed then fixed, caught by the journey test). Suite: **411 passed / 3 skipped (goldens) / 0 failed.** |
+> | Android C1–C12 verified on device | ✅ DONE | `4e6ff4d` | on-device integration test (`integration_test/android_c1_c12_journey_test.dart`) on an Android-16 emulator through the real ApiService + TransactionService + Keystore against live prod: **1/1 passed**. Debug APK builds; release AAB compiles to the owner signing boundary; standalone launch → real Login screen, no red screen / cast crash. |
+> | TASK-18 remaining (schema) | ⏳ OWNER-GATED, prepared | `699d7c4` (branch `migrations/task-18-schema-cleanup`) | the three schema items (`push_tokens.platform` DB default; `notifications.retry_count` String→Integer; notification enum CHECKs) written as idempotent migration `0036` + realigned models + 4-case test, **on a branch only** (not merged/applied; main head stays `0035`). Apply with TASK-7/8/9 (owner-actions §4d.2). |
+> | `JWT_SECRET` still matches the exposed value | 🔴 OWNER BLOCKER | `69b0fdb` (code only) | HEAD no longer hardcodes it, but Railway's live `JWT_SECRET` fingerprint (`e13b9a1d…`) still equals the value in public git history. Rotation is owner-only (owner-actions §4d.1). |
+>
 > ## Implementation status — session 3 (Fable 5, 2026-07-12)
 > Verification + fix pass. Deployed prod is `main` @ `e347c7b` (a real commit in
 > history; ahead of the last *runtime* deploy `1edda4b`/`d0698d1` only by docs +
@@ -204,11 +221,12 @@ Legend scope: **tiny** (<1h), **small** (~½ day), **medium** (~1–2 days), **l
   now fails loudly in `env.py` (6 migrations inspect the live schema).
 - ✅ **Already satisfied:** `daily_plan.date` is `timestamptz` on production and
   in the model — no change needed.
-- ⏳ **Owner-gated (needs a data migration window):** `push_tokens.platform`
-  `server_default='fcm'` (model has a Python-side default only); notification
-  enum columns → CHECK constraints and `retry_count` String→Integer (the model
-  stores the count as a String — cast requires a migration). Batch with
-  TASK-7/8/9 (owner-actions §4c).
+- ⏳ **Owner-gated (needs a data migration window) — PREPARED on a branch (session 4, `699d7c4`):**
+  `push_tokens.platform` `server_default='fcm'`; `notifications.retry_count`
+  String→Integer; notification `type`/`priority`/`status` → CHECK constraints.
+  Written as idempotent migration `0036` + realigned models + a 4-case
+  regression test on branch **`migrations/task-18-schema-cleanup`** (NOT merged,
+  NOT applied — main head stays `0035`). Apply with TASK-7/8/9 (owner-actions §4d.2).
 
 ### TASK-19 — PATCH /users/me email hygiene
 - **Severity:** P3 · **Scope:** tiny · In `app/services/users_service.py update_user_profile`, on email change set `email_verified=False` and pre-check uniqueness (the unused `app/api/users/services.py` variant shows the pattern).

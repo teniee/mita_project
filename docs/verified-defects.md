@@ -4,6 +4,44 @@
 > Deployed commit audited: **`d682f3f969a6`** (Railway `mita-production`, matches GitHub `teniee/mita_project@main`)
 > Every defect below is backed by **first-hand evidence** (production HTTP response, server traceback from Railway logs, and/or local reproduction). Secrets are redacted everywhere.
 
+> ## Fix status — session 4 (Fable 5, 2026-07-14)
+> Removing the `analysis_options.yaml` exclusion list (83 → 4 entries, generated
+> files only) put every shipped Dart file back under analysis and surfaced
+> **379 analyzer errors** — the "Flutter analysis blind spot." Beyond the mass of
+> unchecked JSON/API-boundary casts (all fixed via `lib/utils/json_utils.dart`),
+> these **real logic defects** were hiding behind the exclusions and are now fixed
+> (batches `eabd1fb`/`03f1172`/`c69ddd5`/`3bac296`/`57db2aa`):
+> - **DEF-F1 — `smart_goal_engine.dart` broken async chain.** `validation.isAchievable`
+>   was assigned a `Future<bool>` (so it was always truthy); `_getMaxSavingsRate`
+>   (a `Future<double>`) was used in `*`/comparison arithmetic un-awaited; `await`
+>   appeared in a synchronous method; and it called `LoggingService.logError`, which
+>   does not exist. The `optimizeGoal` chain is now honestly `async` (no external
+>   callers, so no contract change).
+> - **DEF-F2 — `dynamic_threshold_service.dart` imported `package:logging`, which
+>   is not a pubspec dependency** (would break a clean build). Migrated to the
+>   project logging service.
+> - **DEF-F3 — `getCalendar`/`getDashboard` shell-calendar handling.** `/calendar/shell`
+>   returns a **list** of day entries, but the legacy dashboard branch read it as a
+>   map; typing exposed that it only ever worked via its catch-fallback. Made
+>   explicit; `getCalendar` now hands the raw envelope to `_transformCalendarData`
+>   (which validates the list). Regressed the on-device journey test, then fixed —
+>   caught before commit.
+> - **DEF-F4 (latent) — `ApiService.updateExpense(int id)` / `deleteExpense(int id)`
+>   are typed `int`, but production transaction ids are UUID strings.** These legacy
+>   methods cannot address real transactions. The shipped edit/delete UI path does
+>   **not** use them — it goes through `TransactionProvider`→`TransactionService`,
+>   which take `String` ids and hit `/transactions/{uuid}` correctly (verified by the
+>   on-device C1–C12 test). Left as-is (dead-ish legacy) and recorded here; a cleanup
+>   would delete or re-type them.
+> - **DEF-F5 (cosmetic) — Impeller `SetInheritedOpacity`/`CanAcceptOpacity` validation
+>   break** spams the log and skips ~80 frames during the Welcome/Login fade-in on the
+>   emulator (a known Flutter-engine Impeller issue with certain opacity animations,
+>   not introduced here). App still renders correctly; consider simplifying the fade
+>   or `--no-enable-impeller` if it shows on real hardware.
+>
+> No production backend code changed this session; prod smoke 30/30 + E2E 30/30
+> still green, `/health.commit=69b0fdb`, alembic `0035`.
+>
 > ## Fix status — session 2 (Fable 5, 2026-07-11)
 > The TASK-6 full-route contract suite (`app/tests/test_full_route_contract.py`)
 > exercised **all 290 mounted routes** and surfaced a large batch of
