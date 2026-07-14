@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone
 from enum import Enum
 
-from sqlalchemy import JSON, Boolean, Column, DateTime, String, Text
+from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 
 from .base import Base
@@ -81,7 +81,7 @@ class Notification(Base):
 
     # Error tracking
     error_message = Column(Text, nullable=True)
-    retry_count = Column(String, default="0")
+    retry_count = Column(Integer, default=0, server_default="0")
 
     # Metadata
     created_at = Column(
