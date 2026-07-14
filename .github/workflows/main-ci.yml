@@ -210,8 +210,25 @@ jobs:
         working-directory: .
         run: tail -100 /tmp/uvicorn-ci.log || true
 
-      - name: Android debug build
-        run: flutter build apk --debug --dart-define=ENV=development
+      # Closed-beta artifact: debug-signed (owner keystore not in CI) but
+      # pointed explicitly at the production backend with production
+      # feature flags (debug logging off, crash reporting on).
+      - name: Android debug build (closed beta, production API)
+        run: >-
+          flutter build apk --debug
+          --dart-define=API_BASE_URL=https://mita-production-production.up.railway.app
+          --dart-define=ENV=production
+
+      - name: Record APK metadata
+        run: |
+          APK=build/app/outputs/flutter-apk/app-debug.apk
+          echo "path: mobile_app/$APK"
+          ls -l "$APK" | awk '{print "size_bytes: "$5}'
+          sha256sum "$APK"
+          echo "applicationId: $(grep -o 'applicationId = "[^"]*"' android/app/build.gradle.kts)"
+          echo "versionCode/Name: $(grep -E 'version(Code|Name) =' android/app/build.gradle.kts | tr -d ' ' | tr '\n' ' ')"
+          echo "pubspec $(grep -E '^version:' pubspec.yaml)"
+          echo "api_environment: https://mita-production-production.up.railway.app (ENV=production)"
 
       - name: Upload debug APK
         if: success()

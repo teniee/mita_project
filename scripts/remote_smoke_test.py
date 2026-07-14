@@ -331,6 +331,85 @@ def main():
     )
     record("calendar day detail (no Decimal 500)", status == 200, f"status={status}")
 
+    # 8b. Transaction list / edit / delete — the mobile edit and delete
+    # screens. Regression gates: sync services must be bridged with
+    # run_sync (they 500'd on AsyncSession), an edit must not double-count
+    # the day's spent, and a delete must subtract its amount again.
+    edited_amount = 31.25
+    status, body = http("GET", f"{base}/api/transactions/", token=access)
+    txns = unwrap(body)
+    txns = txns if isinstance(txns, list) else []
+    tx_id = next(
+        (
+            t.get("id")
+            for t in txns
+            if isinstance(t, dict) and t.get("description") == "remote smoke test"
+        ),
+        None,
+    )
+    record(
+        "transaction list returns the created transaction (not 500)",
+        status == 200 and tx_id is not None,
+        f"status={status} listed={len(txns)}",
+    )
+
+    if tx_id:
+        status, _ = http(
+            "PUT",
+            f"{base}/api/transactions/{tx_id}",
+            {"amount": edited_amount, "description": "remote smoke test (edited)"},
+            token=access,
+        )
+        record("edit transaction (not 500)", status == 200, f"status={status}")
+
+        status, body = http(
+            "GET", f"{base}/api/calendar/saved/{now.year}/{now.month}", token=access
+        )
+        days = unwrap(body)
+        days = days.get("calendar", days) if isinstance(days, dict) else days
+        today_now = next(
+            (d for d in days if d.get("date") == today_key),
+            {},
+        )
+        spent_now = float(today_now.get("spent", -1))
+        record(
+            "edited amount replaces (not adds to) today's spent",
+            abs(spent_now - edited_amount) < 0.01,
+            f"spent={spent_now} expected={edited_amount}",
+        )
+
+        status, _ = http("DELETE", f"{base}/api/transactions/{tx_id}", token=access)
+        record("delete transaction (not 500)", status == 200, f"status={status}")
+
+        status, body = http(
+            "GET", f"{base}/api/calendar/saved/{now.year}/{now.month}", token=access
+        )
+        days = unwrap(body)
+        days = days.get("calendar", days) if isinstance(days, dict) else days
+        today_now = next(
+            (d for d in days if d.get("date") == today_key),
+            {},
+        )
+        spent_now = float(today_now.get("spent", -1))
+        record(
+            "deleted transaction no longer counts toward spent",
+            abs(spent_now) < 0.01,
+            f"spent={spent_now} expected=0",
+        )
+
+    # Unknown transaction id must be a 404, not a 500.
+    status, _ = http(
+        "PUT",
+        f"{base}/api/transactions/00000000-0000-4000-8000-000000000000",
+        {"amount": 1.0},
+        token=access,
+    )
+    record(
+        "edit of unknown transaction -> 404 (not 500)",
+        status == 404,
+        f"status={status}",
+    )
+
     # 9. Refresh token rotation
     old_refresh = refresh
     status, body = http(

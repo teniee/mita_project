@@ -14,7 +14,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mita/config.dart';
+import 'package:mita/models/transaction_model.dart';
 import 'package:mita/services/api_service.dart';
+import 'package:mita/services/transaction_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -166,6 +168,66 @@ void main() {
     final calendar = await api.getCalendar(userIncome: 6000);
     expect(calendar, isNotEmpty,
         reason: 'onboarding should produce a calendar');
+
+    // 5c. Edit and delete through the app's TransactionService — the same
+    // real HTTP paths and secure-storage token the app uses.
+    final txService = TransactionService();
+    final txList = await txService.getTransactions(limit: 20);
+    expect(txList, isNotEmpty,
+        reason: 'created transaction must appear in the transaction list');
+    final created = txList.firstWhere(
+      (t) => t.description == 'Journey test lunch',
+      orElse: () => txList.first,
+    );
+
+    final updated = await txService.updateTransaction(
+      created.id,
+      TransactionInput(
+        amount: 31.25,
+        category: created.category,
+        description: 'Journey test lunch (edited)',
+        spentAt: nowUtc,
+      ),
+    );
+    expect(updated.amount, 31.25, reason: 'edit must persist the new amount');
+
+    // Refreshing the calendar reflects the edited amount.
+    final afterEdit = await api.getSavedCalendar(
+      year: nowUtc.year,
+      month: nowUtc.month,
+    );
+    final todayAfterEdit = afterEdit!
+        .map((d) => Map<String, dynamic>.from(d as Map))
+        .firstWhere((d) => d['date'] == todayKey);
+    expect((todayAfterEdit['spent'] as num).toDouble(),
+        greaterThanOrEqualTo(31.25),
+        reason: 'edited amount must be reflected in today\'s spent');
+
+    // Delete, then the calendar's spent drops back below the edited amount.
+    expect(await txService.deleteTransaction(created.id), isTrue);
+    final afterDelete = await api.getSavedCalendar(
+      year: nowUtc.year,
+      month: nowUtc.month,
+    );
+    final todayAfterDelete = afterDelete!
+        .map((d) => Map<String, dynamic>.from(d as Map))
+        .firstWhere((d) => d['date'] == todayKey);
+    expect((todayAfterDelete['spent'] as num).toDouble(), lessThan(31.25),
+        reason: 'deleted transaction must no longer count toward spent');
+
+    // 5d. Error contracts stay typed failures, never crashes:
+    // editing a nonexistent transaction surfaces the 404 as an exception.
+    Object? notFoundError;
+    try {
+      await txService.updateTransaction(
+        '00000000-0000-4000-8000-000000000000',
+        TransactionInput(amount: 1.0, category: 'food'),
+      );
+    } catch (e) {
+      notFoundError = e;
+    }
+    expect(notFoundError, isNotNull,
+        reason: 'updating a nonexistent transaction must fail visibly');
 
     // 6. Token refresh works from the mobile client.
     final refreshed = await api.refreshAccessToken();

@@ -1,9 +1,10 @@
 name: Deployed Backend Smoke Test
 
-# Manually-dispatched verification of the ACTUAL deployed backend.
-# GitHub runners can reach the Railway host (unlike the development
-# sandbox, whose egress policy blocks it). Creates exactly one
-# throwaway smoke user per run.
+# Verification of the ACTUAL deployed backend. GitHub runners can reach
+# the Railway host (unlike the development sandbox, whose egress policy
+# blocks it). No repository secrets are required: the base URL is public
+# and every run creates its own throwaway accounts (one for the API smoke,
+# one for the mobile journey), never a real user.
 on:
   workflow_dispatch:
     inputs:
@@ -11,6 +12,12 @@ on:
         description: 'Deployed backend base URL'
         required: true
         default: 'https://mita-production-production.up.railway.app'
+  # Daily post-deploy verification of production. Railway deploys are not
+  # visible to GitHub Actions as events, so a schedule is the reliable
+  # "runs after deployment" hook; dispatch it manually for an immediate
+  # check after merging.
+  schedule:
+    - cron: '17 6 * * *'
   # Fallback trigger for environments whose GitHub token cannot call the
   # workflow-dispatch API: a push whose head commit message contains
   # [deployed-smoke] runs the smoke test against the default (Railway
@@ -18,12 +25,16 @@ on:
   push:
     branches: [ 'claude/**' ]
 
+env:
+  DEFAULT_BASE_URL: 'https://mita-production-production.up.railway.app'
+
 jobs:
   smoke:
     name: Remote smoke (deployed backend)
     runs-on: ubuntu-latest
     if: >-
       github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
       contains(github.event.head_commit.message, '[deployed-smoke]')
     timeout-minutes: 10
 
@@ -39,4 +50,41 @@ jobs:
       - name: Run remote smoke test
         run: >-
           python scripts/remote_smoke_test.py
-          --base-url "${{ inputs.base_url || 'https://mita-production-production.up.railway.app' }}"
+          --base-url "${{ inputs.base_url || env.DEFAULT_BASE_URL }}"
+
+  mobile-journey:
+    name: Mobile journey vs deployed backend (real ApiService)
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'schedule' ||
+      contains(github.event.head_commit.message, '[deployed-smoke]')
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: mobile_app
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          # Same pin as main-ci.yml — the suite is verified against it.
+          flutter-version: '3.35.4'
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      # The app's REAL ApiService/TransactionService (dio client,
+      # interceptors, secure token storage) against the deployed backend:
+      # register → login → onboarding → create/edit/delete transaction →
+      # calendar assertions → refresh → persistence → logout. The test
+      # self-skips (does not silently pass) only if the URL is unreachable.
+      - name: Run mobile-to-production journey
+        run: >-
+          flutter test test/integration/mobile_backend_journey_test.dart
+          --dart-define=API_BASE_URL=${{ inputs.base_url || env.DEFAULT_BASE_URL }}
