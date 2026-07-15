@@ -193,7 +193,12 @@ class TransactionInput {
     if (confidenceScore != null) map['confidence_score'] = confidenceScore;
     if (receiptUrl != null) map['receipt_url'] = receiptUrl;
     if (notes != null) map['notes'] = notes;
-    if (spentAt != null) map['spent_at'] = spentAt!.toIso8601String();
+    // Serialize as UTC with an explicit offset: a local DateTime's
+    // toIso8601String() has no offset, and the backend then treats the
+    // device's wall-clock time as the user's timezone — transactions
+    // created on a UTC+3 device were stored ~3h in the future and near
+    // midnight accrued to the wrong calendar day.
+    if (spentAt != null) map['spent_at'] = spentAt!.toUtc().toIso8601String();
 
     return map;
   }

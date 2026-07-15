@@ -94,7 +94,19 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     );
     if (picked != null && picked != _selectedDate) {
       setState(() {
-        _selectedDate = picked;
+        // Keep the original time-of-day: the picker returns local
+        // midnight, and midnight-local serialized to UTC lands on the
+        // PREVIOUS user-timezone day for any device east of the profile
+        // timezone — moving a transaction to "Jul 14" accrued it to
+        // Jul 13's plan row.
+        _selectedDate = DateTime(
+          picked.year,
+          picked.month,
+          picked.day,
+          _selectedDate.hour,
+          _selectedDate.minute,
+          _selectedDate.second,
+        );
       });
     }
   }

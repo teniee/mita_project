@@ -8,6 +8,7 @@ import '../providers/transaction_provider.dart';
 import '../services/income_service.dart';
 import '../services/logging_service.dart';
 import '../utils/json_utils.dart';
+import '../utils/money_format.dart';
 import '../services/loading_service.dart';
 
 class MainScreen extends StatefulWidget {
@@ -993,7 +994,7 @@ class _MainScreenState extends State<MainScreen> {
                         ),
                       ),
                       Text(
-                        '\$${remaining.toStringAsFixed(2)}',
+                        '\$${formatMoney(remaining)}',
                         style: const TextStyle(
                           fontFamily: 'Sora',
                           fontSize: 16,
@@ -1194,8 +1195,8 @@ class _MainScreenState extends State<MainScreen> {
                         children: [
                           Text(
                             remaining > 0
-                                ? 'Remaining: \$${remaining.toStringAsFixed(0)}'
-                                : 'Over budget: \$${(-remaining).toStringAsFixed(0)}',
+                                ? 'Remaining: \$${formatMoney(remaining, decimals: 0)}'
+                                : 'Over budget: \$${formatMoney(-remaining, decimals: 0)}',
                             style: TextStyle(
                               fontFamily: 'Manrope',
                               fontSize: 13,

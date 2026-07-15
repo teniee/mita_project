@@ -675,9 +675,22 @@ class BudgetProvider extends ChangeNotifier {
   /// Called after a transaction is successfully created.
   /// If the transaction triggered a rebalance, refreshes redistribution history.
   Future<void> onTransactionCreated({bool rebalanced = false}) async {
-    if (rebalanced) {
-      await loadRedistributionHistory();
-    }
+    await onLedgerChanged(rebalanced: rebalanced);
+  }
+
+  /// Reload the budget data a ledger mutation (create/edit/delete)
+  /// invalidates. The backend recalculates DailyPlan.spent and may
+  /// auto-redistribute budget between days, so daily budgets, the merged
+  /// calendar, and live status are all stale after any transaction write —
+  /// previously only redistribution history was refreshed and the
+  /// dashboard kept showing pre-mutation numbers until an app restart.
+  Future<void> onLedgerChanged({bool rebalanced = false}) async {
+    await Future.wait([
+      loadDailyBudgets(),
+      loadCalendarData(),
+      loadLiveBudgetStatus(),
+      if (rebalanced) loadRedistributionHistory(),
+    ]);
   }
 
   /// Clear error message

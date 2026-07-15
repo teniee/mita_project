@@ -75,6 +75,8 @@ class UserProvider extends ChangeNotifier {
     return [];
   }
 
+  Future<void>? _initializeInFlight;
+
   /// Initialize the provider and load user data.
   ///
   /// Re-runnable after login: the welcome screen calls this at cold start
@@ -82,13 +84,29 @@ class UserProvider extends ChangeNotifier {
   /// saves a token and calls it again. The old `!= initial` guard made that
   /// second call a no-op, so `_hasCompletedOnboarding` stayed at its `false`
   /// default and an already-onboarded user was wrongly routed to onboarding.
-  /// Now we only skip when a load is already done (`authenticated`) or in
-  /// flight (`loading`); `unauthenticated`/`error` re-load.
-  Future<void> initialize() async {
-    if (_state == UserState.authenticated || _state == UserState.loading) {
-      return;
+  ///
+  /// Concurrent callers JOIN the in-flight initialization instead of
+  /// skipping it: MITAApp's bootstrap starts one at app launch, and the
+  /// welcome screen's own `await initialize()` used to return immediately
+  /// on the `loading` guard — it then read the default
+  /// `hasCompletedOnboarding == false` and routed an already-onboarded
+  /// user back to onboarding on every cold start (device-reproduced).
+  Future<void> initialize() {
+    if (_state == UserState.authenticated) {
+      return Future.value();
     }
+    final inFlight = _initializeInFlight;
+    if (inFlight != null) {
+      return inFlight;
+    }
+    final future = _doInitialize();
+    _initializeInFlight = future.whenComplete(() {
+      _initializeInFlight = null;
+    });
+    return future;
+  }
 
+  Future<void> _doInitialize() async {
     _setLoading(true);
     _state = UserState.loading;
     notifyListeners();

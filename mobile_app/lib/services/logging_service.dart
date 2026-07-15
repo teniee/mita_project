@@ -360,6 +360,12 @@ class LoggingService {
       error: entry.error,
       stackTrace: entry.stackTrace,
     );
+
+    // developer.log only reaches an attached VM-service client — on a bare
+    // device/emulator (adb logcat, standalone launch) debug logs were
+    // invisible. Mirror to debugPrint (kDebugMode-gated by construction:
+    // _enableConsoleLogging can only be true in debug builds).
+    debugPrint(logMessage);
   }
 
   /// Log to file for production debugging

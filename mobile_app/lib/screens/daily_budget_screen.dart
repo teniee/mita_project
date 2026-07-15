@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../core/enhanced_error_handling.dart';
 import '../providers/budget_provider.dart';
 import '../utils/json_utils.dart';
+import '../utils/money_format.dart';
 
 class DailyBudgetScreen extends StatefulWidget {
   const DailyBudgetScreen({super.key});
@@ -321,7 +322,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                           style: TextStyle(color: Colors.white70, fontSize: 14),
                         ),
                         Text(
-                          '\$${remaining.toStringAsFixed(2)}',
+                          '\$${formatMoney(remaining)}',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 20,

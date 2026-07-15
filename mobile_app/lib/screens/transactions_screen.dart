@@ -4,6 +4,7 @@ import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/transaction_provider.dart';
+import '../providers/budget_provider.dart';
 import 'add_transaction_screen.dart';
 
 class TransactionsScreen extends StatefulWidget {
@@ -54,6 +55,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
         if (!mounted) return;
 
         if (success) {
+          // Deleting reverses the plan accrual server-side — refresh the
+          // budget data the dashboard/calendar read.
+          context.read<BudgetProvider>().onLedgerChanged(rebalanced: true);
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Transaction deleted successfully')),
           );

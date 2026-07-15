@@ -5,6 +5,7 @@ import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/transaction_provider.dart';
+import '../providers/budget_provider.dart';
 import '../models/transaction_model.dart';
 
 class EditExpenseScreen extends StatefulWidget {
@@ -67,6 +68,9 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
     if (!mounted) return;
 
     if (result != null) {
+      // The backend recalculated the old and new plan rows (and may have
+      // rebalanced) — refresh the budget data the dashboard/calendar read.
+      context.read<BudgetProvider>().onLedgerChanged(rebalanced: true);
       Navigator.pop(context, true);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -104,6 +108,7 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
       if (!mounted) return;
 
       if (success) {
+        context.read<BudgetProvider>().onLedgerChanged(rebalanced: true);
         Navigator.pop(context, true);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -123,7 +128,16 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
       lastDate: DateTime(2100),
     );
     if (picked != null && picked != _selectedDate) {
-      setState(() => _selectedDate = picked);
+      // Preserve time-of-day — midnight-local converts to the previous
+      // user-timezone day (see add_transaction_screen._selectDate).
+      setState(() => _selectedDate = DateTime(
+            picked.year,
+            picked.month,
+            picked.day,
+            _selectedDate.hour,
+            _selectedDate.minute,
+            _selectedDate.second,
+          ));
     }
   }
 

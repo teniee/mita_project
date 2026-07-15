@@ -603,7 +603,16 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
       lastDate: DateTime(2100),
     );
     if (picked != null && picked != _selectedDate) {
-      setState(() => _selectedDate = picked);
+      // Preserve time-of-day — midnight-local converts to the previous
+      // user-timezone day (see add_transaction_screen._selectDate).
+      setState(() => _selectedDate = DateTime(
+            picked.year,
+            picked.month,
+            picked.day,
+            _selectedDate.hour,
+            _selectedDate.minute,
+            _selectedDate.second,
+          ));
     }
   }
 

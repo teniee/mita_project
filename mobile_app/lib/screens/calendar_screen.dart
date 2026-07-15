@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_colors.dart';
+import '../utils/money_format.dart';
 import '../theme/app_typography.dart';
 import '../providers/budget_provider.dart';
 import '../services/budget_adapter_service.dart';
@@ -814,7 +815,7 @@ class _CalendarScreenState extends State<CalendarScreen>
                           ),
                         ),
                         Text(
-                          '\$${remaining.toStringAsFixed(0)}',
+                          '\$${formatMoney(remaining, decimals: 0)}',
                           style: const TextStyle(
                             fontFamily: AppTypography.fontHeading,
                             fontSize: 24,
