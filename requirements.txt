@@ -57,7 +57,9 @@ google-auth==2.36.0                 # Google authentication
 google-api-python-client==2.149.0   # Google APIs
 
 # AI Integration
-openai==1.54.4                      # OpenAI API
+# 1.55.3+ is required with httpx 0.28 (older SDKs pass the removed
+# `proxies` kwarg and crash at client construction).
+openai==1.55.3                      # OpenAI API
 
 # Internationalization
 Babel==2.16.0                       # i18n support

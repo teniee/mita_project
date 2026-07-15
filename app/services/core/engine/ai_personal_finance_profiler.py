@@ -1,4 +1,5 @@
 import json
+import logging
 from collections import defaultdict
 from datetime import date, timedelta
 from decimal import Decimal
@@ -11,6 +12,8 @@ from app.db.models.daily_plan import DailyPlan
 from app.db.models.user import User
 from app.engine.behavior.spending_pattern_extractor import extract_patterns
 from app.services.template_service import AIAdviceTemplateService
+
+logger = logging.getLogger(__name__)
 
 
 def build_user_profile(user_id: int, db: Session, year: int, month: int) -> dict:
@@ -75,12 +78,21 @@ def generate_financial_rating(user_profile: dict, db) -> dict:
             "Respond as JSON with fields: 'rating', 'risk', 'summary'."
         )
 
-    # Ask GPT model
-    system_prompt = tmpl_service.get("system_prompt")
-    gpt = GPTAgentService(
-        api_key=settings.OPENAI_API_KEY, model="gpt-4o", system_prompt=system_prompt
-    )
-    result = gpt.ask([{"role": "user", "content": prompt}])
+    # Ask GPT model. The snapshot's primary output is the profile itself —
+    # a broken/unconfigured GPT SDK must degrade the rating, not 500 the
+    # endpoint (prod: the openai/httpx version clash crashed at client
+    # construction, before ask()'s own OpenAIError handling could help).
+    result = ""
+    try:
+        system_prompt = tmpl_service.get("system_prompt")
+        gpt = GPTAgentService(
+            api_key=settings.OPENAI_API_KEY,
+            model="gpt-4o",
+            system_prompt=system_prompt,
+        )
+        result = gpt.ask([{"role": "user", "content": prompt}])
+    except Exception as e:
+        logger.error("GPT rating unavailable: %s", e)
 
     # Attempt to parse JSON response
     try:

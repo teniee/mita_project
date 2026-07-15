@@ -153,6 +153,47 @@ def test_user_context_coerces_none_and_decimal_ratios():
 
 
 # ---------------------------------------------------------------------------
+# 3b. GPT rating must degrade, not 500, when the SDK is unusable
+# ---------------------------------------------------------------------------
+
+
+def test_financial_rating_falls_back_when_gpt_client_unusable(monkeypatch):
+    """Prod (session-5 verify run): openai 1.54.4 passed the removed
+    `proxies` kwarg to httpx 0.28 and raised TypeError at client
+    construction — before ask()'s own OpenAIError handling — turning
+    POST /api/ai/snapshot into a 500. The rating must degrade instead."""
+    from app.services.core.engine import ai_personal_finance_profiler as profiler
+
+    class _NoTemplates:
+        def __init__(self, db):
+            pass
+
+        def get(self, name):
+            return None
+
+    def _boom(*args, **kwargs):
+        raise TypeError("Client.__init__() got an unexpected keyword argument")
+
+    monkeypatch.setattr(profiler, "AIAdviceTemplateService", _NoTemplates)
+    monkeypatch.setattr(profiler, "GPTAgentService", _boom)
+
+    rating = profiler.generate_financial_rating(
+        {
+            "total_by_category": {"food": 100.0},
+            "status_breakdown": {"good": 3},
+            "behavior_tags": [],
+        },
+        db=None,
+    )
+
+    assert rating == {
+        "rating": "B",
+        "risk": "moderate",
+        "summary": "User spending is generally steady but occasionally exceeds the budget.",
+    }
+
+
+# ---------------------------------------------------------------------------
 # 4. POST /api/errors/report
 # ---------------------------------------------------------------------------
 
