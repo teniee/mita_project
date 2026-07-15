@@ -43,6 +43,16 @@ class UserContext:
     housing_status: str = "rent"  # rent, own, family
     life_stage: str = "single"  # single, couple, family, retirement
 
+    def __post_init__(self):
+        # Callers pass User.monthly_income straight from the DB, which is a
+        # Decimal; the threshold math multiplies it by float literals, and
+        # Decimal * float raises TypeError (prod: financial-health-score fell
+        # back to canned data for every user). Coerce all numeric fields once
+        # at the boundary.
+        self.monthly_income = float(self.monthly_income or 0)
+        self.debt_to_income_ratio = float(self.debt_to_income_ratio or 0)
+        self.current_savings_rate = float(self.current_savings_rate or 0)
+
 
 @dataclass
 class EconomicContext:

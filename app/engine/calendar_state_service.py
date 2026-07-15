@@ -24,9 +24,9 @@ def get_calendar_day_state(user_id: str, year: int, month: int, day: int):
 
     if status in ["yellow", "red"]:
         try:
-            from app.core.session import SessionLocal
+            from app.core.session import create_sync_session
 
-            with SessionLocal() as db:
+            with create_sync_session() as db:
                 explanation = explain_day_status(
                     status=status,
                     recommendations=recommendations,

@@ -112,3 +112,22 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def create_sync_session():
+    """Create a sync Session for code outside FastAPI dependency injection.
+
+    `SessionLocal` is initialized lazily by get_db(), so services that read
+    the module attribute directly see None until some get_db() route has run
+    in the same process — in production that made the first
+    `SessionLocal()` caller crash with "'NoneType' object is not callable".
+    Callers own the session and must close() it.
+    """
+    _initialize_sync_session()
+
+    if SessionLocal is None:
+        raise RuntimeError(
+            "Database session not initialized - DATABASE_URL may be missing"
+        )
+
+    return SessionLocal()

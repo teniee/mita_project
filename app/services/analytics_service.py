@@ -18,13 +18,19 @@ async def get_monthly_category_totals(user_id: str, db):
     current_year = datetime.now(timezone.utc).year
     current_month = datetime.now(timezone.utc).month
 
+    # spent_at is timestamptz: date()/extract() on it use the DB session's
+    # TimeZone, so day/month buckets shifted on any non-UTC server (and made
+    # this endpoint's "today" disagree with the UTC-based callers around
+    # midnight). Normalize to UTC explicitly.
+    spent_at_utc = func.timezone("UTC", Transaction.spent_at)
+
     stmt = (
         select(Transaction.category, func.sum(Transaction.amount).label("total"))
         .where(
             Transaction.user_id == user_id,
             Transaction.deleted_at.is_(None),
-            extract("year", Transaction.spent_at) == current_year,
-            extract("month", Transaction.spent_at) == current_month,
+            extract("year", spent_at_utc) == current_year,
+            extract("month", spent_at_utc) == current_month,
         )
         .group_by(Transaction.category)
     )
@@ -40,16 +46,18 @@ async def get_monthly_trend(user_id: str, db):
     current_year = datetime.now(timezone.utc).year
     current_month = datetime.now(timezone.utc).month
 
+    spent_at_utc = func.timezone("UTC", Transaction.spent_at)
+
     stmt = (
         select(
-            func.date(Transaction.spent_at).label("day"),
+            func.date(spent_at_utc).label("day"),
             func.sum(Transaction.amount).label("total"),
         )
         .where(
             Transaction.user_id == user_id,
             Transaction.deleted_at.is_(None),
-            extract("year", Transaction.spent_at) == current_year,
-            extract("month", Transaction.spent_at) == current_month,
+            extract("year", spent_at_utc) == current_year,
+            extract("month", spent_at_utc) == current_month,
         )
         .group_by("day")
         .order_by("day")

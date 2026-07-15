@@ -405,9 +405,9 @@ def run_scheduled_notifications():
     Standalone function to run scheduled notifications
     Can be called from cron or background scheduler
     """
-    from app.core.session import SessionLocal
+    from app.core.session import create_sync_session
 
-    db = SessionLocal()
+    db = create_sync_session()
     try:
         service = ScheduledNotificationService(db)
         results = service.run_all_scheduled_tasks()

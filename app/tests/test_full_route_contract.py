@@ -563,6 +563,16 @@ SPECS = {
     ("GET", "/openapi.json"): {"expect": (200, 404)},
     ("GET", "/privacy-policy"): {},
     ("GET", "/terms-of-service"): {},
+    # ---- client error intake (public, auth optional) -------------------------
+    ("POST", "/api/errors/report"): {
+        "json": {
+            "id": "contract_err_1",
+            "error": "contract-suite synthetic error",
+            "severity": "low",
+            "platform": "android",
+        },
+        "expect": (202,),
+    },
     # ---- waitlist (public) ---------------------------------------------------
     ("POST", "/api/waitlist/join"): {
         "json": lambda ctx: {"email": f"wl_{uuid4().hex[:8]}@mita-contract.dev"},

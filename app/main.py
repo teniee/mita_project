@@ -31,6 +31,7 @@ from app.api.budget.routes import router as budget_router
 from app.api.calendar.routes import router as calendar_router
 from app.api.challenge.routes import router as challenge_router
 from app.api.checkpoint.routes import router as checkpoint_router
+from app.api.client_errors.routes import router as client_errors_router
 from app.api.cluster.routes import router as cluster_router
 from app.api.cohort.routes import router as cohort_router
 from app.api.dashboard.routes import router as dashboard_router
@@ -947,6 +948,9 @@ app.include_router(
 
 # Waitlist — public, no auth required
 app.include_router(waitlist_router, prefix="/api", tags=["Waitlist"])
+
+# Client error intake — public (errors can occur before login), rate-limited
+app.include_router(client_errors_router, prefix="/api", tags=["Client Errors"])
 
 # Health — public, no auth required (Railway/load-balancer health checks must reach this)
 app.include_router(health_router, tags=["Health"])

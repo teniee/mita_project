@@ -33,10 +33,14 @@ class CircuitBreakerConfig:
     retry_backoff_factor: float = 2.0  # Exponential backoff multiplier
     timeout_seconds: float = 30.0  # Request timeout
 
-    # Exception types that trigger circuit breaker
+    # Exception types that trigger circuit breaker.
+    # asyncio.TimeoutError is listed explicitly: it only became an alias of
+    # the builtin TimeoutError in Python 3.11, so on 3.9/3.10 a timed-out
+    # await neither retried nor counted as a failure.
     trigger_exceptions: tuple = (
         ConnectionError,
         TimeoutError,
+        asyncio.TimeoutError,
         OSError,
     )
 

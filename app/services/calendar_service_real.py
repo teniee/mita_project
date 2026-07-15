@@ -183,9 +183,9 @@ def get_calendar_for_user(
     NOTE: This function is kept for compatibility with legacy code that doesn't pass db session.
     New code should use fetch_calendar() directly with proper dependency injection.
     """
-    from app.core.session import SessionLocal
+    from app.core.session import create_sync_session
 
-    db = SessionLocal()
+    db = create_sync_session()
     try:
         return fetch_calendar(db, user_id, year, month)
     finally:

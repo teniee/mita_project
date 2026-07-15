@@ -4,6 +4,55 @@
 > Deployed commit audited: **`d682f3f969a6`** (Railway `mita-production`, matches GitHub `teniee/mita_project@main`)
 > Every defect below is backed by **first-hand evidence** (production HTTP response, server traceback from Railway logs, and/or local reproduction). Secrets are redacted everywhere.
 
+> ## Fix status — session 5 (Fable 5, 2026-07-15): the red "Server error" toast
+> Fresh-install UI session on an Android-16 emulator against deployed prod
+> `e8ee38b` (adb-driven: register → 7-step onboarding → dashboard), with every
+> backend request captured via Railway logs. **121 requests, exactly one
+> non-2xx** — the source of the mandated red "Server error" hunt:
+> - **DEF-G1 — `POST /api/ai/snapshot` 500 → global red toast on dashboard load.**
+>   Fired by the eagerly-built Insights tab. Traceback:
+>   `calendar_service_real.get_calendar_for_user` → `db = SessionLocal()` →
+>   `TypeError: 'NoneType' object is not callable`. `app.core.session.SessionLocal`
+>   is initialized lazily by `get_db()` only, so the first caller in a worker
+>   process that reads it directly crashes (order-dependent: any prior sync-DI
+>   request in the same worker masks it). Fixed with `create_sync_session()`
+>   (initializes, or raises a clear RuntimeError) used by `get_calendar_for_user`,
+>   `calendar_state_service`, `scheduled_notifications`.
+> - **DEF-G2 — `GET /api/ai/financial-health-score` served canned fallback for every
+>   user** (200 + swallowed traceback): `UserContext.monthly_income` arrives as DB
+>   `Decimal` and `Decimal * float` raises at `dynamic_threshold_service.py:149`.
+>   Fixed at the boundary: `UserContext.__post_init__` coerces numeric fields.
+> - **DEF-G3 — `/api/errors/report` did not exist (404)** while the mobile
+>   ErrorHandler queues reports (≤50, persisted) and retries every 2 minutes
+>   forever → endless client loop. Implemented `POST /api/errors/report` (public,
+>   auth-optional, 60/h rate-limited, size-capped, logs to Railway); client now
+>   drops reports on permanent 4xx.
+> - **DEF-G4 — one 5xx anywhere = global red toast.** The Dio interceptor toasted
+>   "Server error" for *any* 5xx, including background enrichment calls the user
+>   never asked for, and identical SnackBars queued once per failed request.
+>   Policy fix: only core-journey paths (auth/onboarding/transactions/dashboard/
+>   calendar/users-me/core-budget) toast; MessageService dedupes identical
+>   errors within 4s. Failures still log and surface in-screen.
+> - **DEF-G5 — dashboard empty after onboarding ("Complete your profile", no
+>   budget targets).** `_transformOnboardingToFinancialContext` stored the
+>   onboarding payload's income **map** (`{monthly_income: 6000, …}`) as
+>   `financialContext['income']`; MainScreen's safe numeric cast turned it into
+>   0.0 → safe-incomplete state. Worse, `getFinancialContext` short-circuited on
+>   the persisted onboarding cache **forever**, so the app never consulted the
+>   real profile again until logout. Fixed: numeric coercion
+>   (`monthlyIncomeFrom`), server-truth-first ordering, post-submit
+>   `refreshUserData(forceRefresh)`.
+> - **DEF-G6 — analytics month/day buckets were DB-session-timezone-dependent**
+>   (`func.date`/`extract` on timestamptz; surfaced as a midnight-window test
+>   failure on a UTC+3 host; prod-UTC unaffected). Buckets now normalize via
+>   `timezone('UTC', spent_at)`.
+> Regressions: `app/tests/test_client_error_report_and_sync_session.py` (8),
+> `mobile_app/test/services/server_error_policy_test.dart` (6). Suites after fix:
+> backend full suite green locally; Flutter **417 passed / 3 skipped / 0 failed**.
+> Latent (not mobile-reachable, recorded for PHASE-4): `POST /calendar/day_state`
+> iterates `get_calendar_for_user`'s dict as a list of maps (`d.get("date")` on a
+> str key) — shape bug predating this session; no mobile caller.
+
 > ## Fix status — session 4 (Fable 5, 2026-07-14)
 > Removing the `analysis_options.yaml` exclusion list (83 → 4 entries, generated
 > files only) put every shipped Dart file back under analysis and surfaced
