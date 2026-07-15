@@ -529,9 +529,16 @@ class BudgetProvider extends ChangeNotifier {
   /// Load AI budget optimization
   Future<void> loadAIOptimization() async {
     try {
-      // Get calendar data for AI context
-      final calendarData = await _apiService.getCalendar();
-      _calendarData = asMapList(calendarData);
+      // AI context input: use the already-merged calendar when present.
+      // This method used to fetch the shell preview and ASSIGN it to
+      // _calendarData, racing loadCalendarData inside the same
+      // Future.wait — the real saved+transactions merge got stomped by
+      // the planning preview (or by [] whenever the shell call hit its
+      // 10s watchdog), and the dashboard rendered fallback targets.
+      var calendarData = List<Map<String, dynamic>>.from(_calendarData);
+      if (calendarData.isEmpty) {
+        calendarData = asMapList(await _apiService.getCalendar());
+      }
 
       Map<String, dynamic> calendarDict = {};
       for (final day in asMapList(calendarData)) {

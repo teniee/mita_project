@@ -354,6 +354,17 @@ class _MainScreenState extends State<MainScreen> {
     final budgetProvider = context.watch<BudgetProvider>();
     final transactionProvider = context.watch<TransactionProvider>();
 
+    // Income arrives asynchronously (profile refresh can land after the
+    // first frames). _updateIncomeData only runs once at init, so derive
+    // the income state on every provider-driven rebuild — otherwise the
+    // budget-target fallback rendered with income 0 forever even though
+    // the header (reading the provider directly) already showed it.
+    final ctxIncome = asDouble(userProvider.financialContext['income']);
+    if (ctxIncome > 0 && ctxIncome != _monthlyIncome) {
+      _monthlyIncome = ctxIncome;
+      _incomeTier = _incomeService.classifyIncome(ctxIncome);
+    }
+
     // Determine loading and error states from providers
     final isLoading = userProvider.isLoading ||
         budgetProvider.isLoading ||
