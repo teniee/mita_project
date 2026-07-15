@@ -36,33 +36,56 @@ Map<String, dynamic> mergeSavedCalendarDay(
 
   final isToday = dayOnly == today;
   final isPast = dayOnly != null && dayOnly.isBefore(today);
+  final isFuture = dayOnly != null && !isToday && !isPast;
 
   final limit = (d['limit'] as num?)?.toDouble() ?? 0.0;
-  final realSpent = spentByDay[day] ?? 0.0;
 
-  // Build per-category breakdown: planned (from DailyPlan) + real
+  // The backend already recomputes spent from the DailyPlan ledger on every
+  // transaction mutation and returns it in the saved-calendar payload
+  // (day 'spent' + per-category 'spent'). Trust it as the source of truth;
+  // the local transactions overlay is only a fallback for a shell/preview
+  // calendar that carries no spent. The old code IGNORED the backend spent
+  // and recomputed from a separate /transactions/ fetch — when that fetch's
+  // date filter missed the row, the whole calendar rendered spent $0 even
+  // though every API value was correct.
+  // Future days never carry attributed spend (the date picker blocks
+  // future-dated transactions); force 0 regardless of source.
+  final backendDaySpent = isFuture ? 0.0 : (d['spent'] as num?)?.toDouble();
+
+  // Build per-category breakdown: planned + spent (backend, overlay fallback)
   final plannedCats = (d['planned_budget'] as Map?) ?? {};
   final mergedCats = <String, dynamic>{};
 
   for (final entry in plannedCats.entries) {
     final cat = entry.key as String;
     final val = entry.value;
-    final planned = val is Map
-        ? (val['planned'] as num?)?.toDouble() ?? 0.0
-        : (val as num?)?.toDouble() ?? 0.0;
-    final spent =
-        (isPast || isToday) ? (spentByDayCategory[day]?[cat] ?? 0.0) : 0.0;
+    final double planned;
+    double? backendCatSpent;
+    if (val is Map) {
+      planned = (val['planned'] as num?)?.toDouble() ?? 0.0;
+      backendCatSpent = (val['spent'] as num?)?.toDouble();
+    } else {
+      planned = (val as num?)?.toDouble() ?? 0.0;
+    }
+    final spent = isFuture
+        ? 0.0
+        : (backendCatSpent ??
+            ((isPast || isToday) ? (spentByDayCategory[day]?[cat] ?? 0.0) : 0.0));
     mergedCats[cat] = {'planned': planned, 'spent': spent};
   }
 
-  // Include transactions whose category wasn't in planned budget
-  if (isPast || isToday) {
+  // Include transactions whose category wasn't in the planned budget (only
+  // relevant for the overlay fallback; the backend payload already carries
+  // unplanned categories as plan rows with planned 0).
+  if (backendDaySpent == null && (isPast || isToday)) {
     (spentByDayCategory[day] ?? {}).forEach((cat, amt) {
       if (!mergedCats.containsKey(cat)) {
         mergedCats[cat] = {'planned': 0.0, 'spent': amt};
       }
     });
   }
+
+  final realSpent = isFuture ? 0.0 : (backendDaySpent ?? (spentByDay[day] ?? 0.0));
 
   // Day status
   String status;
@@ -462,31 +485,15 @@ class BudgetProvider extends ChangeNotifier {
         month: targetMonth,
       );
 
-      // ── Step 2: Real transactions for the month ──
+      // ── Step 2: Merge ──
+      // The saved-calendar payload already carries backend-computed spent
+      // (recalculated from the ledger on every mutation), so we no longer
+      // fetch /transactions/ just to recompute it — that redundant request
+      // was also the source of the "calendar shows spent $0" bug when its
+      // date filter missed a row. The overlay maps stay empty; the merge
+      // uses them only as a shell-calendar fallback.
       final spentByDayCategory = <int, Map<String, double>>{};
       final spentByDay = <int, double>{};
-      try {
-        final rawTx = await _apiService.getMonthlyTransactionsRaw(
-          year: targetYear,
-          month: targetMonth,
-        );
-        for (final tx in rawTx) {
-          final spentAt = DateTime.tryParse(tx['spent_at'] as String? ?? '');
-          if (spentAt == null) continue;
-          final day = spentAt.day;
-          final cat = (tx['category'] as String?) ?? 'other';
-          final amount = (tx['amount'] as num?)?.toDouble() ?? 0.0;
-          spentByDayCategory[day] ??= {};
-          spentByDayCategory[day]![cat] =
-              (spentByDayCategory[day]![cat] ?? 0.0) + amount;
-          spentByDay[day] = (spentByDay[day] ?? 0.0) + amount;
-        }
-        logInfo('Loaded ${rawTx.length} transactions for calendar merge',
-            tag: 'BUDGET_PROVIDER');
-      } catch (txError) {
-        logWarning('Could not load transactions for calendar: $txError',
-            tag: 'BUDGET_PROVIDER');
-      }
 
       // ── Step 3: Merge planned budget + real spending ──
       if (savedCalendar != null && savedCalendar.isNotEmpty) {

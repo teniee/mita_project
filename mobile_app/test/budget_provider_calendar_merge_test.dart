@@ -15,6 +15,7 @@ void main() {
     String date = '2026-07-06',
     int day = 6,
     double limit = 69.33,
+    double spent = 23.75,
     Map<String, dynamic>? plannedBudget,
   }) {
     // Exact shape of one element of data.calendar from
@@ -24,13 +25,30 @@ void main() {
       'day': day,
       'planned_budget': plannedBudget ??
           {
-            'food': {'planned': 23.76, 'spent': 23.75, 'status': 'pending'},
+            'food': {'planned': 23.76, 'spent': spent, 'status': 'pending'},
             'coffee': {'planned': 5.62, 'spent': 0.0, 'status': 'pending'},
           },
       'limit': limit,
       'total': 69.33,
-      'spent': 23.75,
+      'spent': spent,
       'status': 'active',
+    };
+  }
+
+  // A shell/preview day (POST /calendar/shell) carries NO backend spent —
+  // the transaction overlay is the only spent source on this path.
+  Map<String, dynamic> shellDay({
+    String date = '2026-07-06',
+    int day = 6,
+    double limit = 69.33,
+    Map<String, dynamic>? plannedBudget,
+  }) {
+    return {
+      'date': date,
+      'day': day,
+      'planned_budget': plannedBudget ?? {'food': 23.76, 'coffee': 5.62},
+      'limit': limit,
+      'total': 69.33,
     };
   }
 
@@ -54,24 +72,20 @@ void main() {
 
     test('flags an overspent day against a non-zero limit', () {
       final merged = mergeSavedCalendarDay(
-        backendDay(limit: 50.0),
+        backendDay(limit: 50.0, spent: 80.0),
         today: today,
-        spentByDay: {6: 80.0},
-        spentByDayCategory: {
-          6: {'food': 80.0},
-        },
+        spentByDay: const {},
+        spentByDayCategory: const {},
       );
       expect(merged['status'], 'over');
     });
 
     test('warns when spending approaches the limit', () {
       final merged = mergeSavedCalendarDay(
-        backendDay(limit: 100.0),
+        backendDay(limit: 100.0, spent: 90.0),
         today: today,
-        spentByDay: {6: 90.0},
-        spentByDayCategory: {
-          6: {'food': 90.0},
-        },
+        spentByDay: const {},
+        spentByDayCategory: const {},
       );
       expect(merged['status'], 'warning');
     });
@@ -80,12 +94,10 @@ void main() {
         'REGRESSION: a zero limit disables overspend detection — '
         'this is why the backend must emit real limits', () {
       final merged = mergeSavedCalendarDay(
-        backendDay(limit: 0.0),
+        backendDay(limit: 0.0, spent: 500.0),
         today: today,
-        spentByDay: {6: 500.0},
-        spentByDayCategory: {
-          6: {'food': 500.0},
-        },
+        spentByDay: const {},
+        spentByDayCategory: const {},
       );
       // Massively overspent day still reads 'good' when limit is 0.
       // The backend-side regression tests (test_calendar_limits.py)
@@ -109,9 +121,12 @@ void main() {
           reason: 'future days must not show spending');
     });
 
-    test('merges unplanned-category transactions into the day', () {
+    test('merges unplanned-category transactions on the shell path', () {
+      // Only the shell/preview path (no backend spent) uses the overlay for
+      // unplanned categories; the saved path already carries them as plan
+      // rows.
       final merged = mergeSavedCalendarDay(
-        backendDay(),
+        shellDay(),
         today: today,
         spentByDay: {6: 12.0},
         spentByDayCategory: {
@@ -145,6 +160,43 @@ void main() {
       );
       final cats = merged['categories'] as Map<String, dynamic>;
       expect((cats['food'] as Map)['planned'], 30.0);
+    });
+
+    test(
+        'REGRESSION: trusts backend spent even when the transaction overlay '
+        'is empty', () {
+      // The device bug: the saved-calendar payload carried the correct
+      // spent (23.75), but the merge recomputed from a /transactions/ fetch
+      // whose date filter missed the row, so the calendar rendered $0. With
+      // empty overlay maps the merge must still surface the backend spent.
+      final merged = mergeSavedCalendarDay(
+        backendDay(),
+        today: today,
+        spentByDay: const {},
+        spentByDayCategory: const {},
+      );
+
+      expect(merged['spent'], 24, reason: 'backend day spent 23.75 -> 24');
+      final cats = merged['categories'] as Map<String, dynamic>;
+      expect((cats['food'] as Map)['spent'], 23.75,
+          reason: 'backend per-category spent must survive with no overlay');
+      expect((cats['coffee'] as Map)['spent'], 0.0);
+    });
+
+    test('backend per-category spent overrides a stale overlay value', () {
+      final merged = mergeSavedCalendarDay(
+        backendDay(),
+        today: today,
+        // Overlay disagrees (e.g. an inconsistent /transactions/ page) —
+        // the backend value wins.
+        spentByDay: const {6: 999.0},
+        spentByDayCategory: const {
+          6: {'food': 999.0},
+        },
+      );
+      final cats = merged['categories'] as Map<String, dynamic>;
+      expect((cats['food'] as Map)['spent'], 23.75);
+      expect(merged['spent'], 24);
     });
   });
 }
