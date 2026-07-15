@@ -31,9 +31,13 @@ from app.engine.budget_redistributor import (
 )
 
 # -------------------------- Service functions -------------------
+# fetch_day_state comes from the real DailyPlan-backed service — the
+# placeholder module's version returned a static task list for every user.
+# The remaining imports are the documented in-memory dev helpers (no mobile
+# caller; see verified-defects session-5 notes).
+from app.api.calendar.services import fetch_day_state
 from app.services.calendar_service import (
     fetch_calendar,
-    fetch_day_state,
     generate_calendar,
     generate_shell_calendar,
     update_day,
