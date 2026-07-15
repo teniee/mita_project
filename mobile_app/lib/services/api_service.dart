@@ -189,11 +189,20 @@ class ApiService {
                 tag: 'API');
           } else if (e.response?.statusCode != null &&
               e.response!.statusCode! >= 500) {
-            // Only show error messages for server errors (5xx)
-            MessageService.instance
-                .showError('Server error. Please try again later.');
-            logError('Server error: ${e.response?.statusCode}',
-                tag: 'API', error: e);
+            // 5xx: show the global toast ONLY for core-journey requests.
+            // Background/enrichment endpoints (AI insights, cohort,
+            // analytics, suggestions…) degrade inside their own screens; a
+            // global red "Server error" for those punished the user for
+            // data they never asked for. The failure is still logged and
+            // still surfaces through the screen's inline error state.
+            if (isCoreJourneyPath(e.requestOptions.path)) {
+              MessageService.instance
+                  .showError('Server error. Please try again later.');
+            }
+            logError(
+                'Server error: ${e.response?.statusCode} ${e.requestOptions.path}',
+                tag: 'API',
+                error: e);
           } else {
             // For other errors (400, etc), extract specific message but don't always show
             logWarning(
@@ -209,6 +218,31 @@ class ApiService {
 
   static final ApiService _instance = ApiService._internal();
   factory ApiService() => _instance;
+
+  /// Requests whose 5xx failure the user must be told about immediately:
+  /// the ones behind data they explicitly act on (auth, onboarding,
+  /// transactions, dashboard, calendar, profile, core budget numbers).
+  /// Everything else fails into the calling screen's degraded state.
+  static const List<String> _coreJourneyPathPrefixes = [
+    '/auth/',
+    '/onboarding',
+    '/transactions',
+    '/dashboard',
+    '/calendar',
+    '/users/me',
+    '/budget/daily',
+    '/budget/spent',
+    '/budget/remaining',
+    '/budget/live_status',
+  ];
+
+  @visibleForTesting
+  static bool isCoreJourneyPath(String path) {
+    for (final prefix in _coreJourneyPathPrefixes) {
+      if (path.startsWith(prefix)) return true;
+    }
+    return false;
+  }
 
   // ---------------------------------------------------------------------------
   // Internal state

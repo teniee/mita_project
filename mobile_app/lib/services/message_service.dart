@@ -12,7 +12,21 @@ class MessageService {
   final GlobalKey<ScaffoldMessengerState> messengerKey =
       GlobalKey<ScaffoldMessengerState>();
 
+  String? _lastErrorText;
+  DateTime? _lastErrorShownAt;
+
   void showError(String text) {
+    // One failure — one visible signal. Several requests can fail from the
+    // same outage within a frame; queueing an identical red SnackBar per
+    // request kept the toast on screen for minutes.
+    final now = DateTime.now();
+    if (text == _lastErrorText &&
+        _lastErrorShownAt != null &&
+        now.difference(_lastErrorShownAt!) < const Duration(seconds: 4)) {
+      return;
+    }
+    _lastErrorText = text;
+    _lastErrorShownAt = now;
     messengerKey.currentState?.showSnackBar(
       SnackBar(content: Text(text), backgroundColor: Colors.red),
     );

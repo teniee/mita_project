@@ -283,6 +283,17 @@ class ErrorHandler {
         developer.log('Error report sent successfully: ${report.id}',
             name: 'ErrorHandler');
         return true;
+      } else if (response.statusCode >= 400 &&
+          response.statusCode < 500 &&
+          response.statusCode != 408 &&
+          response.statusCode != 429) {
+        // Permanent rejection (404 route missing, 401, 413, 422): retrying
+        // the same payload every 2 minutes can never succeed — drop it
+        // instead of looping forever.
+        developer.log(
+            'Error report permanently rejected (${response.statusCode}), dropping: ${report.id}',
+            name: 'ErrorHandler');
+        return true;
       } else {
         developer.log('Failed to send error report: ${response.statusCode}',
             name: 'ErrorHandler');

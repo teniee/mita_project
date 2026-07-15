@@ -214,7 +214,16 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
         await _api.submitOnboarding(onboardingData);
         logInfo('Onboarding submitted to backend successfully',
             tag: 'ONBOARDING_FINISH');
-        // Note: User data refresh is already handled by UserProvider.cacheOnboardingData()
+        // Replace the locally-transformed approximation with server truth —
+        // the cached pre-onboarding profile otherwise kept the dashboard on
+        // "Complete your profile" with an empty budget until re-login.
+        try {
+          await userProvider.refreshUserData();
+        } catch (refreshError) {
+          logWarning(
+              'Post-onboarding profile refresh failed (cached data remains): $refreshError',
+              tag: 'ONBOARDING_FINISH');
+        }
       } catch (e) {
         logWarning(
             'Backend submission failed (but continuing with cached data): $e',

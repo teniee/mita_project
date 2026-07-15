@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../utils/json_utils.dart';
 import 'logging_service.dart';
 import 'api_service.dart';
 
@@ -193,7 +195,10 @@ class UserDataManager {
     try {
       logInfo('Force refreshing user data', tag: 'USER_DATA_MANAGER');
 
-      final profile = await _apiService.getUserProfile();
+      // forceRefresh bypasses ApiService's own /users/me TTL cache —
+      // without it a "force refresh" could serve the same stale profile
+      // this call is trying to replace.
+      final profile = await _apiService.getUserProfile(forceRefresh: true);
 
       if (profile.isNotEmpty && profile.containsKey('data')) {
         _cachedUserProfile = profile['data'] as Map<String, dynamic>;
@@ -229,20 +234,24 @@ class UserDataManager {
   /// Get user's financial context for budget calculations
   Future<Map<String, dynamic>> getFinancialContext() async {
     try {
-      // First check if we have cached onboarding data (immediate after onboarding completion)
-      if (_cachedOnboardingData != null) {
-        logInfo('Using cached onboarding data for financial context',
-            tag: 'USER_DATA_MANAGER');
-        return _transformOnboardingToFinancialContext(_cachedOnboardingData!);
-      }
-
-      // Try to get user profile from API
+      // Server truth first. The transformed onboarding payload is only a
+      // stopgap for the window between submit and the profile reflecting
+      // it — the old order returned it FOREVER (it persists in secure
+      // storage), so the app never picked up the real profile again until
+      // logout.
       final profile = await getUserProfile();
       logInfo('Retrieved user profile for financial context: $profile',
           tag: 'USER_DATA_MANAGER');
 
       // Check if profile has required financial data
       final income = (profile['income'] as num?)?.toDouble();
+
+      if ((income == null || income <= 0) && _cachedOnboardingData != null) {
+        logInfo(
+            'Profile has no income yet - using cached onboarding data for financial context',
+            tag: 'USER_DATA_MANAGER');
+        return _transformOnboardingToFinancialContext(_cachedOnboardingData!);
+      }
 
       if (income == null || income <= 0) {
         // Check onboarding status to determine if user needs to complete onboarding
@@ -388,6 +397,21 @@ class UserDataManager {
     }
   }
 
+  /// Numeric monthly income from either the onboarding payload shape
+  /// ({'monthly_income': 6000, 'additional_income': 0}) or a flat number.
+  ///
+  /// The onboarding submit body nests income in a map; storing that map as
+  /// `income` made every consumer's safe numeric cast produce 0.0, so a
+  /// freshly onboarded user saw "Complete your profile" and an empty
+  /// dashboard until logout.
+  @visibleForTesting
+  static double monthlyIncomeFrom(dynamic income) {
+    if (income is Map) {
+      return asDouble(asStringKeyedMap(income)['monthly_income']);
+    }
+    return asDouble(income);
+  }
+
   Map<String, dynamic> _transformOnboardingToProfile(
       Map<String, dynamic> onboardingData) {
     final income = onboardingData['income'];
@@ -396,7 +420,7 @@ class UserDataManager {
     }
 
     return {
-      'income': income,
+      'income': monthlyIncomeFrom(income),
       'expenses': onboardingData['expenses'] ?? <dynamic>[],
       'goals': onboardingData['goals'] ?? ['budgeting'],
       'habits': onboardingData['habits'] ?? <dynamic>[],
@@ -425,7 +449,7 @@ class UserDataManager {
     }
 
     return {
-      'income': income,
+      'income': monthlyIncomeFrom(income),
       'expenses': onboardingData['expenses'] ?? <dynamic>[],
       'goals': onboardingData['goals'] ?? ['budgeting'],
       'habits': onboardingData['habits'] ?? <dynamic>[],

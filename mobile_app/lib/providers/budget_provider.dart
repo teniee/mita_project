@@ -223,6 +223,11 @@ class BudgetProvider extends ChangeNotifier {
     try {
       await Future.wait([
         guard('dailyBudgets', loadDailyBudgets, critical: true),
+        // The dashboard's "Today's Budget Targets" and week strip read
+        // calendarData; without this load they always rendered the
+        // income/30 default-weights fallback even though a real saved
+        // calendar existed.
+        guard('calendarData', loadCalendarData),
         guard('liveStatus', loadLiveBudgetStatus),
         guard('suggestions', loadBudgetSuggestions),
         guard('mode', loadBudgetMode),
