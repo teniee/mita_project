@@ -193,6 +193,84 @@ def test_financial_rating_falls_back_when_gpt_client_unusable(monkeypatch):
     }
 
 
+def test_financial_rating_falls_back_when_api_key_missing(monkeypatch):
+    """OpenAI(api_key=None) raises OpenAIError at construction."""
+    from app.services.core.engine import ai_personal_finance_profiler as profiler
+
+    class _NoTemplates:
+        def __init__(self, db):
+            pass
+
+        def get(self, name):
+            return None
+
+    monkeypatch.setattr(profiler, "AIAdviceTemplateService", _NoTemplates)
+    monkeypatch.setattr(profiler.settings, "OPENAI_API_KEY", None, raising=False)
+
+    rating = profiler.generate_financial_rating(
+        {"total_by_category": {}, "status_breakdown": {}, "behavior_tags": []},
+        db=None,
+    )
+    assert rating["rating"] == "B"
+
+
+@pytest.mark.parametrize("exc_name", ["RateLimitError", "APITimeoutError"])
+def test_gpt_ask_degrades_on_api_failures(exc_name):
+    """Quota exhaustion and timeouts return the fallback string, not raise."""
+    import openai
+    from unittest.mock import Mock
+
+    from app.agent.gpt_agent_service import GPTAgentService
+
+    service = GPTAgentService(api_key="sk-test-not-real")
+
+    exc_cls = getattr(openai, exc_name)
+    try:
+        # Newer SDKs require response/body kwargs; fall back per signature.
+        exc = exc_cls("boom", response=Mock(status_code=429, headers={}), body=None)
+    except TypeError:
+        try:
+            exc = exc_cls(request=Mock())
+        except TypeError:
+            exc = exc_cls("boom")
+
+    service.client = Mock()
+    service.client.chat.completions.create.side_effect = exc
+
+    result = service.ask([{"role": "user", "content": "hi"}])
+    assert "unavailable" in result.lower()
+
+
+def test_snapshot_rating_falls_back_on_invalid_gpt_response(monkeypatch):
+    """Non-JSON GPT output must yield the canned rating dict."""
+    from unittest.mock import Mock
+
+    from app.services.core.engine import ai_personal_finance_profiler as profiler
+
+    class _NoTemplates:
+        def __init__(self, db):
+            pass
+
+        def get(self, name):
+            return None
+
+    gpt = Mock()
+    gpt.ask.return_value = "Sorry, I'm currently unavailable."
+
+    monkeypatch.setattr(profiler, "AIAdviceTemplateService", _NoTemplates)
+    monkeypatch.setattr(profiler, "GPTAgentService", Mock(return_value=gpt))
+
+    rating = profiler.generate_financial_rating(
+        {"total_by_category": {}, "status_breakdown": {}, "behavior_tags": []},
+        db=None,
+    )
+    assert rating == {
+        "rating": "B",
+        "risk": "moderate",
+        "summary": "User spending is generally steady but occasionally exceeds the budget.",
+    }
+
+
 # ---------------------------------------------------------------------------
 # 4. POST /api/errors/report
 # ---------------------------------------------------------------------------
@@ -242,3 +320,59 @@ def test_error_report_caps_pathological_sizes(client):
         "/api/errors/report", json=_report_body(error="x" * 5000)
     )
     assert response.status_code == 422
+
+
+def test_error_report_rejects_oversized_body(client):
+    # 64KB+ body (content-length guard) — rejected before validation.
+    response = client.post(
+        "/api/errors/report",
+        json=_report_body(context={"blob": "y" * (70 * 1024)}),
+    )
+    assert response.status_code == 413
+
+
+def test_error_report_rejects_malformed_json(client):
+    response = client.post(
+        "/api/errors/report",
+        content=b'{"error": not-json',
+        headers={"Content-Type": "application/json"},
+    )
+    assert response.status_code == 422
+    assert "Traceback" not in response.text
+
+
+def test_error_report_redacts_secrets_from_logs(client, caplog):
+    jwt = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.c2lnbmF0dXJl"
+    body = _report_body(
+        error=f"401 with Authorization: Bearer {jwt} password=Hunter2!",
+        stackTrace=f"frame1 token {jwt}\nframe2 api_key=0123456789abcdef0123456789abcdef",
+        context={"authorization": f"Bearer {jwt}"},
+    )
+
+    with caplog.at_level("WARNING", logger="client_errors"):
+        response = client.post("/api/errors/report", json=body)
+
+    assert response.status_code == 202
+    logged = " ".join(r.getMessage() for r in caplog.records)
+    assert jwt not in logged
+    assert "Hunter2!" not in logged
+    assert "0123456789abcdef0123456789abcdef" not in logged
+    assert "[REDACTED_JWT]" in logged
+
+
+def test_error_report_log_is_single_line(client, caplog):
+    body = _report_body(
+        error="line1\nFAKE-LOG-RECORD [ERROR] injected\nline3"
+    )
+
+    with caplog.at_level("WARNING", logger="client_errors"):
+        response = client.post("/api/errors/report", json=body)
+
+    assert response.status_code == 202
+    report_records = [
+        r for r in caplog.records if "Mobile client error" in r.getMessage()
+    ]
+    assert len(report_records) == 1
+    # json.dumps escapes newlines, so the injected text cannot start a new
+    # log record.
+    assert "\n" not in report_records[0].getMessage()
