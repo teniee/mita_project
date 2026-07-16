@@ -43,8 +43,11 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
     // map unknown/missing server categories to 'Other'.
     final action = asString(widget.expense['action'], fallback: _actions.first);
     _action = _actions.contains(action) ? action : 'Other';
+    // Edit in LOCAL time — the stored date is a UTC instant; keeping it in
+    // UTC made the picker drift the timestamp by the device offset on each
+    // save (see add_transaction_screen).
     _selectedDate =
-        asDateTimeOrNull(widget.expense['date']) ?? DateTime.now();
+        (asDateTimeOrNull(widget.expense['date']) ?? DateTime.now()).toLocal();
   }
 
   Future<void> _submit() async {

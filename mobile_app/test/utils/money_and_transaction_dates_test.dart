@@ -101,6 +101,33 @@ void main() {
       }
     });
 
+    test(
+        'REGRESSION: repeated edits do not drift the instant '
+        '(load spentAt in local time)', () {
+      // The edit screen loads spentAt.toLocal() into _selectedDate, so the
+      // picker preserves the LOCAL wall-clock. Simulate 6 successive
+      // date-preserving edits and assert the UTC instant is stable.
+      final createdUtc = DateTime.utc(2026, 7, 15, 16, 29, 55);
+
+      // First edit: load as local, keep the same displayed day.
+      var selected = createdUtc.toLocal();
+      String? lastSerialized;
+
+      for (var i = 0; i < 6; i++) {
+        // Re-pick the SAME calendar day (picker returns local midnight).
+        final picked = DateTime(selected.year, selected.month, selected.day);
+        selected = preserveTimeOfDay(picked, selected);
+        // Serialize the way TransactionInput.toJson does.
+        lastSerialized = selected.toUtc().toIso8601String();
+        // Next edit loads the persisted value back as local.
+        selected = DateTime.parse(lastSerialized).toLocal();
+      }
+
+      // No drift: the wall-clock time (and thus the UTC instant) is stable.
+      expect(DateTime.parse(lastSerialized!).toUtc(), createdUtc,
+          reason: 'six edits must not move the timestamp');
+    });
+
     test('DST transition day serializes to the exact instant (Sofia)', () {
       // Europe/Sofia leaves DST on 2026-10-25: +03 before, +02 after.
       final beforeSwitch = DateTime(2026, 10, 24, 14, 28);

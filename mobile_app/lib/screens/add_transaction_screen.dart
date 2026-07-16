@@ -71,7 +71,11 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
     if (widget.transaction != null) {
       _selectedCategory = widget.transaction!.category;
-      _selectedDate = widget.transaction!.spentAt;
+      // spentAt is a UTC instant; edit in LOCAL time. Without toLocal() the
+      // date picker preserved the UTC hour as a local wall-clock hour, so
+      // toUtc() on save shifted the timestamp by the device offset on every
+      // edit — a progressive drift that eventually crossed the day boundary.
+      _selectedDate = widget.transaction!.spentAt.toLocal();
       _isRecurring = widget.transaction!.isRecurring;
     }
   }

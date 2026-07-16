@@ -964,7 +964,12 @@ class _MainScreenState extends State<MainScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Today Spent',
+                        // This value is monthly_spent (BudgetProvider.
+                        // totalSpent), and Remaining = income − monthly_spent,
+                        // so the label must say month — "Today Spent" was
+                        // wrong (it read $100 for a transaction dated two days
+                        // ago while the API's today-spent was $0).
+                        'Spent This Month',
                         style: TextStyle(
                           fontFamily: 'Manrope',
                           fontSize: 12,
