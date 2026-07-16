@@ -1,15 +1,41 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../config.dart' show AppConfig;
+import 'package:dio/dio.dart';
 import '../models/transaction_model.dart';
 import 'api_service.dart';
 import 'logging_service.dart';
 import '../utils/json_utils.dart';
 
 /// Transaction Service
-/// Handles all transaction-related API calls
+/// Handles all transaction-related API calls.
+///
+/// Every request goes through ApiService.authedDio, the interceptor-equipped
+/// Dio instance: it attaches the current access token on each request and, on
+/// a 401, transparently refreshes the token and replays the request once.
+/// This service previously used the raw `http` package with a manually
+/// fetched token, which bypassed that interceptor entirely — an expired
+/// access token then failed every create/edit/delete with "Unauthorized"
+/// and no refresh attempt (device-reproduced during the core journey).
 class TransactionService {
   final ApiService _apiService = ApiService();
+
+  Dio get _dio => _apiService.authedDio;
+
+  Never _mapError(DioException e, String action) {
+    final code = e.response?.statusCode;
+    if (code == 404) {
+      throw Exception('Transaction not found');
+    }
+    if (code == 401) {
+      // Reached only when refresh itself failed (rotation exhausted / refresh
+      // token expired) — a genuine re-login case, not a transient token expiry.
+      throw Exception('Unauthorized - please log in again');
+    }
+    if (code == 400) {
+      final error = asStringKeyedMap(e.response?.data);
+      throw Exception(
+          asString(error['detail'], fallback: 'Invalid transaction data'));
+    }
+    throw Exception('Failed to $action: ${code ?? e.message}');
+  }
 
   /// Get all transactions with optional filters
   Future<List<TransactionModel>> getTransactions({
@@ -20,22 +46,15 @@ class TransactionService {
     String? category,
   }) async {
     try {
-      final token = await _apiService.getToken();
-      if (token == null) {
-        throw Exception('Not authenticated');
-      }
-
-      // Build query parameters
-      final queryParams = <String, String>{
-        'skip': skip.toString(),
-        'limit': limit.toString(),
+      final queryParams = <String, dynamic>{
+        'skip': skip,
+        'limit': limit,
       };
-
       if (startDate != null) {
-        queryParams['start_date'] = startDate.toIso8601String();
+        queryParams['start_date'] = startDate.toUtc().toIso8601String();
       }
       if (endDate != null) {
-        queryParams['end_date'] = endDate.toIso8601String();
+        queryParams['end_date'] = endDate.toUtc().toIso8601String();
       }
       if (category != null && category.isNotEmpty) {
         queryParams['category'] = category;
@@ -44,47 +63,36 @@ class TransactionService {
       // Collection route is '/transactions/' — the slashless form triggers a
       // 307 redirect and some HTTP clients drop the Authorization header
       // across redirects (DEF-008).
-      final uri = Uri.parse('${AppConfig.fullApiUrl}/transactions/')
-          .replace(queryParameters: queryParams);
+      final response = await _dio.get<dynamic>(
+        '/transactions/',
+        queryParameters: queryParams,
+      );
 
-      final response = await http.get(
-        uri,
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-
-        // Handle different response formats
-        List<dynamic> transactionList;
-        if (data is Map && data.containsKey('data')) {
-          if (data['data'] is List) {
-            transactionList = data['data'] as List<dynamic>;
-          } else if (data['data'] is Map &&
-              asStringKeyedMap(data['data'])['transactions'] != null) {
-            transactionList =
-                asList(asStringKeyedMap(data['data'])['transactions']);
-          } else {
-            transactionList = [];
-          }
-        } else if (data is List) {
-          transactionList = data;
+      final data = response.data;
+      List<dynamic> transactionList;
+      if (data is Map && data.containsKey('data')) {
+        if (data['data'] is List) {
+          transactionList = data['data'] as List<dynamic>;
+        } else if (data['data'] is Map &&
+            asStringKeyedMap(data['data'])['transactions'] != null) {
+          transactionList =
+              asList(asStringKeyedMap(data['data'])['transactions']);
         } else {
           transactionList = [];
         }
-
-        return transactionList
-            .map((json) =>
-                TransactionModel.fromJson(json as Map<String, dynamic>))
-            .toList();
-      } else if (response.statusCode == 401) {
-        throw Exception('Unauthorized - please log in again');
+      } else if (data is List) {
+        transactionList = data;
       } else {
-        throw Exception('Failed to load transactions: ${response.statusCode}');
+        transactionList = [];
       }
+
+      return transactionList
+          .map((json) => TransactionModel.fromJson(
+              Map<String, dynamic>.from(json as Map)))
+          .toList();
+    } on DioException catch (e) {
+      logError('Error loading transactions: ${e.message}');
+      _mapError(e, 'load transactions');
     } catch (e) {
       logError('Error loading transactions: $e');
       rethrow;
@@ -94,35 +102,16 @@ class TransactionService {
   /// Get a single transaction by ID
   Future<TransactionModel> getTransaction(String transactionId) async {
     try {
-      final token = await _apiService.getToken();
-      if (token == null) {
-        throw Exception('Not authenticated');
-      }
-
-      final response = await http.get(
-        Uri.parse('${AppConfig.fullApiUrl}/transactions/$transactionId'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-
-        // Handle wrapped response
-        final transactionData =
-            data is Map && data.containsKey('data') ? data['data'] : data;
-
-        return TransactionModel.fromJson(
-            transactionData as Map<String, dynamic>);
-      } else if (response.statusCode == 404) {
-        throw Exception('Transaction not found');
-      } else if (response.statusCode == 401) {
-        throw Exception('Unauthorized - please log in again');
-      } else {
-        throw Exception('Failed to load transaction: ${response.statusCode}');
-      }
+      final response =
+          await _dio.get<dynamic>('/transactions/$transactionId');
+      final data = response.data;
+      final transactionData =
+          data is Map && data.containsKey('data') ? data['data'] : data;
+      return TransactionModel.fromJson(
+          Map<String, dynamic>.from(transactionData as Map));
+    } on DioException catch (e) {
+      logError('Error loading transaction: ${e.message}');
+      _mapError(e, 'load transaction');
     } catch (e) {
       logError('Error loading transaction: $e');
       rethrow;
@@ -132,41 +121,19 @@ class TransactionService {
   /// Create a new transaction
   Future<TransactionModel> createTransaction(TransactionInput input) async {
     try {
-      final token = await _apiService.getToken();
-      if (token == null) {
-        throw Exception('Not authenticated');
-      }
-
-      final response = await http
-          .post(
-            // Trailing slash required — see DEF-008 note in getTransactions.
-            Uri.parse('${AppConfig.fullApiUrl}/transactions/'),
-            headers: {
-              'Authorization': 'Bearer $token',
-              'Content-Type': 'application/json',
-            },
-            body: json.encode(input.toJson()),
-          )
-          .timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = json.decode(response.body);
-
-        // Handle wrapped response
-        final transactionData =
-            data is Map && data.containsKey('data') ? data['data'] : data;
-
-        return TransactionModel.fromJson(
-            transactionData as Map<String, dynamic>);
-      } else if (response.statusCode == 401) {
-        throw Exception('Unauthorized - please log in again');
-      } else if (response.statusCode == 400) {
-        final error = asStringKeyedMap(json.decode(response.body));
-        throw Exception(
-            asString(error['detail'], fallback: 'Invalid transaction data'));
-      } else {
-        throw Exception('Failed to create transaction: ${response.statusCode}');
-      }
+      final response = await _dio.post<dynamic>(
+        // Trailing slash required — see DEF-008 note in getTransactions.
+        '/transactions/',
+        data: input.toJson(),
+      );
+      final data = response.data;
+      final transactionData =
+          data is Map && data.containsKey('data') ? data['data'] : data;
+      return TransactionModel.fromJson(
+          Map<String, dynamic>.from(transactionData as Map));
+    } on DioException catch (e) {
+      logError('Error creating transaction: ${e.message}');
+      _mapError(e, 'create transaction');
     } catch (e) {
       logError('Error creating transaction: $e');
       rethrow;
@@ -179,42 +146,18 @@ class TransactionService {
     TransactionInput input,
   ) async {
     try {
-      final token = await _apiService.getToken();
-      if (token == null) {
-        throw Exception('Not authenticated');
-      }
-
-      final response = await http
-          .put(
-            Uri.parse('${AppConfig.fullApiUrl}/transactions/$transactionId'),
-            headers: {
-              'Authorization': 'Bearer $token',
-              'Content-Type': 'application/json',
-            },
-            body: json.encode(input.toJson()),
-          )
-          .timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-
-        // Handle wrapped response
-        final transactionData =
-            data is Map && data.containsKey('data') ? data['data'] : data;
-
-        return TransactionModel.fromJson(
-            transactionData as Map<String, dynamic>);
-      } else if (response.statusCode == 404) {
-        throw Exception('Transaction not found');
-      } else if (response.statusCode == 401) {
-        throw Exception('Unauthorized - please log in again');
-      } else if (response.statusCode == 400) {
-        final error = asStringKeyedMap(json.decode(response.body));
-        throw Exception(
-            asString(error['detail'], fallback: 'Invalid transaction data'));
-      } else {
-        throw Exception('Failed to update transaction: ${response.statusCode}');
-      }
+      final response = await _dio.put<dynamic>(
+        '/transactions/$transactionId',
+        data: input.toJson(),
+      );
+      final data = response.data;
+      final transactionData =
+          data is Map && data.containsKey('data') ? data['data'] : data;
+      return TransactionModel.fromJson(
+          Map<String, dynamic>.from(transactionData as Map));
+    } on DioException catch (e) {
+      logError('Error updating transaction: ${e.message}');
+      _mapError(e, 'update transaction');
     } catch (e) {
       logError('Error updating transaction: $e');
       rethrow;
@@ -224,28 +167,11 @@ class TransactionService {
   /// Delete a transaction
   Future<bool> deleteTransaction(String transactionId) async {
     try {
-      final token = await _apiService.getToken();
-      if (token == null) {
-        throw Exception('Not authenticated');
-      }
-
-      final response = await http.delete(
-        Uri.parse('${AppConfig.fullApiUrl}/transactions/$transactionId'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        return true;
-      } else if (response.statusCode == 404) {
-        throw Exception('Transaction not found');
-      } else if (response.statusCode == 401) {
-        throw Exception('Unauthorized - please log in again');
-      } else {
-        throw Exception('Failed to delete transaction: ${response.statusCode}');
-      }
+      await _dio.delete<dynamic>('/transactions/$transactionId');
+      return true;
+    } on DioException catch (e) {
+      logError('Error deleting transaction: ${e.message}');
+      _mapError(e, 'delete transaction');
     } catch (e) {
       logError('Error deleting transaction: $e');
       rethrow;
@@ -282,7 +208,7 @@ class TransactionService {
     );
   }
 
-  /// Get recent transactions (last N days)
+  /// Get recent transactions (last [days] days)
   Future<List<TransactionModel>> getRecentTransactions({
     int days = 7,
     int limit = 50,
@@ -302,10 +228,7 @@ class TransactionService {
     String category, {
     int limit = 100,
   }) async {
-    return getTransactions(
-      category: category,
-      limit: limit,
-    );
+    return getTransactions(category: category, limit: limit);
   }
 
   /// Calculate total spending for a date range
@@ -327,7 +250,7 @@ class TransactionService {
     );
   }
 
-  /// Get spending by category
+  /// Get spending totals grouped by category
   Future<Map<String, double>> getSpendingByCategory({
     DateTime? startDate,
     DateTime? endDate,
@@ -339,12 +262,10 @@ class TransactionService {
     );
 
     final categoryTotals = <String, double>{};
-
     for (final transaction in transactions) {
       categoryTotals[transaction.category] =
           (categoryTotals[transaction.category] ?? 0.0) + transaction.amount;
     }
-
     return categoryTotals;
   }
 }

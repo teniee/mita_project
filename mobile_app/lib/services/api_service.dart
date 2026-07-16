@@ -272,6 +272,14 @@ class ApiService {
 
   String get baseUrl => _dio.options.baseUrl;
 
+  /// The interceptor-equipped Dio (adds the auth header on each request and
+  /// performs the 401 refresh-and-retry). Services that make authenticated
+  /// calls MUST use this rather than the raw `http` package — otherwise they
+  /// silently miss automatic token refresh (TransactionService used to,
+  /// so an expired access token failed every transaction edit/delete with
+  /// "Unauthorized" instead of transparently refreshing).
+  Dio get authedDio => _dio;
+
   /// Initialize secure storage asynchronously
   Future<void> _initializeSecureStorage() async {
     try {
@@ -506,7 +514,27 @@ class ApiService {
     logDebug('Active session cleared', tag: 'API_AUTH');
   }
 
-  Future<bool> _refreshTokens() async {
+  // Single-flight guard: concurrent 401s (dashboard fires ~10 requests at
+  // once) must trigger ONE refresh, not N. With refresh-token rotation the
+  // first refresh invalidates the token, so a racing second refresh would
+  // 401 and wrongly log the user out. All callers await the same future.
+  Future<bool>? _refreshInFlight;
+
+  Future<bool> _refreshTokens() {
+    final inFlight = _refreshInFlight;
+    if (inFlight != null) {
+      logDebug('Token refresh already in flight — joining it',
+          tag: 'TOKEN_REFRESH');
+      return inFlight;
+    }
+    final future = _doRefreshTokens();
+    _refreshInFlight = future.whenComplete(() {
+      _refreshInFlight = null;
+    });
+    return future;
+  }
+
+  Future<bool> _doRefreshTokens() async {
     final refresh = await getRefreshToken();
     if (refresh == null) {
       logWarning('No refresh token available', tag: 'TOKEN_REFRESH');
