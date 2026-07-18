@@ -22,12 +22,27 @@ import 'package:mita/models/transaction_model.dart';
 import 'package:mita/services/api_service.dart';
 import 'package:mita/services/transaction_service.dart';
 
+// Live-backend gate: this test creates a throwaway account against
+// production, so it is OFF unless explicitly enabled. `flutter test` (CI)
+// only runs test/ and never reaches integration_test/, but even a manual
+// `flutter test integration_test/` skips this without the flag:
+//
+//   flutter test integration_test/auth_refresh_on_device_test.dart \
+//     -d <device> --dart-define=RUN_LIVE_E2E=true \
+//     --dart-define=E2E_TEST_PASSWORD=<throwaway-password>
+const _runLiveE2E =
+    bool.fromEnvironment('RUN_LIVE_E2E', defaultValue: false);
+// Never a committed credential — the account is synthesized per run; the
+// password comes from the environment with a per-run random fallback.
+const _passwordFromEnv = String.fromEnvironment('E2E_TEST_PASSWORD');
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   var backendReachable = false;
 
   setUpAll(() async {
+    if (!_runLiveE2E) return;
     try {
       final r = await Dio(BaseOptions(
         connectTimeout: const Duration(seconds: 8),
@@ -43,6 +58,10 @@ void main() {
   testWidgets(
       'expired access token is refreshed and the transaction update replays '
       'transparently (no restart, no duplicate)', (tester) async {
+    if (!_runLiveE2E) {
+      markTestSkipped('Live E2E disabled (pass --dart-define=RUN_LIVE_E2E=true)');
+      return;
+    }
     if (!backendReachable) {
       markTestSkipped('Backend not reachable at ${AppConfig.baseUrl}');
       return;
@@ -50,9 +69,13 @@ void main() {
 
     final api = ApiService();
     final txns = TransactionService();
+    final rng = Random();
     final email =
-        'authrefresh_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(9999)}@example.com';
-    const password = 'Str0ng!Refresh#2026';
+        'authrefresh_${DateTime.now().millisecondsSinceEpoch}_${rng.nextInt(9999)}@example.com';
+    // Env-provided, else a per-run random throwaway (nothing committed).
+    final password = _passwordFromEnv.isNotEmpty
+        ? _passwordFromEnv
+        : 'E2e!${rng.nextInt(1 << 32)}#${DateTime.now().millisecondsSinceEpoch}';
 
     // Register + login → valid access + refresh tokens on device.
     await api.registerWithDetails(email, password,
@@ -74,7 +97,7 @@ void main() {
       'spending_habits': {'dining_out_per_month': 8},
     });
 
-    // Baseline transaction (created with a valid token).
+    // ── Idempotency baseline (BEFORE the retry) ────────────────────────
     final created = await txns.createTransaction(TransactionInput(
       amount: 23.75,
       category: 'food',
@@ -82,6 +105,20 @@ void main() {
       spentAt: DateTime.now().toUtc(),
     ));
     expect(created.id, isNotEmpty);
+
+    final nowUtc0 = DateTime.now().toUtc();
+    final todayKey0 = nowUtc0.toIso8601String().substring(0, 10);
+    final listBefore = await txns.getTransactions(limit: 100);
+    final countBefore =
+        listBefore.where((t) => t.id == created.id).length;
+    final savedBefore =
+        await api.getSavedCalendar(year: nowUtc0.year, month: nowUtc0.month);
+    final foodSpentBefore = savedBefore!
+        .map((d) => Map<String, dynamic>.from(d as Map))
+        .firstWhere((d) => d['date'] == todayKey0)['planned_budget']['food']
+            ['spent'] as num;
+    expect(countBefore, 1);
+    expect(foodSpentBefore.toDouble(), 23.75);
 
     // ── Corrupt the ACCESS token, keep the VALID refresh token ──────────
     // The backend will 401 the next request; the interceptor must refresh
@@ -115,7 +152,11 @@ void main() {
     expect(matching.length, 1, reason: 'no duplicate transaction');
     expect(matching.first.amount, 100.00);
 
-    // Calendar accrual is 100 exactly (no double-count from a replay).
+    // ── Idempotency (AFTER the retry): every aggregate moved ONCE ───────
+    // transaction count: 1 before, 1 after (the replay did not insert a row).
+    expect(matching.length, countBefore,
+        reason: 'transaction row count unchanged by the replay');
+
     final nowUtc = DateTime.now().toUtc();
     final saved = await api.getSavedCalendar(
         year: nowUtc.year, month: nowUtc.month);
@@ -123,10 +164,20 @@ void main() {
     final today = saved!
         .map((d) => Map<String, dynamic>.from(d as Map))
         .firstWhere((d) => d['date'] == todayKey);
+    // DailyPlan day spent AND the food category aggregate are 100 exactly —
+    // 23.75 (before) updated to 100.00, not 123.75 (a double-count) and not
+    // 200.00 (two accruals).
     expect((today['spent'] as num).toDouble(), 100.00,
-        reason: 'single accrual — the replay did not double-count');
+        reason: 'single day accrual — the replay did not double-count');
+    expect(
+        (today['planned_budget']['food']['spent'] as num).toDouble(), 100.00,
+        reason: 'single category accrual — no double-count');
 
-    // Cleanup.
-    await txns.deleteTransaction(created.id);
+    // Cleanup: delete the transaction; the throwaway account is left inert.
+    final deleted = await txns.deleteTransaction(created.id);
+    expect(deleted, isTrue);
+    final afterDelete = await txns.getTransactions(limit: 100);
+    expect(afterDelete.any((t) => t.id == created.id), isFalse,
+        reason: 'created data removed');
   }, timeout: const Timeout(Duration(minutes: 5)));
 }

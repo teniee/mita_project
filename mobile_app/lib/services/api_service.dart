@@ -118,30 +118,55 @@ class ApiService {
 
           // Handle auth refresh / errors with grace period
           if (e.response?.statusCode == 401) {
-            // CRITICAL FIX: Prevent infinite refresh loop
-            // Don't try to refresh if the failing request IS the refresh request
             final path = e.requestOptions.path;
-            final isRefreshRequest = path.contains('/refresh-token') ||
-                path.endsWith('/refresh-token') ||
-                path.contains('refresh_token');
+            // Never refresh on the auth endpoints themselves — a 401 from
+            // login/register/refresh/logout is the real answer, and
+            // refreshing on the refresh request would recurse.
+            final isAuthEndpoint = path.contains('refresh-token') ||
+                path.contains('refresh_token') ||
+                path.endsWith('/login') ||
+                path.endsWith('/register') ||
+                path.endsWith('/logout');
 
-            if (isRefreshRequest) {
-              // Refresh token itself failed - cannot retry, just log and fail
+            // Retry-once guard: the replayed request re-enters this
+            // interceptor (via _dio.fetch below). If it 401s AGAIN we must
+            // NOT refresh a second time — otherwise a genuinely forbidden
+            // resource (or a token the server keeps rejecting) would loop
+            // refresh→replay→401→refresh forever.
+            final alreadyRetried =
+                e.requestOptions.extra['__auth_retried'] == true;
+
+            if (isAuthEndpoint) {
               logError(
-                  'Refresh token request failed with 401 - token is invalid/expired',
+                  'Auth endpoint returned 401 ($path) - not refreshing',
                   tag: 'TOKEN_REFRESH');
-              return handler.next(e); // Pass through to error handling
+              return handler.next(e);
+            }
+            if (alreadyRetried) {
+              logWarning(
+                  'Request 401 again after a refresh+retry ($path) - giving up',
+                  tag: 'TOKEN_REFRESH');
+              return handler.next(e);
             }
 
             final refreshed = await _refreshTokens();
             if (refreshed) {
               final req = e.requestOptions;
+              req.extra['__auth_retried'] = true;
               final token = await getToken();
               if (token != null) {
                 req.headers['Authorization'] = 'Bearer $token';
               }
-              final clone = await _dio.fetch<dynamic>(req);
-              return handler.resolve(clone);
+              try {
+                final clone = await _dio.fetch<dynamic>(req);
+                return handler.resolve(clone);
+              } on DioException catch (retryError) {
+                // The replay failed (e.g. 401 again on a forbidden resource,
+                // caught by the retry-once guard above). Surface it to the
+                // caller cleanly instead of throwing an unhandled async
+                // error out of the interceptor.
+                return handler.next(retryError);
+              }
             } else {
               // НЕ показываем сразу диалог - может быть временная проблема
               // Особенно на главном экране где много одновременных API вызовов

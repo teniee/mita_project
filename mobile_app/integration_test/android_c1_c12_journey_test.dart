@@ -30,12 +30,18 @@ import 'package:mita/models/transaction_model.dart';
 import 'package:mita/services/api_service.dart';
 import 'package:mita/services/transaction_service.dart';
 
+// Live-backend gate (off unless explicitly enabled) — see
+// auth_refresh_on_device_test.dart. `flutter test` (CI) only runs test/.
+const _runLiveE2E = bool.fromEnvironment('RUN_LIVE_E2E', defaultValue: false);
+const _passwordFromEnv = String.fromEnvironment('E2E_TEST_PASSWORD');
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   var backendReachable = false;
 
   setUpAll(() async {
+    if (!_runLiveE2E) return;
     try {
       final r = await Dio(BaseOptions(
         connectTimeout: const Duration(seconds: 8),
@@ -50,6 +56,10 @@ void main() {
 
   testWidgets('Android C1–C12 core mobile journey (live backend)',
       (tester) async {
+    if (!_runLiveE2E) {
+      markTestSkipped('Live E2E disabled (pass --dart-define=RUN_LIVE_E2E=true)');
+      return;
+    }
     if (!backendReachable) {
       markTestSkipped('Backend not reachable at ${AppConfig.baseUrl}');
       return;
@@ -57,9 +67,12 @@ void main() {
 
     final api = ApiService();
     final txns = TransactionService();
+    final rng = Random();
     final email =
-        'c1c12_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(9999)}@example.com';
-    const password = 'Str0ng!Journey#2026';
+        'c1c12_${DateTime.now().millisecondsSinceEpoch}_${rng.nextInt(9999)}@example.com';
+    final password = _passwordFromEnv.isNotEmpty
+        ? _passwordFromEnv
+        : 'E2e!${rng.nextInt(1 << 32)}#${DateTime.now().millisecondsSinceEpoch}';
 
     // ── C1: register ────────────────────────────────────────────────────
     final reg = await api.registerWithDetails(
