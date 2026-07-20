@@ -665,15 +665,22 @@ async def get_live_budget_status(
     """Get real-time budget status"""
     from app.core.date_utils import day_to_range
     from app.db.models import Transaction
+    from app.services.core.engine.expense_tracker import (
+        local_day_of,
+        local_day_utc_window,
+    )
 
     now = datetime.now(timezone.utc)
+    # "Today" is the USER's calendar day, not the UTC date — at 01:00 in
+    # Sofia the UTC date is still yesterday and every daily figure was off.
+    today_local = local_day_of(now, user.timezone)
 
     # Get today's plan rows. There is one DailyPlan row PER CATEGORY per day,
     # so scalar_one_or_none() raised MultipleResultsFound -> 500 on every
     # onboarded user. Aggregate across categories over the full day range
     # (DailyPlan.date is timestamptz; an equality against a date misses rows
     # stored at non-midnight times).
-    day_start, day_end = day_to_range(now.date())
+    day_start, day_end = day_to_range(today_local)
     result = await db.execute(
         select(
             func.coalesce(func.sum(DailyPlan.daily_budget), 0),
@@ -706,8 +713,12 @@ async def get_live_budget_status(
     else:
         day_status = "neutral"
 
-    # Calculate monthly spending from transactions (exclude soft-deleted)
-    month_start = datetime(now.year, now.month, 1)
+    # Calculate monthly spending from transactions (exclude soft-deleted).
+    # Month boundary follows the user's local calendar month, expressed as
+    # the UTC instant that local month began.
+    month_start, _ = local_day_utc_window(
+        today_local.replace(day=1), user.timezone
+    )
     result = await db.execute(
         select(func.coalesce(func.sum(Transaction.amount), 0)).where(
             Transaction.user_id == user.id,
@@ -718,13 +729,13 @@ async def get_live_budget_status(
     monthly_spent = Decimal(result.scalar() or 0)
     monthly_budget = float(user.monthly_income) if user.monthly_income else 0.0
     on_track = (
-        float(monthly_spent) <= (monthly_budget * (now.day / 30.0))
+        float(monthly_spent) <= (monthly_budget * (today_local.day / 30.0))
         if monthly_budget > 0
         else True
     )
 
     status_data = {
-        "date": now.date().isoformat(),
+        "date": today_local.isoformat(),
         "daily_budget": daily_budget_val,
         "spent_today": spent_today_val,
         "remaining_today": daily_budget_val - spent_today_val,

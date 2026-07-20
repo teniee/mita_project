@@ -108,6 +108,22 @@ def submit_onboarding(
             )
 
         user.monthly_income = monthly_income
+
+        # Persist the device timezone when provided — daily-plan bucketing and
+        # "today" computations are per-user-timezone, and accounts registered
+        # before the mobile app sent a timezone are stuck on "UTC".
+        if request.timezone:
+            try:
+                from zoneinfo import ZoneInfo
+
+                ZoneInfo(request.timezone)  # validate IANA name
+                user.timezone = request.timezone
+            except Exception:
+                logger.warning(
+                    f"Ignoring invalid timezone {request.timezone!r} "
+                    f"for user {user.id}"
+                )
+
         db.flush()
         logger.debug(f"Updated monthly_income for user {user.id}")
     except HTTPException:
@@ -150,10 +166,14 @@ def submit_onboarding(
 
     # Build calendar with error handling
     try:
-        # Get current year and month for calendar generation
-        now = datetime.now(timezone.utc)
-        current_year = now.year
-        current_month = now.month
+        # Current year/month in the USER's timezone — at 01:00 local on the
+        # 1st the UTC date is still last month and the whole calendar would
+        # be generated for the wrong month.
+        from app.services.core.engine.expense_tracker import local_day_of
+
+        today_local = local_day_of(datetime.now(timezone.utc), user.timezone)
+        current_year = today_local.year
+        current_month = today_local.month
 
         # Prepare calendar config by merging answers and budget_plan
         # Add top-level monthly_income for calendar engine compatibility

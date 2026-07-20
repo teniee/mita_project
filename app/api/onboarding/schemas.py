@@ -94,6 +94,11 @@ class OnboardingSubmitRequest(BaseModel):
     region: Optional[str] = Field(
         None, max_length=100, description="User's region (optional)"
     )
+    timezone: Optional[str] = Field(
+        None,
+        max_length=50,
+        description="IANA timezone of the user's device (optional)",
+    )
     meta: Optional[Dict] = Field(
         None,
         description="Additional metadata from mobile app (optional)",

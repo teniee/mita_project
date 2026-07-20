@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.db.models import Transaction, User
 from app.services.core.engine.expense_tracker import (
     apply_transaction_to_plan,
+    local_day_of,
     recalculate_plan_spent,
 )
 from app.services.notification_integration import get_notification_integration
@@ -224,7 +225,8 @@ def update_transaction(
 
     # Capture the pre-edit accrual key so the old (day, category) plan can be
     # recomputed after the edit (an edit may move spend across days/categories).
-    old_day = txn.spent_at.date()
+    # Day keys are the user's LOCAL calendar days, not UTC dates.
+    old_day = local_day_of(txn.spent_at, user.timezone)
     old_category = txn.category
 
     # Update fields that are provided
@@ -275,11 +277,13 @@ def update_transaction(
     # double-count the edited amount; recalculate is idempotent and also
     # clears the old (day, category) bucket when the edit moved the spend.
     try:
-        new_day = txn.spent_at.date()
+        new_day = local_day_of(txn.spent_at, user.timezone)
         new_category = txn.category
-        recalculate_plan_spent(db, user.id, old_day, old_category)
+        recalculate_plan_spent(db, user.id, old_day, old_category, tz=user.timezone)
         if (new_day, new_category) != (old_day, old_category):
-            recalculate_plan_spent(db, user.id, new_day, new_category)
+            recalculate_plan_spent(
+                db, user.id, new_day, new_category, tz=user.timezone
+            )
     except Exception as e:
         from app.core.logging_config import get_logger
 
@@ -320,7 +324,13 @@ def delete_transaction(user: User, transaction_id: UUID, db: Session) -> bool:
     # remaining non-deleted transactions so spent/remaining return to the
     # pre-transaction values (INV-14).
     try:
-        recalculate_plan_spent(db, user.id, txn.spent_at.date(), txn.category)
+        recalculate_plan_spent(
+            db,
+            user.id,
+            local_day_of(txn.spent_at, user.timezone),
+            txn.category,
+            tz=user.timezone,
+        )
     except Exception as e:
         from app.core.logging_config import get_logger
 

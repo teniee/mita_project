@@ -6,6 +6,7 @@ import '../providers/user_provider.dart';
 import '../services/api_service.dart';
 import '../services/onboarding_state.dart';
 import '../services/logging_service.dart';
+import '../utils/device_timezone.dart';
 
 class OnboardingFinishScreen extends StatefulWidget {
   const OnboardingFinishScreen({super.key});
@@ -135,9 +136,15 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
             "transport_per_month": 20,
           };
 
+      // Real device timezone so the backend persists it and buckets
+      // DailyPlan/calendar days by the user's local date (was stuck on UTC
+      // for anyone who registered before we sent a zone).
+      final timezone = await deviceTimezone();
+
       // Format data to match backend expectations
       final onboardingData = {
         "region": state.countryCode ?? "US",
+        "timezone": timezone,
         "income": {
           "monthly_income": state.income ?? 0,
           "additional_income": 0,

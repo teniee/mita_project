@@ -1,21 +1,63 @@
 import logging
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
+from typing import Optional, Tuple
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.date_utils import day_to_range
-from app.db.models import DailyPlan, Transaction
+from app.db.models import DailyPlan, Transaction, User
 from app.services.core.engine.calendar_updater import update_day_status
 from app.services.core.engine.realtime_rebalancer import check_and_rebalance
 
 logger = logging.getLogger(__name__)
 
 
+def _safe_zone(tz: Optional[str]) -> ZoneInfo:
+    try:
+        return ZoneInfo(tz or "UTC")
+    except Exception:
+        return ZoneInfo("UTC")
+
+
+def user_timezone_of(db: Session, user_id: UUID) -> str:
+    tz = db.query(User.timezone).filter(User.id == user_id).scalar()
+    return tz or "UTC"
+
+
+def local_day_of(spent_at: datetime, tz: Optional[str]) -> date:
+    """Calendar day of a stored (UTC) transaction instant in the user's
+    timezone — the day the user experienced the spend on."""
+    if spent_at.tzinfo is None:
+        spent_at = spent_at.replace(tzinfo=timezone.utc)
+    return spent_at.astimezone(_safe_zone(tz)).date()
+
+
+def local_day_utc_window(day: date, tz: Optional[str]) -> Tuple[datetime, datetime]:
+    """UTC instant range [start, end) covering the user's local calendar day.
+
+    Returned as naive datetimes meaning UTC — matching how spent_at is
+    stored/compared across the codebase (and SQLite test databases, which
+    cannot compare aware against stored-naive values).
+    """
+    zone = _safe_zone(tz)
+    start = datetime.combine(day, time.min, tzinfo=zone)
+    end = start + timedelta(days=1)
+    return (
+        start.astimezone(timezone.utc).replace(tzinfo=None),
+        end.astimezone(timezone.utc).replace(tzinfo=None),
+    )
+
+
 def recalculate_plan_spent(
-    db: Session, user_id: UUID, day: date, category: str
+    db: Session,
+    user_id: UUID,
+    day: date,
+    category: str,
+    tz: Optional[str] = None,
 ) -> None:
     """Recompute DailyPlan.spent_amount for (user, day, category) from the
     non-deleted transaction ledger.
@@ -23,16 +65,22 @@ def recalculate_plan_spent(
     Idempotent by construction — used after transaction edits and deletes so
     the accrual cannot drift (the additive apply_transaction_to_plan path
     would double-count an edit and never reverse a delete).
+
+    `day` is the user's LOCAL calendar day; the ledger window is the UTC
+    range of that local day (a Sofia day spans 21:00Z–21:00Z, not 00:00Z).
     """
+    if tz is None:
+        tz = user_timezone_of(db, user_id)
     day_start, day_end = day_to_range(day)
+    txn_start, txn_end = local_day_utc_window(day, tz)
     total = (
         db.query(func.coalesce(func.sum(Transaction.amount), 0))
         .filter(
             Transaction.user_id == user_id,
             Transaction.deleted_at.is_(None),
             Transaction.category == category,
-            Transaction.spent_at >= day_start,
-            Transaction.spent_at <= day_end,
+            Transaction.spent_at >= txn_start,
+            Transaction.spent_at < txn_end,
         )
         .scalar()
     )
@@ -81,8 +129,13 @@ def recalculate_plan_spent(
 
 
 def apply_transaction_to_plan(db: Session, txn: Transaction) -> None:
-    """Apply an already saved transaction to the DailyPlan table."""
-    txn_day = txn.spent_at.date()
+    """Apply an already saved transaction to the DailyPlan table.
+
+    The plan day is the user's LOCAL calendar day of the spend — a txn at
+    02:00 Sofia (23:00Z previous day) belongs to the Sofia date the user
+    picked, not the UTC date.
+    """
+    txn_day = local_day_of(txn.spent_at, user_timezone_of(db, txn.user_id))
 
     day_start, day_end = day_to_range(txn_day)
     plan = (

@@ -60,6 +60,7 @@ dependencies:
   geocoding: ^2.1.0                   # FIXED: Use stable version
   
   # Device Information
+  flutter_timezone: ^4.1.1            # Device IANA timezone (e.g. Europe/Sofia)
   device_info_plus: ^11.0.0           # UPDATED: Latest device information
   package_info_plus: ^8.1.0           # UPDATED: Latest app package info
   url_launcher: ^6.3.2                # UPDATED: Latest URL launching

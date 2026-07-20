@@ -1,4 +1,5 @@
 import '../utils/json_utils.dart';
+import '../utils/device_timezone.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -776,9 +777,13 @@ class ApiService {
     return await login(email, password);
   }
 
-  // RELIABLE REGISTER: Use standard FastAPI endpoint (backend now stable)
-  Future<Response<dynamic>> reliableRegister(String email, String password) async {
-    return await registerWithDetails(email, password);
+  // RELIABLE REGISTER: Use standard FastAPI endpoint (backend now stable).
+  // Sends the real device timezone so DailyPlan/calendar bucketing and
+  // "today" are correct from the first request (was hard-coded UTC).
+  Future<Response<dynamic>> reliableRegister(String email, String password,
+      {String? timezone}) async {
+    final tz = timezone ?? await deviceTimezone();
+    return await registerWithDetails(email, password, timezone: tz);
   }
 
   // Add the missing emergencyRegister method that was being called
