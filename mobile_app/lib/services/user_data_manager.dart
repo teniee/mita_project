@@ -116,8 +116,17 @@ class UserDataManager {
       logError('Failed to update profile on backend: $e',
           tag: 'USER_DATA_MANAGER');
 
-      // Keep local changes even if backend fails
-      logWarning('Profile updated locally only - will sync later',
+      // The optimistic write above is NOT confirmed server truth. Invalidate
+      // freshness (memory + persisted timestamp) so it can't masquerade as a
+      // fresh profile: the next getUserProfile() must re-fetch and replace it
+      // with server truth rather than short-circuit on the 2h TTL. Keeping the
+      // local edit for display is fine; treating it as authoritative is not.
+      _lastRefresh = null;
+      try {
+        await _secureStorage.delete(key: 'cache_timestamp');
+      } catch (_) {}
+      logWarning(
+          'Profile updated locally only - marked stale for server re-sync',
           tag: 'USER_DATA_MANAGER');
       return false;
     }
@@ -343,6 +352,17 @@ class UserDataManager {
     return DateTime.now().difference(_lastRefresh!) < _cacheExpiry;
   }
 
+  /// A cached profile is only usable if it isn't the synthetic placeholder
+  /// produced by [_getDefaultUserProfile] (or empty). Persisting/serving that
+  /// placeholder poisoned the dashboard with a fake "MITA User" / income 0
+  /// state that survived restarts.
+  @visibleForTesting
+  static bool isUsableCachedProfile(Map<String, dynamic> profile) {
+    if (profile.isEmpty) return false;
+    if (profile['email'] == 'user@mita.finance') return false;
+    return true;
+  }
+
   Future<void> _loadCachedData() async {
     try {
       final profileData = await _secureStorage.read(key: 'cached_user_profile');
@@ -351,7 +371,18 @@ class UserDataManager {
       final timestampData = await _secureStorage.read(key: 'cache_timestamp');
 
       if (profileData != null) {
-        _cachedUserProfile = jsonDecode(profileData) as Map<String, dynamic>;
+        final decoded = jsonDecode(profileData) as Map<String, dynamic>;
+        if (isUsableCachedProfile(decoded)) {
+          _cachedUserProfile = decoded;
+        } else {
+          // A synthetic/placeholder profile must never survive a restart as if
+          // it were real — clear it so the app re-fetches server truth.
+          logWarning(
+              'Discarding invalid cached profile on load (placeholder/empty)',
+              tag: 'USER_DATA_MANAGER');
+          await _secureStorage.delete(key: 'cached_user_profile');
+          await _secureStorage.delete(key: 'cache_timestamp');
+        }
       }
 
       if (onboardingData != null) {
