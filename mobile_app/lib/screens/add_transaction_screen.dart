@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_typography.dart';
@@ -150,6 +152,12 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       if (!mounted) return;
 
       if (result != null) {
+        // The ledger changed — refresh budget data ALWAYS, not only on a
+        // rebalance (the dashboard kept pre-mutation numbers otherwise).
+        unawaited(context
+            .read<BudgetProvider>()
+            .onTransactionCreated(rebalanced: result.rebalanced == true));
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(widget.transaction == null
@@ -173,8 +181,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
               duration: const Duration(seconds: 4),
             ),
           );
-          // Refresh redistribution history in BudgetProvider
-          context.read<BudgetProvider>().onTransactionCreated(rebalanced: true);
+          // (ledger refresh already triggered above with rebalanced: true)
         }
 
         Navigator.pop(context, true);

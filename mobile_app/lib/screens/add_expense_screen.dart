@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../utils/json_utils.dart';
 import '../theme/app_colors.dart';
@@ -453,6 +455,16 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
           await transactionProvider.createTransaction(transactionInput);
 
       if (transaction != null) {
+        // The ledger changed: DailyPlan.spent, live status and the merged
+        // calendar are stale. Refresh ALWAYS — gating this behind
+        // `rebalanced` left the dashboard showing pre-create numbers
+        // until restart (device-reproduced on the Phase-2 journey).
+        if (mounted) {
+          unawaited(context
+              .read<BudgetProvider>()
+              .onTransactionCreated(rebalanced: transaction.rebalanced == true));
+        }
+
         // Show success feedback with animation
         await _showSuccessFeedback();
 
@@ -472,8 +484,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
               duration: const Duration(seconds: 4),
             ),
           );
-          // Refresh redistribution history in BudgetProvider
-          context.read<BudgetProvider>().onTransactionCreated(rebalanced: true);
+          // (ledger refresh already triggered above with rebalanced: true)
         }
 
         logInfo('Expense submitted via TransactionProvider successfully',
