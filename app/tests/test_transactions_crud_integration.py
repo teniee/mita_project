@@ -135,6 +135,20 @@ def _dashboard_numbers(client):
 class TestTransactionCrudAsyncWiring:
     """DEF-001: every CRUD verb must survive the real AsyncSession DI."""
 
+    def test_create_without_description_is_201(self, as_user_a, db_session, user_a):
+        """Description is optional (TxnIn, DB column, mobile form) — the
+        create route 422'd on it (device-reproduced: every description-less
+        add-expense failed with VALIDATION_2001)."""
+        resp = as_user_a.post(
+            "/api/transactions/",
+            json={
+                "amount": 5.00,
+                "category": "food",
+                "spent_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+        assert resp.status_code in (200, 201), resp.text
+
     def test_full_crud_roundtrip(self, as_user_a, db_session, user_a):
         txn_id = _create_txn(as_user_a)
 

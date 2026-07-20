@@ -75,9 +75,11 @@ async def create_transaction_standardized(
     - Standardized error responses
     """
 
-    # Validate transaction data
+    # Validate transaction data. `description` is optional everywhere else
+    # (TxnIn schema, DB column nullable=True, mobile add-expense form) —
+    # requiring it here 422'd every description-less expense from the app.
     txn_dict = txn.model_dump()
-    validate_required_fields(txn_dict, ["amount", "category", "description"])
+    validate_required_fields(txn_dict, ["amount", "category"])
 
     # Validate amount
     if txn.amount <= 0:
