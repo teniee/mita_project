@@ -27,6 +27,9 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
   DateTime? _lastRetryTime;
   static const Duration _retryDelay = Duration(seconds: 5);
 
+  // Duplicate-submit guard: onboarding must not fire a second concurrent POST.
+  bool _isSubmitting = false;
+
   @override
   void initState() {
     super.initState();
@@ -86,6 +89,15 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
   }
 
   Future<void> _submitOnboardingData() async {
+    // Prevent duplicate submissions (double-tap Retry, re-entrant calls).
+    // The backend submit is idempotent server-side (has_onboarded guard), but
+    // a second in-flight POST would still append work and race the nav.
+    if (_isSubmitting) {
+      logWarning('Onboarding submit already in progress — ignoring re-entry',
+          tag: 'ONBOARDING_FINISH');
+      return;
+    }
+    _isSubmitting = true;
     try {
       // Gather answers from the temporary onboarding state
       final state = OnboardingState.instance;
@@ -205,57 +217,48 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
         // The interceptor will handle 401 errors if the token is actually expired
       }
 
-      // Cache onboarding data using UserProvider for centralized state management
       final userProvider = context.read<UserProvider>();
-      await userProvider.cacheOnboardingData(onboardingData);
-      logInfo('Onboarding data cached for immediate use',
-          tag: 'ONBOARDING_FINISH');
 
-      // CRITICAL DEBUG: Verify cache was actually saved
-      final cachedCheck = userProvider.hasCompletedOnboarding;
-      logInfo('CRITICAL DEBUG: Cache verification after save: $cachedCheck',
-          tag: 'ONBOARDING_FINISH');
-
-      // Try to submit to backend with proper error handling
+      // Submit to the backend FIRST. Onboarding is only "complete" once the
+      // server has persisted income + generated the calendar; a failed submit
+      // must block with a retryable error and NOT mark onboarding complete
+      // locally or navigate to a fake dashboard. (Previously we cached +
+      // marked complete BEFORE the POST and swallowed non-401 failures,
+      // stranding the user on a shell/fallback budget until re-login.)
       try {
         await _api.submitOnboarding(onboardingData);
         logInfo('Onboarding submitted to backend successfully',
             tag: 'ONBOARDING_FINISH');
-        // Replace the locally-transformed approximation with server truth —
-        // the cached pre-onboarding profile otherwise kept the dashboard on
-        // "Complete your profile" with an empty budget until re-login.
-        try {
-          await userProvider.refreshUserData();
-        } catch (refreshError) {
-          logWarning(
-              'Post-onboarding profile refresh failed (cached data remains): $refreshError',
-              tag: 'ONBOARDING_FINISH');
-        }
       } catch (e) {
-        logWarning(
-            'Backend submission failed (but continuing with cached data): $e',
-            tag: 'ONBOARDING_FINISH');
-
-        // Check if it's an authentication error
-        if (e.toString().contains('401') ||
-            e.toString().toLowerCase().contains('unauthorized')) {
-          // Try to refresh token and retry once
-          try {
-            final refreshed = await _api.refreshAccessToken();
-            if (refreshed != null) {
-              await _api.submitOnboarding(onboardingData);
-              logInfo('Onboarding submitted after token refresh',
-                  tag: 'ONBOARDING_FINISH');
-            } else {
-              throw Exception('Session expired. Please log in again.');
-            }
-          } catch (refreshError) {
-            logError('Token refresh failed during onboarding: $refreshError',
-                tag: 'ONBOARDING_FINISH');
+        final isAuthError = e.toString().contains('401') ||
+            e.toString().toLowerCase().contains('unauthorized');
+        if (isAuthError) {
+          // Refresh token and retry once.
+          final refreshed = await _api.refreshAccessToken();
+          if (refreshed == null) {
             throw Exception('Session expired. Please log in again.');
           }
+          await _api.submitOnboarding(onboardingData);
+          logInfo('Onboarding submitted after token refresh',
+              tag: 'ONBOARDING_FINISH');
+        } else {
+          // Transient/server error (e.g. 502) — surface a blocking, retryable
+          // error. Do not persist onboarding state or continue.
+          logError('Onboarding submission failed: $e',
+              tag: 'ONBOARDING_FINISH');
+          rethrow;
         }
-        // For other errors, continue with cached data - user can still use the app
+      }
+
+      // Backend accepted it — NOW mark onboarding complete locally (cache for
+      // offline) and replace the local approximation with server truth.
+      await userProvider.cacheOnboardingData(onboardingData);
+      try {
+        await userProvider.refreshUserData();
+      } catch (refreshError) {
+        logWarning(
+            'Post-onboarding profile refresh failed (cached data remains): $refreshError',
+            tag: 'ONBOARDING_FINISH');
       }
 
       if (!mounted) return;
@@ -301,6 +304,8 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
         _loading = false;
         _error = _getErrorMessage(e);
       });
+    } finally {
+      _isSubmitting = false;
     }
   }
 
@@ -313,10 +318,18 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
     } else if (errorMsg.contains('Missing essential')) {
       return "Please complete all onboarding steps before continuing.";
     } else if (errorMsg.contains('network') ||
-        errorMsg.contains('connection')) {
-      return "Network connection issue. Please check your internet and try again.";
+        errorMsg.contains('connection') ||
+        errorMsg.contains('SocketException') ||
+        errorMsg.contains('timeout')) {
+      return "Network connection issue. Please check your internet and tap Retry.";
+    } else if (errorMsg.contains('502') ||
+        errorMsg.contains('503') ||
+        errorMsg.contains('500') ||
+        errorMsg.toLowerCase().contains('server error') ||
+        errorMsg.contains('failed to respond')) {
+      return "The server didn't respond. Your setup wasn't saved — please tap Retry.";
     } else {
-      return "Unable to complete setup. Please try again or skip for now.";
+      return "Unable to complete setup. Please tap Retry to try again.";
     }
   }
 
