@@ -193,7 +193,9 @@ class _InsightsScreenState extends State<InsightsScreen>
     final Map<String, double> daily = {};
 
     for (final e in transactions) {
-      final date = e.spentAt;
+      // spentAt is UTC; bucket by the user's LOCAL calendar day so a
+      // near-midnight transaction lands on the day the user saw.
+      final date = e.spentAt.toLocal();
       if (date.month == now.month && date.year == now.year) {
         final day = DateFormat('yyyy-MM-dd').format(date);
         daily[day] = (daily[day] ?? 0) + e.amount;

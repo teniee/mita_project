@@ -948,7 +948,7 @@ class _MainScreenState extends State<MainScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                '\$${balance.toStringAsFixed(2)}',
+                '\$${formatMoney(balance)}',
                 style: const TextStyle(
                   fontFamily: 'Sora',
                   fontSize: 32,

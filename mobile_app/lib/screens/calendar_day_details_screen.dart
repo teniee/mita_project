@@ -1671,7 +1671,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
           'type': 'positive',
           'title': 'Great spending control!',
           'description':
-              'You have \$${remaining.toStringAsFixed(0)} remaining today. You\'re on track to stay under budget.',
+              'You have \$${formatMoney(remaining, decimals: 0)} remaining today. You\'re on track to stay under budget.',
           'action': 'Keep up the good work!',
         });
       } else if (remaining < widget.limit * 0.2) {
@@ -1679,7 +1679,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
           'type': 'warning',
           'title': 'Budget running low',
           'description':
-              'Only \$${remaining.toStringAsFixed(0)} left for today. Consider making fewer purchases.',
+              'Only \$${formatMoney(remaining, decimals: 0)} left for today. Consider making fewer purchases.',
           'action': 'Monitor remaining expenses carefully',
         });
       }

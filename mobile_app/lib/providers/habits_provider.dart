@@ -4,7 +4,10 @@ import '../services/logging_service.dart';
 
 /// Habit data model for better type safety and data management
 class Habit {
-  final int id;
+  // Backend habit ids are UUID strings; coercing through int.tryParse
+  // collapsed every id to 0 and broke edit/delete/complete (422 on
+  // /habits/0). Keep the id opaque.
+  final String id;
   final String title;
   final String description;
   final String targetFrequency;
@@ -28,11 +31,7 @@ class Habit {
 
   factory Habit.fromJson(Map<String, dynamic> json) {
     final idData = json['id'];
-    final id = (idData == null)
-        ? 0
-        : (idData is num)
-            ? idData.toInt()
-            : (idData is String ? int.tryParse(idData) ?? 0 : 0);
+    final id = idData?.toString() ?? '';
 
     final currentStreakData = json['current_streak'];
     final currentStreak = (currentStreakData == null)
@@ -102,14 +101,14 @@ class HabitsProvider extends ChangeNotifier {
   // State
   HabitsState _state = HabitsState.initial;
   List<Habit> _habits = [];
-  final Map<int, Map<String, dynamic>> _habitProgress = {};
+  final Map<String, Map<String, dynamic>> _habitProgress = {};
   String? _errorMessage;
   bool _isLoading = false;
 
   // Getters
   HabitsState get state => _state;
   List<Habit> get habits => _habits;
-  Map<int, Map<String, dynamic>> get habitProgress => _habitProgress;
+  Map<String, Map<String, dynamic>> get habitProgress => _habitProgress;
   String? get errorMessage => _errorMessage;
   bool get isLoading => _isLoading;
   bool get hasHabits => _habits.isNotEmpty;
@@ -185,7 +184,7 @@ class HabitsProvider extends ChangeNotifier {
   }
 
   /// Load progress for a specific habit
-  Future<void> _loadHabitProgress(int habitId) async {
+  Future<void> _loadHabitProgress(String habitId) async {
     try {
       final progress = await _apiService.getHabitProgress(habitId);
       _habitProgress[habitId] = progress;
@@ -245,7 +244,7 @@ class HabitsProvider extends ChangeNotifier {
   }
 
   /// Update an existing habit
-  Future<bool> updateHabit(int habitId, Map<String, dynamic> data) async {
+  Future<bool> updateHabit(String habitId, Map<String, dynamic> data) async {
     try {
       _setLoading(true);
 
@@ -267,7 +266,7 @@ class HabitsProvider extends ChangeNotifier {
   }
 
   /// Delete a habit
-  Future<bool> deleteHabit(int habitId) async {
+  Future<bool> deleteHabit(String habitId) async {
     try {
       _setLoading(true);
 
@@ -291,7 +290,7 @@ class HabitsProvider extends ChangeNotifier {
   }
 
   /// Get progress for a specific habit
-  Map<String, dynamic>? getProgressForHabit(int habitId) {
+  Map<String, dynamic>? getProgressForHabit(String habitId) {
     return _habitProgress[habitId];
   }
 

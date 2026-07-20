@@ -1756,24 +1756,27 @@ class ApiService {
     );
   }
 
-  Future<void> updateHabit(int id, Map<String, dynamic> data) async {
+  // Habit ids are backend UUID strings. The trailing slash on the id
+  // routes 307'd (FastAPI redirect_slashes) and dart:io only follows
+  // redirects for GET/HEAD, so PATCH/DELETE never reached the backend.
+  Future<void> updateHabit(String id, Map<String, dynamic> data) async {
     final token = await getToken();
     await _dio.patch<dynamic>(
-      '/habits/$id/',
+      '/habits/$id',
       data: data,
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
   }
 
-  Future<void> deleteHabit(int id) async {
+  Future<void> deleteHabit(String id) async {
     final token = await getToken();
     await _dio.delete<dynamic>(
-      '/habits/$id/',
+      '/habits/$id',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
   }
 
-  Future<void> completeHabit(int habitId, String date) async {
+  Future<void> completeHabit(String habitId, String date) async {
     final token = await getToken();
     await _dio.post<dynamic>(
       '/habits/$habitId/complete',
@@ -1782,7 +1785,7 @@ class ApiService {
     );
   }
 
-  Future<void> uncompleteHabit(int habitId, String date) async {
+  Future<void> uncompleteHabit(String habitId, String date) async {
     final token = await getToken();
     await _dio.delete<dynamic>(
       '/habits/$habitId/complete',
@@ -1791,7 +1794,7 @@ class ApiService {
     );
   }
 
-  Future<Map<String, dynamic>> getHabitProgress(int habitId) async {
+  Future<Map<String, dynamic>> getHabitProgress(String habitId) async {
     final token = await getToken();
     final response = await _dio.get<dynamic>(
       '/habits/$habitId/progress',
@@ -2082,7 +2085,9 @@ class ApiService {
   Future<String> getReferralCode() async {
     final token = await getToken();
     final response = await _dio.get<dynamic>(
-      '/referrals/code',
+      // Backend mounts the referral router at /referral (singular);
+      // /referrals/code 404'd on every call.
+      '/referral/code',
       options: Options(headers: {'Authorization': 'Bearer $token'}),
     );
     return asString(_envelopeMapOf(response)['code']);
@@ -3201,11 +3206,18 @@ class ApiService {
     final token = await getToken();
 
     try {
+      // There is no /behavior/insights backend route (it 404'd on every
+      // behavioral-screen load). /ai/profile serves the personality
+      // profile this screen renders; map key_strengths → strengths.
       final response = await _dio.get<dynamic>(
-        '/behavior/insights',
+        '/ai/profile',
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
-      return _envelopeMapOf(response);
+      final profile = _envelopeMapOf(response);
+      return {
+        ...profile,
+        'strengths': profile['strengths'] ?? profile['key_strengths'],
+      };
     } catch (e) {
       // Return error when behavior insights service is unavailable
       logError('Behavior insights service unavailable: $e', tag: 'BEHAVIOR');
