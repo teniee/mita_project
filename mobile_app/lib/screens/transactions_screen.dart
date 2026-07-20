@@ -334,8 +334,11 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
+                                          // spentAt is UTC — render in the
+                                          // device's local zone (J5).
                                           DateFormat('MMM d, yyyy • h:mm a')
-                                              .format(transaction.spentAt),
+                                              .format(transaction.spentAt
+                                                  .toLocal()),
                                           style: TextStyle(
                                             fontFamily: AppTypography.fontBody,
                                             fontSize: 12,

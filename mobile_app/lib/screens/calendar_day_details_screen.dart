@@ -349,8 +349,11 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
         spentByCategory.updateAll((_, __) => 0.0);
         bool anyTxForDay = false;
         for (final tx in transactionProvider.transactions) {
-          final txDay =
-              DateTime(tx.spentAt.year, tx.spentAt.month, tx.spentAt.day);
+          // Match on the LOCAL calendar day (spentAt is UTC) so a txn near
+          // local midnight lands on the day the user picked — consistent with
+          // the backend's user-timezone DailyPlan bucketing.
+          final local = tx.spentAt.toLocal();
+          final txDay = DateTime(local.year, local.month, local.day);
           if (txDay != dayStart) continue;
           anyTxForDay = true;
           spentByCategory[tx.category] =
@@ -869,7 +872,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
               'amount': t.amount,
               'description': t.description,
               'category': t.category,
-              'time': DateFormat('HH:mm').format(t.spentAt),
+              'time': DateFormat('HH:mm').format(t.spentAt.toLocal()),
             })
         .toList();
 
