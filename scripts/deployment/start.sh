@@ -234,7 +234,15 @@ else
     echo "⚠️  uvloop not available — falling back to default asyncio event loop"
 fi
 
-echo "Command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WORKERS} --access-log ${UVLOOP_ARG}"
+# Keep-alive must OUTLIVE Railway's edge (Envoy) upstream idle window.
+# uvicorn's default is 5s: after a short idle the app half-closes a pooled
+# connection the edge still thinks is open, and the edge's next request on it
+# returns a 502 "Application failed to respond" (edge-generated — never reaches
+# the app, no worker restart) before recovering. Holding the connection open
+# longer than the edge lets the EDGE close first, cleanly.
+KEEPALIVE="${UVICORN_KEEPALIVE:-75}"
+
+echo "Command: uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WORKERS} --timeout-keep-alive ${KEEPALIVE} --access-log ${UVLOOP_ARG}"
 echo ""
 
 # Start the application
@@ -242,5 +250,6 @@ exec uvicorn app.main:app \
     --host 0.0.0.0 \
     --port "${PORT:-8000}" \
     --workers "${WORKERS}" \
+    --timeout-keep-alive "${KEEPALIVE}" \
     --access-log \
     $UVLOOP_ARG
