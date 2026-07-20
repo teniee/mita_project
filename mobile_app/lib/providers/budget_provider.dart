@@ -111,6 +111,25 @@ Map<String, dynamic> mergeSavedCalendarDay(
   };
 }
 
+/// What loadCalendarData should do with a fetched saved-calendar response,
+/// given what the provider already holds. Extracted as a pure function so the
+/// "saved data is source of truth; a transient empty must not downgrade to
+/// shell preview" invariant is unit-testable without the network.
+enum CalendarLoadAction { useSaved, keepExisting, useShell }
+
+CalendarLoadAction calendarLoadAction({
+  required bool savedIsEmpty,
+  required bool hasSavedData,
+  required bool sameMonth,
+}) {
+  if (!savedIsEmpty) return CalendarLoadAction.useSaved;
+  // Empty/null response for the SAME month we already hold real saved data for
+  // is a transient blip (e.g. right after a mutation) — keep the saved data.
+  if (hasSavedData && sameMonth) return CalendarLoadAction.keepExisting;
+  // Genuinely no saved data for this month → planning shell preview.
+  return CalendarLoadAction.useShell;
+}
+
 /// Centralized budget state management provider
 /// Manages daily budgets, live status, suggestions, and redistribution
 class BudgetProvider extends ChangeNotifier {
@@ -133,6 +152,11 @@ class BudgetProvider extends ChangeNotifier {
   Map<String, dynamic>? _aiOptimization;
   Map<String, dynamic>? _budgetAdaptations;
   List<Map<String, dynamic>> _calendarData = [];
+  // Provenance of _calendarData so a transient empty/error response (or an
+  // AI/shell preview) can never downgrade real saved data for the same month.
+  int? _calendarYear;
+  int? _calendarMonth;
+  bool _calendarHasSavedData = false;
 
   // Budget settings data
   Map<String, dynamic> _automationSettings = {};
@@ -496,28 +520,50 @@ class BudgetProvider extends ChangeNotifier {
       final spentByDay = <int, double>{};
 
       // ── Step 3: Merge planned budget + real spending ──
-      if (savedCalendar != null && savedCalendar.isNotEmpty) {
-        final today = DateTime(now.year, now.month, now.day);
-
-        _calendarData = savedCalendar
-            .map<Map<String, dynamic>>((dynamic raw) => mergeSavedCalendarDay(
-                  Map<String, dynamic>.from(raw as Map),
-                  today: today,
-                  spentByDay: spentByDay,
-                  spentByDayCategory: spentByDayCategory,
-                ))
-            .toList();
-
-        logInfo(
-            'Calendar ready: ${_calendarData.length} days with real spending data',
-            tag: 'BUDGET_PROVIDER');
-      } else {
-        // No saved calendar yet (new user / new month before onboarding saves plan)
-        // Fall back to shell preview — spent stays 0, it's a planning view
-        logWarning(
-            'No saved calendar for $targetYear-$targetMonth — using shell preview',
-            tag: 'BUDGET_PROVIDER');
-        _calendarData = asMapList(await _apiService.getCalendar());
+      final action = calendarLoadAction(
+        savedIsEmpty: savedCalendar == null || savedCalendar.isEmpty,
+        hasSavedData: _calendarHasSavedData,
+        sameMonth: _calendarYear == targetYear && _calendarMonth == targetMonth,
+      );
+      switch (action) {
+        case CalendarLoadAction.useSaved:
+          final today = DateTime(now.year, now.month, now.day);
+          _calendarData = savedCalendar!
+              .map<Map<String, dynamic>>((dynamic raw) => mergeSavedCalendarDay(
+                    Map<String, dynamic>.from(raw as Map),
+                    today: today,
+                    spentByDay: spentByDay,
+                    spentByDayCategory: spentByDayCategory,
+                  ))
+              .toList();
+          _calendarYear = targetYear;
+          _calendarMonth = targetMonth;
+          _calendarHasSavedData = true;
+          logInfo(
+              'Calendar ready: ${_calendarData.length} days with real spending data',
+              tag: 'BUDGET_PROVIDER');
+          break;
+        case CalendarLoadAction.keepExisting:
+          // Real saved data already loaded for THIS month and the backend just
+          // returned empty (a transient blip right after a mutation). Keep it —
+          // a shell preview must never replace it (the post-delete "$5379
+          // shell" bug).
+          logWarning(
+              'Empty saved calendar for $targetYear-$targetMonth — keeping '
+              'existing saved data instead of shell preview',
+              tag: 'BUDGET_PROVIDER');
+          break;
+        case CalendarLoadAction.useShell:
+          // Genuinely no saved calendar for this month (new user / new month /
+          // a month the user navigated to that was never onboarded).
+          logWarning(
+              'No saved calendar for $targetYear-$targetMonth — using shell preview',
+              tag: 'BUDGET_PROVIDER');
+          _calendarData = asMapList(await _apiService.getCalendar());
+          _calendarYear = targetYear;
+          _calendarMonth = targetMonth;
+          _calendarHasSavedData = false;
+          break;
       }
 
       _state = BudgetState.loaded;
@@ -526,7 +572,14 @@ class BudgetProvider extends ChangeNotifier {
       logError('Calendar load failed: $e', tag: 'BUDGET_PROVIDER');
       _errorMessage = 'Failed to load calendar data';
       _state = BudgetState.error;
-      _calendarData = [];
+      // A transient load error must not wipe real saved data for the month the
+      // user is viewing — the calendar would flash empty then shell-preview on
+      // the next refresh. Only clear when we hold no saved data for this month.
+      if (!(_calendarHasSavedData &&
+          _calendarYear == targetYear &&
+          _calendarMonth == targetMonth)) {
+        _calendarData = [];
+      }
     } finally {
       _isLoading = false;
       notifyListeners();

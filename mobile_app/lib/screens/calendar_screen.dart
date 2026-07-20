@@ -58,6 +58,16 @@ class _CalendarScreenState extends State<CalendarScreen>
     await budgetProvider.loadBudgetRemaining();
   }
 
+  /// Move the visible month by [delta] months and reload its saved calendar.
+  /// Without this the calendar was pinned to DateTime.now(), so any other
+  /// month — and every transaction dated outside it — was unreachable.
+  void _changeMonth(int delta) {
+    setState(() {
+      currentMonth = DateTime(currentMonth.year, currentMonth.month + delta, 1);
+    });
+    _initializeData();
+  }
+
   String _getMonthName(int month) {
     const months = [
       'January',
@@ -543,7 +553,17 @@ class _CalendarScreenState extends State<CalendarScreen>
         elevation: 0,
         centerTitle: true,
         iconTheme: IconThemeData(color: colorScheme.onSurface),
+        leading: IconButton(
+          icon: const Icon(Icons.chevron_left),
+          onPressed: () => _changeMonth(-1),
+          tooltip: 'Previous month',
+        ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.chevron_right),
+            onPressed: () => _changeMonth(1),
+            tooltip: 'Next month',
+          ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () => Navigator.pushNamed(context, '/budget_settings'),

@@ -242,5 +242,90 @@ void main() {
         expect(find.byType(CalendarScreen), findsOneWidget);
       });
     });
+
+    // Regression (J7b): the calendar was pinned to DateTime.now() with no way
+    // to reach any other month, so past/future-month days — and every
+    // transaction dated outside the current month — were unreachable in the UI.
+    group('Month Navigation Tests', () {
+      const monthNames = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December',
+      ];
+
+      String titleFor(DateTime m) =>
+          'Calendar - ${monthNames[m.month - 1]} ${m.year}';
+
+      testWidgets('shows previous and next month navigation buttons',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(wrapWithProviders(const CalendarScreen()));
+        await tester.pump();
+
+        expect(find.byIcon(Icons.chevron_left), findsOneWidget);
+        expect(find.byIcon(Icons.chevron_right), findsOneWidget);
+      });
+
+      testWidgets('previous-month button moves the title back one month',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(wrapWithProviders(const CalendarScreen()));
+        await tester.pump();
+
+        final now = DateTime.now();
+        final prev = DateTime(now.year, now.month - 1, 1);
+        expect(find.text(titleFor(DateTime(now.year, now.month, 1))),
+            findsOneWidget);
+
+        await tester.tap(find.byIcon(Icons.chevron_left));
+        await tester.pump();
+
+        expect(find.text(titleFor(prev)), findsOneWidget);
+      });
+
+      testWidgets('next-month button moves the title forward one month',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(wrapWithProviders(const CalendarScreen()));
+        await tester.pump();
+
+        final now = DateTime.now();
+        final next = DateTime(now.year, now.month + 1, 1);
+
+        await tester.tap(find.byIcon(Icons.chevron_right));
+        await tester.pump();
+
+        expect(find.text(titleFor(next)), findsOneWidget);
+      });
+
+      testWidgets('navigating back then forward returns to the current month',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(wrapWithProviders(const CalendarScreen()));
+        await tester.pump();
+
+        final now = DateTime.now();
+        final current = titleFor(DateTime(now.year, now.month, 1));
+
+        await tester.tap(find.byIcon(Icons.chevron_left));
+        await tester.pump();
+        await tester.tap(find.byIcon(Icons.chevron_right));
+        await tester.pump();
+
+        expect(find.text(current), findsOneWidget);
+      });
+
+      testWidgets('crossing a year boundary backward renders December',
+          (WidgetTester tester) async {
+        await tester.pumpWidget(wrapWithProviders(const CalendarScreen()));
+        await tester.pump();
+
+        final now = DateTime.now();
+        // Step back to January of this year, then once more into last December.
+        for (var m = now.month; m > 1; m--) {
+          await tester.tap(find.byIcon(Icons.chevron_left));
+          await tester.pump();
+        }
+        await tester.tap(find.byIcon(Icons.chevron_left));
+        await tester.pump();
+
+        expect(find.text('Calendar - December ${now.year - 1}'), findsOneWidget);
+      });
+    });
   });
 }

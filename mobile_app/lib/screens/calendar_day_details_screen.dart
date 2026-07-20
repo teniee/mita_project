@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'dart:math' as math;
 import '../providers/budget_provider.dart';
 import '../utils/json_utils.dart';
+import '../utils/money_format.dart';
 import '../providers/transaction_provider.dart';
 import '../services/predictive_analytics_service.dart';
 import '../services/budget_adapter_service.dart';
@@ -53,11 +54,51 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
   Map<String, dynamic>? _predictions;
   String _selectedTab = 'spending'; // spending, predictions, insights
 
+  // Mutable copy of the day's merged calendar entry. Starts as the route
+  // argument but is refreshed from the provider after a create/edit/delete so
+  // the header (budget/spent/remaining/status) reflects backend truth without
+  // reopening the sheet — the immutable widget.* args were the stale-header bug.
+  Map<String, dynamic>? _dayData;
+
   @override
   void initState() {
     super.initState();
+    _dayData = widget.dayData == null
+        ? null
+        : Map<String, dynamic>.from(widget.dayData!);
     _initializeAnimations();
     _initializeProviders();
+  }
+
+  /// Header budget/spent read from the refreshed day entry when available,
+  /// falling back to the route args only before the first load completes.
+  double get _headerLimit {
+    final l = _dayData?['limit'];
+    return l is num ? l.toDouble() : widget.limit.toDouble();
+  }
+
+  double get _headerSpent {
+    final s = _dayData?['spent'];
+    return s is num ? s.toDouble() : widget.spent.toDouble();
+  }
+
+  /// Day status from the refreshed entry (falls back to the route arg).
+  String get _effectiveStatus {
+    final s = _dayData?['status'];
+    return s is String && s.isNotEmpty ? s : widget.status;
+  }
+
+  /// Re-read this day's entry from the (already reloaded) provider calendar so
+  /// _dayData carries backend-recalculated spent/status after a mutation.
+  void _refreshDayDataFromProvider() {
+    final bp = context.read<BudgetProvider>();
+    final entry = bp.calendarData.firstWhere(
+      (d) => d['day'] == widget.dayNumber,
+      orElse: () => <String, dynamic>{},
+    );
+    if (entry.isNotEmpty && mounted) {
+      setState(() => _dayData = Map<String, dynamic>.from(entry));
+    }
   }
 
   void _initializeAnimations() {
@@ -131,6 +172,63 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
       if (mounted) {
         setState(() => _isLoadingLocal = false);
       }
+    }
+  }
+
+  /// Delete a transaction shown on this day, then reverse its accrual in the
+  /// budget data and reload the day so spent/remaining/status update in place.
+  Future<void> _confirmDeleteTransaction(String id, String description) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Transaction'),
+        content: Text('Delete "$description"? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    final txnProvider = context.read<TransactionProvider>();
+    final budgetProvider = context.read<BudgetProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    final ok = await txnProvider.deleteTransaction(id);
+    if (!mounted) return;
+
+    if (ok) {
+      // Backend delete already reversed the DailyPlan accrual — refresh the
+      // budget data the dashboard/calendar read. onLedgerChanged reloads the
+      // CURRENT month; this day may be in another month (calendar month-nav),
+      // so reload the viewed month LAST so _calendarData holds it, then
+      // refresh this day's header from that fresh entry.
+      await budgetProvider.onLedgerChanged(rebalanced: true);
+      await budgetProvider.loadCalendarData(
+        year: widget.date.year,
+        month: widget.date.month,
+      );
+      _refreshDayDataFromProvider();
+      await _loadDayDetails();
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Transaction deleted')),
+      );
+    } else {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+              'Failed to delete transaction: ${txnProvider.errorMessage ?? 'unknown error'}'),
+        ),
+      );
     }
   }
 
@@ -213,9 +311,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
       final Map<String, double> spentByCategory = {};
 
       Map<String, dynamic>? catsMap;
-      if (widget.dayData != null && widget.dayData!['categories'] != null) {
-        catsMap =
-            Map<String, dynamic>.from(widget.dayData!['categories'] as Map);
+      if (_dayData != null && _dayData!['categories'] != null) {
+        catsMap = Map<String, dynamic>.from(_dayData!['categories'] as Map);
       } else {
         final budgetProvider = context.read<BudgetProvider>();
         final dayEntry = budgetProvider.calendarData.firstWhere(
@@ -401,9 +498,13 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
 
   Widget _buildHeaderSection(ColorScheme colorScheme, TextTheme textTheme,
       BudgetProvider budgetProvider) {
-    final remaining = widget.limit - widget.spent;
+    // Read from the refreshed day entry so the header updates in place after a
+    // mutation (was widget.limit/widget.spent — immutable route args).
+    final headerLimit = _headerLimit;
+    final headerSpent = _headerSpent;
+    final remaining = headerLimit - headerSpent;
     final spentPercentage =
-        widget.limit > 0 ? (widget.spent / widget.limit) * 100 : 0.0;
+        headerLimit > 0 ? (headerSpent / headerLimit) * 100 : 0.0;
     final isToday = _isToday();
     final isFuture = _isFuture();
     final isPast = _isPast();
@@ -529,7 +630,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
                   Expanded(
                     child: _buildBudgetStat(
                       'Budget',
-                      '\$${widget.limit}',
+                      '\$${formatMoney(headerLimit)}',
                       Icons.account_balance_wallet_outlined,
                       colorScheme.primary,
                       textTheme,
@@ -548,7 +649,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
                           : isFuture
                               ? 'Available'
                               : 'Spent',
-                      '\$${isPast ? widget.spent : isFuture ? widget.limit : widget.spent}',
+                      '\$${formatMoney(isFuture ? headerLimit : headerSpent)}',
                       isPast
                           ? Icons.shopping_cart_outlined
                           : isFuture
@@ -572,8 +673,8 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
                     child: _buildBudgetStat(
                       isFuture ? 'Predicted' : 'Remaining',
                       isFuture
-                          ? '\$${_getPredictedSpending().toStringAsFixed(0)}'
-                          : '\$$remaining',
+                          ? '\$${formatMoney(_getPredictedSpending())}'
+                          : '\$${formatMoney(remaining)}',
                       isFuture
                           ? Icons.trending_up_outlined
                           : Icons.account_balance_outlined,
@@ -760,9 +861,11 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
 
   Widget _buildSpendingTab(ColorScheme colorScheme, TextTheme textTheme,
       TransactionProvider transactionProvider) {
-    // Convert provider transactions to the expected format
+    // Convert provider transactions to the expected format. Carry the id so
+    // the row's delete action can address the backend txn (UUID string).
     final transactions = transactionProvider.transactions
         .map((t) => {
+              'id': t.id,
               'amount': t.amount,
               'description': t.description,
               'category': t.category,
@@ -918,6 +1021,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     final category = transaction['category'] as String? ?? 'Other';
     final time = transaction['time'] as String? ??
         DateFormat('HH:mm').format(DateTime.now());
+    final id = transaction['id'] as String?;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -963,6 +1067,13 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
               color: colorScheme.error,
             ),
           ),
+          if (id != null && id.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.delete_outline, size: 20),
+              color: colorScheme.error,
+              tooltip: 'Delete transaction',
+              onPressed: () => _confirmDeleteTransaction(id, description),
+            ),
         ],
       ),
     );
@@ -1335,7 +1446,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
 
   Color _getStatusColor() {
     final colorScheme = Theme.of(context).colorScheme;
-    switch (widget.status.toLowerCase()) {
+    switch (_effectiveStatus.toLowerCase()) {
       case 'over':
         return colorScheme.error;
       case 'warning':
@@ -1347,7 +1458,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
   }
 
   String _getStatusText() {
-    switch (widget.status.toLowerCase()) {
+    switch (_effectiveStatus.toLowerCase()) {
       case 'over':
         return 'Over Budget';
       case 'warning':
@@ -1363,7 +1474,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
   }
 
   IconData _getStatusIcon() {
-    switch (widget.status.toLowerCase()) {
+    switch (_effectiveStatus.toLowerCase()) {
       case 'over':
         return Icons.warning_rounded;
       case 'warning':
@@ -1376,7 +1487,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
 
   Color _getStatusChipColor() {
     final colorScheme = Theme.of(context).colorScheme;
-    switch (widget.status.toLowerCase()) {
+    switch (_effectiveStatus.toLowerCase()) {
       case 'over':
         return colorScheme.errorContainer;
       case 'warning':
@@ -1389,7 +1500,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
 
   Color _getStatusChipTextColor() {
     final colorScheme = Theme.of(context).colorScheme;
-    switch (widget.status.toLowerCase()) {
+    switch (_effectiveStatus.toLowerCase()) {
       case 'over':
         return colorScheme.onErrorContainer;
       case 'warning':
