@@ -116,7 +116,10 @@ class TestGoalModel:
             target_amount=Decimal("1000.00"),
             saved_amount=Decimal("500.00"),
             status="active",
-            target_date=date.today() - timedelta(days=1),
+            # is_overdue compares against the UTC date; date.today() is the
+            # LOCAL date, which is already tomorrow for the first 3 hours
+            # after midnight in Sofia — the test failed only in that window.
+            target_date=datetime.now(timezone.utc).date() - timedelta(days=1),
             created_at=datetime.now(timezone.utc),
             last_updated=datetime.now(timezone.utc),
         )

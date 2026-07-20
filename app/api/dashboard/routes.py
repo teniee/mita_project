@@ -20,8 +20,13 @@ from sqlalchemy.orm import joinedload
 
 from app.api.dependencies import get_current_user
 from app.core.async_session import get_async_db
+from app.core.date_utils import day_to_range
 from app.db.models import ChallengeParticipation, DailyPlan, Goal, Transaction
 from app.db.models.user import User
+from app.services.core.engine.expense_tracker import (
+    local_day_of,
+    local_day_utc_window,
+)
 from app.utils.response_wrapper import success_response
 
 logger = logging.getLogger(__name__)
@@ -47,21 +52,29 @@ async def get_dashboard(
     """
     try:
         user_id = user.id
-        today = datetime.now(timezone.utc).date()
         now = datetime.now(timezone.utc)
+        # "Today" is the USER's calendar day, not the UTC date (J2/J3) — at
+        # 01:00 in Sofia the UTC date is still yesterday, so today-spent,
+        # category spending, DailyPlan targets and the week strip were all
+        # reading the wrong day. Mirrors /budget/live_status.
+        today = local_day_of(now, user.timezone)
 
         # Get user's monthly income
         monthly_income = float(user.monthly_income) if user.monthly_income else 0.0
 
         # Calculate current balance (simplified - should be based on actual account balance)
-        # For now: monthly_income - spent_this_month
-        first_day_of_month = today.replace(day=1)
+        # For now: monthly_income - spent_this_month, with the month starting
+        # at the UTC instant the user's LOCAL month began. spent_at is
+        # timestamptz — compare with AWARE UTC instants so the result does
+        # not depend on the DB session timezone.
+        month_start_naive, _ = local_day_utc_window(today.replace(day=1), user.timezone)
+        month_start = month_start_naive.replace(tzinfo=timezone.utc)
 
         result = await db.execute(
             select(func.sum(Transaction.amount)).where(
                 Transaction.user_id == user_id,
                 Transaction.deleted_at.is_(None),
-                Transaction.spent_at >= first_day_of_month,
+                Transaction.spent_at >= month_start,
                 Transaction.spent_at < now,
             )
         )
@@ -69,24 +82,31 @@ async def get_dashboard(
 
         current_balance = monthly_income - float(total_spent_this_month)
 
-        # Get today's spending
-        today_start = datetime.combine(today, datetime.min.time())
-        today_end = datetime.combine(today, datetime.max.time())
+        # Get today's spending over the UTC window of the user's local day
+        today_start, today_end = (
+            t.replace(tzinfo=timezone.utc)
+            for t in local_day_utc_window(today, user.timezone)
+        )
 
         result = await db.execute(
             select(func.sum(Transaction.amount)).where(
                 Transaction.user_id == user_id,
                 Transaction.deleted_at.is_(None),
                 Transaction.spent_at >= today_start,
-                Transaction.spent_at <= today_end,
+                Transaction.spent_at < today_end,
             )
         )
         today_spent = result.scalar() or 0.0
 
-        # Get daily targets from DailyPlan for today
+        # Get daily targets from DailyPlan for today (one row per category;
+        # DailyPlan.date is a timestamp — filter the full day range, not
+        # equality against a date)
+        plan_day_start, plan_day_end = day_to_range(today)
         result = await db.execute(
             select(DailyPlan).where(
-                DailyPlan.user_id == user_id, DailyPlan.date == today
+                DailyPlan.user_id == user_id,
+                DailyPlan.date >= plan_day_start,
+                DailyPlan.date <= plan_day_end,
             )
         )
         today_plans = result.scalars().all()
@@ -99,7 +119,7 @@ async def get_dashboard(
                 Transaction.user_id == user_id,
                 Transaction.deleted_at.is_(None),
                 Transaction.spent_at >= today_start,
-                Transaction.spent_at <= today_end,
+                Transaction.spent_at < today_end,
             )
             .group_by(Transaction.category)
         )
@@ -176,22 +196,27 @@ async def get_dashboard(
 
         for i in range(7):
             day_date = today - timedelta(days=6 - i)
-            day_start = datetime.combine(day_date, datetime.min.time())
-            day_end = datetime.combine(day_date, datetime.max.time())
+            day_start, day_end = (
+                t.replace(tzinfo=timezone.utc)
+                for t in local_day_utc_window(day_date, user.timezone)
+            )
 
             result = await db.execute(
                 select(func.sum(Transaction.amount)).where(
                     Transaction.user_id == user_id,
                     Transaction.deleted_at.is_(None),
                     Transaction.spent_at >= day_start,
-                    Transaction.spent_at <= day_end,
+                    Transaction.spent_at < day_end,
                 )
             )
             day_spent = result.scalar() or 0.0
 
+            plan_start, plan_end = day_to_range(day_date)
             result = await db.execute(
                 select(func.sum(DailyPlan.daily_budget)).where(
-                    DailyPlan.user_id == user_id, DailyPlan.date == day_date
+                    DailyPlan.user_id == user_id,
+                    DailyPlan.date >= plan_start,
+                    DailyPlan.date <= plan_end,
                 )
             )
             day_budget = result.scalar() or (monthly_income / 30)
@@ -484,9 +509,12 @@ async def get_quick_stats(
     """
     try:
         user_id = user.id
-        today = datetime.now(timezone.utc).date()
-        first_day_of_month = today.replace(day=1)
         now = datetime.now(timezone.utc)
+        # User-local "today"/month window, matching /budget/live_status and
+        # the main dashboard route (J2/J3 bucketing).
+        today = local_day_of(now, user.timezone)
+        month_start_naive, _ = local_day_utc_window(today.replace(day=1), user.timezone)
+        month_start = month_start_naive.replace(tzinfo=timezone.utc)
 
         monthly_income = float(user.monthly_income) if user.monthly_income else 0.0
 
@@ -495,7 +523,7 @@ async def get_quick_stats(
             select(func.sum(Transaction.amount)).where(
                 Transaction.user_id == user_id,
                 Transaction.deleted_at.is_(None),
-                Transaction.spent_at >= first_day_of_month,
+                Transaction.spent_at >= month_start,
                 Transaction.spent_at < now,
             )
         )
@@ -513,7 +541,7 @@ async def get_quick_stats(
             .where(
                 Transaction.user_id == user_id,
                 Transaction.deleted_at.is_(None),
-                Transaction.spent_at >= first_day_of_month,
+                Transaction.spent_at >= month_start,
                 Transaction.spent_at < now,
             )
             .group_by(Transaction.category)

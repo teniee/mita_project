@@ -66,6 +66,11 @@ def _initialize_sync_session():
             "user": parsed.username,  # Username with dot will be preserved
             "password": parsed.password,  # Password passed separately
             "sslmode": _resolve_sslmode(parsed.query),
+            # The codebase's naive-datetime convention means UTC. Prod PG
+            # already runs Etc/UTC; pin the session too so a dev/CI server
+            # with a local timezone (e.g. Europe/Sofia) can't shift
+            # naive-bound windows by the UTC offset.
+            "options": "-c timezone=UTC",
         }
 
         sync_url = make_url(sync_database_url)

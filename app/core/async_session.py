@@ -96,6 +96,9 @@ def initialize_database() -> None:
                 "prepared_statement_cache_size": 0,  # Disable prepared statements completely
                 "server_settings": {
                     "jit": "off",  # Disable JIT compilation for better compatibility
+                    # Naive datetimes mean UTC across the codebase — pin the
+                    # session so that holds on any server (prod is Etc/UTC).
+                    "timezone": "UTC",
                 },
             }
 

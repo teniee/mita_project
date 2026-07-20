@@ -1,6 +1,15 @@
 import os
 import sys
+import time
 import types
+
+# Pin the test process to UTC for production parity. Railway containers run
+# TZ=UTC; asyncpg encodes NAIVE datetime params via the process-local
+# timezone, so on a developer machine in Europe/Sofia every naive-bound
+# window shifted by 3h and date-boundary tests failed only between local
+# midnight and 03:00. Must happen before any engine/datetime use.
+os.environ["TZ"] = "UTC"
+time.tzset()
 
 # Set DATABASE_URL for test environment BEFORE any imports
 # This prevents "Could not parse SQLAlchemy URL from string ''" errors
