@@ -497,8 +497,11 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                                     width: double.infinity,
                                     child: ElevatedButton(
                                       onPressed: () async {
-                                        // Clear temporary data before registration
-                                        await _api.clearTokens();
+                                        // Clear all account-scoped state before
+                                        // starting another registration.
+                                        await context
+                                            .read<UserProvider>()
+                                            .logout();
                                         if (mounted) {
                                           Navigator.pushNamedAndRemoveUntil(
                                             context,
@@ -530,8 +533,11 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                                   // Secondary action: Login (for existing users)
                                   TextButton(
                                     onPressed: () async {
-                                      // Clear tokens and go to login
-                                      await _api.clearTokens();
+                                      // Clear the complete account session
+                                      // before returning to login.
+                                      await context
+                                          .read<UserProvider>()
+                                          .logout();
                                       OnboardingState.instance.reset();
                                       if (mounted) {
                                         Navigator.pushNamedAndRemoveUntil(

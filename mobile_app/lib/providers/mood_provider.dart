@@ -14,7 +14,11 @@ enum MoodState {
 /// Centralized mood tracking state management provider
 /// Manages mood logging, submission state, and mood history
 class MoodProvider extends ChangeNotifier {
-  final ApiService _apiService = ApiService();
+  MoodProvider({ApiService? apiService})
+      : _apiService = apiService ?? ApiService();
+
+  final ApiService _apiService;
+  int _sessionGeneration = 0;
 
   // State
   MoodState _state = MoodState.initial;
@@ -55,30 +59,48 @@ class MoodProvider extends ChangeNotifier {
 
   /// Log mood to API
   Future<bool> logMood() async {
+    final generation = _sessionGeneration;
+    final mood = _selectedMood.round();
     try {
       _setLoading(true);
       _state = MoodState.submitting;
       notifyListeners();
 
-      await _apiService.logMood(_selectedMood.round());
+      await _apiService.logMood(mood);
+      if (!_isCurrentSession(generation)) return false;
 
       _hasSubmittedToday = true;
       _lastSubmissionDate = DateTime.now();
       _state = MoodState.loaded;
 
-      logInfo('Mood logged successfully: ${_selectedMood.round()}',
-          tag: 'MOOD_PROVIDER');
+      logInfo('Mood logged successfully: $mood', tag: 'MOOD_PROVIDER');
       notifyListeners();
       return true;
     } catch (e) {
       logError('Error logging mood: $e', tag: 'MOOD_PROVIDER');
+      if (!_isCurrentSession(generation)) return false;
       _errorMessage = e.toString();
       _state = MoodState.error;
       notifyListeners();
       return false;
     } finally {
-      _setLoading(false);
+      if (_isCurrentSession(generation)) {
+        _setLoading(false);
+      }
     }
+  }
+
+  /// Discard all state owned by the previous authenticated account.
+  void resetSession() {
+    _sessionGeneration++;
+    _state = MoodState.initial;
+    _isLoading = false;
+    _errorMessage = null;
+    _selectedMood = 3;
+    _hasSubmittedToday = false;
+    _moodHistory.clear();
+    _lastSubmissionDate = null;
+    notifyListeners();
   }
 
   /// Reset submission state (e.g., for new day)
@@ -102,4 +124,6 @@ class MoodProvider extends ChangeNotifier {
     _isLoading = loading;
     notifyListeners();
   }
+
+  bool _isCurrentSession(int generation) => generation == _sessionGeneration;
 }

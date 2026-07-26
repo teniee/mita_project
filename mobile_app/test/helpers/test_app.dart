@@ -9,13 +9,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mita/providers/providers.dart';
 import 'package:provider/provider.dart';
+import 'package:provider/single_child_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Mirror of the production provider tree (lib/main.dart).
-List<ChangeNotifierProvider> buildTestProviders() {
+List<SingleChildWidget> buildTestProviders() {
   return [
     ChangeNotifierProvider<SettingsProvider>(create: (_) => SettingsProvider()),
-    ChangeNotifierProvider<UserProvider>(create: (_) => UserProvider()),
     ChangeNotifierProvider<BudgetProvider>(create: (_) => BudgetProvider()),
     ChangeNotifierProvider<TransactionProvider>(
         create: (_) => TransactionProvider()),
@@ -32,6 +32,26 @@ List<ChangeNotifierProvider> buildTestProviders() {
     ChangeNotifierProvider<InstallmentsProvider>(
         create: (_) => InstallmentsProvider()),
     ChangeNotifierProvider<LoadingProvider>(create: (_) => LoadingProvider()),
+    ChangeNotifierProvider<UserProvider>(
+      create: (context) => UserProvider(
+        onSessionBoundary: () {
+          context.read<BudgetProvider>().resetSession();
+          context.read<TransactionProvider>().resetSession();
+          context.read<GoalsProvider>().resetSession();
+          context.read<ChallengesProvider>().resetSession();
+          context.read<HabitsProvider>().resetSession();
+          context.read<BehavioralProvider>().resetSession();
+          context.read<MoodProvider>().resetSession();
+          context.read<NotificationsProvider>().resetSession();
+          context.read<AdviceProvider>().resetSession();
+          context.read<InstallmentsProvider>().resetSession();
+          context.read<LoadingProvider>().reset();
+        },
+        onAccountTransition: () {
+          context.read<SettingsProvider>().resetSession();
+        },
+      ),
+    ),
   ];
 }
 

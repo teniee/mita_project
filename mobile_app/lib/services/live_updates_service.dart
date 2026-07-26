@@ -31,6 +31,7 @@ class LiveUpdatesService {
   Map<String, dynamic>? _lastDashboardData;
   Map<String, dynamic>? _lastProfileData;
   int _lastTransactionCount = 0;
+  int _sessionGeneration = 0;
 
   // Update intervals - optimized for fast backend
   static const Duration _defaultUpdateInterval = Duration(seconds: 90);
@@ -74,7 +75,7 @@ class LiveUpdatesService {
         'Enabling live updates with ${_currentUpdateInterval.inMinutes} minute intervals',
         tag: 'LIVE_UPDATES');
 
-    await _startLiveUpdates();
+    await _startLiveUpdates(_sessionGeneration);
   }
 
   /// Disable live updates
@@ -93,14 +94,15 @@ class LiveUpdatesService {
   }
 
   /// Start the live update polling mechanism
-  Future<void> _startLiveUpdates() async {
+  Future<void> _startLiveUpdates(int generation) async {
     if (_isRunning) return;
 
     _isRunning = true;
     logDebug('Starting live update polling', tag: 'LIVE_UPDATES');
 
     // Do initial data fetch
-    await _performLiveUpdate();
+    await _performLiveUpdate(generation);
+    if (generation != _sessionGeneration || !_isEnabled) return;
 
     // Set up periodic updates
     _liveUpdateTimer = Timer.periodic(_currentUpdateInterval, (timer) async {
@@ -108,37 +110,42 @@ class LiveUpdatesService {
         timer.cancel();
         return;
       }
-      await _performLiveUpdate();
+      await _performLiveUpdate(generation);
     });
   }
 
   /// Perform a single live update check
-  Future<void> _performLiveUpdate() async {
-    if (!_isEnabled) return;
+  Future<void> _performLiveUpdate([int? sessionGeneration]) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isEnabled || generation != _sessionGeneration) return;
 
     try {
       logDebug('Performing live update check', tag: 'LIVE_UPDATES');
 
       // Check for dashboard updates
-      await _checkDashboardUpdates();
+      await _checkDashboardUpdates(generation);
+      if (generation != _sessionGeneration) return;
 
       // Check for profile updates
-      await _checkProfileUpdates();
+      await _checkProfileUpdates(generation);
+      if (generation != _sessionGeneration) return;
 
       // Check for new transactions
-      await _checkTransactionUpdates();
+      await _checkTransactionUpdates(generation);
+      if (generation != _sessionGeneration) return;
 
       // Check for budget changes
-      await _checkBudgetUpdates();
+      await _checkBudgetUpdates(generation);
     } catch (e) {
       logError('Error during live update: $e', tag: 'LIVE_UPDATES');
     }
   }
 
   /// Check for dashboard data updates
-  Future<void> _checkDashboardUpdates() async {
+  Future<void> _checkDashboardUpdates(int generation) async {
     try {
       final dashboardData = await _apiService.getDashboard();
+      if (generation != _sessionGeneration) return;
 
       if (_lastDashboardData == null ||
           _hasDataChanged(_lastDashboardData!, dashboardData)) {
@@ -153,9 +160,10 @@ class LiveUpdatesService {
   }
 
   /// Check for profile data updates
-  Future<void> _checkProfileUpdates() async {
+  Future<void> _checkProfileUpdates(int generation) async {
     try {
       final profileData = await _userDataManager.getUserProfile();
+      if (generation != _sessionGeneration) return;
 
       if (_lastProfileData == null ||
           _hasDataChanged(_lastProfileData!, profileData)) {
@@ -170,7 +178,7 @@ class LiveUpdatesService {
   }
 
   /// Check for new transactions
-  Future<void> _checkTransactionUpdates() async {
+  Future<void> _checkTransactionUpdates(int generation) async {
     try {
       // Get today's transactions to check for changes
       final today = DateTime.now();
@@ -178,6 +186,7 @@ class LiveUpdatesService {
           '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
 
       final transactions = await _apiService.getTransactionsByDate(todayString);
+      if (generation != _sessionGeneration) return;
       final currentCount = transactions.length;
 
       if (_lastTransactionCount != currentCount) {
@@ -199,11 +208,11 @@ class LiveUpdatesService {
   }
 
   /// Check for budget updates
-  Future<void> _checkBudgetUpdates() async {
+  Future<void> _checkBudgetUpdates(int generation) async {
     try {
       // Trigger budget update notification for subscribers (calendar, daily budget screens)
       // This is coordinated with dashboard updates to avoid duplicate API calls
-      if (_lastDashboardData != null) {
+      if (generation == _sessionGeneration && _lastDashboardData != null) {
         _budgetUpdatesController.add({
           'timestamp': DateTime.now().toIso8601String(),
           'source': 'live_updates_service',
@@ -244,7 +253,7 @@ class LiveUpdatesService {
   /// Force an immediate live update check
   Future<void> forceUpdate() async {
     logInfo('Forcing immediate live update', tag: 'LIVE_UPDATES');
-    await _performLiveUpdate();
+    await _performLiveUpdate(_sessionGeneration);
   }
 
   /// Set update interval for more/less frequent updates
@@ -259,7 +268,7 @@ class LiveUpdatesService {
       // Restart with new interval if currently running
       if (_isEnabled && _isRunning) {
         _liveUpdateTimer?.cancel();
-        _startLiveUpdates();
+        _startLiveUpdates(_sessionGeneration);
       }
     }
   }
@@ -285,6 +294,16 @@ class LiveUpdatesService {
       'last_profile_update': _lastProfileData != null ? 'cached' : 'none',
       'transaction_count': _lastTransactionCount,
     };
+  }
+
+  /// Stop account A polling and synchronously erase comparison caches.
+  void resetSession() {
+    _sessionGeneration += 1;
+    disableLiveUpdates();
+    _lastDashboardData = null;
+    _lastProfileData = null;
+    _lastTransactionCount = 0;
+    _currentUpdateInterval = _defaultUpdateInterval;
   }
 
   /// Dispose resources and clean up

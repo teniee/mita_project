@@ -15,8 +15,14 @@ enum TransactionState {
 /// Centralized transaction state management provider
 /// Manages transaction list, filtering, and CRUD operations
 class TransactionProvider extends ChangeNotifier {
-  final TransactionService _transactionService = TransactionService();
-  final ApiService _apiService = ApiService();
+  final TransactionService _transactionService;
+  final ApiService _apiService;
+
+  TransactionProvider({
+    TransactionService? transactionService,
+    ApiService? apiService,
+  })  : _transactionService = transactionService ?? TransactionService(),
+        _apiService = apiService ?? ApiService();
 
   // State
   TransactionState _state = TransactionState.initial;
@@ -32,6 +38,10 @@ class TransactionProvider extends ChangeNotifier {
   String? _selectedCategory;
   DateTime? _startDate;
   DateTime? _endDate;
+  int _sessionGeneration = 0;
+  int _loadRequestId = 0;
+  Future<void>? _initializeInFlight;
+  int? _initializeGeneration;
 
   // Getters
   TransactionState get state => _state;
@@ -48,38 +58,67 @@ class TransactionProvider extends ChangeNotifier {
   int get transactionCount => _transactions.length;
 
   /// Initialize the provider and load transactions
-  Future<void> initialize() async {
-    if (_state != TransactionState.initial) return;
+  Future<void> initialize() {
+    if (_state != TransactionState.initial) return Future.value();
 
+    final generation = _sessionGeneration;
+    final inFlight = _initializeInFlight;
+    if (inFlight != null && _initializeGeneration == generation) {
+      return inFlight;
+    }
+
+    final future = _doInitialize(generation);
+    _initializeInFlight = future;
+    _initializeGeneration = generation;
+    future.whenComplete(() {
+      if (identical(_initializeInFlight, future) &&
+          _initializeGeneration == generation) {
+        _initializeInFlight = null;
+        _initializeGeneration = null;
+      }
+    });
+    return future;
+  }
+
+  Future<void> _doInitialize(int generation) async {
     logInfo('Initializing TransactionProvider', tag: 'TRANSACTION_PROVIDER');
 
     // CRITICAL FIX: Check if user has a valid token before making API calls
     final token = await _apiService.getToken();
+    if (generation != _sessionGeneration) return;
     if (token == null || token.isEmpty) {
       logWarning(
           'No authentication token found - skipping transactions initialization',
           tag: 'TRANSACTION_PROVIDER');
       _state = TransactionState.error;
       _errorMessage = 'Not authenticated';
+      notifyListeners();
       return;
     }
 
-    await loadTransactions();
+    await loadTransactions(sessionGeneration: generation);
   }
 
   /// Load transactions with current filters
-  Future<void> loadTransactions() async {
+  Future<void> loadTransactions({int? sessionGeneration}) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    final requestId = ++_loadRequestId;
+    final selectedCategory = _selectedCategory;
+    final startDate = _startDate;
+    final endDate = _endDate;
     _setLoading(true);
     _state = TransactionState.loading;
+    _errorMessage = null;
     notifyListeners();
 
     try {
       final transactions = await _transactionService.getTransactions(
-        category: _selectedCategory,
-        startDate: _startDate,
-        endDate: _endDate,
+        category: selectedCategory,
+        startDate: startDate,
+        endDate: endDate,
         limit: 100,
       );
+      if (!_isCurrent(generation) || requestId != _loadRequestId) return;
 
       _transactions = transactions;
       _calculateTotalSpending();
@@ -88,12 +127,16 @@ class TransactionProvider extends ChangeNotifier {
       logInfo('Transactions loaded: ${_transactions.length} items',
           tag: 'TRANSACTION_PROVIDER');
     } catch (e) {
+      if (!_isCurrent(generation) || requestId != _loadRequestId) return;
       logError('Error loading transactions: $e', tag: 'TRANSACTION_PROVIDER');
       _transactions = [];
+      _calculateTotalSpending();
       _errorMessage = e.toString();
       _state = TransactionState.error;
     } finally {
-      _setLoading(false);
+      if (_isCurrent(generation) && requestId == _loadRequestId) {
+        _setLoading(false);
+      }
     }
   }
 
@@ -123,6 +166,8 @@ class TransactionProvider extends ChangeNotifier {
 
   /// Load recent transactions
   Future<void> loadRecentTransactions({int days = 7, int limit = 50}) async {
+    final generation = _sessionGeneration;
+    final requestId = ++_loadRequestId;
     _endDate = DateTime.now();
     _startDate = _endDate!.subtract(Duration(days: days));
     _selectedCategory = null;
@@ -133,26 +178,37 @@ class TransactionProvider extends ChangeNotifier {
         days: days,
         limit: limit,
       );
+      if (!_isCurrent(generation) || requestId != _loadRequestId) return;
       _transactions = transactions;
       _calculateTotalSpending();
       _state = TransactionState.loaded;
+      _errorMessage = null;
       logInfo('Recent transactions loaded: ${_transactions.length} items',
           tag: 'TRANSACTION_PROVIDER');
     } catch (e) {
+      if (!_isCurrent(generation) || requestId != _loadRequestId) return;
       logError('Error loading recent transactions: $e',
           tag: 'TRANSACTION_PROVIDER');
       _errorMessage = e.toString();
+      _state = TransactionState.error;
     } finally {
-      _setLoading(false);
+      if (_isCurrent(generation) && requestId == _loadRequestId) {
+        _setLoading(false);
+      }
     }
   }
 
   /// Create a new transaction
   Future<TransactionModel?> createTransaction(TransactionInput input) async {
+    final generation = _sessionGeneration;
+    // A list request started before this mutation represents pre-write state
+    // and must not overwrite the newly created transaction when it completes.
+    _loadRequestId += 1;
     try {
       _setLoading(true);
 
       final transaction = await _transactionService.createTransaction(input);
+      if (!_isCurrent(generation)) return null;
 
       // Add to local list
       _transactions.insert(0, transaction);
@@ -164,11 +220,14 @@ class TransactionProvider extends ChangeNotifier {
 
       return transaction;
     } catch (e) {
+      if (!_isCurrent(generation)) return null;
       logError('Error creating transaction: $e', tag: 'TRANSACTION_PROVIDER');
       _errorMessage = 'Failed to create transaction';
       return null;
     } finally {
-      _setLoading(false);
+      if (_isCurrent(generation)) {
+        _setLoading(false);
+      }
     }
   }
 
@@ -177,6 +236,8 @@ class TransactionProvider extends ChangeNotifier {
     String transactionId,
     TransactionInput input,
   ) async {
+    final generation = _sessionGeneration;
+    _loadRequestId += 1;
     try {
       _setLoading(true);
 
@@ -184,6 +245,7 @@ class TransactionProvider extends ChangeNotifier {
         transactionId,
         input,
       );
+      if (!_isCurrent(generation)) return null;
 
       // Update in local list
       final index = _transactions.indexWhere((t) => t.id == transactionId);
@@ -198,20 +260,26 @@ class TransactionProvider extends ChangeNotifier {
 
       return updatedTransaction;
     } catch (e) {
+      if (!_isCurrent(generation)) return null;
       logError('Error updating transaction: $e', tag: 'TRANSACTION_PROVIDER');
       _errorMessage = 'Failed to update transaction';
       return null;
     } finally {
-      _setLoading(false);
+      if (_isCurrent(generation)) {
+        _setLoading(false);
+      }
     }
   }
 
   /// Delete a transaction
   Future<bool> deleteTransaction(String transactionId) async {
+    final generation = _sessionGeneration;
+    _loadRequestId += 1;
     try {
       _setLoading(true);
 
       await _transactionService.deleteTransaction(transactionId);
+      if (!_isCurrent(generation)) return false;
 
       // Remove from local list
       _transactions.removeWhere((t) => t.id == transactionId);
@@ -223,11 +291,14 @@ class TransactionProvider extends ChangeNotifier {
 
       return true;
     } catch (e) {
+      if (!_isCurrent(generation)) return false;
       logError('Error deleting transaction: $e', tag: 'TRANSACTION_PROVIDER');
       _errorMessage = 'Failed to delete transaction';
       return false;
     } finally {
-      _setLoading(false);
+      if (_isCurrent(generation)) {
+        _setLoading(false);
+      }
     }
   }
 
@@ -236,11 +307,13 @@ class TransactionProvider extends ChangeNotifier {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
+    final generation = _sessionGeneration;
     try {
       final categoryTotals = await _transactionService.getSpendingByCategory(
         startDate: startDate,
         endDate: endDate,
       );
+      if (!_isCurrent(generation)) return;
       _spendingByCategory = categoryTotals;
 
       logInfo(
@@ -248,6 +321,7 @@ class TransactionProvider extends ChangeNotifier {
           tag: 'TRANSACTION_PROVIDER');
       notifyListeners();
     } catch (e) {
+      if (!_isCurrent(generation)) return;
       logError('Error loading spending by category: $e',
           tag: 'TRANSACTION_PROVIDER');
     }
@@ -307,6 +381,27 @@ class TransactionProvider extends ChangeNotifier {
     await loadTransactions();
   }
 
+  /// Clear all account-scoped state immediately at an authentication boundary.
+  ///
+  /// Incrementing the generation first makes every response already in flight
+  /// obsolete, so a slow request from user A cannot repopulate user B's UI.
+  void resetSession() {
+    _sessionGeneration += 1;
+    _loadRequestId += 1;
+    _initializeInFlight = null;
+    _initializeGeneration = null;
+    _transactions = [];
+    _spendingByCategory = {};
+    _totalSpending = 0.0;
+    _selectedCategory = null;
+    _startDate = null;
+    _endDate = null;
+    _errorMessage = null;
+    _isLoading = false;
+    _state = TransactionState.initial;
+    notifyListeners();
+  }
+
   // Private helper to calculate total spending
   void _calculateTotalSpending() {
     _totalSpending = _transactions.fold<double>(
@@ -328,4 +423,6 @@ class TransactionProvider extends ChangeNotifier {
     _isLoading = loading;
     notifyListeners();
   }
+
+  bool _isCurrent(int generation) => generation == _sessionGeneration;
 }

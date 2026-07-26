@@ -14,7 +14,10 @@ enum GoalsState {
 /// Centralized goals state management provider
 /// Manages goals list, statistics, filtering, and CRUD operations
 class GoalsProvider extends ChangeNotifier {
-  final ApiService _apiService = ApiService();
+  final ApiService _apiService;
+
+  GoalsProvider({ApiService? apiService})
+      : _apiService = apiService ?? ApiService();
 
   // State
   GoalsState _state = GoalsState.initial;
@@ -34,6 +37,10 @@ class GoalsProvider extends ChangeNotifier {
   List<Map<String, dynamic>> _opportunities = [];
   List<Map<String, dynamic>> _adjustments = [];
   bool _isLoadingRecommendations = false;
+  int _sessionGeneration = 0;
+  int _goalsRequestId = 0;
+  int _statisticsRequestId = 0;
+  int _recommendationsRequestId = 0;
 
   // Getters
   GoalsState get state => _state;
@@ -121,8 +128,9 @@ class GoalsProvider extends ChangeNotifier {
   /// Initialize the provider and load initial data
   Future<void> initialize() async {
     if (_state != GoalsState.initial) return;
+    final generation = _sessionGeneration;
 
-    _setLoading(true);
+    _setLoading(true, generation);
     _state = GoalsState.loading;
     notifyListeners();
 
@@ -130,30 +138,37 @@ class GoalsProvider extends ChangeNotifier {
       logInfo('Initializing GoalsProvider', tag: 'GOALS_PROVIDER');
 
       await Future.wait([
-        loadGoals(),
-        loadStatistics(),
+        loadGoals(sessionGeneration: generation),
+        loadStatistics(sessionGeneration: generation),
       ]);
+      if (!_isCurrent(generation)) return;
 
       _state = GoalsState.loaded;
       logInfo('GoalsProvider initialized successfully', tag: 'GOALS_PROVIDER');
     } catch (e) {
+      if (!_isCurrent(generation)) return;
       logError('Failed to initialize GoalsProvider: $e', tag: 'GOALS_PROVIDER');
       _errorMessage = e.toString();
       _state = GoalsState.error;
     } finally {
-      _setLoading(false);
+      _setLoading(false, generation);
     }
   }
 
   /// Load goals with current filters
-  Future<void> loadGoals() async {
+  Future<void> loadGoals({int? sessionGeneration}) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isCurrent(generation)) return;
+    final requestId = ++_goalsRequestId;
+
     try {
-      _setLoading(true);
+      _setLoading(true, generation);
 
       final data = await _apiService.getGoals(
         status: _selectedStatus,
         category: _selectedCategory,
       );
+      if (!_isCurrentRequest(generation, requestId, _goalsRequestId)) return;
 
       _goals = data
           .map((json) => Goal.fromJson(json as Map<String, dynamic>))
@@ -161,31 +176,46 @@ class GoalsProvider extends ChangeNotifier {
       logInfo('Loaded ${_goals.length} goals', tag: 'GOALS_PROVIDER');
       notifyListeners();
     } catch (e) {
+      if (!_isCurrentRequest(generation, requestId, _goalsRequestId)) return;
       logError('Failed to load goals: $e', tag: 'GOALS_PROVIDER');
       // DISABLED: Do not show fake goals - return empty list instead
       // Showing fake financial data breaks user trust
       _goals = [];
       notifyListeners();
     } finally {
-      _setLoading(false);
+      if (_isCurrentRequest(generation, requestId, _goalsRequestId)) {
+        _setLoading(false, generation);
+      }
     }
   }
 
   /// Load goal statistics
-  Future<void> loadStatistics() async {
+  Future<void> loadStatistics({int? sessionGeneration}) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isCurrent(generation)) return;
+    final requestId = ++_statisticsRequestId;
+
     try {
       final stats = await _apiService.getGoalStatistics();
+      if (!_isCurrentRequest(generation, requestId, _statisticsRequestId)) {
+        return;
+      }
       _statistics = stats;
       logInfo('Goal statistics loaded', tag: 'GOALS_PROVIDER');
       notifyListeners();
     } catch (e) {
+      if (!_isCurrentRequest(generation, requestId, _statisticsRequestId)) {
+        return;
+      }
       logError('Failed to load goal statistics: $e', tag: 'GOALS_PROVIDER');
     }
   }
 
   /// Load all smart goal recommendations
-  Future<void> loadSmartRecommendations() async {
-    if (_isLoadingRecommendations) return;
+  Future<void> loadSmartRecommendations({int? sessionGeneration}) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isCurrent(generation)) return;
+    final requestId = ++_recommendationsRequestId;
 
     try {
       _isLoadingRecommendations = true;
@@ -196,6 +226,10 @@ class GoalsProvider extends ChangeNotifier {
         _apiService.detectGoalOpportunities(),
         _apiService.getGoalAdjustmentSuggestions(),
       ]);
+      if (!_isCurrentRequest(
+          generation, requestId, _recommendationsRequestId)) {
+        return;
+      }
 
       _recommendations = List<Map<String, dynamic>>.from(
           results[0]['recommendations'] as Iterable? ?? []);
@@ -208,18 +242,28 @@ class GoalsProvider extends ChangeNotifier {
           'Smart recommendations loaded: ${_recommendations.length} recommendations, ${_opportunities.length} opportunities, ${_adjustments.length} adjustments',
           tag: 'GOALS_PROVIDER');
     } catch (e) {
+      if (!_isCurrentRequest(
+          generation, requestId, _recommendationsRequestId)) {
+        return;
+      }
       logError('Failed to load smart recommendations: $e',
           tag: 'GOALS_PROVIDER');
       _errorMessage = 'Failed to load recommendations';
     } finally {
-      _isLoadingRecommendations = false;
-      notifyListeners();
+      if (_isCurrentRequest(generation, requestId, _recommendationsRequestId)) {
+        _isLoadingRecommendations = false;
+        notifyListeners();
+      }
     }
   }
 
   /// Create goal from recommendation
-  Future<bool> createGoalFromRecommendation(
-      Map<String, dynamic> recommendation) async {
+  Future<bool> createGoalFromRecommendation(Map<String, dynamic> recommendation,
+      {int? sessionGeneration}) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isCurrent(generation)) return false;
+    _invalidateRecommendations();
+
     final data = {
       'title': recommendation['title'],
       'description':
@@ -232,16 +276,23 @@ class GoalsProvider extends ChangeNotifier {
       'target_date': recommendation['suggested_deadline'],
     };
 
-    final success = await createGoal(data);
+    final success = await createGoal(data, sessionGeneration: generation);
+    if (!_isCurrent(generation)) return false;
     if (success) {
       // Refresh recommendations after creating goal
-      await loadSmartRecommendations();
+      await loadSmartRecommendations(sessionGeneration: generation);
+      if (!_isCurrent(generation)) return false;
     }
     return success;
   }
 
   /// Load health data for a specific goal
-  Future<void> loadGoalHealthData(String goalId) async {
+  Future<void> loadGoalHealthData(
+    String goalId, {
+    int? sessionGeneration,
+  }) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isCurrent(generation)) return;
     if (_healthDataLoading[goalId] == true) return;
 
     try {
@@ -249,14 +300,18 @@ class GoalsProvider extends ChangeNotifier {
       notifyListeners();
 
       final data = await _apiService.analyzeGoalHealth(goalId);
+      if (!_isCurrent(generation)) return;
       _goalHealthData[goalId] = data;
       logInfo('Goal health data loaded for $goalId', tag: 'GOALS_PROVIDER');
     } catch (e) {
+      if (!_isCurrent(generation)) return;
       logError('Failed to load goal health data: $e', tag: 'GOALS_PROVIDER');
       _errorMessage = 'Failed to load goal health data';
     } finally {
-      _healthDataLoading[goalId] = false;
-      notifyListeners();
+      if (_isCurrent(generation)) {
+        _healthDataLoading[goalId] = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -284,146 +339,208 @@ class GoalsProvider extends ChangeNotifier {
   }
 
   /// Create a new goal
-  Future<bool> createGoal(Map<String, dynamic> data) async {
+  Future<bool> createGoal(
+    Map<String, dynamic> data, {
+    int? sessionGeneration,
+  }) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isCurrent(generation)) return false;
+
     try {
-      _setLoading(true);
+      _invalidateGoalSnapshots();
+      _setLoading(true, generation);
 
       await _apiService.createGoal(data);
+      if (!_isCurrent(generation)) return false;
 
       // Refresh data
       await Future.wait([
-        loadGoals(),
-        loadStatistics(),
+        loadGoals(sessionGeneration: generation),
+        loadStatistics(sessionGeneration: generation),
       ]);
+      if (!_isCurrent(generation)) return false;
 
       logInfo('Goal created successfully', tag: 'GOALS_PROVIDER');
       return true;
     } catch (e) {
+      if (!_isCurrent(generation)) return false;
       logError('Failed to create goal: $e', tag: 'GOALS_PROVIDER');
       _errorMessage = e.toString();
       return false;
     } finally {
-      _setLoading(false);
+      _setLoading(false, generation);
     }
   }
 
   /// Update an existing goal
-  Future<bool> updateGoal(String goalId, Map<String, dynamic> data) async {
+  Future<bool> updateGoal(
+    String goalId,
+    Map<String, dynamic> data, {
+    int? sessionGeneration,
+  }) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isCurrent(generation)) return false;
+
     try {
-      _setLoading(true);
+      _invalidateGoalSnapshots();
+      _setLoading(true, generation);
 
       await _apiService.updateGoal(goalId, data);
+      if (!_isCurrent(generation)) return false;
 
       // Refresh data
       await Future.wait([
-        loadGoals(),
-        loadStatistics(),
+        loadGoals(sessionGeneration: generation),
+        loadStatistics(sessionGeneration: generation),
       ]);
+      if (!_isCurrent(generation)) return false;
 
       logInfo('Goal $goalId updated successfully', tag: 'GOALS_PROVIDER');
       return true;
     } catch (e) {
+      if (!_isCurrent(generation)) return false;
       logError('Failed to update goal: $e', tag: 'GOALS_PROVIDER');
       _errorMessage = e.toString();
       return false;
     } finally {
-      _setLoading(false);
+      _setLoading(false, generation);
     }
   }
 
   /// Delete a goal
-  Future<bool> deleteGoal(String goalId) async {
+  Future<bool> deleteGoal(
+    String goalId, {
+    int? sessionGeneration,
+  }) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isCurrent(generation)) return false;
+
     try {
-      _setLoading(true);
+      _invalidateGoalSnapshots();
+      _setLoading(true, generation);
 
       await _apiService.deleteGoal(goalId);
+      if (!_isCurrent(generation)) return false;
 
       // Refresh data
       await Future.wait([
-        loadGoals(),
-        loadStatistics(),
+        loadGoals(sessionGeneration: generation),
+        loadStatistics(sessionGeneration: generation),
       ]);
+      if (!_isCurrent(generation)) return false;
 
       logInfo('Goal $goalId deleted successfully', tag: 'GOALS_PROVIDER');
       return true;
     } catch (e) {
+      if (!_isCurrent(generation)) return false;
       logError('Failed to delete goal: $e', tag: 'GOALS_PROVIDER');
       _errorMessage = e.toString();
       return false;
     } finally {
-      _setLoading(false);
+      _setLoading(false, generation);
     }
   }
 
   /// Add savings to a goal
-  Future<bool> addSavings(String goalId, double amount) async {
+  Future<bool> addSavings(
+    String goalId,
+    double amount, {
+    int? sessionGeneration,
+  }) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isCurrent(generation)) return false;
+
     try {
-      _setLoading(true);
+      _invalidateGoalSnapshots();
+      _setLoading(true, generation);
 
       await _apiService.addSavingsToGoal(goalId, amount);
+      if (!_isCurrent(generation)) return false;
 
       // Refresh data
       await Future.wait([
-        loadGoals(),
-        loadStatistics(),
+        loadGoals(sessionGeneration: generation),
+        loadStatistics(sessionGeneration: generation),
       ]);
+      if (!_isCurrent(generation)) return false;
 
       logInfo('Added \$$amount to goal $goalId', tag: 'GOALS_PROVIDER');
       return true;
     } catch (e) {
+      if (!_isCurrent(generation)) return false;
       logError('Failed to add savings: $e', tag: 'GOALS_PROVIDER');
       _errorMessage = e.toString();
       return false;
     } finally {
-      _setLoading(false);
+      _setLoading(false, generation);
     }
   }
 
   /// Pause a goal
-  Future<bool> pauseGoal(String goalId) async {
+  Future<bool> pauseGoal(
+    String goalId, {
+    int? sessionGeneration,
+  }) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isCurrent(generation)) return false;
+
     try {
-      _setLoading(true);
+      _invalidateGoalSnapshots();
+      _setLoading(true, generation);
 
       await _apiService.pauseGoal(goalId);
+      if (!_isCurrent(generation)) return false;
 
       // Refresh data
       await Future.wait([
-        loadGoals(),
-        loadStatistics(),
+        loadGoals(sessionGeneration: generation),
+        loadStatistics(sessionGeneration: generation),
       ]);
+      if (!_isCurrent(generation)) return false;
 
       logInfo('Goal $goalId paused', tag: 'GOALS_PROVIDER');
       return true;
     } catch (e) {
+      if (!_isCurrent(generation)) return false;
       logError('Failed to pause goal: $e', tag: 'GOALS_PROVIDER');
       _errorMessage = e.toString();
       return false;
     } finally {
-      _setLoading(false);
+      _setLoading(false, generation);
     }
   }
 
   /// Resume a paused goal
-  Future<bool> resumeGoal(String goalId) async {
+  Future<bool> resumeGoal(
+    String goalId, {
+    int? sessionGeneration,
+  }) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isCurrent(generation)) return false;
+
     try {
-      _setLoading(true);
+      _invalidateGoalSnapshots();
+      _setLoading(true, generation);
 
       await _apiService.resumeGoal(goalId);
+      if (!_isCurrent(generation)) return false;
 
       // Refresh data
       await Future.wait([
-        loadGoals(),
-        loadStatistics(),
+        loadGoals(sessionGeneration: generation),
+        loadStatistics(sessionGeneration: generation),
       ]);
+      if (!_isCurrent(generation)) return false;
 
       logInfo('Goal $goalId resumed', tag: 'GOALS_PROVIDER');
       return true;
     } catch (e) {
+      if (!_isCurrent(generation)) return false;
       logError('Failed to resume goal: $e', tag: 'GOALS_PROVIDER');
       _errorMessage = e.toString();
       return false;
     } finally {
-      _setLoading(false);
+      _setLoading(false, generation);
     }
   }
 
@@ -438,11 +555,36 @@ class GoalsProvider extends ChangeNotifier {
   }
 
   /// Refresh all data
-  Future<void> refresh() async {
+  Future<void> refresh({int? sessionGeneration}) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isCurrent(generation)) return;
+
     await Future.wait([
-      loadGoals(),
-      loadStatistics(),
+      loadGoals(sessionGeneration: generation),
+      loadStatistics(sessionGeneration: generation),
     ]);
+  }
+
+  /// Clear all account-owned state at an authentication boundary.
+  void resetSession() {
+    _sessionGeneration += 1;
+    _goalsRequestId += 1;
+    _statisticsRequestId += 1;
+    _recommendationsRequestId += 1;
+    _state = GoalsState.initial;
+    _goals = [];
+    _statistics = {};
+    _selectedStatus = null;
+    _selectedCategory = null;
+    _errorMessage = null;
+    _isLoading = false;
+    _goalHealthData.clear();
+    _healthDataLoading.clear();
+    _recommendations = [];
+    _opportunities = [];
+    _adjustments = [];
+    _isLoadingRecommendations = false;
+    notifyListeners();
   }
 
   /// Clear error message
@@ -452,10 +594,24 @@ class GoalsProvider extends ChangeNotifier {
   }
 
   // Private helper
-  void _setLoading(bool loading) {
+  void _setLoading(bool loading, int generation) {
+    if (!_isCurrent(generation)) return;
     _isLoading = loading;
     notifyListeners();
   }
 
+  bool _isCurrent(int generation) => generation == _sessionGeneration;
 
+  bool _isCurrentRequest(int generation, int requestId, int latestRequestId) =>
+      _isCurrent(generation) && requestId == latestRequestId;
+
+  void _invalidateGoalSnapshots() {
+    _goalsRequestId += 1;
+    _statisticsRequestId += 1;
+  }
+
+  void _invalidateRecommendations() {
+    _recommendationsRequestId += 1;
+    _isLoadingRecommendations = false;
+  }
 }

@@ -250,8 +250,6 @@ void main() async {
   final app = MultiProvider(
     providers: [
       ChangeNotifierProvider(create: (_) => SettingsProvider()),
-      ChangeNotifierProvider(create: (_) => UserProvider()),
-      // RE-ENABLED: All providers needed for internal screens
       ChangeNotifierProvider(create: (_) => BudgetProvider()),
       ChangeNotifierProvider(create: (_) => TransactionProvider()),
       ChangeNotifierProvider(create: (_) => GoalsProvider()),
@@ -263,6 +261,26 @@ void main() async {
       ChangeNotifierProvider(create: (_) => AdviceProvider()),
       ChangeNotifierProvider(create: (_) => InstallmentsProvider()),
       ChangeNotifierProvider(create: (_) => LoadingProvider()),
+      ChangeNotifierProvider(
+        create: (context) => UserProvider(
+          onSessionBoundary: () {
+            context.read<BudgetProvider>().resetSession();
+            context.read<TransactionProvider>().resetSession();
+            context.read<GoalsProvider>().resetSession();
+            context.read<ChallengesProvider>().resetSession();
+            context.read<HabitsProvider>().resetSession();
+            context.read<BehavioralProvider>().resetSession();
+            context.read<MoodProvider>().resetSession();
+            context.read<NotificationsProvider>().resetSession();
+            context.read<AdviceProvider>().resetSession();
+            context.read<InstallmentsProvider>().resetSession();
+            context.read<LoadingProvider>().reset();
+          },
+          onAccountTransition: () {
+            context.read<SettingsProvider>().resetSession();
+          },
+        ),
+      ),
     ],
     child: const MITAApp(),
   );

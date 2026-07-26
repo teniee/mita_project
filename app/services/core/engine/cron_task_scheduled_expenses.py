@@ -79,7 +79,11 @@ def _process_due_expenses(db: Session, today: date, summary: dict) -> None:
     """Create transactions for all expenses whose scheduled_date is today."""
     from app.db.models.scheduled_expense import ScheduledExpense
     from app.db.models.transaction import Transaction
-    from app.services.core.engine.expense_tracker import apply_transaction_to_plan
+    from app.services.core.engine.expense_tracker import (
+        apply_transaction_to_plan,
+        lock_user_ledger,
+        run_transaction_plan_side_effects,
+    )
 
     due: list[ScheduledExpense] = (
         db.query(ScheduledExpense)
@@ -96,6 +100,7 @@ def _process_due_expenses(db: Session, today: date, summary: dict) -> None:
     for expense in due:
         try:
             # 1. Create the real Transaction
+            lock_user_ledger(db, expense.user_id)
             txn = Transaction(
                 user_id=expense.user_id,
                 category=expense.category,
@@ -115,9 +120,15 @@ def _process_due_expenses(db: Session, today: date, summary: dict) -> None:
 
             # 3. Apply to DailyPlan + auto-rebalance (core MITA promise).
             #    apply_transaction_to_plan calls check_and_rebalance internally.
-            apply_transaction_to_plan(db, txn)
+            rebalance_result = apply_transaction_to_plan(
+                db,
+                txn,
+                commit=False,
+                run_side_effects=False,
+            )
 
             db.commit()
+            run_transaction_plan_side_effects(db, txn, rebalance_result)
             summary["processed"] += 1
 
             # 4. "Expense processed" push notification

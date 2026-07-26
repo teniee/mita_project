@@ -26,6 +26,19 @@ class BudgetAdapterService {
   EnhancedDailyBudgetCalculation? _cachedDailyBudget;
   legacy.CategoryBudgetAllocation? _cachedCategoryBudget;
   DateTime? _lastCacheUpdate;
+  int _sessionGeneration = 0;
+
+  /// Drop all account-derived calculations before another identity can render.
+  ///
+  /// The adapter is a process-wide singleton, so provider state alone is not
+  /// enough: without this reset account B can receive account A's one-hour
+  /// fallback calculation cache.
+  void resetSession() {
+    _sessionGeneration += 1;
+    _cachedDailyBudget = null;
+    _cachedCategoryBudget = null;
+    _lastCacheUpdate = null;
+  }
 
   /// Get dashboard data from API (real backend data)
   Future<Map<String, dynamic>> getDashboardData() async {
@@ -165,8 +178,7 @@ class BudgetAdapterService {
 
       // Get user income first
       final profile = await _apiService.getUserProfile();
-      final income =
-          asDouble(asStringKeyedMap(profile['data'])['income']);
+      final income = asDouble(asStringKeyedMap(profile['data'])['income']);
 
       if (income <= 0) {
         throw Exception('Income data required for budget insights');
@@ -468,6 +480,7 @@ class BudgetAdapterService {
   Future<EnhancedDailyBudgetCalculation> _getDailyBudget(
       OnboardingState onboardingData) async {
     final now = DateTime.now();
+    final generation = _sessionGeneration;
 
     // Check cache validity (1 hour)
     if (_cachedDailyBudget != null &&
@@ -477,11 +490,14 @@ class BudgetAdapterService {
     }
 
     // Calculate new daily budget using enhanced engine
-    _cachedDailyBudget = await _budgetEngine.calculateDailyBudget(
+    final calculation = await _budgetEngine.calculateDailyBudget(
         onboardingData: onboardingData);
-    _lastCacheUpdate = now;
+    if (generation == _sessionGeneration) {
+      _cachedDailyBudget = calculation;
+      _lastCacheUpdate = now;
+    }
 
-    return _cachedDailyBudget!;
+    return calculation;
   }
 
   /// Get cached or calculate category budget
@@ -489,6 +505,7 @@ class BudgetAdapterService {
       OnboardingState onboardingData,
       EnhancedDailyBudgetCalculation dailyBudget) async {
     final now = DateTime.now();
+    final generation = _sessionGeneration;
 
     // Check cache validity (1 hour)
     if (_cachedCategoryBudget != null &&
@@ -498,9 +515,12 @@ class BudgetAdapterService {
     }
 
     // Calculate new category budget using enhanced allocations
-    _cachedCategoryBudget = _createCategoryBudgetFromEnhanced(dailyBudget);
+    final calculation = _createCategoryBudgetFromEnhanced(dailyBudget);
+    if (generation == _sessionGeneration) {
+      _cachedCategoryBudget = calculation;
+    }
 
-    return _cachedCategoryBudget!;
+    return calculation;
   }
 
   /// Create CategoryBudgetAllocation from enhanced budget data
@@ -853,23 +873,22 @@ class BudgetAdapterService {
           );
 
       if (transactions.isNotEmpty) {
-        return transactions
-            .map<Map<String, dynamic>>((tx) {
-              final txMap = asStringKeyedMap(tx);
-              final category = asString(txMap['category'], fallback: 'Other');
-              return {
-                'action': asStringOrNull(txMap['description']) ??
-                    asStringOrNull(txMap['merchant']) ??
-                    'Transaction',
-                'amount': asDouble(txMap['amount']).toStringAsFixed(2),
-                'date': asStringOrNull(txMap['date']) ??
-                    asStringOrNull(txMap['created_at']) ??
-                    DateTime.now().toIso8601String(),
-                'category': category,
-                'icon': _getCategoryIcon(category.toLowerCase()),
-                'color': _getCategoryColor(category.toLowerCase()),
-              };
-            }).toList();
+        return transactions.map<Map<String, dynamic>>((tx) {
+          final txMap = asStringKeyedMap(tx);
+          final category = asString(txMap['category'], fallback: 'Other');
+          return {
+            'action': asStringOrNull(txMap['description']) ??
+                asStringOrNull(txMap['merchant']) ??
+                'Transaction',
+            'amount': asDouble(txMap['amount']).toStringAsFixed(2),
+            'date': asStringOrNull(txMap['date']) ??
+                asStringOrNull(txMap['created_at']) ??
+                DateTime.now().toIso8601String(),
+            'category': category,
+            'icon': _getCategoryIcon(category.toLowerCase()),
+            'color': _getCategoryColor(category.toLowerCase()),
+          };
+        }).toList();
       }
     } catch (e) {
       logWarning('Failed to get actual transactions: $e',

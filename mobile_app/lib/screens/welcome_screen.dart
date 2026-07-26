@@ -220,7 +220,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       logError('Authentication check failed: $e', tag: 'WELCOME_SCREEN');
 
       // Clear tokens and user data using provider
-      await _api.clearTokens();
       await userProvider.logout();
       logInfo('User data cleared via UserProvider', tag: 'WELCOME_SCREEN');
 

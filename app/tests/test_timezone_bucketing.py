@@ -23,9 +23,12 @@ from app.db.models import DailyPlan, Transaction, User
 from app.services.core.engine.expense_tracker import (
     apply_transaction_to_plan,
     local_day_of,
+    local_day_start_utc,
     local_day_utc_window,
     recalculate_plan_spent,
+    record_expense as core_record_expense,
 )
+from app.services.expense_tracker import record_expense as legacy_record_expense
 
 SOFIA = "Europe/Sofia"
 # 2026-06-29T23:00:33Z == 2026-06-30 02:00:33 in Europe/Sofia (UTC+3, EEST).
@@ -88,6 +91,47 @@ def test_local_day_utc_window_sofia():
     assert end == datetime(2026, 6, 30, 21, 0, 0)
     naive_near_midnight = NEAR_MIDNIGHT_UTC.replace(tzinfo=None)
     assert start <= naive_near_midnight < end
+
+
+def test_local_day_start_utc_preserves_western_timezone_date():
+    """A legacy date-only expense must not shift to the previous local day."""
+    selected_day = date(2026, 7, 15)
+    instant = local_day_start_utc(selected_day, "America/Los_Angeles")
+
+    assert instant == datetime(2026, 7, 15, 7, 0, tzinfo=timezone.utc)
+    assert local_day_of(instant, "America/Los_Angeles") == selected_day
+
+
+@pytest.mark.parametrize("recorder", [core_record_expense, legacy_record_expense])
+def test_date_only_record_expense_keeps_western_local_day(
+    db_session, monkeypatch, recorder
+):
+    selected_day = date(2026, 7, 15)
+    user = _make_user(db_session, "America/Los_Angeles")
+    monkeypatch.setattr(
+        "app.services.velocity_alert_service.check_velocity_after_transaction",
+        lambda **kwargs: None,
+    )
+
+    result = recorder(
+        db_session,
+        user.id,
+        selected_day,
+        "groceries",
+        12.34,
+        "timezone regression",
+    )
+
+    assert result["status"] == "recorded"
+    stored = (
+        db_session.query(Transaction)
+        .filter(Transaction.user_id == user.id)
+        .one()
+    )
+    assert local_day_of(stored.spent_at, user.timezone) == selected_day
+    assert _plan_days(db_session, user.id, "groceries")[selected_day] == Decimal(
+        "12.34"
+    )
 
 
 def test_invalid_timezone_falls_back_to_utc():

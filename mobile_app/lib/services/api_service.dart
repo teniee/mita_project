@@ -23,7 +23,6 @@ import 'certificate_pinning_service.dart';
 import 'user_data_manager.dart';
 
 class ApiService {
-
   /// Dio response body normalized to a string-keyed map (empty on drift).
   Map<String, dynamic> _bodyMapOf(Response<dynamic> response) =>
       asStringKeyedMap(response.data);
@@ -67,6 +66,11 @@ class ApiService {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
+          final requestGeneration =
+              (options.extra[_authGenerationExtraKey] as int?) ??
+                  _authGeneration;
+          options.extra[_authGenerationExtraKey] = requestGeneration;
+
           // Note: We don't start loading here as it's handled by TimeoutManagerService
           // This prevents double-counting and ensures proper timeout handling
 
@@ -81,12 +85,23 @@ class ApiService {
               });
 
           final token = await getToken();
-          if (token != null) {
+          if (requestGeneration != _authGeneration) {
+            return handler.reject(_sessionChangedError(options));
+          }
+          if (token != null && !options.headers.containsKey('Authorization')) {
             options.headers['Authorization'] = 'Bearer $token';
           }
           handler.next(options);
         },
         onResponse: (response, handler) {
+          final requestGeneration =
+              response.requestOptions.extra[_authGenerationExtraKey] as int?;
+          if (requestGeneration != null &&
+              requestGeneration != _authGeneration) {
+            return handler
+                .reject(_sessionChangedError(response.requestOptions));
+          }
+
           // Note: Loading is stopped by TimeoutManagerService automatically
 
           // Structured logging
@@ -102,6 +117,20 @@ class ApiService {
           handler.next(response);
         },
         onError: (DioException e, handler) async {
+          final requestGeneration =
+              e.requestOptions.extra[_authGenerationExtraKey] as int?;
+
+          // A response from account A must never start a refresh or replay
+          // after logout/account B advanced the session generation.
+          if (requestGeneration != null &&
+              requestGeneration != _authGeneration) {
+            logDebug(
+                'Ignoring stale API error from auth generation '
+                '$requestGeneration (current: $_authGeneration)',
+                tag: 'API_AUTH');
+            return handler.next(e);
+          }
+
           // Note: Loading is stopped by TimeoutManagerService automatically
 
           // Structured error logging
@@ -138,8 +167,7 @@ class ApiService {
                 e.requestOptions.extra['__auth_retried'] == true;
 
             if (isAuthEndpoint) {
-              logError(
-                  'Auth endpoint returned 401 ($path) - not refreshing',
+              logError('Auth endpoint returned 401 ($path) - not refreshing',
                   tag: 'TOKEN_REFRESH');
               return handler.next(e);
             }
@@ -150,11 +178,21 @@ class ApiService {
               return handler.next(e);
             }
 
-            final refreshed = await _refreshTokens();
+            final refreshed = await _refreshTokens(
+              expectedGeneration: requestGeneration ?? _authGeneration,
+            );
             if (refreshed) {
+              if (requestGeneration != null &&
+                  requestGeneration != _authGeneration) {
+                return handler.next(e);
+              }
               final req = e.requestOptions;
               req.extra['__auth_retried'] = true;
               final token = await getToken();
+              if (requestGeneration != null &&
+                  requestGeneration != _authGeneration) {
+                return handler.next(e);
+              }
               if (token != null) {
                 req.headers['Authorization'] = 'Bearer $token';
               }
@@ -288,6 +326,17 @@ class ApiService {
   // Prevents showing "Session expired" for old tokens from previous installs
   bool _hasActiveSession = false;
 
+  static const String _authGenerationExtraKey = '__mita_auth_generation';
+  static const String _legacyLogoutTombstoneKey = 'mita_logout_tombstone_v1';
+
+  int _authGeneration = 0;
+  bool _tokensSuppressed = false;
+  Future<void> _tokenMutationTail = Future<void>.value();
+
+  Future<bool>? _refreshInFlight;
+  int? _refreshInFlightGeneration;
+  CancelToken? _refreshCancelToken;
+
   // All backend routes are mounted under /api (see backend app.main);
   // using the bare host here 404'd every request the app made.
   final String _baseUrl = AppConfig.fullApiUrl;
@@ -297,6 +346,51 @@ class ApiService {
   // ---------------------------------------------------------------------------
 
   String get baseUrl => _dio.options.baseUrl;
+
+  /// True only for a token pair established during this process. Persisted
+  /// credentials on a cold restart remain usable but are not mistaken for a
+  /// fresh login/account switch.
+  bool get hasActiveSession => _hasActiveSession;
+
+  /// Advance the auth epoch synchronously. Providers call this before
+  /// clearing account-scoped UI state; token save/clear/logout also call it
+  /// internally. Old requests, refreshes, and profile futures can then finish
+  /// only as stale work and cannot mutate the new identity.
+  int beginSessionBoundary() {
+    _authGeneration += 1;
+    _invalidateUserProfileCache();
+
+    final cancelToken = _refreshCancelToken;
+    if (cancelToken != null && !cancelToken.isCancelled) {
+      cancelToken.cancel('Authentication session changed');
+    }
+    _refreshCancelToken = null;
+    _refreshInFlight = null;
+    _refreshInFlightGeneration = null;
+
+    return _authGeneration;
+  }
+
+  @visibleForTesting
+  int get authGenerationForTesting => _authGeneration;
+
+  bool _isCurrentGeneration(int generation) => generation == _authGeneration;
+
+  DioException _sessionChangedError(RequestOptions options) {
+    return DioException(
+      requestOptions: options,
+      type: DioExceptionType.cancel,
+      error: 'Authentication session changed',
+      message: 'Request belongs to a previous authentication session',
+    );
+  }
+
+  Future<T> _serializeTokenMutation<T>(Future<T> Function() mutation) {
+    final operation = _tokenMutationTail.then<T>((_) => mutation());
+    _tokenMutationTail =
+        operation.then<void>((_) {}, onError: (Object _, StackTrace __) {});
+    return operation;
+  }
 
   /// The interceptor-equipped Dio (adds the auth header on each request and
   /// performs the 401 refresh-and-retry). Services that make authenticated
@@ -330,15 +424,24 @@ class ApiService {
 
   /// Get access token using secure storage when available
   Future<String?> getToken() async {
+    final generation = _authGeneration;
+    if (_tokensSuppressed) return null;
+
     final secureStorage = await _getSecureStorage();
-    if (secureStorage != null) {
+    if (!_isCurrentGeneration(generation) || _tokensSuppressed) return null;
+    if (secureStorage != null && !secureStorage.isLogoutTombstoned) {
       try {
         final token = await secureStorage.getAccessToken();
-        // CRITICAL: Secure storage returns null on iOS Simulator read failures
-        // Must explicitly check and fall back to legacy storage
-        if (token != null) {
+        if (!_isCurrentGeneration(generation) || _tokensSuppressed) return null;
+        if (secureStorage.isLogoutTombstoned) {
+          // A secure-store mutation failed while reading. Continue only if the
+          // independently tombstoned legacy fallback represents a newer,
+          // complete login.
+        } else if (token != null) {
           return token;
         }
+        // CRITICAL: Secure storage returns null on iOS Simulator read failures
+        // Must explicitly check and fall back to legacy storage
         logWarning('Secure storage returned null, falling back to legacy',
             tag: 'API_SECURITY');
       } catch (e) {
@@ -346,8 +449,13 @@ class ApiService {
             tag: 'API_SECURITY');
       }
     }
+
+    if (await _legacyLogoutTombstonePresent()) return null;
+    if (!_isCurrentGeneration(generation) || _tokensSuppressed) return null;
+
     // Fallback to legacy storage
     final legacyToken = await _storage.read(key: 'access_token');
+    if (!_isCurrentGeneration(generation) || _tokensSuppressed) return null;
     if (legacyToken != null) {
       logInfo('✅ Retrieved token from legacy storage fallback',
           tag: 'API_SECURITY');
@@ -357,15 +465,22 @@ class ApiService {
 
   /// Get refresh token using secure storage when available
   Future<String?> getRefreshToken() async {
+    final generation = _authGeneration;
+    if (_tokensSuppressed) return null;
+
     final secureStorage = await _getSecureStorage();
-    if (secureStorage != null) {
+    if (!_isCurrentGeneration(generation) || _tokensSuppressed) return null;
+    if (secureStorage != null && !secureStorage.isLogoutTombstoned) {
       try {
         final token = await secureStorage.getRefreshToken();
-        // CRITICAL: Secure storage returns null on iOS Simulator read failures
-        // Must explicitly check and fall back to legacy storage
-        if (token != null) {
+        if (!_isCurrentGeneration(generation) || _tokensSuppressed) return null;
+        if (secureStorage.isLogoutTombstoned) {
+          // See getToken(): a valid newer legacy pair may still be available.
+        } else if (token != null) {
           return token;
         }
+        // CRITICAL: Secure storage returns null on iOS Simulator read failures
+        // Must explicitly check and fall back to legacy storage
         logWarning('Secure storage returned null, falling back to legacy',
             tag: 'API_SECURITY');
       } catch (e) {
@@ -374,8 +489,13 @@ class ApiService {
             tag: 'API_SECURITY');
       }
     }
+
+    if (await _legacyLogoutTombstonePresent()) return null;
+    if (!_isCurrentGeneration(generation) || _tokensSuppressed) return null;
+
     // Fallback to legacy storage
     final legacyToken = await _storage.read(key: 'refresh_token');
+    if (!_isCurrentGeneration(generation) || _tokensSuppressed) return null;
     if (legacyToken != null) {
       logInfo('✅ Retrieved refresh token from legacy storage fallback',
           tag: 'API_SECURITY');
@@ -385,69 +505,83 @@ class ApiService {
 
   /// Save tokens using secure storage with enhanced security
   Future<void> saveTokens(String access, String refresh) async {
-    // New session may belong to a different user — drop the profile cache.
-    _invalidateUserProfileCache();
-    final secureStorage = await _getSecureStorage();
+    final generation = beginSessionBoundary();
+    _tokensSuppressed = true;
+    await _persistTokenPair(
+      generation: generation,
+      access: access,
+      refresh: refresh,
+    );
+  }
 
-    if (secureStorage != null) {
-      try {
-        // Use secure storage for production-grade security
-        await secureStorage.storeTokens(access, refresh);
+  Future<bool> _persistTokenPair({
+    required int generation,
+    required String access,
+    required String refresh,
+  }) {
+    return _serializeTokenMutation<bool>(() async {
+      if (!_isCurrentGeneration(generation)) return false;
 
-        // Extract and save user ID from access token
+      final userId = _extractUserIdFromToken(access);
+      final secureStorage = await _getSecureStorage();
+      if (!_isCurrentGeneration(generation)) return false;
+
+      var secureStored = false;
+      if (secureStorage != null) {
         try {
-          final userId = _extractUserIdFromToken(access);
+          await secureStorage.storeTokens(access, refresh);
+          if (!_isCurrentGeneration(generation)) return false;
           if (userId != null) {
             await secureStorage.storeUserId(userId);
           }
+          secureStored = true;
+          logInfo('Tokens saved securely', tag: 'API_SECURITY');
         } catch (e) {
-          logError('Failed to extract user ID from token',
-              tag: 'AUTH', error: e);
+          logError('Failed to save tokens securely, using legacy fallback: $e',
+              tag: 'API_SECURITY', error: e);
         }
+      }
 
-        logInfo('Tokens saved securely', tag: 'API_SECURITY');
+      if (!_isCurrentGeneration(generation)) return false;
 
-        // KEEP legacy tokens as fallback - DON'T delete them
-        // If secure storage read fails (iOS Simulator issues), legacy storage provides fallback
-        // This prevents "session expired" errors during onboarding
-        try {
-          await _storage.write(key: 'access_token', value: access);
-          await _storage.write(key: 'refresh_token', value: refresh);
-          logInfo('Legacy tokens also updated as fallback',
-              tag: 'API_SECURITY');
-        } catch (e) {
-          logWarning('Failed to update legacy fallback tokens: $e',
-              tag: 'API_SECURITY');
+      Object? legacyFailure;
+      try {
+        // Keep the tombstone until the complete fallback credential pair is
+        // durable. This prevents partial writes from becoming readable.
+        await _storage.write(key: 'access_token', value: access);
+        await _storage.write(key: 'refresh_token', value: refresh);
+        if (userId != null) {
+          await _storage.write(key: 'user_id', value: userId);
         }
-
-        return;
+        await _storage.delete(key: _legacyLogoutTombstoneKey);
       } catch (e) {
-        logError(
-            'Failed to save tokens securely, falling back to legacy storage: $e',
-            tag: 'API_SECURITY',
-            error: e);
+        legacyFailure = e;
+        logError('Failed to update legacy fallback tokens: $e',
+            tag: 'API_SECURITY', error: e);
       }
-    }
 
-    // Fallback to legacy storage
-    logWarning('Using legacy token storage - consider upgrading security',
-        tag: 'API_SECURITY');
-    await _storage.write(key: 'access_token', value: access);
-    await _storage.write(key: 'refresh_token', value: refresh);
+      if (!_isCurrentGeneration(generation)) return false;
+      if (!secureStored && legacyFailure != null) {
+        throw StateError(
+            'Unable to persist authentication credentials: $legacyFailure');
+      }
 
-    // Extract and save user ID from access token
+      _tokensSuppressed = false;
+      _hasActiveSession = true;
+      logDebug('Active session established', tag: 'API_AUTH');
+      return true;
+    });
+  }
+
+  Future<bool> _legacyLogoutTombstonePresent() async {
     try {
-      final userId = _extractUserIdFromToken(access);
-      if (userId != null) {
-        await saveUserId(userId);
-      }
+      return await _storage.read(key: _legacyLogoutTombstoneKey) == 'true';
     } catch (e) {
-      logError('Failed to extract user ID from token', tag: 'AUTH', error: e);
+      // Fail closed for the legacy fallback. Secure storage was already tried.
+      logError('Failed to read legacy logout tombstone: $e',
+          tag: 'API_SECURITY', error: e);
+      return true;
     }
-
-    // Mark as active session - distinguishes from old persisted tokens
-    _hasActiveSession = true;
-    logDebug('Active session established', tag: 'API_AUTH');
   }
 
   String? _extractUserIdFromToken(String token) {
@@ -476,10 +610,14 @@ class ApiService {
 
   /// Save user ID using secure storage when available
   Future<void> saveUserId(String id) async {
+    final generation = _authGeneration;
+    if (_tokensSuppressed) return;
     final secureStorage = await _getSecureStorage();
+    if (!_isCurrentGeneration(generation) || _tokensSuppressed) return;
     if (secureStorage != null) {
       try {
         await secureStorage.storeUserId(id);
+        if (!_isCurrentGeneration(generation) || _tokensSuppressed) return;
         // Clean up legacy storage
         await _storage.delete(key: 'user_id');
         return;
@@ -494,75 +632,126 @@ class ApiService {
 
   /// Get user ID using secure storage when available
   Future<String?> getUserId() async {
+    final generation = _authGeneration;
+    if (_tokensSuppressed) return null;
     final secureStorage = await _getSecureStorage();
-    if (secureStorage != null) {
+    if (!_isCurrentGeneration(generation) || _tokensSuppressed) return null;
+    if (secureStorage != null && !secureStorage.isLogoutTombstoned) {
       try {
         final userId = await secureStorage.getUserId();
-        if (userId != null) return userId;
+        if (!_isCurrentGeneration(generation) || _tokensSuppressed) return null;
+        if (!secureStorage.isLogoutTombstoned && userId != null) return userId;
       } catch (e) {
         logWarning(
             'Failed to get user ID from secure storage, using fallback: $e',
             tag: 'API_SECURITY');
       }
     }
+    if (await _legacyLogoutTombstonePresent()) return null;
+    if (!_isCurrentGeneration(generation) || _tokensSuppressed) return null;
     // Fallback to legacy storage
-    return await _storage.read(key: 'user_id');
+    final userId = await _storage.read(key: 'user_id');
+    return _isCurrentGeneration(generation) && !_tokensSuppressed
+        ? userId
+        : null;
   }
 
   /// Clear tokens using secure storage with proper cleanup
-  Future<void> clearTokens() async {
-    _invalidateUserProfileCache();
-    final secureStorage = await _getSecureStorage();
+  Future<void> clearTokens({int? expectedGeneration}) {
+    final generation = expectedGeneration ?? beginSessionBoundary();
+    if (!_isCurrentGeneration(generation)) return Future<void>.value();
 
-    if (secureStorage != null) {
-      try {
-        await secureStorage.clearAllUserData();
-        logInfo('Tokens cleared securely', tag: 'API_SECURITY');
-      } catch (e) {
-        logError('Failed to clear tokens securely: $e',
-            tag: 'API_SECURITY', error: e);
-      }
-    }
-
-    // Always clear legacy storage as well for complete cleanup
-    try {
-      await _storage.delete(key: 'access_token');
-      await _storage.delete(key: 'refresh_token');
-      await _storage.delete(key: 'user_id');
-      logDebug('Legacy tokens cleared', tag: 'API_SECURITY');
-    } catch (e) {
-      logError('Failed to clear legacy tokens: $e',
-          tag: 'API_SECURITY', error: e);
-    }
-
-    // Mark as NO active session - user logged out
+    // Deny reads synchronously, before the first storage await.
+    _tokensSuppressed = true;
     _hasActiveSession = false;
-    logDebug('Active session cleared', tag: 'API_AUTH');
+    return _clearTokensForGeneration(generation);
   }
 
-  // Single-flight guard: concurrent 401s (dashboard fires ~10 requests at
-  // once) must trigger ONE refresh, not N. With refresh-token rotation the
-  // first refresh invalidates the token, so a racing second refresh would
-  // 401 and wrongly log the user out. All callers await the same future.
-  Future<bool>? _refreshInFlight;
+  Future<void> _clearTokensForGeneration(int generation) {
+    return _serializeTokenMutation<void>(() async {
+      if (!_isCurrentGeneration(generation)) return;
 
-  Future<bool> _refreshTokens() {
+      final failures = <Object>[];
+
+      // Mark the legacy fallback logged out before attempting any deletes.
+      try {
+        await _storage.write(key: _legacyLogoutTombstoneKey, value: 'true');
+      } catch (e) {
+        failures.add(e);
+        logError('Failed to persist legacy logout tombstone: $e',
+            tag: 'API_SECURITY', error: e);
+      }
+
+      final secureStorage = await _getSecureStorage();
+      if (secureStorage != null) {
+        try {
+          await secureStorage.clearAllUserData();
+          logInfo('Tokens cleared securely', tag: 'API_SECURITY');
+        } catch (e) {
+          failures.add(e);
+          logError('Failed to clear tokens securely: $e',
+              tag: 'API_SECURITY', error: e);
+        }
+      }
+
+      for (final key in const ['access_token', 'refresh_token', 'user_id']) {
+        try {
+          await _storage.delete(key: key);
+        } catch (e) {
+          failures.add(e);
+          logError('Failed to clear legacy credential $key: $e',
+              tag: 'API_SECURITY', error: e);
+        }
+      }
+
+      if (_isCurrentGeneration(generation)) {
+        _tokensSuppressed = true;
+        _hasActiveSession = false;
+        logDebug('Active session cleared', tag: 'API_AUTH');
+      }
+
+      if (failures.isNotEmpty) {
+        throw StateError(
+            'Local credential cleanup failed (${failures.length} operation(s))');
+      }
+    });
+  }
+
+  // Single-flight guard: concurrent 401s in the same auth generation trigger
+  // one refresh. A boundary cancels and detaches the old flight so account B
+  // never joins account A's token rotation.
+  Future<bool> _refreshTokens({int? expectedGeneration}) {
+    final generation = expectedGeneration ?? _authGeneration;
+    if (!_isCurrentGeneration(generation) || _tokensSuppressed) {
+      return Future<bool>.value(false);
+    }
+
     final inFlight = _refreshInFlight;
-    if (inFlight != null) {
+    if (inFlight != null && _refreshInFlightGeneration == generation) {
       logDebug('Token refresh already in flight — joining it',
           tag: 'TOKEN_REFRESH');
       return inFlight;
     }
-    final future = _doRefreshTokens();
-    _refreshInFlight = future.whenComplete(() {
-      _refreshInFlight = null;
+
+    final cancelToken = CancelToken();
+    final refresh = _doRefreshTokens(generation, cancelToken);
+    late final Future<bool> tracked;
+    tracked = refresh.whenComplete(() {
+      if (identical(_refreshInFlight, tracked)) {
+        _refreshInFlight = null;
+        _refreshInFlightGeneration = null;
+        _refreshCancelToken = null;
+      }
     });
-    return future;
+    _refreshInFlight = tracked;
+    _refreshInFlightGeneration = generation;
+    _refreshCancelToken = cancelToken;
+    return tracked;
   }
 
-  Future<bool> _doRefreshTokens() async {
+  Future<bool> _doRefreshTokens(int generation, CancelToken cancelToken) async {
     final refresh = await getRefreshToken();
-    if (refresh == null) {
+    if (refresh == null || !_isCurrentGeneration(generation)) {
       logWarning('No refresh token available', tag: 'TOKEN_REFRESH');
       return false;
     }
@@ -577,8 +766,14 @@ class ApiService {
       final response = await _dio.post<dynamic>(
         requestUrl,
         data: {'refresh_token': refresh},
-        options: Options(headers: {'Authorization': 'Bearer $refresh'}),
+        options: Options(
+          headers: {'Authorization': 'Bearer $refresh'},
+          extra: {_authGenerationExtraKey: generation},
+        ),
+        cancelToken: cancelToken,
       );
+
+      if (!_isCurrentGeneration(generation)) return false;
 
       logInfo('✅ Token refresh response received: ${response.statusCode}',
           tag: 'TOKEN_REFRESH');
@@ -619,43 +814,15 @@ class ApiService {
           '✅ New tokens received - access length: ${newAccess.length}, refresh length: ${newRefresh.length}',
           tag: 'TOKEN_REFRESH');
 
-      // Use secure storage for token refresh when available
-      final secureStorage = await _getSecureStorage();
-
-      if (secureStorage != null) {
-        try {
-          logInfo('📦 Storing tokens in secure storage...',
-              tag: 'TOKEN_REFRESH');
-          await secureStorage.storeTokens(newAccess, newRefresh);
-          logInfo('✅ Tokens stored securely', tag: 'TOKEN_REFRESH');
-
-          // ALSO update legacy storage as fallback
-          try {
-            await _storage.write(key: 'access_token', value: newAccess);
-            await _storage.write(key: 'refresh_token', value: newRefresh);
-            logInfo('✅ Legacy fallback tokens also updated',
-                tag: 'TOKEN_REFRESH');
-          } catch (legacyError) {
-            logWarning('Failed to update legacy fallback: $legacyError',
-                tag: 'TOKEN_REFRESH');
-          }
-
-          logInfo('✅✅✅ Tokens refreshed and stored securely',
-              tag: 'TOKEN_REFRESH');
-          return true;
-        } catch (e) {
-          logError('❌ Failed to store refreshed tokens securely: $e',
-              tag: 'TOKEN_REFRESH', error: e);
-          // Continue with fallback below
-        }
+      final stored = await _persistTokenPair(
+        generation: generation,
+        access: newAccess,
+        refresh: newRefresh,
+      );
+      if (stored) {
+        logInfo('Tokens refreshed and stored', tag: 'TOKEN_REFRESH');
       }
-
-      // Fallback to legacy storage
-      logInfo('📦 Storing tokens in legacy storage...', tag: 'TOKEN_REFRESH');
-      await _storage.write(key: 'access_token', value: newAccess);
-      await _storage.write(key: 'refresh_token', value: newRefresh);
-      logInfo('✅✅✅ Tokens refreshed (legacy storage)', tag: 'TOKEN_REFRESH');
-      return true;
+      return stored;
     } catch (e, stackTrace) {
       logError('❌❌❌ Token refresh failed: $e', tag: 'TOKEN_REFRESH', error: e);
       logError('Stack trace: $stackTrace', tag: 'TOKEN_REFRESH');
@@ -787,7 +954,8 @@ class ApiService {
   }
 
   // Add the missing emergencyRegister method that was being called
-  Future<Response<dynamic>> emergencyRegister(String email, String password) async {
+  Future<Response<dynamic>> emergencyRegister(
+      String email, String password) async {
     // Now just redirect to the standard registration since emergency endpoints are removed
     logInfo(
         'Redirecting emergency registration to standard FastAPI registration',
@@ -950,37 +1118,37 @@ class ApiService {
 
             // Transform icons and colors from strings to proper Flutter objects
             final targets = asList(data['daily_targets']).map((target) {
-                  if (target is! Map<String, dynamic>) return target;
+              if (target is! Map<String, dynamic>) return target;
 
-                  // Map icon names to Flutter Icons
-                  final iconMap = {
-                    'restaurant': Icons.restaurant,
-                    'directions_car': Icons.directions_car,
-                    'movie': Icons.movie,
-                    'shopping_bag': Icons.shopping_bag,
-                    'local_hospital': Icons.local_hospital,
-                    'power': Icons.power,
-                    'category': Icons.category,
-                    'attach_money': Icons.attach_money,
-                  };
+              // Map icon names to Flutter Icons
+              final iconMap = {
+                'restaurant': Icons.restaurant,
+                'directions_car': Icons.directions_car,
+                'movie': Icons.movie,
+                'shopping_bag': Icons.shopping_bag,
+                'local_hospital': Icons.local_hospital,
+                'power': Icons.power,
+                'category': Icons.category,
+                'attach_money': Icons.attach_money,
+              };
 
-                  // Parse color hex string to Color object
-                  Color? parseColor(String? colorStr) {
-                    if (colorStr == null) return null;
-                    final hex = colorStr.replaceAll('#', '');
-                    if (hex.length == 6) {
-                      return Color(int.parse('FF$hex', radix: 16));
-                    }
-                    return null;
-                  }
+              // Parse color hex string to Color object
+              Color? parseColor(String? colorStr) {
+                if (colorStr == null) return null;
+                final hex = colorStr.replaceAll('#', '');
+                if (hex.length == 6) {
+                  return Color(int.parse('FF$hex', radix: 16));
+                }
+                return null;
+              }
 
-                  return {
-                    ...target,
-                    'icon': iconMap[target['icon']] ?? Icons.category,
-                    'color': parseColor(asStringOrNull(target['color'])) ??
-                        AppColors.primary,
-                  };
-                }).toList();
+              return {
+                ...target,
+                'icon': iconMap[target['icon']] ?? Icons.category,
+                'color': parseColor(asStringOrNull(target['color'])) ??
+                    AppColors.primary,
+              };
+            }).toList();
 
             // Transform to the format expected by Main Screen
             return {
@@ -1240,7 +1408,9 @@ class ApiService {
   Future<List<dynamic>> getCalendar({double? userIncome}) async {
     return await _timeoutManager.executeWithFallback<List<dynamic>>(
       operation: () async {
+        final generation = _authGeneration;
         final token = await getToken();
+        if (!_isCurrentGeneration(generation)) return <dynamic>[];
 
         // Get user profile to retrieve actual income and location if not provided
         double actualIncome = userIncome ?? 0.0;
@@ -1252,6 +1422,7 @@ class ApiService {
               operation: () => getUserProfile(),
               operationName: 'Get User Profile for Calendar',
             );
+            if (!_isCurrentGeneration(generation)) return <dynamic>[];
             final incomeValue =
                 asDoubleOrNull(asStringKeyedMap(profile['data'])['income']);
             if (incomeValue == null || incomeValue <= 0) {
@@ -1259,7 +1430,8 @@ class ApiService {
                   'Income data required for calendar. Please complete onboarding.');
             }
             actualIncome = incomeValue;
-            userLocation = asStringOrNull(asStringKeyedMap(profile['data'])['location']);
+            userLocation =
+                asStringOrNull(asStringKeyedMap(profile['data'])['location']);
           } catch (e) {
             logError('Failed to get user profile for calendar: $e',
                 tag: 'CALENDAR');
@@ -1268,17 +1440,27 @@ class ApiService {
           }
         }
 
-        // Try to get cached calendar data first
-        final cacheKey =
-            'calendar_${actualIncome}_${DateTime.now().year}_${DateTime.now().month}';
-        try {
-          final cachedData = await _getCachedCalendarData(cacheKey);
-          if (cachedData != null) {
-            logDebug('Using cached calendar data', tag: 'CALENDAR');
-            return cachedData;
+        // Calendar shells contain account-specific budgets and onboarding
+        // inputs. Cache only when a stable owner id is available, and include
+        // it in the key so equal-income users never share data.
+        final userId = await getUserId();
+        if (!_isCurrentGeneration(generation)) return <dynamic>[];
+        final now = DateTime.now();
+        final cacheKey = userId == null || userId.isEmpty
+            ? null
+            : 'calendar_${Uri.encodeComponent(userId)}_'
+                '${actualIncome}_${now.year}_${now.month}';
+        if (cacheKey != null) {
+          try {
+            final cachedData = await _getCachedCalendarData(cacheKey);
+            if (!_isCurrentGeneration(generation)) return <dynamic>[];
+            if (cachedData != null) {
+              logDebug('Using cached calendar data', tag: 'CALENDAR');
+              return cachedData;
+            }
+          } catch (e) {
+            logWarning('Cache retrieval failed: $e', tag: 'CALENDAR');
           }
-        } catch (e) {
-          logWarning('Cache retrieval failed: $e', tag: 'CALENDAR');
         }
 
         // Get cached onboarding data to use REAL user inputs instead of hardcoded percentages
@@ -1398,7 +1580,10 @@ class ApiService {
               _envelopeMapOf(response)['calendar'], actualIncome);
 
           // Cache the successful response
-          await _cacheCalendarData(cacheKey, calendarDays);
+          if (cacheKey != null && _isCurrentGeneration(generation)) {
+            await _cacheCalendarData(cacheKey, calendarDays);
+            if (!_isCurrentGeneration(generation)) return <dynamic>[];
+          }
 
           logDebug('Successfully fetched calendar data from backend',
               tag: 'CALENDAR');
@@ -1539,7 +1724,8 @@ class ApiService {
             'limit': asDouble(value['limit']).round(),
             'status': value['status'] ?? 'good',
             'spent':
-              asDouble(value['total'], fallback: asDouble(value['spent'])).round(),
+                asDouble(value['total'], fallback: asDouble(value['spent']))
+                    .round(),
             'categories': asStringKeyedMap(value['categories']),
             'is_today': false,
             'is_weekend': false,
@@ -1887,7 +2073,8 @@ class ApiService {
         return null;
       }
 
-      final response = await _dio.get<dynamic>('/notifications/$notificationId');
+      final response =
+          await _dio.get<dynamic>('/notifications/$notificationId');
 
       if (response.statusCode == 200) {
         logInfo('Notification fetched successfully', tag: 'API_NOTIFICATIONS');
@@ -1974,7 +2161,8 @@ class ApiService {
         return false;
       }
 
-      final response = await _dio.delete<dynamic>('/notifications/$notificationId');
+      final response =
+          await _dio.delete<dynamic>('/notifications/$notificationId');
 
       if (response.statusCode == 200) {
         logInfo('Notification deleted', tag: 'API_NOTIFICATIONS');
@@ -2214,17 +2402,20 @@ class ApiService {
   Map<String, dynamic>? _cachedUserProfile;
   DateTime? _userProfileFetchedAt;
   Future<Map<String, dynamic>>? _userProfileInFlight;
+  int? _userProfileInFlightGeneration;
   static const Duration _userProfileTtl = Duration(seconds: 60);
 
   void _invalidateUserProfileCache() {
     _cachedUserProfile = null;
     _userProfileFetchedAt = null;
     _userProfileInFlight = null;
+    _userProfileInFlightGeneration = null;
   }
 
   Future<Map<String, dynamic>> getUserProfile({
     bool forceRefresh = false,
   }) async {
+    final generation = _authGeneration;
     final cached = _cachedUserProfile;
     final fetchedAt = _userProfileFetchedAt;
     if (!forceRefresh &&
@@ -2235,20 +2426,26 @@ class ApiService {
     }
 
     final inFlight = _userProfileInFlight;
-    if (!forceRefresh && inFlight != null) {
+    if (!forceRefresh &&
+        inFlight != null &&
+        _userProfileInFlightGeneration == generation) {
       return inFlight;
     }
 
     final future = _fetchUserProfile();
     _userProfileInFlight = future;
+    _userProfileInFlightGeneration = generation;
     try {
       final profile = await future;
-      _cachedUserProfile = profile;
-      _userProfileFetchedAt = DateTime.now();
+      if (_isCurrentGeneration(generation)) {
+        _cachedUserProfile = profile;
+        _userProfileFetchedAt = DateTime.now();
+      }
       return profile;
     } finally {
       if (identical(_userProfileInFlight, future)) {
         _userProfileInFlight = null;
+        _userProfileInFlightGeneration = null;
       }
     }
   }
@@ -3924,7 +4121,8 @@ class ApiService {
     try {
       logInfo('Fetching behavioral insights', tag: 'API_BEHAVIORAL');
 
-      final response = await _dio.get<dynamic>('/analytics/behavioral-insights');
+      final response =
+          await _dio.get<dynamic>('/analytics/behavioral-insights');
 
       if (response.statusCode == 200 && response.data is Map) {
         final insights = _bodyMapOf(response);
@@ -4523,54 +4721,96 @@ class ApiService {
   // ---------------------------------------------------------------------------
 
   Future<void> logout() async {
+    // The boundary and in-process deny marker are installed synchronously,
+    // before the first await. UI code can therefore treat logout as locally
+    // authoritative immediately.
+    final generation = beginSessionBoundary();
+    _tokensSuppressed = true;
+    _hasActiveSession = false;
+
+    logInfo('Performing secure logout with push token cleanup',
+        tag: 'API_LOGOUT');
+
+    final tokenSnapshot = await _readTokensForRevocation(generation);
+    if (!_isCurrentGeneration(generation)) return;
+
+    // Start durable tombstone/deletion immediately after snapshotting the
+    // values needed for best-effort server revocation. It runs concurrently
+    // with network cleanup and is always awaited below.
+    final localCleanup = _clearTokensForGeneration(generation);
+
     try {
-      logInfo('Performing secure logout with push token cleanup',
-          tag: 'API_LOGOUT');
-
-      // SECURITY: Revoke the session server-side BEFORE clearing local
-      // tokens. Without this the access/refresh tokens stay valid until
-      // expiry even though the app looks logged out. The refresh token is
-      // sent so the backend can blacklist the whole session. Best-effort:
-      // local cleanup still runs if the network call fails.
-      try {
-        final accessToken = await getToken();
-        final refreshToken = await getRefreshToken();
-        if (accessToken != null) {
-          await _dio.post<dynamic>(
-            '/auth/logout',
-            data: {
-              if (refreshToken != null) 'refresh_token': refreshToken,
-            },
-            options: Options(headers: {'Authorization': 'Bearer $accessToken'}),
-          );
+      final accessToken = tokenSnapshot[0];
+      final refreshToken = tokenSnapshot[1];
+      if (accessToken != null && _isCurrentGeneration(generation)) {
+        try {
+          await _dio
+              .post<dynamic>(
+                '/auth/logout',
+                data: {
+                  if (refreshToken != null) 'refresh_token': refreshToken,
+                },
+                options: Options(
+                  headers: {'Authorization': 'Bearer $accessToken'},
+                  extra: {_authGenerationExtraKey: generation},
+                ),
+              )
+              .timeout(const Duration(seconds: 5));
           logInfo('Server-side token revocation succeeded', tag: 'API_LOGOUT');
+        } catch (e) {
+          logError(
+              'Server-side logout failed (local logout remains active): $e',
+              tag: 'API_LOGOUT');
         }
-      } catch (e) {
-        logError('Server-side logout failed (continuing local cleanup): $e',
-            tag: 'API_LOGOUT');
       }
 
-      // SECURITY: Clean up push tokens before clearing auth tokens
-      await SecurePushTokenManager.instance.cleanupOnLogout();
-
-      // Clear authentication tokens
-      await clearTokens();
-
-      logInfo('Secure logout completed successfully', tag: 'API_LOGOUT');
-    } catch (e, stackTrace) {
-      logError('Error during logout: $e',
-          tag: 'API_LOGOUT', stackTrace: stackTrace);
-
-      // Still clear tokens even if push token cleanup fails
-      try {
-        await clearTokens();
-      } catch (e2) {
-        logError('Failed to clear tokens during error recovery: $e2',
-            tag: 'API_LOGOUT');
+      if (_isCurrentGeneration(generation)) {
+        try {
+          await SecurePushTokenManager.instance.cleanupOnLogout();
+        } catch (e) {
+          logError('Push-token logout cleanup failed: $e', tag: 'API_LOGOUT');
+        }
       }
-
-      rethrow;
+    } finally {
+      // Deletion failures are deliberately surfaced. The persistent
+      // tombstones still deny reads, but a failed cleanup must not be reported
+      // as a fully successful secure logout.
+      await localCleanup;
     }
+
+    logInfo('Secure logout completed successfully', tag: 'API_LOGOUT');
+  }
+
+  Future<List<String?>> _readTokensForRevocation(int generation) async {
+    String? accessToken;
+    String? refreshToken;
+
+    final secureStorage = await _getSecureStorage();
+    if (!_isCurrentGeneration(generation)) {
+      return const <String?>[null, null];
+    }
+
+    if (secureStorage != null && !secureStorage.isLogoutTombstoned) {
+      accessToken = await secureStorage.getAccessToken();
+      if (!_isCurrentGeneration(generation)) {
+        return const <String?>[null, null];
+      }
+      refreshToken = await secureStorage.getRefreshToken();
+    }
+
+    if (!_isCurrentGeneration(generation)) {
+      return const <String?>[null, null];
+    }
+
+    if (!await _legacyLogoutTombstonePresent()) {
+      accessToken ??= await _storage.read(key: 'access_token');
+      if (!_isCurrentGeneration(generation)) {
+        return const <String?>[null, null];
+      }
+      refreshToken ??= await _storage.read(key: 'refresh_token');
+    }
+
+    return <String?>[accessToken, refreshToken];
   }
 
   // ---------------------------------------------------------------------------

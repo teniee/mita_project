@@ -372,7 +372,8 @@ class _MainScreenState extends State<MainScreen> {
         transactionProvider.isLoading;
 
     final hasError = userProvider.errorMessage != null ||
-        budgetProvider.errorMessage != null;
+        budgetProvider.errorMessage != null ||
+        budgetProvider.liveStatusError != null;
 
     // Get dashboard data from budget provider
     final dashboardData =
@@ -1716,8 +1717,7 @@ class _MainScreenState extends State<MainScreen> {
         asStringKeyedMap(challengesSection['challenges_summary']);
 
     final activeChallenges = asInt(challengesSummary['active_challenges']);
-    final completedThisMonth =
-        asInt(challengesSummary['completed_this_month']);
+    final completedThisMonth = asInt(challengesSummary['completed_this_month']);
     final currentStreak = asInt(challengesSummary['current_streak']);
 
     // If no challenges, show empty state

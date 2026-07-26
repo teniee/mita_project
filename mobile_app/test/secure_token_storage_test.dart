@@ -11,6 +11,7 @@ void main() {
     // real Keychain/Keystore (a stateless stub that always returns null makes
     // every retrieval assertion fail).
     final Map<String, String> secureStore = {};
+    String? failingDeleteKey;
 
     setUpAll(() async {
       // Mock flutter_secure_storage method channel
@@ -31,6 +32,12 @@ void main() {
           case 'containsKey':
             return secureStore.containsKey(args['key'] as String);
           case 'delete':
+            if (args['key'] == failingDeleteKey) {
+              throw PlatformException(
+                code: 'DELETE_FAILED',
+                message: 'Injected secure-storage delete failure',
+              );
+            }
             secureStore.remove(args['key'] as String);
             return null;
           case 'readAll':
@@ -74,6 +81,7 @@ void main() {
     });
 
     setUp(() async {
+      failingDeleteKey = null;
       storage = await SecureTokenStorage.getInstance();
     });
 
@@ -147,6 +155,25 @@ void main() {
       // Verify they're gone
       expect(await storage.hasValidTokens(), isFalse);
       expect(await storage.getUserId(), isNull);
+      expect(await storage.getAccessToken(), isNull);
+      expect(await storage.getRefreshToken(), isNull);
+    });
+
+    test('logout tombstone denies reads when credential deletion fails',
+        () async {
+      await storage.storeTokens('access-that-remains', 'refresh');
+
+      failingDeleteKey = 'mita_access_token_v2';
+      await expectLater(
+        storage.clearAllUserData(),
+        throwsA(isA<SecurityException>()),
+      );
+      failingDeleteKey = null;
+
+      // The failed access-token delete left bytes in the mock Keystore, but
+      // the persistent tombstone makes them unreadable now and after restart.
+      expect(secureStore['mita_access_token_v2'], 'access-that-remains');
+      expect(secureStore['mita_logout_tombstone_v1'], 'true');
       expect(await storage.getAccessToken(), isNull);
       expect(await storage.getRefreshToken(), isNull);
     });

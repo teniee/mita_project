@@ -297,7 +297,7 @@ class TestRebalanceAfterOverspend:
         assert result.covered + result.uncovered == Decimal("50.00")
 
     def test_dry_run_does_not_commit(self, user_id, txn_date):
-        """dry_run=True must calculate but never call db.commit()."""
+        """dry_run=True must calculate without a commit or audit write."""
         future_day = date(2026, 3, 28)
         donor = _make_plan("gaming", future_day, planned=60, spent=0, user_id=user_id)
         overspent = _make_plan(
@@ -306,17 +306,117 @@ class TestRebalanceAfterOverspend:
 
         db = _make_db_with_entries(entries=[donor], overspent_entry=overspent)
 
+        with pytest.MonkeyPatch.context() as monkeypatch:
+            audit = MagicMock()
+            monkeypatch.setattr(
+                "app.services.core.engine.realtime_rebalancer."
+                "record_redistribution_event",
+                audit,
+            )
+            result = rebalance_after_overspend(
+                db=db,
+                user_id=user_id,
+                overspent_category="dining_out",
+                overspend_amount=Decimal("20.00"),
+                transaction_date=txn_date,
+                dry_run=True,
+            )
+
+        assert result.covered > Decimal("0.00")
+        db.commit.assert_not_called()
+        audit.assert_not_called()
+
+    def test_cent_distribution_never_overcovers(self, user_id, txn_date):
+        """$0.07 split across two rows remains exactly $0.07, not $0.08."""
+        donors = [
+            _make_plan(
+                "entertainment",
+                date(2026, 3, 20),
+                planned=1,
+                spent=0,
+                user_id=user_id,
+            ),
+            _make_plan(
+                "entertainment",
+                date(2026, 3, 21),
+                planned=1,
+                spent=0,
+                user_id=user_id,
+            ),
+        ]
+        db = _make_db_with_entries(entries=donors)
+
         result = rebalance_after_overspend(
             db=db,
             user_id=user_id,
             overspent_category="dining_out",
-            overspend_amount=Decimal("20.00"),
+            overspend_amount=Decimal("0.07"),
             transaction_date=txn_date,
             dry_run=True,
         )
 
-        assert result.covered > Decimal("0.00")
-        db.commit.assert_not_called()
+        assert result.covered == Decimal("0.07")
+        assert result.uncovered == Decimal("0.00")
+        assert result.covered + result.uncovered == result.overspend_amount
+
+    def test_uneven_donor_rows_use_available_capacity(self, user_id, txn_date):
+        """A small row must not strand capacity in a larger donor row."""
+        small = _make_plan(
+            "entertainment",
+            date(2026, 3, 20),
+            planned=1,
+            spent=0,
+            user_id=user_id,
+        )
+        large = _make_plan(
+            "entertainment",
+            date(2026, 3, 21),
+            planned=99,
+            spent=0,
+            user_id=user_id,
+        )
+        db = _make_db_with_entries(entries=[small, large])
+
+        result = rebalance_after_overspend(
+            db=db,
+            user_id=user_id,
+            overspent_category="dining_out",
+            overspend_amount=Decimal("50.00"),
+            transaction_date=txn_date,
+            dry_run=False,
+            record_audit=False,
+        )
+
+        assert result.covered == Decimal("50.00")
+        assert result.uncovered == Decimal("0.00")
+        assert small.planned_amount == Decimal("0.50")
+        assert large.planned_amount == Decimal("49.50")
+
+    def test_equal_priority_donors_have_stable_category_order(
+        self, user_id, txn_date
+    ):
+        """Equal-priority donors use category name as a deterministic tie-break."""
+        future_day = date(2026, 3, 20)
+        gaming = _make_plan(
+            "gaming", future_day, planned=100, spent=0, user_id=user_id
+        )
+        hobbies = _make_plan(
+            "hobbies", future_day, planned=100, spent=0, user_id=user_id
+        )
+        db = _make_db_with_entries(entries=[hobbies, gaming])
+
+        result = rebalance_after_overspend(
+            db=db,
+            user_id=user_id,
+            overspent_category="dining_out",
+            overspend_amount=Decimal("10.00"),
+            transaction_date=txn_date,
+            dry_run=True,
+        )
+
+        assert [transfer["from_category"] for transfer in result.transfers] == [
+            "gaming"
+        ]
 
     def test_overspent_entry_planned_amount_increased(self, user_id, txn_date):
         """After rebalance, planned_amount on overspent day must increase."""

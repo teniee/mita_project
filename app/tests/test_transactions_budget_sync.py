@@ -8,6 +8,7 @@ from app.api.transactions.services import add_transaction
 class DummyDB:
     def __init__(self):
         self.committed = False
+        self.flushed = False
         self.added = []
         self.refreshed = []
 
@@ -16,6 +17,12 @@ class DummyDB:
 
     def commit(self):
         self.committed = True
+
+    def flush(self):
+        self.flushed = True
+
+    def rollback(self):
+        self.committed = False
 
     def refresh(self, obj):
         self.refreshed.append(obj)
@@ -30,12 +37,18 @@ def test_add_transaction_records_expense(monkeypatch):
     monkeypatch.setattr("app.api.transactions.services.Transaction", DummyTxn)
     spent = {"amount": Decimal("0")}
 
-    def fake_apply(db, txn):
+    def fake_apply(db, txn, *, commit, run_side_effects):
+        assert commit is False
+        assert run_side_effects is False
         spent["amount"] += txn.amount
 
     monkeypatch.setattr(
         "app.api.transactions.services.apply_transaction_to_plan",
         fake_apply,
+    )
+    monkeypatch.setattr(
+        "app.api.transactions.services.run_transaction_plan_side_effects",
+        lambda db, txn, rebalance_result=None: None,
     )
 
     db = DummyDB()
@@ -50,4 +63,5 @@ def test_add_transaction_records_expense(monkeypatch):
 
     # Daily plan should be updated once with the transaction amount
     assert spent["amount"] == Decimal("12.5")
+    assert db.flushed
     assert db.committed

@@ -115,6 +115,7 @@ class IapService {
   // Cache for premium status to avoid frequent API calls
   SubscriptionInfo? _cachedSubscriptionInfo;
   DateTime? _lastCacheUpdate;
+  int _sessionGeneration = 0;
 
   // Stream controllers for real-time updates
   final StreamController<bool> _premiumStatusController =
@@ -131,14 +132,17 @@ class IapService {
 
   /// Initialize the IAP service and restore previous purchases
   Future<void> initialize() async {
+    final generation = _sessionGeneration;
     try {
-      _sub ??= _iap.purchaseStream.listen(_handlePurchaseUpdate);
+      _listenForPurchaseUpdates(generation);
 
       // Load cached subscription info
-      await _loadCachedSubscriptionInfo();
+      await _loadCachedSubscriptionInfo(generation);
+      if (generation != _sessionGeneration) return;
 
       // Restore previous purchases
       await restorePurchases();
+      if (generation != _sessionGeneration) return;
 
       _logger.info('IAP Service initialized successfully');
     } catch (e) {
@@ -156,10 +160,12 @@ class IapService {
 
   /// Purchase premium subscription
   Future<void> buyPremium({String productId = 'premium'}) async {
+    final generation = _sessionGeneration;
     try {
       _logger.info('Starting premium purchase for product: $productId');
 
       final response = await _iap.queryProductDetails({productId});
+      if (generation != _sessionGeneration) return;
       if (response.notFoundIDs.isNotEmpty) {
         throw Exception('Product not found: $productId');
       }
@@ -167,7 +173,7 @@ class IapService {
       final product = response.productDetails.first;
       final purchaseParam = PurchaseParam(productDetails: product);
 
-      _sub ??= _iap.purchaseStream.listen(_handlePurchaseUpdate);
+      _listenForPurchaseUpdates(generation);
 
       // Use buyNonConsumable for permanent upgrades or buyConsumable for subscriptions
       if (productId.contains('subscription')) {
@@ -175,6 +181,7 @@ class IapService {
       } else {
         await _iap.buyNonConsumable(purchaseParam: purchaseParam);
       }
+      if (generation != _sessionGeneration) return;
 
       _logger.info('Purchase initiated for product: $productId');
     } catch (e) {
@@ -194,17 +201,29 @@ class IapService {
     }
   }
 
-  Future<void> _handlePurchaseUpdate(List<PurchaseDetails> purchases) async {
+  void _listenForPurchaseUpdates(int generation) {
+    _sub ??= _iap.purchaseStream.listen(
+      (purchases) => _handlePurchaseUpdate(purchases, generation),
+    );
+  }
+
+  Future<void> _handlePurchaseUpdate(
+    List<PurchaseDetails> purchases,
+    int generation,
+  ) async {
     for (final purchase in purchases) {
+      if (generation != _sessionGeneration) return;
       try {
         _logger.info(
             'Processing purchase: ${purchase.productID}, status: ${purchase.status}');
 
         switch (purchase.status) {
           case PurchaseStatus.purchased:
-            await _validatePurchase(purchase);
+            await _validatePurchase(purchase, generation);
+            if (generation != _sessionGeneration) return;
             await _iap.completePurchase(purchase);
-            await _refreshPremiumStatus();
+            if (generation != _sessionGeneration) return;
+            await _refreshPremiumStatus(sessionGeneration: generation);
             break;
 
           case PurchaseStatus.error:
@@ -220,8 +239,9 @@ class IapService {
             break;
 
           case PurchaseStatus.restored:
-            await _validatePurchase(purchase);
-            await _refreshPremiumStatus();
+            await _validatePurchase(purchase, generation);
+            if (generation != _sessionGeneration) return;
+            await _refreshPremiumStatus(sessionGeneration: generation);
             break;
         }
       } catch (e) {
@@ -230,9 +250,13 @@ class IapService {
     }
   }
 
-  Future<void> _validatePurchase(PurchaseDetails purchase) async {
+  Future<void> _validatePurchase(
+    PurchaseDetails purchase,
+    int generation,
+  ) async {
     try {
       final userId = await _apiService.getUserId();
+      if (generation != _sessionGeneration) return;
       if (userId == null) {
         throw Exception('User not authenticated');
       }
@@ -244,9 +268,10 @@ class IapService {
 
       final validationResult =
           await _apiService.validateReceipt(userId, receipt, platform);
+      if (generation != _sessionGeneration) return;
 
       // Store validation result in cache
-      await _cacheSubscriptionInfo(validationResult);
+      await _cacheSubscriptionInfo(validationResult, generation);
 
       _logger.info('Purchase validated successfully: ${purchase.productID}');
     } catch (e) {
@@ -257,6 +282,7 @@ class IapService {
 
   /// Get current premium status with caching
   Future<bool> isPremiumUser() async {
+    final generation = _sessionGeneration;
     try {
       // Check cache first
       if (_isCacheValid()) {
@@ -264,7 +290,8 @@ class IapService {
       }
 
       // Refresh from server
-      await _refreshPremiumStatus();
+      await _refreshPremiumStatus(sessionGeneration: generation);
+      if (generation != _sessionGeneration) return false;
       return _cachedSubscriptionInfo?.isActive ?? false;
     } catch (e) {
       _logger.error('Failed to check premium status: $e');
@@ -275,12 +302,14 @@ class IapService {
 
   /// Get current subscription information
   Future<SubscriptionInfo?> getSubscriptionInfo() async {
+    final generation = _sessionGeneration;
     try {
       if (_isCacheValid()) {
         return _cachedSubscriptionInfo;
       }
 
-      await _refreshPremiumStatus();
+      await _refreshPremiumStatus(sessionGeneration: generation);
+      if (generation != _sessionGeneration) return null;
       return _cachedSubscriptionInfo;
     } catch (e) {
       _logger.error('Failed to get subscription info: $e');
@@ -290,12 +319,14 @@ class IapService {
 
   /// Check if user has specific premium feature
   Future<bool> hasFeature(PremiumFeature feature) async {
+    final generation = _sessionGeneration;
     try {
       final isPremium = await isPremiumUser();
-      if (!isPremium) return false;
+      if (generation != _sessionGeneration || !isPremium) return false;
 
       // Get available features from backend
-      final features = await _getAvailableFeatures();
+      final features =
+          await _getAvailableFeatures(sessionGeneration: generation);
       return features.contains(feature);
     } catch (e) {
       _logger.error('Failed to check feature availability: $e');
@@ -305,11 +336,12 @@ class IapService {
 
   /// Get all available premium features for current user
   Future<Set<PremiumFeature>> getAvailableFeatures() async {
+    final generation = _sessionGeneration;
     try {
       final isPremium = await isPremiumUser();
-      if (!isPremium) return {};
+      if (generation != _sessionGeneration || !isPremium) return {};
 
-      return await _getAvailableFeatures();
+      return await _getAvailableFeatures(sessionGeneration: generation);
     } catch (e) {
       _logger.error('Failed to get available features: $e');
       return {};
@@ -317,9 +349,11 @@ class IapService {
   }
 
   /// Refresh premium status from server
-  Future<void> _refreshPremiumStatus() async {
+  Future<void> _refreshPremiumStatus({int? sessionGeneration}) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
     try {
       final userId = await _apiService.getUserId();
+      if (generation != _sessionGeneration) return;
       if (userId == null) {
         throw Exception('User not authenticated');
       }
@@ -328,21 +362,28 @@ class IapService {
 
       // Get subscription status from backend
       final response = await _apiService.getUserPremiumStatus(userId);
+      if (generation != _sessionGeneration) return;
 
       if (response['subscription'] != null) {
         final subscriptionInfo = SubscriptionInfo.fromJson(
             asStringKeyedMap(response['subscription']));
         await _cacheSubscriptionInfo(
-            {'subscription': subscriptionInfo.toJson()});
+          {'subscription': subscriptionInfo.toJson()},
+          generation,
+        );
+        if (generation != _sessionGeneration) return;
 
         // Update streams
         _premiumStatusController.add(subscriptionInfo.isActive);
 
-        final features = await _getAvailableFeatures();
+        final features =
+            await _getAvailableFeatures(sessionGeneration: generation);
+        if (generation != _sessionGeneration) return;
         _premiumFeaturesController.add(features);
       } else {
         // No active subscription
-        await _clearCachedSubscriptionInfo();
+        await _clearCachedSubscriptionInfo(generation);
+        if (generation != _sessionGeneration) return;
         _premiumStatusController.add(false);
         _premiumFeaturesController.add({});
       }
@@ -355,12 +396,17 @@ class IapService {
   }
 
   /// Get available premium features from backend
-  Future<Set<PremiumFeature>> _getAvailableFeatures() async {
+  Future<Set<PremiumFeature>> _getAvailableFeatures({
+    int? sessionGeneration,
+  }) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
     try {
       final userId = await _apiService.getUserId();
+      if (generation != _sessionGeneration) return {};
       if (userId == null) return {};
 
       final response = await _apiService.getUserPremiumFeatures(userId);
+      if (generation != _sessionGeneration) return {};
       final featureNames = asStringList(response['features']);
 
       return featureNames
@@ -408,12 +454,18 @@ class IapService {
   }
 
   /// Cache subscription information locally
-  Future<void> _cacheSubscriptionInfo(Map<String, dynamic> data) async {
+  Future<void> _cacheSubscriptionInfo(
+    Map<String, dynamic> data,
+    int generation,
+  ) async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      if (generation != _sessionGeneration) return;
       await prefs.setString(_premiumStatusKey, jsonEncode(data));
+      if (generation != _sessionGeneration) return;
       await prefs.setInt(
           _lastVerificationKey, DateTime.now().millisecondsSinceEpoch);
+      if (generation != _sessionGeneration) return;
 
       if (data['subscription'] != null) {
         _cachedSubscriptionInfo =
@@ -428,9 +480,10 @@ class IapService {
   }
 
   /// Load cached subscription information
-  Future<void> _loadCachedSubscriptionInfo() async {
+  Future<void> _loadCachedSubscriptionInfo(int generation) async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      if (generation != _sessionGeneration) return;
       final cachedData = prefs.getString(_premiumStatusKey);
       final lastVerification = prefs.getInt(_lastVerificationKey);
 
@@ -451,11 +504,13 @@ class IapService {
   }
 
   /// Clear cached subscription information
-  Future<void> _clearCachedSubscriptionInfo() async {
+  Future<void> _clearCachedSubscriptionInfo(int generation) async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      if (generation != _sessionGeneration) return;
       await prefs.remove(_premiumStatusKey);
       await prefs.remove(_lastVerificationKey);
+      if (generation != _sessionGeneration) return;
 
       _cachedSubscriptionInfo = null;
       _lastCacheUpdate = null;
@@ -468,7 +523,26 @@ class IapService {
 
   /// Force refresh premium status (ignoring cache)
   Future<void> forceRefreshPremiumStatus() async {
-    await _clearCachedSubscriptionInfo();
-    await _refreshPremiumStatus();
+    final generation = _sessionGeneration;
+    await _clearCachedSubscriptionInfo(generation);
+    if (generation != _sessionGeneration) return;
+    await _refreshPremiumStatus(sessionGeneration: generation);
+  }
+
+  /// Synchronously invalidate account A, then remove its persisted entitlement.
+  Future<void> resetSession() async {
+    final generation = ++_sessionGeneration;
+    final oldSubscription = _sub;
+    _sub = null;
+    oldSubscription?.cancel();
+    _cachedSubscriptionInfo = null;
+    _lastCacheUpdate = null;
+    if (!_premiumStatusController.isClosed) {
+      _premiumStatusController.add(false);
+    }
+    if (!_premiumFeaturesController.isClosed) {
+      _premiumFeaturesController.add(<PremiumFeature>{});
+    }
+    await _clearCachedSubscriptionInfo(generation);
   }
 }

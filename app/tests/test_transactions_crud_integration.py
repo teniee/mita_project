@@ -18,14 +18,23 @@ Covered regressions:
 Requires: PostgreSQL at DATABASE_URL (test_mita) with migrations at head.
 """
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from decimal import Decimal
+from queue import Queue
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import text
+from sqlalchemy.orm import sessionmaker
 
-from app.db.models import DailyPlan, Transaction, User
+from app.db.models import DailyPlan, RedistributionEvent, Transaction, User
+from app.services.core.engine.expense_tracker import (
+    lock_user_ledger,
+    rebuild_month_plan,
+)
 
 
 @pytest.fixture
@@ -106,18 +115,19 @@ def _auth_as(user):
     app.dependency_overrides[get_current_user] = lambda: user
 
 
-def _create_txn(client, amount="42.00", category="food"):
+def _create_txn(client, amount="42.00", category="food", spent_at=None):
     resp = client.post(
         "/api/transactions/",
         json={
             "amount": float(amount),
             "category": category,
             "description": "integration txn",
-            "spent_at": datetime.now(timezone.utc).isoformat(),
+            "spent_at": (spent_at or datetime.now(timezone.utc)).isoformat(),
         },
     )
     assert resp.status_code in (200, 201), resp.text
     body = resp.json()
+    assert "_mita_rebalance_plan" not in resp.text
     data = body.get("data", body)
     txn = data.get("transaction", data)
     txn_id = txn.get("id") or txn.get("transaction_id")
@@ -148,6 +158,7 @@ class TestTransactionCrudAsyncWiring:
             },
         )
         assert resp.status_code in (200, 201), resp.text
+        assert resp.json()["data"]["rebalanced"] is False
 
     def test_full_crud_roundtrip(self, as_user_a, db_session, user_a):
         txn_id = _create_txn(as_user_a)
@@ -206,6 +217,552 @@ class TestTransactionCrudAsyncWiring:
 
 class TestFinancialRecalculation:
     """Exact-number invariants INV-12/13/14 + V1 (soft-delete aggregation)."""
+
+    def test_create_runs_rebalance_once_and_preserves_donor_cap(
+        self, as_user_a, db_session, user_a
+    ):
+        transaction_month = self._previous_month(datetime.now(timezone.utc).date())
+        transaction_day = transaction_month.replace(day=10)
+        donor_day = transaction_month.replace(day=20)
+        db_session.add_all(
+            [
+                self._new_plan(user_a, transaction_day, "food", "0.00"),
+                self._new_plan(user_a, donor_day, "shopping", "100.00"),
+            ]
+        )
+        db_session.commit()
+
+        _create_txn(
+            as_user_a,
+            amount="100.00",
+            category="food",
+            spent_at=datetime(
+                transaction_day.year,
+                transaction_day.month,
+                transaction_day.day,
+                12,
+                tzinfo=timezone.utc,
+            ),
+        )
+
+        # One rebalance may take at most 50% from the donor. The create route
+        # previously ran a second pass and reduced 100 -> 50 -> 25.
+        assert self._plan_values(db_session, user_a, transaction_day, "food") == (
+            Decimal("50.00"),
+            Decimal("50.00"),
+            Decimal("100.00"),
+        )
+        assert self._plan_values(db_session, user_a, donor_day, "shopping")[:2] == (
+            Decimal("50.00"),
+            Decimal("50.00"),
+        )
+
+    def test_post_commit_alert_uses_pre_rebalance_limit(
+        self, as_user_a, db_session, user_a, monkeypatch
+    ):
+        transaction_month = self._previous_month(datetime.now(timezone.utc).date())
+        transaction_day = transaction_month.replace(day=10)
+        donor_day = transaction_month.replace(day=20)
+        db_session.add_all(
+            [
+                self._new_plan(user_a, transaction_day, "food", "10.00"),
+                self._new_plan(user_a, donor_day, "shopping", "100.00"),
+            ]
+        )
+        db_session.commit()
+
+        captured = {}
+
+        class AlertRecorder:
+            def check_single_category(
+                self,
+                *,
+                user_id,
+                category,
+                spent_amount,
+                budget_limit,
+            ):
+                captured.update(
+                    {
+                        "user_id": user_id,
+                        "category": category,
+                        "spent": Decimal(spent_amount),
+                        "limit": Decimal(budget_limit),
+                    }
+                )
+
+        monkeypatch.setattr(
+            "app.services.budget_alert_service.get_budget_alert_service",
+            lambda db: AlertRecorder(),
+        )
+        monkeypatch.setattr(
+            "app.services.velocity_alert_service.check_velocity_after_transaction",
+            lambda **kwargs: None,
+        )
+
+        response = as_user_a.post(
+            "/api/transactions/",
+            json={
+                "amount": 30.00,
+                "category": "food",
+                "description": "alert limit regression",
+                "spent_at": datetime(
+                    transaction_day.year,
+                    transaction_day.month,
+                    transaction_day.day,
+                    12,
+                    tzinfo=timezone.utc,
+                ).isoformat(),
+            },
+        )
+        assert response.status_code == 201, response.text
+        response_transaction = response.json()["data"]
+        assert response_transaction["rebalanced"] is True
+        assert response_transaction["rebalance_covered"] == 20.0
+        assert response_transaction["rebalance_fully_covered"] is True
+
+        assert captured == {
+            "user_id": user_a.id,
+            "category": "food",
+            "spent": Decimal("30.00"),
+            "limit": Decimal("10.00"),
+        }
+
+    def test_rebalance_allocations_reverse_across_full_crud_journey(
+        self, as_user_a, db_session, user_a
+    ):
+        """Every transaction mutation must undo its prior redistribution before
+        applying the replacement ledger state.
+
+        This is the production device journey that exposed stale planned
+        amounts on the old category/day/month after edit, move, and delete.
+        """
+        first_month = self._previous_month(datetime.now(timezone.utc).date())
+        second_month = self._previous_month(first_month)
+
+        original_day = second_month.replace(day=11)
+        previous_day = second_month.replace(day=10)
+        original_donor_day = second_month.replace(day=20)
+        next_month_day = first_month.replace(day=10)
+        next_month_donor_day = first_month.replace(day=20)
+
+        plans = [
+            self._new_plan(user_a, previous_day, "entertainment", "5.00"),
+            self._new_plan(user_a, original_day, "food", "10.00"),
+            self._new_plan(user_a, original_day, "entertainment", "5.00"),
+            self._new_plan(user_a, original_donor_day, "shopping", "100.00"),
+            self._new_plan(user_a, next_month_day, "entertainment", "5.00"),
+            self._new_plan(user_a, next_month_donor_day, "shopping", "100.00"),
+        ]
+        db_session.add_all(plans)
+        db_session.commit()
+        baseline = self._allocation_snapshot(db_session, user_a)
+
+        txn_id = _create_txn(
+            as_user_a,
+            amount="30.00",
+            category="food",
+            spent_at=datetime(
+                original_day.year,
+                original_day.month,
+                original_day.day,
+                12,
+                tzinfo=timezone.utc,
+            ),
+        )
+        assert self._plan_values(db_session, user_a, original_day, "food") == (
+            Decimal("30.00"),
+            Decimal("30.00"),
+            Decimal("30.00"),
+        )
+        assert self._plan_values(db_session, user_a, original_donor_day, "shopping")[
+            :2
+        ] == (Decimal("80.00"), Decimal("80.00"))
+
+        response = as_user_a.put(f"/api/transactions/{txn_id}", json={"amount": 15.00})
+        assert response.status_code == 200, response.text
+        assert self._plan_values(db_session, user_a, original_day, "food") == (
+            Decimal("15.00"),
+            Decimal("15.00"),
+            Decimal("15.00"),
+        )
+        assert self._plan_values(db_session, user_a, original_donor_day, "shopping")[
+            :2
+        ] == (Decimal("95.00"), Decimal("95.00"))
+
+        response = as_user_a.put(
+            f"/api/transactions/{txn_id}", json={"category": "entertainment"}
+        )
+        assert response.status_code == 200, response.text
+        assert self._plan_values(db_session, user_a, original_day, "food") == (
+            Decimal("10.00"),
+            Decimal("10.00"),
+            Decimal("0.00"),
+        )
+        assert self._plan_values(db_session, user_a, original_day, "entertainment") == (
+            Decimal("15.00"),
+            Decimal("15.00"),
+            Decimal("15.00"),
+        )
+        assert self._plan_values(db_session, user_a, original_donor_day, "shopping")[
+            :2
+        ] == (Decimal("90.00"), Decimal("90.00"))
+
+        response = as_user_a.put(
+            f"/api/transactions/{txn_id}",
+            json={
+                "spent_at": datetime(
+                    previous_day.year,
+                    previous_day.month,
+                    previous_day.day,
+                    12,
+                    tzinfo=timezone.utc,
+                ).isoformat()
+            },
+        )
+        assert response.status_code == 200, response.text
+        assert self._plan_values(db_session, user_a, original_day, "entertainment") == (
+            Decimal("5.00"),
+            Decimal("5.00"),
+            Decimal("0.00"),
+        )
+        assert self._plan_values(db_session, user_a, previous_day, "entertainment") == (
+            Decimal("15.00"),
+            Decimal("15.00"),
+            Decimal("15.00"),
+        )
+
+        response = as_user_a.put(
+            f"/api/transactions/{txn_id}",
+            json={
+                "spent_at": datetime(
+                    next_month_day.year,
+                    next_month_day.month,
+                    next_month_day.day,
+                    12,
+                    tzinfo=timezone.utc,
+                ).isoformat()
+            },
+        )
+        assert response.status_code == 200, response.text
+        assert self._plan_values(db_session, user_a, previous_day, "entertainment") == (
+            Decimal("5.00"),
+            Decimal("5.00"),
+            Decimal("0.00"),
+        )
+        assert self._plan_values(db_session, user_a, original_donor_day, "shopping")[
+            :2
+        ] == (Decimal("100.00"), Decimal("100.00"))
+        assert self._plan_values(
+            db_session, user_a, next_month_day, "entertainment"
+        ) == (Decimal("15.00"), Decimal("15.00"), Decimal("15.00"))
+        assert self._plan_values(db_session, user_a, next_month_donor_day, "shopping")[
+            :2
+        ] == (Decimal("90.00"), Decimal("90.00"))
+
+        response = as_user_a.delete(f"/api/transactions/{txn_id}")
+        assert response.status_code == 200, response.text
+        assert self._allocation_snapshot(db_session, user_a) == baseline
+
+    def test_month_rebuild_replays_shared_donor_and_preserves_metadata(
+        self, as_user_a, db_session, user_a
+    ):
+        transaction_month = self._previous_month(datetime.now(timezone.utc).date())
+        first_day = transaction_month.replace(day=10)
+        second_day = transaction_month.replace(day=11)
+        donor_day = transaction_month.replace(day=20)
+        donor = self._new_plan(user_a, donor_day, "shopping", "100.00")
+        donor.plan_json = {
+            "category_budgets": {"shopping": 100},
+            "custom": "preserve-me",
+        }
+        db_session.add_all(
+            [
+                self._new_plan(user_a, first_day, "food", "0.00"),
+                self._new_plan(user_a, second_day, "entertainment", "0.00"),
+                donor,
+            ]
+        )
+        db_session.commit()
+        baseline = self._allocation_snapshot(db_session, user_a)
+
+        first_id = _create_txn(
+            as_user_a,
+            amount="80.00",
+            category="food",
+            spent_at=datetime(
+                first_day.year,
+                first_day.month,
+                first_day.day,
+                12,
+                tzinfo=timezone.utc,
+            ),
+        )
+        assert (
+            db_session.query(RedistributionEvent)
+            .filter(RedistributionEvent.user_id == user_a.id)
+            .count()
+            == 1
+        )
+        second_id = _create_txn(
+            as_user_a,
+            amount="80.00",
+            category="entertainment",
+            spent_at=datetime(
+                second_day.year,
+                second_day.month,
+                second_day.day,
+                12,
+                tzinfo=timezone.utc,
+            ),
+        )
+
+        events = (
+            db_session.query(RedistributionEvent)
+            .filter(RedistributionEvent.user_id == user_a.id)
+            .all()
+        )
+        assert len(events) == 2
+        assert sorted(
+            (event.to_category, Decimal(event.amount)) for event in events
+        ) == [
+            ("entertainment", Decimal("25.00")),
+            ("food", Decimal("50.00")),
+        ]
+
+        snapshot = self._allocation_snapshot(db_session, user_a)
+        assert sum(values[0] for values in snapshot.values()) == Decimal("100.00")
+        assert self._plan_values(db_session, user_a, first_day, "food")[:2] == (
+            Decimal("50.00"),
+            Decimal("50.00"),
+        )
+        assert self._plan_values(db_session, user_a, second_day, "entertainment")[
+            :2
+        ] == (Decimal("25.00"), Decimal("25.00"))
+        assert self._plan_values(db_session, user_a, donor_day, "shopping")[:2] == (
+            Decimal("25.00"),
+            Decimal("25.00"),
+        )
+
+        response = as_user_a.put(
+            f"/api/transactions/{second_id}",
+            json={"description": "metadata-only edit"},
+        )
+        assert response.status_code == 200, response.text
+        assert (
+            db_session.query(RedistributionEvent)
+            .filter(RedistributionEvent.user_id == user_a.id)
+            .count()
+            == 2
+        )
+
+        response = as_user_a.delete(f"/api/transactions/{first_id}")
+        assert response.status_code == 200, response.text
+        assert (
+            db_session.query(RedistributionEvent)
+            .filter(RedistributionEvent.user_id == user_a.id)
+            .count()
+            == 2
+        )
+        assert self._plan_values(db_session, user_a, second_day, "entertainment")[
+            :2
+        ] == (Decimal("50.00"), Decimal("50.00"))
+        assert self._plan_values(db_session, user_a, donor_day, "shopping")[:2] == (
+            Decimal("50.00"),
+            Decimal("50.00"),
+        )
+
+        response = as_user_a.delete(f"/api/transactions/{second_id}")
+        assert response.status_code == 200, response.text
+        assert self._allocation_snapshot(db_session, user_a) == baseline
+        assert (
+            db_session.query(RedistributionEvent)
+            .filter(RedistributionEvent.user_id == user_a.id)
+            .count()
+            == 2
+        )
+
+        db_session.expire_all()
+        stored_donor = (
+            db_session.query(DailyPlan).filter(DailyPlan.id == donor.id).one()
+        )
+        assert stored_donor.plan_json == {
+            "category_budgets": {"shopping": 100},
+            "custom": "preserve-me",
+        }
+
+    def test_month_rebuild_does_not_lock_transaction_rows(
+        self, db_session, user_a
+    ):
+        """A ledger rebuild must not wait on unrelated transaction row locks."""
+        transaction_month = self._previous_month(datetime.now(timezone.utc).date())
+        transaction_day = transaction_month.replace(day=10)
+        plan = self._new_plan(user_a, transaction_day, "food", "100.00")
+        txn = Transaction(
+            user_id=user_a.id,
+            category="food",
+            amount=Decimal("10.00"),
+            spent_at=datetime(
+                transaction_day.year,
+                transaction_day.month,
+                transaction_day.day,
+                12,
+                tzinfo=timezone.utc,
+            ),
+        )
+        db_session.add_all([plan, txn])
+        db_session.commit()
+
+        SessionFactory = sessionmaker(
+            bind=db_session.get_bind(),
+            expire_on_commit=False,
+            autoflush=False,
+        )
+        blocker = SessionFactory()
+        rebuilder = SessionFactory()
+        try:
+            (
+                blocker.query(Transaction)
+                .filter(Transaction.id == txn.id)
+                .with_for_update()
+                .one()
+            )
+            rebuilder.execute(text("SET LOCAL lock_timeout = '500ms'"))
+
+            rebuild_month_plan(
+                rebuilder,
+                user_a.id,
+                transaction_day,
+                tz="UTC",
+                commit=False,
+            )
+        finally:
+            rebuilder.rollback()
+            blocker.rollback()
+            rebuilder.close()
+            blocker.close()
+
+    def test_same_user_updates_lock_before_mutation_and_serialize(
+        self, db_session, user_a, monkeypatch
+    ):
+        """Concurrent edits block before row mutation and finish without deadlock."""
+        transaction_month = self._previous_month(datetime.now(timezone.utc).date())
+        transaction_day = transaction_month.replace(day=10)
+        plan = self._new_plan(user_a, transaction_day, "food", "100.00")
+        transactions = [
+            Transaction(
+                user_id=user_a.id,
+                category="food",
+                amount=Decimal(amount),
+                spent_at=datetime(
+                    transaction_day.year,
+                    transaction_day.month,
+                    transaction_day.day,
+                    12,
+                    tzinfo=timezone.utc,
+                ),
+            )
+            for amount in ("10.00", "20.00")
+        ]
+        db_session.add_all([plan, *transactions])
+        db_session.commit()
+        transaction_ids = [txn.id for txn in transactions]
+
+        SessionFactory = sessionmaker(
+            bind=db_session.get_bind(),
+            expire_on_commit=False,
+            autoflush=False,
+        )
+        gate = SessionFactory()
+        entered_lock = Queue()
+        real_lock = lock_user_ledger
+
+        def signaled_lock(session, user_id):
+            entered_lock.put(user_id)
+            real_lock(session, user_id)
+
+        monkeypatch.setattr(
+            "app.api.transactions.services.lock_user_ledger",
+            signaled_lock,
+        )
+
+        user_context = SimpleNamespace(id=user_a.id, timezone="UTC")
+
+        def update_in_session(transaction_id, amount):
+            from app.api.transactions.services import update_transaction
+
+            session = SessionFactory()
+            try:
+                session.execute(text("SET LOCAL statement_timeout = '8s'"))
+                return update_transaction(
+                    user_context,
+                    transaction_id,
+                    SimpleNamespace(amount=Decimal(amount)),
+                    session,
+                )
+            finally:
+                session.close()
+
+        futures = []
+        executor = ThreadPoolExecutor(max_workers=2)
+        lock_user_ledger(gate, user_a.id)
+        try:
+            futures = [
+                executor.submit(
+                    update_in_session,
+                    transaction_ids[0],
+                    "15.00",
+                ),
+                executor.submit(
+                    update_in_session,
+                    transaction_ids[1],
+                    "25.00",
+                ),
+            ]
+            entered_lock.get(timeout=3)
+            entered_lock.get(timeout=3)
+
+            # Both workers have reached the advisory lock. Their transaction
+            # rows must still be untouched/unlocked because the lock is taken
+            # before the initial query and flush.
+            probe = SessionFactory()
+            try:
+                locked = (
+                    probe.query(Transaction)
+                    .filter(Transaction.id.in_(transaction_ids))
+                    .with_for_update(nowait=True)
+                    .all()
+                )
+                assert {txn.id for txn in locked} == set(transaction_ids)
+            finally:
+                probe.rollback()
+                probe.close()
+        finally:
+            gate.commit()
+            gate.close()
+
+        try:
+            assert all(future.result(timeout=10) is not None for future in futures)
+        finally:
+            executor.shutdown(wait=True, cancel_futures=True)
+
+        db_session.expire_all()
+        stored_amounts = {
+            txn.id: Decimal(txn.amount)
+            for txn in db_session.query(Transaction)
+            .filter(Transaction.id.in_(transaction_ids))
+            .all()
+        }
+        assert stored_amounts == {
+            transaction_ids[0]: Decimal("15.00"),
+            transaction_ids[1]: Decimal("25.00"),
+        }
+        assert self._plan_values(
+            db_session,
+            user_a,
+            transaction_day,
+            "food",
+        )[2] == Decimal("40.00")
 
     def test_create_edit_delete_exact_values(self, as_user_a, db_session, user_a):
         base_balance, base_spent = _dashboard_numbers(as_user_a)
@@ -273,6 +830,73 @@ class TestFinancialRecalculation:
             if plan
             else Decimal("0.00")
         )
+
+    @staticmethod
+    def _previous_month(day):
+        if day.month == 1:
+            return day.replace(year=day.year - 1, month=12, day=1)
+        return day.replace(month=day.month - 1, day=1)
+
+    @staticmethod
+    def _new_plan(user, day, category, planned):
+        amount = Decimal(planned)
+        return DailyPlan(
+            user_id=user.id,
+            date=datetime(day.year, day.month, day.day, 12, tzinfo=timezone.utc),
+            category=category,
+            planned_amount=amount,
+            daily_budget=amount,
+            spent_amount=Decimal("0.00"),
+        )
+
+    @staticmethod
+    def _plan_values(db_session, user, day, category):
+        from app.core.date_utils import day_to_range
+
+        db_session.expire_all()
+        day_start, day_end = day_to_range(day)
+        plan = (
+            db_session.query(DailyPlan)
+            .filter(
+                DailyPlan.user_id == user.id,
+                DailyPlan.date >= day_start,
+                DailyPlan.date <= day_end,
+                DailyPlan.category == category,
+            )
+            .one()
+        )
+        return tuple(
+            Decimal(value or 0).quantize(Decimal("0.01"))
+            for value in (
+                plan.planned_amount,
+                plan.daily_budget,
+                plan.spent_amount,
+            )
+        )
+
+    @staticmethod
+    def _allocation_snapshot(db_session, user):
+        db_session.expire_all()
+        rows = (
+            db_session.query(DailyPlan)
+            .filter(DailyPlan.user_id == user.id)
+            .order_by(DailyPlan.date, DailyPlan.category)
+            .all()
+        )
+        return {
+            (
+                row.date.date() if hasattr(row.date, "date") else row.date,
+                row.category,
+            ): tuple(
+                Decimal(value or 0).quantize(Decimal("0.01"))
+                for value in (
+                    row.planned_amount,
+                    row.daily_budget,
+                    row.spent_amount,
+                )
+            )
+            for row in rows
+        }
 
 
 class TestOwnershipIsolation:

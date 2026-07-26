@@ -38,20 +38,33 @@ class SecureTokenStorage {
   static const String _tokenVersionKey = 'mita_token_version';
   static const String _lastRotationKey = 'mita_last_rotation';
   static const String _securityMetadataKey = 'mita_security_metadata';
+  static const String _logoutTombstoneKey = 'mita_logout_tombstone_v1';
+
+  // A persistent logout tombstone makes local logout authoritative even when
+  // Android Keystore/Keychain deletion fails. Token reads are denied while it
+  // is present, so a failed delete cannot resurrect a session after restart.
+  bool _logoutTombstoned = false;
 
   // Current storage version for migration purposes
   static const int _currentStorageVersion = 2;
 
   SecureTokenStorage._internal();
 
+  /// Synchronous fail-closed state used by ApiService before considering its
+  /// legacy fallback store.
+  bool get isLogoutTombstoned => _logoutTombstoned;
+
   /// Get singleton instance with proper async initialization
   static Future<SecureTokenStorage> getInstance() async {
-    if (_instance != null) return _instance!;
-
-    if (!_completer.isCompleted) {
+    if (_instance == null && !_completer.isCompleted) {
       _instance = SecureTokenStorage._internal();
-      await _instance!._initialize();
-      _completer.complete(_instance!);
+      try {
+        await _instance!._initialize();
+        _completer.complete(_instance!);
+      } catch (error, stackTrace) {
+        _completer.completeError(error, stackTrace);
+        rethrow;
+      }
     }
 
     return _completer.future;
@@ -71,6 +84,8 @@ class SecureTokenStorage {
           FlutterSecureStorage(aOptions: refreshTokenOptions);
       _accessTokenStorage = FlutterSecureStorage(aOptions: accessTokenOptions);
       _metadataStorage = FlutterSecureStorage(aOptions: metadataOptions);
+
+      await _loadLogoutTombstone();
 
       // Perform security checks and migrations
       await _performSecurityChecks();
@@ -247,6 +262,12 @@ class SecureTokenStorage {
 
   /// Perform migration from older versions
   Future<void> _performMigration(int fromVersion) async {
+    if (_logoutTombstoned) {
+      // Never migrate legacy credentials back into an explicitly logged-out
+      // installation.
+      return;
+    }
+
     if (fromVersion < 2) {
       // Migrate from v1 to v2: Move from basic storage to enhanced security
       try {
@@ -287,6 +308,11 @@ class SecureTokenStorage {
 
   /// Store refresh token with enhanced security
   Future<void> storeRefreshToken(String token) async {
+    await _storeRefreshToken(token);
+    await _clearLogoutTombstone();
+  }
+
+  Future<void> _storeRefreshToken(String token) async {
     try {
       await _refreshTokenStorage.write(key: _refreshTokenKey, value: token);
       await _updateSecurityMetadata();
@@ -317,6 +343,11 @@ class SecureTokenStorage {
 
   /// Store access token
   Future<void> storeAccessToken(String token) async {
+    await _storeAccessToken(token);
+    await _clearLogoutTombstone();
+  }
+
+  Future<void> _storeAccessToken(String token) async {
     try {
       await _accessTokenStorage.write(key: _accessTokenKey, value: token);
       await _updateSecurityMetadata();
@@ -358,8 +389,10 @@ class SecureTokenStorage {
 
   /// Retrieve refresh token
   Future<String?> getRefreshToken() async {
+    if (_logoutTombstoned) return null;
     try {
       final token = await _refreshTokenStorage.read(key: _refreshTokenKey);
+      if (_logoutTombstoned) return null;
       if (token != null) {
         await SecurityMonitor.instance.logSecurityEvent(
           SecurityEventType.tokenRetrieved,
@@ -380,8 +413,10 @@ class SecureTokenStorage {
 
   /// Retrieve access token
   Future<String?> getAccessToken() async {
+    if (_logoutTombstoned) return null;
     try {
       final token = await _accessTokenStorage.read(key: _accessTokenKey);
+      if (_logoutTombstoned) return null;
       if (token != null) {
         await SecurityMonitor.instance.logSecurityEvent(
           SecurityEventType.tokenRetrieved,
@@ -414,18 +449,20 @@ class SecureTokenStorage {
   /// Store both tokens atomically
   Future<void> storeTokens(String accessToken, String refreshToken) async {
     try {
-      // Store both tokens
+      // Store both tokens before lifting a prior logout tombstone. Reads stay
+      // denied until the complete credential pair is durable.
       await Future.wait([
-        storeAccessToken(accessToken),
-        storeRefreshToken(refreshToken),
+        _storeAccessToken(accessToken),
+        _storeRefreshToken(refreshToken),
       ]);
 
       await _updateLastRotationTime();
+      await _clearLogoutTombstone();
       logInfo('Tokens stored securely', tag: 'SECURE_STORAGE');
     } catch (e) {
       logError('Failed to store tokens: $e', tag: 'SECURE_STORAGE', error: e);
       // If storage fails, clear everything for security
-      await _clearAllTokensSecurely();
+      await clearAllUserData();
       throw SecurityException('Failed to store tokens securely');
     }
   }
@@ -445,6 +482,7 @@ class SecureTokenStorage {
     } catch (e) {
       logError('Failed to clear refresh token: $e',
           tag: 'SECURE_STORAGE', error: e);
+      throw SecurityException('Failed to clear refresh token securely');
     }
   }
 
@@ -463,13 +501,19 @@ class SecureTokenStorage {
     } catch (e) {
       logError('Failed to clear access token: $e',
           tag: 'SECURE_STORAGE', error: e);
+      throw SecurityException('Failed to clear access token securely');
     }
   }
 
   /// Clear all user data (for logout)
   Future<void> clearAllUserData() async {
-    await _clearAllTokensSecurely();
-    await _clearUserMetadata();
+    // Persist the deny marker before attempting deletion. If any delete below
+    // fails, callers see the failure and future reads still return null.
+    await _setLogoutTombstone();
+    await Future.wait([
+      _clearAllTokensSecurely(),
+      _clearUserMetadata(),
+    ]);
     logInfo('All user data cleared securely', tag: 'SECURE_STORAGE');
   }
 
@@ -489,6 +533,44 @@ class SecureTokenStorage {
     } catch (e) {
       logError('Failed to clear user metadata: $e',
           tag: 'SECURE_STORAGE', error: e);
+      throw SecurityException('Failed to clear user metadata securely');
+    }
+  }
+
+  Future<void> _loadLogoutTombstone() async {
+    try {
+      _logoutTombstoned =
+          await _metadataStorage.read(key: _logoutTombstoneKey) == 'true';
+    } catch (e) {
+      // Fail closed when metadata cannot be read. A subsequent successful
+      // token store explicitly removes the tombstone.
+      _logoutTombstoned = true;
+      logError('Failed to read logout tombstone: $e',
+          tag: 'SECURE_STORAGE', error: e);
+    }
+  }
+
+  Future<void> _setLogoutTombstone() async {
+    _logoutTombstoned = true;
+    try {
+      await _metadataStorage.write(key: _logoutTombstoneKey, value: 'true');
+    } catch (e) {
+      logError('Failed to persist logout tombstone: $e',
+          tag: 'SECURE_STORAGE', error: e);
+      throw SecurityException('Failed to persist logout tombstone');
+    }
+  }
+
+  Future<void> _clearLogoutTombstone() async {
+    try {
+      await _metadataStorage.delete(key: _logoutTombstoneKey);
+      _logoutTombstoned = false;
+    } catch (e) {
+      // Keep reads denied unless the tombstone is known to be gone.
+      _logoutTombstoned = true;
+      logError('Failed to clear logout tombstone: $e',
+          tag: 'SECURE_STORAGE', error: e);
+      throw SecurityException('Failed to clear logout tombstone');
     }
   }
 

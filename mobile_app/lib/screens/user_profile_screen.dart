@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_typography.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import '../providers/budget_provider.dart';
 import '../providers/user_provider.dart';
 
 class UserProfileScreen extends StatefulWidget {
@@ -63,12 +64,18 @@ class _UserProfileScreenState extends State<UserProfileScreen>
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final userProvider = context.watch<UserProvider>();
+    final budgetProvider = context.watch<BudgetProvider>();
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
       body: userProvider.isLoading
           ? _buildLoadingState()
-          : _buildProfileContent(colorScheme, textTheme, userProvider),
+          : _buildProfileContent(
+              colorScheme,
+              textTheme,
+              userProvider,
+              budgetProvider,
+            ),
     );
   }
 
@@ -87,7 +94,11 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   }
 
   Widget _buildProfileContent(
-      ColorScheme colorScheme, TextTheme textTheme, UserProvider userProvider) {
+    ColorScheme colorScheme,
+    TextTheme textTheme,
+    UserProvider userProvider,
+    BudgetProvider budgetProvider,
+  ) {
     return CustomScrollView(
       slivers: [
         // App Bar
@@ -150,11 +161,12 @@ class _UserProfileScreenState extends State<UserProfileScreen>
 
                     // Financial Overview Cards
                     _buildFinancialOverview(
-                        colorScheme, textTheme, userProvider),
+                        colorScheme, textTheme, userProvider, budgetProvider),
                     const SizedBox(height: 24),
 
                     // Account Details
-                    _buildAccountDetails(colorScheme, textTheme, userProvider),
+                    _buildAccountDetails(
+                        colorScheme, textTheme, userProvider, budgetProvider),
                     const SizedBox(height: 24),
 
                     // Quick Actions
@@ -359,8 +371,14 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   }
 
   Widget _buildFinancialOverview(
-      ColorScheme colorScheme, TextTheme textTheme, UserProvider userProvider) {
+    ColorScheme colorScheme,
+    TextTheme textTheme,
+    UserProvider userProvider,
+    BudgetProvider budgetProvider,
+  ) {
     final financialContext = userProvider.financialContext;
+    final hasBudgetStatus =
+        budgetProvider.liveBudgetStatus.containsKey('monthly_spent');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -375,13 +393,15 @@ class _UserProfileScreenState extends State<UserProfileScreen>
         const SizedBox(height: 16),
 
         // Financial Stats Grid
-        GridView.count(
+        GridView(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 1.3,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            mainAxisExtent: 168,
+          ),
           children: [
             _buildStatCard(
               'Monthly Income',
@@ -396,11 +416,13 @@ class _UserProfileScreenState extends State<UserProfileScreen>
             _buildStatCard(
               'Monthly Expenses',
               () {
-                final expenses = financialContext['total_expenses'] as num? ??
-                    financialContext['total_spent'] as num?;
+                final expenses = hasBudgetStatus
+                    ? budgetProvider.totalSpent
+                    : financialContext['total_expenses'] as num? ??
+                        financialContext['total_spent'] as num?;
                 return expenses != null
                     ? '\$${expenses.toStringAsFixed(0)}'
-                    : '\$0';
+                    : '—';
               }(),
               Icons.receipt_long,
               Colors.orange,
@@ -414,7 +436,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                     financialContext['savings'] as num?;
                 return savings != null
                     ? '\$${savings.toStringAsFixed(0)}'
-                    : '\$0';
+                    : '—';
               }(),
               Icons.savings,
               Colors.blue,
@@ -425,7 +447,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
               'Budget Adherence',
               financialContext['budget_adherence'] != null
                   ? '${financialContext['budget_adherence']}%'
-                  : '0%',
+                  : '—',
               Icons.check_circle,
               Colors.purple,
               colorScheme,
@@ -485,7 +507,11 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   }
 
   Widget _buildAccountDetails(
-      ColorScheme colorScheme, TextTheme textTheme, UserProvider userProvider) {
+    ColorScheme colorScheme,
+    TextTheme textTheme,
+    UserProvider userProvider,
+    BudgetProvider budgetProvider,
+  ) {
     final financialContext = userProvider.financialContext;
 
     return Card(
@@ -537,7 +563,9 @@ class _UserProfileScreenState extends State<UserProfileScreen>
             ),
             _buildDetailRow(
               'Transactions',
-              '${financialContext['transaction_count'] ?? 156} this month',
+              budgetProvider.monthlyTransactionCount != null
+                  ? '${budgetProvider.monthlyTransactionCount} this month'
+                  : 'Unavailable',
               Icons.receipt,
               colorScheme,
               textTheme,

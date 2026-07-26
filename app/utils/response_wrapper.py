@@ -168,12 +168,25 @@ class FinancialResponseHelper:
     ) -> JSONResponse:
         """Standardized response for transaction creation"""
 
+        response_data = jsonable_encoder(transaction_data)
         meta = {}
         if balance_impact:
             meta["balance_impact"] = balance_impact
+            # The Flutter transaction model consumes rebalancing fields from
+            # the transaction payload. Keep the complete impact in metadata,
+            # but expose these user-facing fields where the client contract
+            # has always expected them.
+            if isinstance(response_data, dict):
+                for key in (
+                    "rebalanced",
+                    "rebalance_covered",
+                    "rebalance_fully_covered",
+                ):
+                    if key in balance_impact:
+                        response_data[key] = balance_impact[key]
 
         return StandardizedResponse.created(
-            data=transaction_data,
+            data=response_data,
             message="Transaction recorded successfully",
             meta=meta if meta else None,
         )

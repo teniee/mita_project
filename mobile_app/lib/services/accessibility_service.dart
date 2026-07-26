@@ -214,14 +214,17 @@ class AccessibilityService {
     required double limit,
     String? status,
   }) {
-    final percentage = (spent / limit * 100).round();
+    final hasBudgetLimit = limit > 0 && limit.isFinite && spent.isFinite;
+    final percentage = hasBudgetLimit ? (spent / limit * 100).round() : 0;
     final spentFormatted = formatCurrency(spent);
     final limitFormatted = formatCurrency(limit);
     final remaining = limit - spent;
     final remainingFormatted = formatCurrency(remaining.abs());
 
     String progressText;
-    if (remaining >= 0) {
+    if (!hasBudgetLimit) {
+      progressText = '$spentFormatted spent. No budget limit is set.';
+    } else if (remaining >= 0) {
       progressText = '$spentFormatted spent of $limitFormatted budget. '
           '$remainingFormatted remaining. $percentage percent used.';
     } else {

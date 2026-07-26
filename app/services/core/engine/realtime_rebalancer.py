@@ -17,7 +17,7 @@ from __future__ import annotations
 import logging
 from calendar import monthrange
 from datetime import date, datetime
-from decimal import Decimal
+from decimal import ROUND_DOWN, Decimal
 from typing import Dict, List, Optional
 from uuid import UUID
 
@@ -28,6 +28,81 @@ from app.db.models.daily_plan import DailyPlan
 from app.services.redistribution_audit_log import record_redistribution_event
 
 logger = logging.getLogger(__name__)
+
+REALTIME_ADJUSTMENT_KEY = "_mita_realtime_adjustment_v1"
+CENT = Decimal("0.01")
+
+
+def _plan_metadata(entry: DailyPlan) -> Dict:
+    """Return mutable plan metadata without sharing the JSONB value in-place."""
+    return dict(entry.plan_json) if isinstance(entry.plan_json, dict) else {}
+
+
+def record_realtime_adjustment(entry: DailyPlan, delta: Decimal) -> None:
+    """Persist the signed allocation delta applied to one DailyPlan row.
+
+    Donor cuts are negative and target credits are positive. The month rebuild
+    consumes these values to recover the pre-rebalance allocation exactly.
+    """
+    metadata = _plan_metadata(entry)
+    current = Decimal(str(metadata.get(REALTIME_ADJUSTMENT_KEY, "0")))
+    metadata[REALTIME_ADJUSTMENT_KEY] = format(current + delta, "f")
+    entry.plan_json = metadata
+
+
+def consume_realtime_adjustment(entry: DailyPlan) -> Decimal:
+    """Remove and return this row's recorded real-time allocation delta."""
+    metadata = _plan_metadata(entry)
+    raw_delta = metadata.pop(REALTIME_ADJUSTMENT_KEY, "0")
+    entry.plan_json = metadata or None
+    return Decimal(str(raw_delta))
+
+
+def _allocate_cents_with_caps(
+    target: Decimal,
+    capacities: List[Decimal],
+) -> List[Decimal]:
+    """Split ``target`` exactly across rows without exceeding any row cap.
+
+    Money is allocated as integer cents. This avoids both over-crediting from
+    per-row rounding (for example, $0.07 across two rows becoming $0.08) and
+    stranded capacity when donor rows have uneven allocations.
+    """
+    target_cents = int(
+        (max(Decimal("0"), target) * 100).to_integral_value(rounding=ROUND_DOWN)
+    )
+    capacity_cents = [
+        int(
+            (max(Decimal("0"), capacity) * 100).to_integral_value(
+                rounding=ROUND_DOWN
+            )
+        )
+        for capacity in capacities
+    ]
+    target_cents = min(target_cents, sum(capacity_cents))
+    cuts = [0] * len(capacity_cents)
+    active = [index for index, cap in enumerate(capacity_cents) if cap > 0]
+    remaining = target_cents
+
+    while remaining and active:
+        share, remainder = divmod(remaining, len(active))
+        allocated = 0
+        next_active = []
+        for position, index in enumerate(active):
+            capacity_left = capacity_cents[index] - cuts[index]
+            requested = share + (1 if position < remainder else 0)
+            addition = min(requested, capacity_left)
+            cuts[index] += addition
+            allocated += addition
+            if cuts[index] < capacity_cents[index]:
+                next_active.append(index)
+
+        if allocated == 0:
+            break
+        remaining -= allocated
+        active = next_active
+
+    return [Decimal(cents) / Decimal("100") for cents in cuts]
 
 
 class RebalancePlan:
@@ -66,6 +141,8 @@ def rebalance_after_overspend(
     overspend_amount: Decimal,
     transaction_date: date,
     dry_run: bool = False,
+    commit: bool = True,
+    record_audit: bool = True,
 ) -> RebalancePlan:
     """
     Core algorithm: redistribute future budget after overspend.
@@ -109,7 +186,7 @@ def rebalance_after_overspend(
             DailyPlan.date > day_start,
             DailyPlan.date <= month_end_dt,
         )
-        .order_by(DailyPlan.date)
+        .order_by(DailyPlan.date, DailyPlan.category, DailyPlan.id)
         .all()
     )
 
@@ -133,9 +210,8 @@ def rebalance_after_overspend(
 
     # 3. Sort donor categories: DISCRETIONARY (3) first → FLEXIBLE (2) → PROTECTED (1)
     sorted_donors = sorted(
-        list(future_by_cat.keys()),
-        key=lambda c: int(get_category_level(c)),
-        reverse=True,
+        future_by_cat,
+        key=lambda category: (-int(get_category_level(category)), category),
     )
 
     plan.remaining_days = len({e.date for e in future_entries})
@@ -143,10 +219,13 @@ def rebalance_after_overspend(
 
     # 4. Take from donors in priority order
     for donor_cat in sorted_donors:
-        if remaining <= Decimal("0.01"):
+        if remaining < CENT:
             break
 
-        entries = sorted(future_by_cat[donor_cat], key=lambda e: e.date)
+        entries = sorted(
+            future_by_cat[donor_cat],
+            key=lambda entry: (entry.date, str(entry.id)),
+        )
         if not entries:
             continue
 
@@ -155,17 +234,24 @@ def rebalance_after_overspend(
             continue
 
         # Cap at 50% of donor budget to avoid wiping a category
-        to_take = min(remaining, total_available * Decimal("0.50"))
-        if to_take <= Decimal("0.01"):
+        to_take = min(remaining, total_available * Decimal("0.50")).quantize(
+            CENT,
+            rounding=ROUND_DOWN,
+        )
+        if to_take < CENT:
             continue
 
-        per_entry = (to_take / Decimal(len(entries))).quantize(Decimal("0.01"))
-        actual = Decimal("0")
+        available_by_entry = [
+            Decimal(str(entry.planned_amount or 0)) for entry in entries
+        ]
+        cuts = _allocate_cents_with_caps(
+            to_take,
+            [available * Decimal("0.50") for available in available_by_entry],
+        )
+        actual = sum(cuts, Decimal("0.00"))
 
-        for entry in entries:
-            available = Decimal(str(entry.planned_amount or 0))
-            cut = min(per_entry, available * Decimal("0.50"))
-            if cut <= Decimal("0.01"):
+        for entry, available, cut in zip(entries, available_by_entry, cuts):
+            if cut <= Decimal("0"):
                 continue
             if not dry_run:
                 # Use Decimal throughout — never convert to float for financial data
@@ -173,13 +259,15 @@ def rebalance_after_overspend(
                 # The enforceable limit moves with the allocation, otherwise
                 # spending checks and the calendar day limit go stale.
                 entry.daily_budget = entry.planned_amount
-            actual += cut
+                record_realtime_adjustment(entry, -cut)
 
-        if actual > Decimal("0.01"):
+        if actual >= CENT:
             plan.transfers.append(
                 {
                     "from_category": donor_cat,
-                    "amount_per_day": float(per_entry),
+                    "amount_per_day": float(
+                        (actual / Decimal(len(entries))).quantize(CENT)
+                    ),
                     "days_affected": len(entries),
                     "total_taken": float(actual),
                 }
@@ -187,24 +275,27 @@ def rebalance_after_overspend(
             remaining -= actual
             plan.covered += actual
             # Record to audit log — must never break rebalancing
-            try:
-                record_redistribution_event(
-                    db=db,
-                    user_id=user_id,
-                    from_category=donor_cat,
-                    to_category=overspent_category,
-                    amount=actual,
-                    reason="realtime_rebalance",
-                )
-            except Exception as _audit_err:
-                logger.warning("audit log write failed (non-critical): %s", _audit_err)
+            if not dry_run and record_audit:
+                try:
+                    record_redistribution_event(
+                        db=db,
+                        user_id=user_id,
+                        from_category=donor_cat,
+                        to_category=overspent_category,
+                        amount=actual,
+                        reason="realtime_rebalance",
+                    )
+                except Exception as _audit_err:
+                    logger.warning(
+                        "audit log write failed (non-critical): %s", _audit_err
+                    )
 
     plan.uncovered = max(Decimal("0"), remaining)
 
     # 5. Credit covered amount back to the overspent entry.
     #    Without this, the overspent day stays "red" even though the
     #    monthly budget has been rebalanced — confusing for the user.
-    if not dry_run and plan.covered > Decimal("0.01"):
+    if not dry_run and plan.covered >= CENT:
         day_start_credit = datetime(
             transaction_date.year,
             transaction_date.month,
@@ -236,6 +327,7 @@ def rebalance_after_overspend(
                 Decimal(str(overspent_entry.planned_amount or 0)) + plan.covered
             )
             overspent_entry.daily_budget = overspent_entry.planned_amount
+            record_realtime_adjustment(overspent_entry, plan.covered)
             logger.debug(
                 "rebalance: credited $%.2f to %s on %s",
                 float(plan.covered),
@@ -243,11 +335,15 @@ def rebalance_after_overspend(
                 transaction_date,
             )
 
-    if not dry_run and plan.covered > Decimal("0.01"):
+    if not dry_run and plan.covered >= CENT:
         try:
-            db.commit()
+            if commit:
+                db.commit()
+            else:
+                db.flush()
             logger.info(
-                "rebalance: committed user=%s overspent=%s covered=%.2f uncovered=%.2f",
+                "rebalance: %s user=%s overspent=%s covered=%.2f uncovered=%.2f",
+                "committed" if commit else "flushed",
                 user_id,
                 overspent_category,
                 float(plan.covered),
@@ -267,6 +363,8 @@ def check_and_rebalance(
     category: str,
     transaction_date: date,
     dry_run: bool = False,
+    commit: bool = True,
+    record_audit: bool = True,
 ) -> Optional[RebalancePlan]:
     """
     Check if category is overspent on given date, trigger rebalance if so.
@@ -315,4 +413,6 @@ def check_and_rebalance(
         overspend_amount=overspend,
         transaction_date=transaction_date,
         dry_run=dry_run,
+        commit=commit,
+        record_audit=record_audit,
     )

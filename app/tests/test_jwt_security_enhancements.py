@@ -671,30 +671,28 @@ class TestProductionReadinessFeatures:
             payload = await verify_token(token)
             assert payload is not None  # Fail-open behavior
 
-    def test_performance_considerations(self):
-        """Test performance-related features."""
-        import time
+    @pytest.mark.asyncio
+    async def test_performance_considerations(self):
+        """Fresh tokens verify repeatedly without database version checks."""
+        from unittest.mock import AsyncMock
 
         user_data = {"sub": "test-user-123"}
-
-        # Measure token creation performance
-        start_time = time.time()
-        for _ in range(100):
-            create_access_token(user_data)
-        end_time = time.time()
-
-        # Should create 100 tokens in reasonable time (< 1 second)
-        assert (end_time - start_time) < 1.0
-
-        # Measure token verification performance
         token = create_access_token(user_data)
-        start_time = time.time()
-        for _ in range(100):
-            verify_token(token)
-        end_time = time.time()
+        blacklist_service = AsyncMock()
+        blacklist_service.is_token_blacklisted.return_value = False
 
-        # Should verify 100 tokens in reasonable time (< 1 second)
-        assert (end_time - start_time) < 1.0
+        with patch(
+            "app.services.token_blacklist_service.get_blacklist_service",
+            new_callable=AsyncMock,
+            return_value=blacklist_service,
+        ) as get_blacklist_service:
+            with patch("app.core.async_session.get_async_db") as get_async_db:
+                payloads = [await verify_token(token) for _ in range(100)]
+
+        assert all(payload is not None for payload in payloads)
+        assert get_blacklist_service.await_count == 100
+        assert blacklist_service.is_token_blacklisted.await_count == 100
+        get_async_db.assert_not_called()
 
 
 if __name__ == "__main__":

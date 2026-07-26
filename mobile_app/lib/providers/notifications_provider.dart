@@ -14,7 +14,13 @@ enum NotificationState {
 /// Centralized notifications state management provider
 /// Manages notification list, unread count, and filtering
 class NotificationsProvider extends ChangeNotifier {
-  final ApiService _apiService = ApiService();
+  NotificationsProvider({ApiService? apiService})
+      : _apiService = apiService ?? ApiService();
+
+  final ApiService _apiService;
+  int _sessionGeneration = 0;
+  int _notificationsRequestId = 0;
+  int _unreadCountRequestId = 0;
 
   // State
   NotificationState _state = NotificationState.initial;
@@ -46,6 +52,9 @@ class NotificationsProvider extends ChangeNotifier {
   Future<void> loadNotifications({bool refresh = false}) async {
     if (_isLoading && !refresh) return;
 
+    final generation = _sessionGeneration;
+    final requestId = ++_notificationsRequestId;
+    final unreadCountRequestId = ++_unreadCountRequestId;
     _setLoading(true);
     if (refresh || _state == NotificationState.initial) {
       _state = NotificationState.loading;
@@ -66,6 +75,8 @@ class NotificationsProvider extends ChangeNotifier {
         limit: 100,
       );
 
+      if (!_isCurrentNotificationsRequest(generation, requestId)) return;
+
       final notificationsList =
           response['notifications'] as List<dynamic>? ?? [];
       final notifications = notificationsList
@@ -75,14 +86,16 @@ class NotificationsProvider extends ChangeNotifier {
 
       _notifications = notifications;
 
-      final unreadCountData = response['unread_count'];
-      _unreadCount = (unreadCountData == null)
-          ? 0
-          : (unreadCountData is num)
-              ? unreadCountData.toInt()
-              : (unreadCountData is String
-                  ? int.tryParse(unreadCountData) ?? 0
-                  : 0);
+      if (_isCurrentUnreadCountRequest(generation, unreadCountRequestId)) {
+        final unreadCountData = response['unread_count'];
+        _unreadCount = (unreadCountData == null)
+            ? 0
+            : (unreadCountData is num)
+                ? unreadCountData.toInt()
+                : (unreadCountData is String
+                    ? int.tryParse(unreadCountData) ?? 0
+                    : 0);
+      }
 
       final totalData = response['total'];
       _total = (totalData == null)
@@ -101,10 +114,13 @@ class NotificationsProvider extends ChangeNotifier {
     } catch (e) {
       logError('Failed to load notifications: $e',
           tag: 'NOTIFICATIONS_PROVIDER');
+      if (!_isCurrentNotificationsRequest(generation, requestId)) return;
       _errorMessage = e.toString();
       _state = NotificationState.error;
     } finally {
-      _setLoading(false);
+      if (_isCurrentNotificationsRequest(generation, requestId)) {
+        _setLoading(false);
+      }
     }
   }
 
@@ -112,12 +128,16 @@ class NotificationsProvider extends ChangeNotifier {
   Future<bool> markAsRead(NotificationModel notification) async {
     if (notification.isRead) return true;
 
+    final generation = _sessionGeneration;
+    _invalidateNotificationSnapshot();
     try {
       logInfo('Marking notification ${notification.id} as read',
           tag: 'NOTIFICATIONS_PROVIDER');
 
       final success = await _apiService.markNotificationRead(notification.id);
+      if (!_isCurrentSession(generation)) return false;
       if (success) {
+        _invalidateNotificationSnapshot();
         final index = _notifications.indexWhere((n) => n.id == notification.id);
         if (index != -1) {
           _notifications[index] = notification.copyWith(
@@ -141,12 +161,16 @@ class NotificationsProvider extends ChangeNotifier {
 
   /// Mark all notifications as read
   Future<bool> markAllAsRead() async {
+    final generation = _sessionGeneration;
+    _invalidateNotificationSnapshot();
     try {
       logInfo('Marking all notifications as read',
           tag: 'NOTIFICATIONS_PROVIDER');
 
       final success = await _apiService.markAllNotificationsRead();
+      if (!_isCurrentSession(generation)) return false;
       if (success) {
+        _invalidateNotificationSnapshot();
         _notifications = _notifications
             .map((n) => n.copyWith(
                   isRead: true,
@@ -170,12 +194,16 @@ class NotificationsProvider extends ChangeNotifier {
 
   /// Delete a notification
   Future<bool> deleteNotification(NotificationModel notification) async {
+    final generation = _sessionGeneration;
+    _invalidateNotificationSnapshot();
     try {
       logInfo('Deleting notification ${notification.id}',
           tag: 'NOTIFICATIONS_PROVIDER');
 
       final success = await _apiService.deleteNotification(notification.id);
+      if (!_isCurrentSession(generation)) return false;
       if (success) {
+        _invalidateNotificationSnapshot();
         _notifications.removeWhere((n) => n.id == notification.id);
         if (!notification.isRead && _unreadCount > 0) _unreadCount--;
         notifyListeners();
@@ -231,8 +259,11 @@ class NotificationsProvider extends ChangeNotifier {
 
   /// Get unread count from server
   Future<void> fetchUnreadCount() async {
+    final generation = _sessionGeneration;
+    final requestId = ++_unreadCountRequestId;
     try {
       final count = await _apiService.getUnreadNotificationCount();
+      if (!_isCurrentUnreadCountRequest(generation, requestId)) return;
       if (count != _unreadCount) {
         _unreadCount = count;
         notifyListeners();
@@ -249,8 +280,11 @@ class NotificationsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Reset state (e.g., on logout)
-  void reset() {
+  /// Discard all state owned by the previous authenticated account.
+  void resetSession() {
+    _sessionGeneration++;
+    _notificationsRequestId++;
+    _unreadCountRequestId++;
     _state = NotificationState.initial;
     _notifications = [];
     _unreadCount = 0;
@@ -264,9 +298,31 @@ class NotificationsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Backwards-compatible alias for existing logout callers.
+  void reset() => resetSession();
+
   // Private helper
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
+  }
+
+  bool _isCurrentSession(int generation) => generation == _sessionGeneration;
+
+  bool _isCurrentNotificationsRequest(int generation, int requestId) =>
+      _isCurrentSession(generation) && requestId == _notificationsRequestId;
+
+  bool _isCurrentUnreadCountRequest(int generation, int requestId) =>
+      _isCurrentSession(generation) && requestId == _unreadCountRequestId;
+
+  void _invalidateNotificationSnapshot() {
+    _notificationsRequestId++;
+    _unreadCountRequestId++;
+    _isLoading = false;
+    if (_state == NotificationState.loading) {
+      _state = _notifications.isEmpty
+          ? NotificationState.initial
+          : NotificationState.loaded;
+    }
   }
 }

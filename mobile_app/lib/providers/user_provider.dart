@@ -4,6 +4,7 @@ import '../services/logging_service.dart';
 import '../services/token_lifecycle_manager.dart';
 import '../services/iap_service.dart';
 import '../services/api_service.dart';
+import '../services/onboarding_state.dart';
 
 /// User state enum for tracking authentication and data loading states
 enum UserState {
@@ -17,9 +18,23 @@ enum UserState {
 /// Centralized user state management provider
 /// Manages user authentication state, profile data, and financial context
 class UserProvider extends ChangeNotifier {
-  final UserDataManager _userDataManager = UserDataManager.instance;
-  final IapService _iapService = IapService();
-  final ApiService _apiService = ApiService();
+  final UserDataManager _userDataManager;
+  final IapService _iapService;
+  final ApiService _apiService;
+  final void Function()? _onSessionBoundary;
+  final void Function()? _onAccountTransition;
+
+  UserProvider({
+    UserDataManager? userDataManager,
+    ApiService? apiService,
+    IapService? iapService,
+    void Function()? onSessionBoundary,
+    void Function()? onAccountTransition,
+  })  : _userDataManager = userDataManager ?? UserDataManager.instance,
+        _apiService = apiService ?? ApiService(),
+        _iapService = iapService ?? IapService(),
+        _onSessionBoundary = onSessionBoundary,
+        _onAccountTransition = onAccountTransition;
 
   // State
   UserState _state = UserState.initial;
@@ -76,6 +91,8 @@ class UserProvider extends ChangeNotifier {
   }
 
   Future<void>? _initializeInFlight;
+  bool? _initializeWasFreshLogin;
+  int _sessionGeneration = 0;
 
   /// Initialize the provider and load user data.
   ///
@@ -95,18 +112,39 @@ class UserProvider extends ChangeNotifier {
     if (_state == UserState.authenticated) {
       return Future.value();
     }
+    final isFreshLogin = _apiService.hasActiveSession;
     final inFlight = _initializeInFlight;
     if (inFlight != null) {
-      return inFlight;
-    }
-    final future = _doInitialize();
-    _initializeInFlight = future.whenComplete(() {
+      if (_initializeWasFreshLogin == isFreshLogin) {
+        return inFlight;
+      }
+      // A persisted-session bootstrap can still be awaiting secure storage
+      // when an interactive login saves a new identity. Invalidate that old
+      // bootstrap instead of making the login join it.
+      _sessionGeneration += 1;
       _initializeInFlight = null;
+    }
+    if (isFreshLogin) {
+      // Distinguish this identity from an in-flight logout/old initialization.
+      _sessionGeneration += 1;
+    }
+    final generation = _sessionGeneration;
+    final future = _doInitialize(generation, isFreshLogin: isFreshLogin);
+    _initializeInFlight = future;
+    _initializeWasFreshLogin = isFreshLogin;
+    future.whenComplete(() {
+      if (identical(_initializeInFlight, future)) {
+        _initializeInFlight = null;
+        _initializeWasFreshLogin = null;
+      }
     });
     return future;
   }
 
-  Future<void> _doInitialize() async {
+  Future<void> _doInitialize(
+    int generation, {
+    required bool isFreshLogin,
+  }) async {
     _setLoading(true);
     _state = UserState.loading;
     notifyListeners();
@@ -116,6 +154,7 @@ class UserProvider extends ChangeNotifier {
 
       // CRITICAL FIX: Check if user has a valid token before making API calls
       final token = await _apiService.getToken();
+      if (generation != _sessionGeneration) return;
       if (token == null || token.isEmpty) {
         logWarning('No authentication token found - user must login first',
             tag: 'USER_PROVIDER');
@@ -124,17 +163,51 @@ class UserProvider extends ChangeNotifier {
         return;
       }
 
+      _userDataManager.beginSessionBoundary();
+
+      // A newly authenticated identity starts with empty account-scoped
+      // provider caches. This is synchronous so no frame can render data from
+      // the previous identity while the new profile is loading.
+      try {
+        _onSessionBoundary?.call();
+      } catch (e) {
+        logError('Failed to clear session-scoped providers: $e',
+            tag: 'USER_PROVIDER');
+      }
+
+      // Process-wide account caches must be cleared on an actual in-process
+      // login/account replacement, but not on a cold restart with the same
+      // persisted identity (which would destroy valid offline onboarding and
+      // entitlement state).
+      if (isFreshLogin) {
+        try {
+          _onAccountTransition?.call();
+        } catch (e) {
+          logError('Failed to clear persisted account preferences: $e',
+              tag: 'USER_PROVIDER');
+        }
+        await Future.wait<void>([
+          OnboardingState.instance.reset(),
+          _iapService.resetSession(),
+        ]);
+        if (generation != _sessionGeneration) return;
+      }
+
       // Initialize the underlying user data manager
       await _userDataManager.initialize();
+      if (generation != _sessionGeneration) return;
 
       // Load user profile
-      await loadUserProfile();
+      await loadUserProfile(sessionGeneration: generation);
+      if (generation != _sessionGeneration) return;
 
       // Check onboarding status
       _hasCompletedOnboarding = await _userDataManager.hasCompletedOnboarding();
+      if (generation != _sessionGeneration) return;
 
       // Load financial context
-      await loadFinancialContext();
+      await loadFinancialContext(sessionGeneration: generation);
+      if (generation != _sessionGeneration) return;
 
       _state = UserState.authenticated;
       // Clear any stale error so the dashboard error card can dismiss —
@@ -144,37 +217,47 @@ class UserProvider extends ChangeNotifier {
       _errorMessage = null;
       logInfo('UserProvider initialized successfully', tag: 'USER_PROVIDER');
     } catch (e) {
+      if (generation != _sessionGeneration) return;
       logError('Failed to initialize UserProvider: $e', tag: 'USER_PROVIDER');
       _errorMessage = e.toString();
       _state = UserState.error;
     } finally {
-      _setLoading(false);
+      if (generation == _sessionGeneration) {
+        _setLoading(false);
+      }
     }
   }
 
   /// Load user profile from cache or API
-  Future<void> loadUserProfile() async {
+  Future<void> loadUserProfile({int? sessionGeneration}) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
     try {
       _setLoading(true);
 
       final profile = await _userDataManager.getUserProfile();
+      if (generation != _sessionGeneration) return;
       _userProfile = profile;
       _errorMessage = null; // success clears any stale error
 
       logInfo('User profile loaded: ${profile['name']}', tag: 'USER_PROVIDER');
       notifyListeners();
     } catch (e) {
+      if (generation != _sessionGeneration) return;
       logError('Failed to load user profile: $e', tag: 'USER_PROVIDER');
       _errorMessage = 'Failed to load user profile';
     } finally {
-      _setLoading(false);
+      if (generation == _sessionGeneration) {
+        _setLoading(false);
+      }
     }
   }
 
   /// Load financial context for budget calculations
-  Future<void> loadFinancialContext() async {
+  Future<void> loadFinancialContext({int? sessionGeneration}) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
     try {
       final context = await _userDataManager.getFinancialContext();
+      if (generation != _sessionGeneration) return;
       _financialContext = context;
 
       // Check if onboarding is needed
@@ -185,16 +268,19 @@ class UserProvider extends ChangeNotifier {
       logInfo('Financial context loaded', tag: 'USER_PROVIDER');
       notifyListeners();
     } catch (e) {
+      if (generation != _sessionGeneration) return;
       logError('Failed to load financial context: $e', tag: 'USER_PROVIDER');
     }
   }
 
   /// Update user profile
   Future<bool> updateUserProfile(Map<String, dynamic> profileData) async {
+    final generation = _sessionGeneration;
     try {
       _setLoading(true);
 
       final success = await _userDataManager.updateUserProfile(profileData);
+      if (generation != _sessionGeneration) return false;
 
       if (success) {
         // Merge updates into local state
@@ -205,27 +291,35 @@ class UserProvider extends ChangeNotifier {
 
       return success;
     } catch (e) {
+      if (generation != _sessionGeneration) return false;
       logError('Failed to update user profile: $e', tag: 'USER_PROVIDER');
       _errorMessage = 'Failed to update profile';
       return false;
     } finally {
-      _setLoading(false);
+      if (generation == _sessionGeneration) {
+        _setLoading(false);
+      }
     }
   }
 
   /// Cache onboarding data after completion
   Future<void> cacheOnboardingData(Map<String, dynamic> onboardingData) async {
+    final generation = _sessionGeneration;
     try {
       await _userDataManager.cacheOnboardingData(onboardingData);
+      if (generation != _sessionGeneration) return;
       _hasCompletedOnboarding = true;
 
       // Refresh profile and financial context
-      await loadUserProfile();
-      await loadFinancialContext();
+      await loadUserProfile(sessionGeneration: generation);
+      if (generation != _sessionGeneration) return;
+      await loadFinancialContext(sessionGeneration: generation);
+      if (generation != _sessionGeneration) return;
 
       logInfo('Onboarding data cached and user state updated',
           tag: 'USER_PROVIDER');
     } catch (e) {
+      if (generation != _sessionGeneration) return;
       logError('Failed to cache onboarding data: $e', tag: 'USER_PROVIDER');
       rethrow;
     }
@@ -233,67 +327,126 @@ class UserProvider extends ChangeNotifier {
 
   /// Refresh all user data from API
   Future<void> refreshUserData() async {
+    final generation = _sessionGeneration;
     try {
       _setLoading(true);
 
       await _userDataManager.refreshUserData();
-      await loadUserProfile();
-      await loadFinancialContext();
+      if (generation != _sessionGeneration) return;
+      await loadUserProfile(sessionGeneration: generation);
+      if (generation != _sessionGeneration) return;
+      await loadFinancialContext(sessionGeneration: generation);
+      if (generation != _sessionGeneration) return;
 
       // A successful refresh clears any stale error (the retry path relies
       // on this to dismiss the dashboard error card).
       _errorMessage = null;
       logInfo('User data refreshed successfully', tag: 'USER_PROVIDER');
     } catch (e) {
+      if (generation != _sessionGeneration) return;
       logError('Failed to refresh user data: $e', tag: 'USER_PROVIDER');
       _errorMessage = 'Failed to refresh user data';
     } finally {
-      _setLoading(false);
+      if (generation == _sessionGeneration) {
+        _setLoading(false);
+      }
     }
   }
 
   /// Load referral code from API
   Future<void> loadReferralCode() async {
     if (_isLoadingReferral) return;
+    final generation = _sessionGeneration;
 
     try {
       _isLoadingReferral = true;
       notifyListeners();
 
       final code = await _apiService.getReferralCode();
+      if (generation != _sessionGeneration) return;
       _referralCode = code;
 
       logInfo('Referral code loaded successfully', tag: 'USER_PROVIDER');
     } catch (e) {
+      if (generation != _sessionGeneration) return;
       logError('Failed to load referral code: $e', tag: 'USER_PROVIDER');
       _errorMessage = 'Failed to load referral code';
     } finally {
-      _isLoadingReferral = false;
-      notifyListeners();
+      if (generation == _sessionGeneration) {
+        _isLoadingReferral = false;
+        notifyListeners();
+      }
     }
   }
 
   /// Clear user data (logout)
   Future<void> logout() async {
+    _sessionGeneration += 1;
+    final logoutGeneration = _sessionGeneration;
+    _initializeInFlight = null;
+    _initializeWasFreshLogin = null;
+
+    Future<void> startCleanup(Future<void> Function() operation) {
+      try {
+        return operation();
+      } catch (error, stackTrace) {
+        return Future<void>.error(error, stackTrace);
+      }
+    }
+
+    // Start every account-owned cleanup now. Each method invalidates its own
+    // generation synchronously before its first await, preventing any old
+    // response from waking later and mutating a replacement session.
+    final apiLogout = startCleanup(_apiService.logout);
+    final userDataCleanup = startCleanup(_userDataManager.clearUserData);
+    final onboardingCleanup = startCleanup(OnboardingState.instance.reset);
+    final iapCleanup = startCleanup(_iapService.resetSession);
+
+    // Make local logout authoritative before the first network await. UI
+    // navigation handlers await this method, but a slow Railway response must
+    // never leave the previous profile or ledger visible in the meantime.
     try {
-      _setLoading(true);
+      _onSessionBoundary?.call();
+    } catch (e) {
+      logError('Failed to clear session-scoped providers: $e',
+          tag: 'USER_PROVIDER');
+    }
+    try {
+      _onAccountTransition?.call();
+    } catch (e) {
+      logError('Failed to clear persisted account preferences: $e',
+          tag: 'USER_PROVIDER');
+    }
+    _userProfile = {};
+    _financialContext = {};
+    _hasCompletedOnboarding = false;
+    _referralCode = null;
+    _isLoadingReferral = false;
+    _errorMessage = null;
+    _state = UserState.unauthenticated;
+    _isLoading = true;
+    notifyListeners();
 
-      await _userDataManager.clearUserData();
+    try {
+      TokenLifecycleManager.instance.stopMonitoring();
 
-      // Reset state
-      _userProfile = {};
-      _financialContext = {};
-      _hasCompletedOnboarding = false;
-      _referralCode = null;
-      _state = UserState.unauthenticated;
+      // Server revocation is best-effort; the API service installs a local
+      // logout tombstone before network I/O so restart cannot resurrect a
+      // credential even if secure-storage deletion fails.
+      await Future.wait<void>([
+        apiLogout,
+        userDataCleanup,
+        onboardingCleanup,
+        iapCleanup,
+      ]);
 
       logInfo('User logged out successfully', tag: 'USER_PROVIDER');
-      notifyListeners();
     } catch (e) {
       logError('Failed to logout: $e', tag: 'USER_PROVIDER');
-      _errorMessage = 'Failed to logout';
     } finally {
-      _setLoading(false);
+      if (logoutGeneration == _sessionGeneration) {
+        _setLoading(false);
+      }
     }
   }
 

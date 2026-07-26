@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
@@ -129,9 +130,10 @@ async def create_transaction_standardized(
 
     try:
         # Create transaction using existing service (sync function called from async via run_sync)
-        result = await db.run_sync(
+        creation_result = await db.run_sync(
             lambda sync_session: add_transaction(user, txn, sync_session)
         )
+        result = creation_result.transaction
 
         if not result:
             raise BusinessLogicError(
@@ -144,34 +146,21 @@ async def create_transaction_standardized(
             "amount": validated_amount,
             "remaining_budget": None,  # Calculate from user's budget if available
             "budget_exceeded": False,
+            "rebalanced": False,
         }
 
-        # Trigger real-time rebalancing if transaction created overspend
-        try:
-            from datetime import date as _date
-
-            from app.services.core.engine.realtime_rebalancer import check_and_rebalance
-
-            txn_date = getattr(txn, "spent_at", None)
-            if txn_date is None:
-                txn_date = _date.today()
-            elif hasattr(txn_date, "date"):
-                txn_date = txn_date.date()
-
-            rebalance_plan = await db.run_sync(
-                lambda sync_db: check_and_rebalance(
-                    db=sync_db,
-                    user_id=user.id,
-                    category=txn.category,
-                    transaction_date=txn_date,
-                )
-            )
-            if rebalance_plan:
-                budget_impact["rebalanced"] = True
-                budget_impact["rebalance_covered"] = float(rebalance_plan.covered)
-                budget_impact["rebalance_fully_covered"] = rebalance_plan.fully_covered
-        except Exception as _reb_exc:
-            logger.warning(f"Rebalance check failed (non-fatal): {_reb_exc}")
+        # add_transaction is the single owner of the ledger mutation and
+        # rebalance. Calling check_and_rebalance again here bypassed the 50%
+        # donor cap whenever the first pass was only partially covered.
+        rebalance_plan = creation_result.rebalance_plan
+        if (
+            rebalance_plan
+            and rebalance_plan.transfers
+            and rebalance_plan.covered >= Decimal("0.01")
+        ):
+            budget_impact["rebalanced"] = True
+            budget_impact["rebalance_covered"] = float(rebalance_plan.covered)
+            budget_impact["rebalance_fully_covered"] = rebalance_plan.fully_covered
 
         return FinancialResponseHelper.transaction_created(
             transaction_data=result, balance_impact=budget_impact
@@ -990,8 +979,6 @@ async def delete_transaction_endpoint(
 # Real-time budget validation BEFORE transaction creation
 # Implements MITA's core differentiator: preventive overspending protection
 # ============================================================================
-
-from decimal import Decimal
 
 from pydantic import BaseModel, Field
 

@@ -24,6 +24,8 @@ class SettingsProvider extends ChangeNotifier {
   bool _weeklyReportEnabled = true;
   bool _isLoading = false;
   bool _isInitialized = false;
+  int _sessionGeneration = 0;
+  Future<void> _accountPreferenceQueue = Future<void>.value();
 
   // Getters
   ThemeMode get themeMode => _themeMode;
@@ -140,10 +142,13 @@ class SettingsProvider extends ChangeNotifier {
 
     _notificationsEnabled = enabled;
     notifyListeners();
+    final generation = _sessionGeneration;
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_notificationsKey, enabled);
+      await _enqueueAccountPreferenceMutation(
+        generation,
+        (prefs) => prefs.setBool(_notificationsKey, enabled),
+      );
       logInfo('Notifications ${enabled ? 'enabled' : 'disabled'}',
           tag: 'SETTINGS_PROVIDER');
     } catch (e) {
@@ -158,10 +163,13 @@ class SettingsProvider extends ChangeNotifier {
 
     _biometricsEnabled = enabled;
     notifyListeners();
+    final generation = _sessionGeneration;
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_biometricsKey, enabled);
+      await _enqueueAccountPreferenceMutation(
+        generation,
+        (prefs) => prefs.setBool(_biometricsKey, enabled),
+      );
       logInfo('Biometrics ${enabled ? 'enabled' : 'disabled'}',
           tag: 'SETTINGS_PROVIDER');
     } catch (e) {
@@ -176,10 +184,13 @@ class SettingsProvider extends ChangeNotifier {
 
     _defaultCurrency = currency;
     notifyListeners();
+    final generation = _sessionGeneration;
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_currencyKey, currency);
+      await _enqueueAccountPreferenceMutation(
+        generation,
+        (prefs) => prefs.setString(_currencyKey, currency),
+      );
       logInfo('Default currency set to: $currency', tag: 'SETTINGS_PROVIDER');
     } catch (e) {
       logError('Failed to save currency setting: $e', tag: 'SETTINGS_PROVIDER');
@@ -192,10 +203,13 @@ class SettingsProvider extends ChangeNotifier {
 
     _budgetReminderEnabled = enabled;
     notifyListeners();
+    final generation = _sessionGeneration;
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_budgetReminderKey, enabled);
+      await _enqueueAccountPreferenceMutation(
+        generation,
+        (prefs) => prefs.setBool(_budgetReminderKey, enabled),
+      );
       logInfo('Budget reminder ${enabled ? 'enabled' : 'disabled'}',
           tag: 'SETTINGS_PROVIDER');
     } catch (e) {
@@ -210,10 +224,13 @@ class SettingsProvider extends ChangeNotifier {
 
     _weeklyReportEnabled = enabled;
     notifyListeners();
+    final generation = _sessionGeneration;
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool(_weeklyReportKey, enabled);
+      await _enqueueAccountPreferenceMutation(
+        generation,
+        (prefs) => prefs.setBool(_weeklyReportKey, enabled),
+      );
       logInfo('Weekly report ${enabled ? 'enabled' : 'disabled'}',
           tag: 'SETTINGS_PROVIDER');
     } catch (e) {
@@ -224,6 +241,7 @@ class SettingsProvider extends ChangeNotifier {
 
   /// Reset all settings to defaults
   Future<void> resetToDefaults() async {
+    _sessionGeneration += 1;
     _themeMode = ThemeMode.system;
     _locale = const Locale('en');
     _notificationsEnabled = true;
@@ -246,6 +264,52 @@ class SettingsProvider extends ChangeNotifier {
     } catch (e) {
       logError('Failed to reset settings: $e', tag: 'SETTINGS_PROVIDER');
     }
+  }
+
+  /// Clear account-owned preferences while retaining device theme and locale.
+  ///
+  /// Preference writes are serialized, so this removal always follows every
+  /// write started by account A and precedes writes started by account B.
+  void resetSession() {
+    final generation = ++_sessionGeneration;
+    _notificationsEnabled = true;
+    _biometricsEnabled = false;
+    _defaultCurrency = 'USD';
+    _budgetReminderEnabled = true;
+    _weeklyReportEnabled = true;
+    _isLoading = false;
+    notifyListeners();
+
+    _enqueueAccountPreferenceMutation(generation, (prefs) async {
+      await prefs.remove(_notificationsKey);
+      await prefs.remove(_biometricsKey);
+      await prefs.remove(_currencyKey);
+      await prefs.remove(_budgetReminderKey);
+      await prefs.remove(_weeklyReportKey);
+    }).catchError((Object error) {
+      logError('Failed to clear account preferences: $error',
+          tag: 'SETTINGS_PROVIDER');
+    });
+  }
+
+  Future<void> _enqueueAccountPreferenceMutation(
+    int generation,
+    Future<void> Function(SharedPreferences prefs) mutation,
+  ) {
+    final previous = _accountPreferenceQueue;
+    final operation = () async {
+      try {
+        await previous;
+      } catch (_) {
+        // A failed preference write must not poison the serialization queue.
+      }
+      if (generation != _sessionGeneration) return;
+      final prefs = await SharedPreferences.getInstance();
+      if (generation != _sessionGeneration) return;
+      await mutation(prefs);
+    }();
+    _accountPreferenceQueue = operation;
+    return operation;
   }
 
   /// Get available currencies

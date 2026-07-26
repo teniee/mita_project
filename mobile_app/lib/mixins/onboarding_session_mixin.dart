@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/user_provider.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
 
@@ -31,8 +33,8 @@ mixin OnboardingSessionMixin<T extends StatefulWidget> on State<T> {
         actions: [
           TextButton(
             onPressed: () async {
-              // Clear tokens and redirect to login
-              await _apiService.clearTokens();
+              // Clear the complete account session before redirecting.
+              await context.read<UserProvider>().logout();
               if (mounted) {
                 Navigator.pushNamedAndRemoveUntil(
                   context,

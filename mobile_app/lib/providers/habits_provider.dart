@@ -96,7 +96,10 @@ enum HabitsState {
 /// Centralized habits state management provider
 /// Manages habits list, progress tracking, and CRUD operations
 class HabitsProvider extends ChangeNotifier {
-  final ApiService _apiService = ApiService();
+  final ApiService _apiService;
+
+  HabitsProvider({ApiService? apiService})
+      : _apiService = apiService ?? ApiService();
 
   // State
   HabitsState _state = HabitsState.initial;
@@ -104,6 +107,9 @@ class HabitsProvider extends ChangeNotifier {
   final Map<String, Map<String, dynamic>> _habitProgress = {};
   String? _errorMessage;
   bool _isLoading = false;
+  int _sessionGeneration = 0;
+  int _habitsRequestId = 0;
+  final Map<String, int> _progressRequestIds = {};
 
   // Getters
   HabitsState get state => _state;
@@ -131,36 +137,44 @@ class HabitsProvider extends ChangeNotifier {
   /// Initialize the provider and load initial data
   Future<void> initialize() async {
     if (_state != HabitsState.initial) return;
+    final generation = _sessionGeneration;
 
-    _setLoading(true);
+    _setLoading(true, generation);
     _state = HabitsState.loading;
     notifyListeners();
 
     try {
       logInfo('Initializing HabitsProvider', tag: 'HABITS_PROVIDER');
 
-      await loadHabits();
+      await loadHabits(sessionGeneration: generation);
+      if (!_isCurrent(generation)) return;
 
       _state = HabitsState.loaded;
       logInfo('HabitsProvider initialized successfully',
           tag: 'HABITS_PROVIDER');
     } catch (e) {
+      if (!_isCurrent(generation)) return;
       logError('Failed to initialize HabitsProvider: $e',
           tag: 'HABITS_PROVIDER');
       _errorMessage = e.toString();
       _state = HabitsState.error;
     } finally {
-      _setLoading(false);
+      _setLoading(false, generation);
     }
   }
 
   /// Load all habits
-  Future<void> loadHabits() async {
+  Future<void> loadHabits({int? sessionGeneration}) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isCurrent(generation)) return;
+    final requestId = ++_habitsRequestId;
+
     try {
-      _setLoading(true);
+      _setLoading(true, generation);
       _errorMessage = null;
 
       final data = await _apiService.getHabits();
+      if (!_isCurrentHabitsRequest(generation, requestId)) return;
       _habits = data
           .map((json) => Habit.fromJson(json as Map<String, dynamic>))
           .toList();
@@ -169,27 +183,45 @@ class HabitsProvider extends ChangeNotifier {
 
       // Load progress for each habit
       for (final habit in _habits) {
-        _loadHabitProgress(habit.id);
+        _loadHabitProgress(
+          habit.id,
+          sessionGeneration: generation,
+        );
       }
 
       notifyListeners();
     } catch (e) {
+      if (!_isCurrentHabitsRequest(generation, requestId)) return;
       logError('Failed to load habits: $e', tag: 'HABITS_PROVIDER');
       _habits = [];
       _errorMessage = 'Failed to load habits. Please try again.';
       notifyListeners();
     } finally {
-      _setLoading(false);
+      if (_isCurrentHabitsRequest(generation, requestId)) {
+        _setLoading(false, generation);
+      }
     }
   }
 
   /// Load progress for a specific habit
-  Future<void> _loadHabitProgress(String habitId) async {
+  Future<void> _loadHabitProgress(
+    String habitId, {
+    required int sessionGeneration,
+  }) async {
+    if (!_isCurrent(sessionGeneration)) return;
+    final requestId = _nextProgressRequestId(habitId);
+
     try {
       final progress = await _apiService.getHabitProgress(habitId);
+      if (!_isCurrentProgressRequest(sessionGeneration, habitId, requestId)) {
+        return;
+      }
       _habitProgress[habitId] = progress;
       notifyListeners();
     } catch (e) {
+      if (!_isCurrentProgressRequest(sessionGeneration, habitId, requestId)) {
+        return;
+      }
       // Silently fail - progress not critical for display
       logError('Failed to load habit progress for $habitId: $e',
           tag: 'HABITS_PROVIDER');
@@ -197,23 +229,33 @@ class HabitsProvider extends ChangeNotifier {
   }
 
   /// Toggle habit completion for today
-  Future<bool> toggleHabitCompletion(Habit habit) async {
+  Future<bool> toggleHabitCompletion(
+    Habit habit, {
+    int? sessionGeneration,
+  }) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isCurrent(generation)) return false;
     final today = DateTime.now().toIso8601String().split('T')[0];
 
     try {
+      _invalidateHabitSnapshots();
       if (habit.isCompletedToday) {
         await _apiService.uncompleteHabit(habit.id, today);
+        if (!_isCurrent(generation)) return false;
         logInfo('Habit ${habit.id} unmarked for today', tag: 'HABITS_PROVIDER');
       } else {
         await _apiService.completeHabit(habit.id, today);
+        if (!_isCurrent(generation)) return false;
         logInfo('Habit ${habit.id} completed for today',
             tag: 'HABITS_PROVIDER');
       }
 
       // Refresh habits list to get updated data
-      await loadHabits();
+      await loadHabits(sessionGeneration: generation);
+      if (!_isCurrent(generation)) return false;
       return true;
     } catch (e) {
+      if (!_isCurrent(generation)) return false;
       logError('Failed to toggle habit completion: $e', tag: 'HABITS_PROVIDER');
       _errorMessage = 'Failed to update habit: $e';
       notifyListeners();
@@ -222,55 +264,85 @@ class HabitsProvider extends ChangeNotifier {
   }
 
   /// Create a new habit
-  Future<bool> createHabit(Map<String, dynamic> data) async {
+  Future<bool> createHabit(
+    Map<String, dynamic> data, {
+    int? sessionGeneration,
+  }) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isCurrent(generation)) return false;
+
     try {
-      _setLoading(true);
+      _invalidateHabitSnapshots();
+      _setLoading(true, generation);
 
       await _apiService.createHabit(data);
+      if (!_isCurrent(generation)) return false;
 
       // Refresh habits list
-      await loadHabits();
+      await loadHabits(sessionGeneration: generation);
+      if (!_isCurrent(generation)) return false;
 
       logInfo('Habit created successfully', tag: 'HABITS_PROVIDER');
       return true;
     } catch (e) {
+      if (!_isCurrent(generation)) return false;
       logError('Failed to create habit: $e', tag: 'HABITS_PROVIDER');
       _errorMessage = e.toString();
       notifyListeners();
       return false;
     } finally {
-      _setLoading(false);
+      _setLoading(false, generation);
     }
   }
 
   /// Update an existing habit
-  Future<bool> updateHabit(String habitId, Map<String, dynamic> data) async {
+  Future<bool> updateHabit(
+    String habitId,
+    Map<String, dynamic> data, {
+    int? sessionGeneration,
+  }) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isCurrent(generation)) return false;
+
     try {
-      _setLoading(true);
+      _invalidateHabitSnapshots();
+      _setLoading(true, generation);
 
       await _apiService.updateHabit(habitId, data);
+      if (!_isCurrent(generation)) return false;
 
       // Refresh habits list
-      await loadHabits();
+      await loadHabits(sessionGeneration: generation);
+      if (!_isCurrent(generation)) return false;
 
       logInfo('Habit $habitId updated successfully', tag: 'HABITS_PROVIDER');
       return true;
     } catch (e) {
+      if (!_isCurrent(generation)) return false;
       logError('Failed to update habit: $e', tag: 'HABITS_PROVIDER');
       _errorMessage = e.toString();
       notifyListeners();
       return false;
     } finally {
-      _setLoading(false);
+      _setLoading(false, generation);
     }
   }
 
   /// Delete a habit
-  Future<bool> deleteHabit(String habitId) async {
+  Future<bool> deleteHabit(
+    String habitId, {
+    int? sessionGeneration,
+  }) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isCurrent(generation)) return false;
+
     try {
-      _setLoading(true);
+      _invalidateHabitSnapshots();
+      _invalidateHabitProgress(habitId);
+      _setLoading(true, generation);
 
       await _apiService.deleteHabit(habitId);
+      if (!_isCurrent(generation)) return false;
 
       // Remove from local state immediately
       _habits.removeWhere((h) => h.id == habitId);
@@ -280,12 +352,13 @@ class HabitsProvider extends ChangeNotifier {
       logInfo('Habit $habitId deleted successfully', tag: 'HABITS_PROVIDER');
       return true;
     } catch (e) {
+      if (!_isCurrent(generation)) return false;
       logError('Failed to delete habit: $e', tag: 'HABITS_PROVIDER');
       _errorMessage = e.toString();
       notifyListeners();
       return false;
     } finally {
-      _setLoading(false);
+      _setLoading(false, generation);
     }
   }
 
@@ -295,16 +368,39 @@ class HabitsProvider extends ChangeNotifier {
   }
 
   /// Refresh all data
-  Future<void> refresh() async {
+  Future<void> refresh({int? sessionGeneration}) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isCurrent(generation)) return;
+
     _state = HabitsState.loading;
     notifyListeners();
 
     try {
-      await loadHabits();
+      await loadHabits(sessionGeneration: generation);
+      if (!_isCurrent(generation)) return;
       _state = HabitsState.loaded;
     } catch (e) {
+      if (!_isCurrent(generation)) return;
       _state = HabitsState.error;
     }
+    if (_isCurrent(generation)) {
+      notifyListeners();
+    }
+  }
+
+  /// Clear all account-owned state at an authentication boundary.
+  void resetSession() {
+    _sessionGeneration += 1;
+    _habitsRequestId += 1;
+    for (final habitId in _progressRequestIds.keys.toList()) {
+      _progressRequestIds[habitId] = (_progressRequestIds[habitId] ?? 0) + 1;
+    }
+    _state = HabitsState.initial;
+    _habits = [];
+    _habitProgress.clear();
+    _progressRequestIds.clear();
+    _errorMessage = null;
+    _isLoading = false;
     notifyListeners();
   }
 
@@ -315,8 +411,34 @@ class HabitsProvider extends ChangeNotifier {
   }
 
   // Private helper
-  void _setLoading(bool loading) {
+  void _setLoading(bool loading, int generation) {
+    if (!_isCurrent(generation)) return;
     _isLoading = loading;
     notifyListeners();
+  }
+
+  bool _isCurrent(int generation) => generation == _sessionGeneration;
+
+  bool _isCurrentHabitsRequest(int generation, int requestId) =>
+      _isCurrent(generation) && requestId == _habitsRequestId;
+
+  int _nextProgressRequestId(String habitId) {
+    final requestId = (_progressRequestIds[habitId] ?? 0) + 1;
+    _progressRequestIds[habitId] = requestId;
+    return requestId;
+  }
+
+  bool _isCurrentProgressRequest(
+          int generation, String habitId, int requestId) =>
+      _isCurrent(generation) &&
+      requestId == (_progressRequestIds[habitId] ?? 0);
+
+  void _invalidateHabitSnapshots() {
+    _habitsRequestId += 1;
+    _isLoading = false;
+  }
+
+  void _invalidateHabitProgress(String habitId) {
+    _progressRequestIds[habitId] = (_progressRequestIds[habitId] ?? 0) + 1;
   }
 }

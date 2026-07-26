@@ -8,12 +8,14 @@ from sqlalchemy.orm import Session
 
 from app.core.category_priority import donor_sort_key, is_sacred
 from app.db.models import DailyPlan
+from app.services.core.engine.expense_tracker import lock_user_ledger
 from app.services.redistribution_audit_log import record_redistribution_event
 
 logger = logging.getLogger(__name__)
 
 
 def redistribute_budget_for_user(db: Session, user_id: UUID, year: int, month: int):
+    lock_user_ledger(db, user_id)
     start = date(year, month, 1)
     end = date(year + (month // 12), (month % 12) + 1, 1)
 

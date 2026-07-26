@@ -326,7 +326,12 @@ class SecurePushTokenManager {
         try {
           logInfo('Unregistering push token from backend',
               tag: 'PUSH_TOKEN_SECURITY');
-          await _apiService.unregisterPushToken(_currentToken!);
+          // Bound only the remote request. The cleanup method itself must
+          // continue to completion so it cannot wake up later and erase a
+          // newly authenticated session's push state.
+          await _apiService
+              .unregisterPushToken(_currentToken!)
+              .timeout(const Duration(seconds: 5));
           logInfo('Push token unregistered successfully',
               tag: 'PUSH_TOKEN_SECURITY');
         } catch (e) {

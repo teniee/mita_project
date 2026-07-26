@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional
@@ -10,13 +11,22 @@ from app.db.models import Transaction, User
 from app.services.core.engine.expense_tracker import (
     apply_transaction_to_plan,
     local_day_of,
-    recalculate_plan_spent,
+    lock_user_ledger,
+    rebuild_month_plan,
+    run_transaction_plan_side_effects,
 )
+from app.services.core.engine.realtime_rebalancer import RebalancePlan
 from app.services.notification_integration import get_notification_integration
 from app.utils.timezone_utils import from_user_timezone, to_user_timezone
 
 
-def add_transaction(user: User, data, db: Session):
+@dataclass(frozen=True)
+class TransactionCreationResult:
+    transaction: Transaction
+    rebalance_plan: Optional[RebalancePlan]
+
+
+def add_transaction(user: User, data, db: Session) -> TransactionCreationResult:
     # Ensure amount is a proper Decimal for financial accuracy
     amount = (
         data.amount if isinstance(data.amount, Decimal) else Decimal(str(data.amount))
@@ -61,19 +71,28 @@ def add_transaction(user: User, data, db: Session):
         spent_at=spent_at,
         goal_id=goal_id,  # Link to goal
     )
+    lock_user_ledger(db, user.id)
     db.add(txn)
-    db.commit()
-    db.refresh(txn)
-
-    # Apply transaction to budget plan
     try:
-        apply_transaction_to_plan(db, txn)
+        db.flush()
+        rebalance_result = apply_transaction_to_plan(
+            db,
+            txn,
+            commit=False,
+            run_side_effects=False,
+        )
+        db.commit()
+        db.refresh(txn)
     except Exception as e:
-        # Log error but don't fail the transaction
         from app.core.logging_config import get_logger
 
+        db.rollback()
         logger = get_logger(__name__)
-        logger.warning(f"Failed to update budget plan: {e}")
+        logger.error(f"Failed to create transaction and update budget plan: {e}")
+        raise
+
+    # Keep notifications outside the atomic ledger/plan commit.
+    run_transaction_plan_side_effects(db, txn, rebalance_result)
 
     # MODULE 5: Update goal progress if linked
     if goal_id:
@@ -105,7 +124,10 @@ def add_transaction(user: User, data, db: Session):
             logger.warning(f"Failed to send large transaction notification: {e}")
 
     txn.spent_at = to_user_timezone(txn.spent_at, user.timezone)
-    return txn
+    return TransactionCreationResult(
+        transaction=txn,
+        rebalance_plan=rebalance_result,
+    )
 
 
 def add_transaction_background(
@@ -145,6 +167,7 @@ def add_transaction_background(
         notes=getattr(data, "notes", None),
         spent_at=spent_at,
     )
+    lock_user_ledger(db, user.id)
     db.add(txn)
     db.commit()
     db.refresh(txn)
@@ -210,6 +233,7 @@ def update_transaction(
     user: User, transaction_id: UUID, data, db: Session
 ) -> Optional[Transaction]:
     """Update an existing transaction (excludes deleted)"""
+    lock_user_ledger(db, user.id)
     txn = (
         db.query(Transaction)
         .filter(
@@ -223,11 +247,8 @@ def update_transaction(
     if not txn:
         return None
 
-    # Capture the pre-edit accrual key so the old (day, category) plan can be
-    # recomputed after the edit (an edit may move spend across days/categories).
-    # Day keys are the user's LOCAL calendar days, not UTC dates.
+    # Capture the pre-edit local month; an edit may move spend across months.
     old_day = local_day_of(txn.spent_at, user.timezone)
-    old_category = txn.category
 
     # Update fields that are provided
     if hasattr(data, "amount") and data.amount is not None:
@@ -269,26 +290,30 @@ def update_transaction(
     if hasattr(data, "notes") and data.notes is not None:
         txn.notes = data.notes
 
-    db.commit()
-    db.refresh(txn)
-
-    # Recompute the affected daily-plan accruals from the ledger.
-    # apply_transaction_to_plan is additive (spent += amount) and would
-    # double-count the edited amount; recalculate is idempotent and also
-    # clears the old (day, category) bucket when the edit moved the spend.
     try:
+        db.flush()
         new_day = local_day_of(txn.spent_at, user.timezone)
-        new_category = txn.category
-        recalculate_plan_spent(db, user.id, old_day, old_category, tz=user.timezone)
-        if (new_day, new_category) != (old_day, old_category):
-            recalculate_plan_spent(
-                db, user.id, new_day, new_category, tz=user.timezone
+        affected_months = {
+            (old_day.year, old_day.month): old_day,
+            (new_day.year, new_day.month): new_day,
+        }
+        for month_key in sorted(affected_months):
+            rebuild_month_plan(
+                db,
+                user.id,
+                affected_months[month_key],
+                tz=user.timezone,
+                commit=False,
             )
+        db.commit()
+        db.refresh(txn)
     except Exception as e:
         from app.core.logging_config import get_logger
 
+        db.rollback()
         logger = get_logger(__name__)
-        logger.warning(f"Failed to update budget plan: {e}")
+        logger.error(f"Failed to update transaction and rebuild budget plan: {e}")
+        raise
 
     txn.spent_at = to_user_timezone(txn.spent_at, user.timezone)
     return txn
@@ -303,6 +328,7 @@ def delete_transaction(user: User, transaction_id: UUID, db: Session) -> bool:
     """
     from datetime import datetime
 
+    lock_user_ledger(db, user.id)
     txn = (
         db.query(Transaction)
         .filter(
@@ -316,25 +342,24 @@ def delete_transaction(user: User, transaction_id: UUID, db: Session) -> bool:
     if not txn:
         return False
 
-    # Soft delete - set deleted_at timestamp
-    txn.deleted_at = datetime.now(timezone.utc)
-    db.commit()
-
-    # Reverse the daily-plan accrual: recompute (day, category) from the
-    # remaining non-deleted transactions so spent/remaining return to the
-    # pre-transaction values (INV-14).
     try:
-        recalculate_plan_spent(
+        # Soft delete and allocation reversal are one atomic ledger mutation.
+        txn.deleted_at = datetime.now(timezone.utc)
+        db.flush()
+        rebuild_month_plan(
             db,
             user.id,
             local_day_of(txn.spent_at, user.timezone),
-            txn.category,
             tz=user.timezone,
+            commit=False,
         )
+        db.commit()
     except Exception as e:
         from app.core.logging_config import get_logger
 
+        db.rollback()
         logger = get_logger(__name__)
-        logger.warning(f"Failed to reverse budget plan accrual: {e}")
+        logger.error(f"Failed to delete transaction and rebuild budget plan: {e}")
+        raise
 
     return True

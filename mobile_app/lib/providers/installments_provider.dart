@@ -20,6 +20,8 @@ class InstallmentsProvider extends ChangeNotifier {
       : _installmentService = service ?? InstallmentService();
 
   final InstallmentService _installmentService;
+  int _sessionGeneration = 0;
+  int _installmentsRequestId = 0;
 
   // State
   InstallmentsState _state = InstallmentsState.initial;
@@ -93,12 +95,26 @@ class InstallmentsProvider extends ChangeNotifier {
   Future<void> initialize() async {
     if (_state != InstallmentsState.initial) return;
 
+    final generation = _sessionGeneration;
     logInfo('Initializing InstallmentsProvider', tag: 'INSTALLMENTS_PROVIDER');
-    await loadInstallments();
+    await _loadInstallments(status: null, generation: generation);
   }
 
   /// Load installments with optional status filter
-  Future<void> loadInstallments({InstallmentStatus? status}) async {
+  Future<void> loadInstallments({InstallmentStatus? status}) {
+    return _loadInstallments(
+      status: status,
+      generation: _sessionGeneration,
+    );
+  }
+
+  Future<void> _loadInstallments({
+    required InstallmentStatus? status,
+    required int generation,
+  }) async {
+    if (!_isCurrentSession(generation)) return;
+    final requestId = ++_installmentsRequestId;
+
     _setLoading(true);
     _state = InstallmentsState.loading;
     _errorMessage = null;
@@ -106,6 +122,7 @@ class InstallmentsProvider extends ChangeNotifier {
 
     try {
       final summary = await _installmentService.getInstallments(status: status);
+      if (!_isCurrentRequest(generation, requestId)) return;
       _summary = summary;
       _state = InstallmentsState.loaded;
       logInfo(
@@ -113,41 +130,56 @@ class InstallmentsProvider extends ChangeNotifier {
           tag: 'INSTALLMENTS_PROVIDER');
     } catch (e) {
       logError('Failed to load installments: $e', tag: 'INSTALLMENTS_PROVIDER');
+      if (!_isCurrentRequest(generation, requestId)) return;
       _errorMessage = _getErrorMessage(e);
       _state = InstallmentsState.error;
     } finally {
-      _setLoading(false);
+      if (_isCurrentRequest(generation, requestId)) {
+        _setLoading(false);
+      }
     }
   }
 
   /// Refresh installments (reload with current filter)
   Future<void> refresh() async {
-    await loadInstallments(status: _selectedFilter);
+    final generation = _sessionGeneration;
+    await _loadInstallments(
+      status: _selectedFilter,
+      generation: generation,
+    );
   }
 
   /// Set the filter and reload installments
   Future<void> setFilter(InstallmentStatus? status) async {
     if (_selectedFilter == status) return;
 
+    final generation = _sessionGeneration;
     _selectedFilter = status;
     logDebug('Filter changed to: ${status?.name ?? "all"}',
         tag: 'INSTALLMENTS_PROVIDER');
     notifyListeners();
 
-    await loadInstallments(status: status);
+    await _loadInstallments(status: status, generation: generation);
   }
 
   /// Mark a payment as made for an installment
   Future<bool> markPaymentMade(String installmentId) async {
+    final generation = _sessionGeneration;
+    _invalidateInstallmentSnapshot();
     try {
       logInfo('Marking payment as made for installment: $installmentId',
           tag: 'INSTALLMENTS_PROVIDER');
 
       await _installmentService.markPaymentMade(installmentId);
+      if (!_isCurrentSession(generation)) return false;
       _successMessage = 'Payment marked as made';
 
       // Refresh data
-      await refresh();
+      await _loadInstallments(
+        status: _selectedFilter,
+        generation: generation,
+      );
+      if (!_isCurrentSession(generation)) return false;
 
       logInfo('Payment marked successfully', tag: 'INSTALLMENTS_PROVIDER');
       notifyListeners();
@@ -155,6 +187,7 @@ class InstallmentsProvider extends ChangeNotifier {
     } catch (e) {
       logError('Error marking payment as made: $e',
           tag: 'INSTALLMENTS_PROVIDER');
+      if (!_isCurrentSession(generation)) return false;
       _errorMessage = 'Failed to update payment: ${_getErrorMessage(e)}';
       notifyListeners();
       return false;
@@ -163,15 +196,22 @@ class InstallmentsProvider extends ChangeNotifier {
 
   /// Cancel an installment
   Future<bool> cancelInstallment(String installmentId) async {
+    final generation = _sessionGeneration;
+    _invalidateInstallmentSnapshot();
     try {
       logInfo('Cancelling installment: $installmentId',
           tag: 'INSTALLMENTS_PROVIDER');
 
       await _installmentService.cancelInstallment(installmentId);
+      if (!_isCurrentSession(generation)) return false;
       _successMessage = 'Installment cancelled';
 
       // Refresh data
-      await refresh();
+      await _loadInstallments(
+        status: _selectedFilter,
+        generation: generation,
+      );
+      if (!_isCurrentSession(generation)) return false;
 
       logInfo('Installment cancelled successfully',
           tag: 'INSTALLMENTS_PROVIDER');
@@ -180,6 +220,7 @@ class InstallmentsProvider extends ChangeNotifier {
     } catch (e) {
       logError('Error cancelling installment: $e',
           tag: 'INSTALLMENTS_PROVIDER');
+      if (!_isCurrentSession(generation)) return false;
       _errorMessage = 'Failed to cancel installment: ${_getErrorMessage(e)}';
       notifyListeners();
       return false;
@@ -188,21 +229,29 @@ class InstallmentsProvider extends ChangeNotifier {
 
   /// Delete an installment
   Future<bool> deleteInstallment(String installmentId) async {
+    final generation = _sessionGeneration;
+    _invalidateInstallmentSnapshot();
     try {
       logInfo('Deleting installment: $installmentId',
           tag: 'INSTALLMENTS_PROVIDER');
 
       await _installmentService.deleteInstallment(installmentId);
+      if (!_isCurrentSession(generation)) return false;
       _successMessage = 'Installment deleted';
 
       // Refresh data
-      await refresh();
+      await _loadInstallments(
+        status: _selectedFilter,
+        generation: generation,
+      );
+      if (!_isCurrentSession(generation)) return false;
 
       logInfo('Installment deleted successfully', tag: 'INSTALLMENTS_PROVIDER');
       notifyListeners();
       return true;
     } catch (e) {
       logError('Error deleting installment: $e', tag: 'INSTALLMENTS_PROVIDER');
+      if (!_isCurrentSession(generation)) return false;
       _errorMessage = 'Failed to delete installment: ${_getErrorMessage(e)}';
       notifyListeners();
       return false;
@@ -211,21 +260,29 @@ class InstallmentsProvider extends ChangeNotifier {
 
   /// Create a new installment
   Future<Installment?> createInstallment(Installment installment) async {
+    final generation = _sessionGeneration;
+    _invalidateInstallmentSnapshot();
     try {
       logInfo('Creating new installment: ${installment.itemName}',
           tag: 'INSTALLMENTS_PROVIDER');
 
       final created = await _installmentService.createInstallment(installment);
+      if (!_isCurrentSession(generation)) return null;
       _successMessage = 'Installment created successfully';
 
       // Refresh data
-      await refresh();
+      await _loadInstallments(
+        status: _selectedFilter,
+        generation: generation,
+      );
+      if (!_isCurrentSession(generation)) return null;
 
       logInfo('Installment created successfully', tag: 'INSTALLMENTS_PROVIDER');
       notifyListeners();
       return created;
     } catch (e) {
       logError('Error creating installment: $e', tag: 'INSTALLMENTS_PROVIDER');
+      if (!_isCurrentSession(generation)) return null;
       _errorMessage = 'Failed to create installment: ${_getErrorMessage(e)}';
       notifyListeners();
       return null;
@@ -234,10 +291,14 @@ class InstallmentsProvider extends ChangeNotifier {
 
   /// Get a single installment by ID
   Future<Installment?> getInstallment(String installmentId) async {
+    final generation = _sessionGeneration;
     try {
-      return await _installmentService.getInstallment(installmentId);
+      final installment =
+          await _installmentService.getInstallment(installmentId);
+      return _isCurrentSession(generation) ? installment : null;
     } catch (e) {
       logError('Error fetching installment: $e', tag: 'INSTALLMENTS_PROVIDER');
+      if (!_isCurrentSession(generation)) return null;
       _errorMessage = 'Failed to fetch installment: ${_getErrorMessage(e)}';
       notifyListeners();
       return null;
@@ -246,17 +307,25 @@ class InstallmentsProvider extends ChangeNotifier {
 
   /// Add notes to an installment
   Future<bool> addNotes(String installmentId, String notes) async {
+    final generation = _sessionGeneration;
+    _invalidateInstallmentSnapshot();
     try {
       await _installmentService.addNotes(installmentId, notes);
+      if (!_isCurrentSession(generation)) return false;
       _successMessage = 'Notes added successfully';
 
       // Refresh data
-      await refresh();
+      await _loadInstallments(
+        status: _selectedFilter,
+        generation: generation,
+      );
+      if (!_isCurrentSession(generation)) return false;
 
       notifyListeners();
       return true;
     } catch (e) {
       logError('Error adding notes: $e', tag: 'INSTALLMENTS_PROVIDER');
+      if (!_isCurrentSession(generation)) return false;
       _errorMessage = 'Failed to add notes: ${_getErrorMessage(e)}';
       notifyListeners();
       return false;
@@ -299,9 +368,37 @@ class InstallmentsProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Discard all state owned by the previous authenticated account.
+  void resetSession() {
+    _sessionGeneration++;
+    _installmentsRequestId++;
+    _state = InstallmentsState.initial;
+    _isLoading = false;
+    _errorMessage = null;
+    _successMessage = null;
+    _summary = null;
+    _selectedFilter = null;
+    notifyListeners();
+  }
+
   // Private helper
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
+  }
+
+  bool _isCurrentSession(int generation) => generation == _sessionGeneration;
+
+  bool _isCurrentRequest(int generation, int requestId) =>
+      _isCurrentSession(generation) && requestId == _installmentsRequestId;
+
+  void _invalidateInstallmentSnapshot() {
+    _installmentsRequestId++;
+    _isLoading = false;
+    if (_state == InstallmentsState.loading) {
+      _state = _summary == null
+          ? InstallmentsState.initial
+          : InstallmentsState.loaded;
+    }
   }
 }

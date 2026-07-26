@@ -14,7 +14,10 @@ enum ChallengesState {
 /// Centralized challenges state management provider
 /// Manages challenges list, gamification stats, leaderboard, and CRUD operations
 class ChallengesProvider extends ChangeNotifier {
-  final ApiService _apiService = ApiService();
+  final ApiService _apiService;
+
+  ChallengesProvider({ApiService? apiService})
+      : _apiService = apiService ?? ApiService();
 
   // State
   ChallengesState _state = ChallengesState.initial;
@@ -25,6 +28,9 @@ class ChallengesProvider extends ChangeNotifier {
   final Map<String, Map<String, dynamic>> _challengeProgress = {};
   String? _errorMessage;
   bool _isLoading = false;
+  int _sessionGeneration = 0;
+  int _challengeDataRequestId = 0;
+  final Map<String, int> _progressRequestIds = {};
 
   // Getters
   ChallengesState get state => _state;
@@ -106,33 +112,40 @@ class ChallengesProvider extends ChangeNotifier {
   /// Initialize the provider and load initial data
   Future<void> initialize() async {
     if (_state != ChallengesState.initial) return;
+    final generation = _sessionGeneration;
 
-    _setLoading(true);
+    _setLoading(true, generation);
     _state = ChallengesState.loading;
     notifyListeners();
 
     try {
       logInfo('Initializing ChallengesProvider', tag: 'CHALLENGES_PROVIDER');
 
-      await loadChallengeData();
+      await loadChallengeData(sessionGeneration: generation);
+      if (!_isCurrent(generation)) return;
 
       _state = ChallengesState.loaded;
       logInfo('ChallengesProvider initialized successfully',
           tag: 'CHALLENGES_PROVIDER');
     } catch (e) {
+      if (!_isCurrent(generation)) return;
       logError('Failed to initialize ChallengesProvider: $e',
           tag: 'CHALLENGES_PROVIDER');
       _errorMessage = e.toString();
       _state = ChallengesState.error;
     } finally {
-      _setLoading(false);
+      _setLoading(false, generation);
     }
   }
 
   /// Load all challenge data
-  Future<void> loadChallengeData() async {
+  Future<void> loadChallengeData({int? sessionGeneration}) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isCurrent(generation)) return;
+    final requestId = ++_challengeDataRequestId;
+
     try {
-      _setLoading(true);
+      _setLoading(true, generation);
 
       final results = await Future.wait([
         _apiService.getChallenges(),
@@ -140,6 +153,7 @@ class ChallengesProvider extends ChangeNotifier {
         _apiService.getGameificationStats(),
         _apiService.getLeaderboard(),
       ]);
+      if (!_isCurrentDataRequest(generation, requestId)) return;
 
       _activeChallenges = asMapList(results[0]);
       _availableChallenges = asMapList(results[1]);
@@ -155,27 +169,46 @@ class ChallengesProvider extends ChangeNotifier {
       for (final challenge in _activeChallenges) {
         final challengeId = asStringKeyedMap(challenge)['id']?.toString();
         if (challengeId != null) {
-          loadChallengeProgress(challengeId);
+          loadChallengeProgress(
+            challengeId,
+            sessionGeneration: generation,
+          );
         }
       }
     } catch (e) {
+      if (!_isCurrentDataRequest(generation, requestId)) return;
       logError('Failed to load challenge data: $e', tag: 'CHALLENGES_PROVIDER');
       _errorMessage = e.toString();
       rethrow;
     } finally {
-      _setLoading(false);
+      if (_isCurrentDataRequest(generation, requestId)) {
+        _setLoading(false, generation);
+      }
     }
   }
 
   /// Load progress for a specific challenge
-  Future<void> loadChallengeProgress(String challengeId) async {
+  Future<void> loadChallengeProgress(
+    String challengeId, {
+    int? sessionGeneration,
+  }) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isCurrent(generation)) return;
+    final requestId = _nextProgressRequestId(challengeId);
+
     try {
       final progress = await _apiService.getChallengeProgress(challengeId);
+      if (!_isCurrentProgressRequest(generation, challengeId, requestId)) {
+        return;
+      }
       _challengeProgress[challengeId] = progress;
       notifyListeners();
       logInfo('Loaded progress for challenge $challengeId',
           tag: 'CHALLENGES_PROVIDER');
     } catch (e) {
+      if (!_isCurrentProgressRequest(generation, challengeId, requestId)) {
+        return;
+      }
       // Silently fail - progress not critical for display
       logError('Failed to load challenge progress: $e',
           tag: 'CHALLENGES_PROVIDER');
@@ -183,74 +216,129 @@ class ChallengesProvider extends ChangeNotifier {
   }
 
   /// Join a challenge
-  Future<bool> joinChallenge(String challengeId) async {
+  Future<bool> joinChallenge(
+    String challengeId, {
+    int? sessionGeneration,
+  }) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isCurrent(generation)) return false;
+
     try {
-      _setLoading(true);
+      _invalidateChallengeData();
+      _setLoading(true, generation);
 
       await _apiService.joinChallenge(challengeId);
+      if (!_isCurrent(generation)) return false;
 
       // Refresh data
-      await loadChallengeData();
+      await loadChallengeData(sessionGeneration: generation);
+      if (!_isCurrent(generation)) return false;
 
       logInfo('Joined challenge $challengeId', tag: 'CHALLENGES_PROVIDER');
       return true;
     } catch (e) {
+      if (!_isCurrent(generation)) return false;
       logError('Failed to join challenge: $e', tag: 'CHALLENGES_PROVIDER');
       _errorMessage = e.toString();
       return false;
     } finally {
-      _setLoading(false);
+      _setLoading(false, generation);
     }
   }
 
   /// Leave a challenge
-  Future<bool> leaveChallenge(String challengeId) async {
+  Future<bool> leaveChallenge(
+    String challengeId, {
+    int? sessionGeneration,
+  }) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isCurrent(generation)) return false;
+
     try {
-      _setLoading(true);
+      _invalidateChallengeData();
+      _setLoading(true, generation);
 
       await _apiService.leaveChallenge(challengeId);
+      if (!_isCurrent(generation)) return false;
 
       // Refresh data
-      await loadChallengeData();
+      await loadChallengeData(sessionGeneration: generation);
+      if (!_isCurrent(generation)) return false;
 
       logInfo('Left challenge $challengeId', tag: 'CHALLENGES_PROVIDER');
       return true;
     } catch (e) {
+      if (!_isCurrent(generation)) return false;
       logError('Failed to leave challenge: $e', tag: 'CHALLENGES_PROVIDER');
       _errorMessage = e.toString();
       return false;
     } finally {
-      _setLoading(false);
+      _setLoading(false, generation);
     }
   }
 
   /// Update challenge progress
   Future<bool> updateChallengeProgress(
-      String challengeId, Map<String, dynamic> progressData) async {
+    String challengeId,
+    Map<String, dynamic> progressData, {
+    int? sessionGeneration,
+  }) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isCurrent(generation)) return false;
+
     try {
-      _setLoading(true);
+      _invalidateChallengeProgress(challengeId);
+      _setLoading(true, generation);
 
       await _apiService.updateChallengeProgress(challengeId, progressData);
+      if (!_isCurrent(generation)) return false;
 
       // Refresh progress
-      await loadChallengeProgress(challengeId);
+      await loadChallengeProgress(
+        challengeId,
+        sessionGeneration: generation,
+      );
+      if (!_isCurrent(generation)) return false;
 
       logInfo('Updated progress for challenge $challengeId',
           tag: 'CHALLENGES_PROVIDER');
       return true;
     } catch (e) {
+      if (!_isCurrent(generation)) return false;
       logError('Failed to update challenge progress: $e',
           tag: 'CHALLENGES_PROVIDER');
       _errorMessage = e.toString();
       return false;
     } finally {
-      _setLoading(false);
+      _setLoading(false, generation);
     }
   }
 
   /// Refresh all data
-  Future<void> refresh() async {
-    await loadChallengeData();
+  Future<void> refresh({int? sessionGeneration}) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isCurrent(generation)) return;
+    await loadChallengeData(sessionGeneration: generation);
+  }
+
+  /// Clear all account-owned state at an authentication boundary.
+  void resetSession() {
+    _sessionGeneration += 1;
+    _challengeDataRequestId += 1;
+    for (final challengeId in _progressRequestIds.keys.toList()) {
+      _progressRequestIds[challengeId] =
+          (_progressRequestIds[challengeId] ?? 0) + 1;
+    }
+    _state = ChallengesState.initial;
+    _activeChallenges = [];
+    _availableChallenges = [];
+    _gamificationStats = {};
+    _leaderboard = [];
+    _challengeProgress.clear();
+    _progressRequestIds.clear();
+    _errorMessage = null;
+    _isLoading = false;
+    notifyListeners();
   }
 
   /// Clear error message
@@ -260,8 +348,34 @@ class ChallengesProvider extends ChangeNotifier {
   }
 
   // Private helper
-  void _setLoading(bool loading) {
+  void _setLoading(bool loading, int generation) {
+    if (!_isCurrent(generation)) return;
     _isLoading = loading;
     notifyListeners();
+  }
+
+  bool _isCurrent(int generation) => generation == _sessionGeneration;
+
+  bool _isCurrentDataRequest(int generation, int requestId) =>
+      _isCurrent(generation) && requestId == _challengeDataRequestId;
+
+  int _nextProgressRequestId(String challengeId) {
+    final requestId = (_progressRequestIds[challengeId] ?? 0) + 1;
+    _progressRequestIds[challengeId] = requestId;
+    return requestId;
+  }
+
+  bool _isCurrentProgressRequest(
+          int generation, String challengeId, int requestId) =>
+      _isCurrent(generation) &&
+      requestId == (_progressRequestIds[challengeId] ?? 0);
+
+  void _invalidateChallengeData() {
+    _challengeDataRequestId += 1;
+  }
+
+  void _invalidateChallengeProgress(String challengeId) {
+    _progressRequestIds[challengeId] =
+        (_progressRequestIds[challengeId] ?? 0) + 1;
   }
 }

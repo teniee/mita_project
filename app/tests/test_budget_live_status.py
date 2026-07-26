@@ -9,14 +9,17 @@ aggregates daily_budget/spent across today's category rows.
 Requires: PostgreSQL at DATABASE_URL (test_mita) with migrations at head.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, time as dtime, timedelta, timezone
 from decimal import Decimal
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
 
 from app.db.models import DailyPlan, Transaction, User
+
+SOFIA = ZoneInfo("Europe/Sofia")
 
 
 @pytest.fixture
@@ -107,6 +110,114 @@ def test_live_status_no_plan_rows(authed):
     resp = authed.get("/api/budget/live_status")
     assert resp.status_code == 200, resp.text
     assert resp.json()["data"]["status"] == "neutral"
+
+
+def test_live_status_counts_only_active_month_to_date_transactions(
+    authed, db_session, user
+):
+    now = datetime.now(timezone.utc)
+    month_start = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
+    if now - month_start <= timedelta(seconds=1):
+        pytest.skip("suite is running at the exact UTC month boundary")
+    current_month_instant = month_start + ((now - month_start) / 2)
+    other_user = User(
+        id=uuid4(),
+        email=f"livestatus_other_{uuid4().hex[:10]}@mita.app",
+        password_hash="x",
+        has_onboarded=True,
+        timezone="UTC",
+        monthly_income=Decimal("6000.00"),
+    )
+    db_session.add(other_user)
+    db_session.flush()
+    db_session.add_all(
+        [
+            Transaction(
+                id=uuid4(),
+                user_id=user.id,
+                amount=Decimal("11.00"),
+                category="food",
+                description="current active",
+                spent_at=current_month_instant,
+            ),
+            Transaction(
+                id=uuid4(),
+                user_id=user.id,
+                amount=Decimal("22.00"),
+                category="food",
+                description="current deleted",
+                spent_at=current_month_instant,
+                deleted_at=now,
+            ),
+            Transaction(
+                id=uuid4(),
+                user_id=user.id,
+                amount=Decimal("33.00"),
+                category="food",
+                description="previous month",
+                spent_at=month_start - timedelta(minutes=1),
+            ),
+            Transaction(
+                id=uuid4(),
+                user_id=user.id,
+                amount=Decimal("44.00"),
+                category="food",
+                description="future transaction",
+                spent_at=now + timedelta(hours=1),
+            ),
+            Transaction(
+                id=uuid4(),
+                user_id=other_user.id,
+                amount=Decimal("55.00"),
+                category="food",
+                description="another user",
+                spent_at=current_month_instant,
+            ),
+        ]
+    )
+    db_session.commit()
+
+    try:
+        resp = authed.get("/api/budget/live_status")
+        assert resp.status_code == 200, resp.text
+        data = resp.json()["data"]
+        assert data["transaction_count"] == 1
+        assert data["monthly_spent"] == pytest.approx(11.00)
+    finally:
+        db_session.query(Transaction).filter_by(user_id=other_user.id).delete()
+        db_session.query(User).filter_by(id=other_user.id).delete()
+        db_session.commit()
+
+
+def test_live_status_count_uses_sofia_month_boundary(authed, db_session, user):
+    now_local = datetime.now(SOFIA)
+    local_month_start = datetime.combine(
+        now_local.date().replace(day=1),
+        dtime.min,
+        tzinfo=SOFIA,
+    )
+    local_0030 = local_month_start + timedelta(minutes=30)
+    if local_0030 >= now_local:
+        pytest.skip("suite is running within 30 minutes of the local month start")
+
+    user.timezone = "Europe/Sofia"
+    db_session.add(
+        Transaction(
+            id=uuid4(),
+            user_id=user.id,
+            amount=Decimal("21.00"),
+            category="food",
+            description="Sofia month boundary",
+            spent_at=local_0030.astimezone(timezone.utc),
+        )
+    )
+    db_session.commit()
+
+    resp = authed.get("/api/budget/live_status")
+    assert resp.status_code == 200, resp.text
+    data = resp.json()["data"]
+    assert data["transaction_count"] == 1
+    assert data["monthly_spent"] == pytest.approx(21.00)
 
 
 def test_remaining_and_spent_bridge_async_session(authed, db_session, user):

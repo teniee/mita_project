@@ -33,6 +33,7 @@ class LoadingProvider extends ChangeNotifier {
 
   // Error state
   String? _errorMessage;
+  int _sessionGeneration = 0;
 
   // Getters
   bool get isLoading => _isLoading;
@@ -92,6 +93,7 @@ class LoadingProvider extends ChangeNotifier {
     String? errorMessage,
     bool showError = true,
   }) async {
+    final generation = _sessionGeneration;
     setLoading(true);
     clearError();
 
@@ -100,12 +102,14 @@ class LoadingProvider extends ChangeNotifier {
       return result;
     } catch (e) {
       logError('Loading operation failed: $e', tag: 'LOADING_PROVIDER');
-      if (showError) {
+      if (generation == _sessionGeneration && showError) {
         setError(errorMessage ?? 'Operation failed: ${e.toString()}');
       }
       return null;
     } finally {
-      setLoading(false);
+      if (generation == _sessionGeneration) {
+        setLoading(false);
+      }
     }
   }
 
@@ -125,6 +129,7 @@ class LoadingProvider extends ChangeNotifier {
     String? errorMessage,
     bool showError = true,
   }) async {
+    final generation = _sessionGeneration;
     setLoadingNamed(name, true);
     clearError();
 
@@ -133,12 +138,14 @@ class LoadingProvider extends ChangeNotifier {
       return result;
     } catch (e) {
       logError('Loading operation "$name" failed: $e', tag: 'LOADING_PROVIDER');
-      if (showError) {
+      if (generation == _sessionGeneration && showError) {
         setError(errorMessage ?? 'Operation "$name" failed: ${e.toString()}');
       }
       return null;
     } finally {
-      setLoadingNamed(name, false);
+      if (generation == _sessionGeneration) {
+        setLoadingNamed(name, false);
+      }
     }
   }
 
@@ -149,6 +156,7 @@ class LoadingProvider extends ChangeNotifier {
     List<Future<T> Function()> operations, {
     String? name,
   }) async {
+    final generation = _sessionGeneration;
     if (name != null) {
       setLoadingNamed(name, true);
     } else {
@@ -168,16 +176,19 @@ class LoadingProvider extends ChangeNotifier {
       );
       return results;
     } finally {
-      if (name != null) {
-        setLoadingNamed(name, false);
-      } else {
-        setLoading(false);
+      if (generation == _sessionGeneration) {
+        if (name != null) {
+          setLoadingNamed(name, false);
+        } else {
+          setLoading(false);
+        }
       }
     }
   }
 
   /// Reset all loading states
   void reset() {
+    _sessionGeneration += 1;
     _isLoading = false;
     _namedLoadingStates.clear();
     _errorMessage = null;

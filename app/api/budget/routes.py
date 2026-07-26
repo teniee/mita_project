@@ -716,17 +716,20 @@ async def get_live_budget_status(
     # Calculate monthly spending from transactions (exclude soft-deleted).
     # Month boundary follows the user's local calendar month, expressed as
     # the UTC instant that local month began.
-    month_start, _ = local_day_utc_window(
-        today_local.replace(day=1), user.timezone
-    )
+    month_start, _ = local_day_utc_window(today_local.replace(day=1), user.timezone)
     result = await db.execute(
-        select(func.coalesce(func.sum(Transaction.amount), 0)).where(
+        select(
+            func.coalesce(func.sum(Transaction.amount), 0),
+            func.count(Transaction.id),
+        ).where(
             Transaction.user_id == user.id,
             Transaction.deleted_at.is_(None),
             Transaction.spent_at >= month_start,
+            Transaction.spent_at < now,
         )
     )
-    monthly_spent = Decimal(result.scalar() or 0)
+    monthly_spent_total, transaction_count = result.one()
+    monthly_spent = Decimal(monthly_spent_total or 0)
     monthly_budget = float(user.monthly_income) if user.monthly_income else 0.0
     on_track = (
         float(monthly_spent) <= (monthly_budget * (today_local.day / 30.0))
@@ -742,6 +745,7 @@ async def get_live_budget_status(
         "status": day_status,
         "monthly_budget": monthly_budget,
         "monthly_spent": round(float(monthly_spent), 2),
+        "transaction_count": int(transaction_count or 0),
         "on_track": on_track,
     }
 

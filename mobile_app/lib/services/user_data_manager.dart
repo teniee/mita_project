@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../utils/json_utils.dart';
@@ -12,31 +13,65 @@ class UserDataManager {
   static UserDataManager get instance =>
       _instance ??= UserDataManager._internal();
 
-  UserDataManager._internal();
+  UserDataManager._internal()
+      : _secureStorage = const FlutterSecureStorage(),
+        _apiService = ApiService();
 
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
-  final ApiService _apiService = ApiService();
+  @visibleForTesting
+  UserDataManager.forTesting({
+    required FlutterSecureStorage secureStorage,
+    required ApiService apiService,
+  })  : _secureStorage = secureStorage,
+        _apiService = apiService;
+
+  final FlutterSecureStorage _secureStorage;
+  final ApiService _apiService;
 
   // In-memory cache for fast access
   Map<String, dynamic>? _cachedUserProfile;
   Map<String, dynamic>? _cachedOnboardingData;
   DateTime? _lastRefresh;
+  String? _cacheOwner;
+  int _sessionGeneration = 0;
+  Future<void> _cacheMutationTail = Future<void>.value();
 
   // Cache expiry duration
   static const Duration _cacheExpiry = Duration(hours: 2);
 
+  /// Synchronously fences all prior asynchronous cache work and clears memory.
+  /// Persisted data is owner-namespaced; [clearUserData] additionally removes
+  /// the namespace belonging to the identity that is logging out.
+  int beginSessionBoundary() {
+    _sessionGeneration += 1;
+    _cachedUserProfile = null;
+    _cachedOnboardingData = null;
+    _lastRefresh = null;
+    _cacheOwner = null;
+    return _sessionGeneration;
+  }
+
+  bool _isCurrentGeneration(int generation) => generation == _sessionGeneration;
+
   /// Initialize user data manager with fresh data load
   Future<void> initialize() async {
+    final generation = _sessionGeneration;
     try {
       logInfo('Initializing UserDataManager', tag: 'USER_DATA_MANAGER');
 
-      // Try to load cached data first for immediate UI response
-      await _loadCachedData();
+      final owner = await _apiService.getUserId();
+      if (!_isCurrentGeneration(generation)) return;
+      _cacheOwner = owner;
+
+      // Try to load only this account's cache for immediate UI response.
+      if (owner != null && owner.isNotEmpty) {
+        await _loadCachedData(generation, owner);
+      }
+      if (!_isCurrentGeneration(generation)) return;
 
       // CRITICAL FIX: AWAIT the refresh to ensure data is loaded before proceeding
       // This prevents race conditions and redundant API calls in UserProvider
       try {
-        await refreshUserData();
+        await refreshUserData(sessionGeneration: generation);
       } catch (e) {
         logWarning('API refresh failed (will use cached data if available): $e',
             tag: 'USER_DATA_MANAGER');
@@ -50,6 +85,7 @@ class UserDataManager {
 
   /// Get user profile with intelligent fallback strategy
   Future<Map<String, dynamic>> getUserProfile() async {
+    final generation = _sessionGeneration;
     try {
       // Return cached data if available and fresh
       if (_cachedUserProfile != null && _isCacheFresh()) {
@@ -70,11 +106,18 @@ class UserDataManager {
         return <String, dynamic>{};
       });
 
+      if (!_isCurrentGeneration(generation)) {
+        return _getDefaultUserProfile();
+      }
+
       if (profile.isNotEmpty && profile.containsKey('data')) {
-        final userData = profile['data'] as Map<String, dynamic>;
+        final userData = asStringKeyedMap(profile['data']);
         _cachedUserProfile = userData;
         _lastRefresh = DateTime.now();
-        await _saveCachedData();
+        await _saveCachedData(generation);
+        if (!_isCurrentGeneration(generation)) {
+          return _getDefaultUserProfile();
+        }
         return userData;
       }
 
@@ -90,29 +133,35 @@ class UserDataManager {
       return _getDefaultUserProfile();
     } catch (e) {
       logError('Failed to get user profile: $e', tag: 'USER_DATA_MANAGER');
-      return _cachedUserProfile ?? _getDefaultUserProfile();
+      return _isCurrentGeneration(generation)
+          ? (_cachedUserProfile ?? _getDefaultUserProfile())
+          : _getDefaultUserProfile();
     }
   }
 
   /// Update user profile both locally and on backend
   Future<bool> updateUserProfile(Map<String, dynamic> profileData) async {
+    final generation = _sessionGeneration;
     try {
       logInfo('Updating user profile', tag: 'USER_DATA_MANAGER');
 
       // Optimistic update - update local cache immediately
       _cachedUserProfile = profileData;
       _lastRefresh = DateTime.now();
-      await _saveCachedData();
+      await _saveCachedData(generation);
+      if (!_isCurrentGeneration(generation)) return false;
 
       // Try to sync with backend
       await _apiService.updateUserProfile(profileData).timeout(
             const Duration(seconds: 10),
             onTimeout: () => throw Exception('Profile update timeout'),
           );
+      if (!_isCurrentGeneration(generation)) return false;
 
       logInfo('Profile update successful', tag: 'USER_DATA_MANAGER');
       return true;
     } catch (e) {
+      if (!_isCurrentGeneration(generation)) return false;
       logError('Failed to update profile on backend: $e',
           tag: 'USER_DATA_MANAGER');
 
@@ -123,7 +172,10 @@ class UserDataManager {
       // local edit for display is fine; treating it as authoritative is not.
       _lastRefresh = null;
       try {
-        await _secureStorage.delete(key: 'cache_timestamp');
+        final owner = _cacheOwner;
+        if (owner != null) {
+          await _secureStorage.delete(key: _cacheKey(owner, 'timestamp'));
+        }
       } catch (_) {}
       logWarning(
           'Profile updated locally only - marked stale for server re-sync',
@@ -134,6 +186,7 @@ class UserDataManager {
 
   /// Save onboarding data for immediate use after completion
   Future<void> cacheOnboardingData(Map<String, dynamic> onboardingData) async {
+    final generation = _sessionGeneration;
     try {
       logInfo(
           'CRITICAL DEBUG: Starting to cache onboarding data: $onboardingData',
@@ -149,7 +202,8 @@ class UserDataManager {
       logInfo('CRITICAL DEBUG: Transformed data and set timestamp',
           tag: 'USER_DATA_MANAGER');
 
-      await _saveCachedData();
+      await _saveCachedData(generation);
+      if (!_isCurrentGeneration(generation)) return;
       logInfo('CRITICAL DEBUG: Called _saveCachedData()',
           tag: 'USER_DATA_MANAGER');
 
@@ -184,6 +238,7 @@ class UserDataManager {
 
   /// Check if user has completed onboarding
   Future<bool> hasCompletedOnboarding() async {
+    final generation = _sessionGeneration;
     try {
       // Check if we have cached onboarding data
       if (_cachedOnboardingData != null) {
@@ -191,7 +246,8 @@ class UserDataManager {
       }
 
       // Check via API
-      return await _apiService.hasCompletedOnboarding();
+      final completed = await _apiService.hasCompletedOnboarding();
+      return _isCurrentGeneration(generation) ? completed : false;
     } catch (e) {
       logError('Failed to check onboarding status: $e',
           tag: 'USER_DATA_MANAGER');
@@ -200,7 +256,8 @@ class UserDataManager {
   }
 
   /// Force refresh user data from API
-  Future<void> refreshUserData() async {
+  Future<void> refreshUserData({int? sessionGeneration}) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
     try {
       logInfo('Force refreshing user data', tag: 'USER_DATA_MANAGER');
 
@@ -208,11 +265,13 @@ class UserDataManager {
       // without it a "force refresh" could serve the same stale profile
       // this call is trying to replace.
       final profile = await _apiService.getUserProfile(forceRefresh: true);
+      if (!_isCurrentGeneration(generation)) return;
 
       if (profile.isNotEmpty && profile.containsKey('data')) {
-        _cachedUserProfile = profile['data'] as Map<String, dynamic>;
+        _cachedUserProfile = asStringKeyedMap(profile['data']);
         _lastRefresh = DateTime.now();
-        await _saveCachedData();
+        await _saveCachedData(generation);
+        if (!_isCurrentGeneration(generation)) return;
 
         logInfo('User data refreshed successfully', tag: 'USER_DATA_MANAGER');
       }
@@ -223,16 +282,12 @@ class UserDataManager {
 
   /// Clear all cached user data (for logout)
   Future<void> clearUserData() async {
+    final owner = _cacheOwner;
+    final generation = beginSessionBoundary();
     try {
       logInfo('Clearing user data', tag: 'USER_DATA_MANAGER');
 
-      _cachedUserProfile = null;
-      _cachedOnboardingData = null;
-      _lastRefresh = null;
-
-      await _secureStorage.delete(key: 'cached_user_profile');
-      await _secureStorage.delete(key: 'cached_onboarding_data');
-      await _secureStorage.delete(key: 'cache_timestamp');
+      await _deleteCachedData(generation, owner);
 
       logInfo('User data cleared successfully', tag: 'USER_DATA_MANAGER');
     } catch (e) {
@@ -242,6 +297,7 @@ class UserDataManager {
 
   /// Get user's financial context for budget calculations
   Future<Map<String, dynamic>> getFinancialContext() async {
+    final generation = _sessionGeneration;
     try {
       // Server truth first. The transformed onboarding payload is only a
       // stopgap for the window between submit and the profile reflecting
@@ -249,6 +305,9 @@ class UserDataManager {
       // storage), so the app never picked up the real profile again until
       // logout.
       final profile = await getUserProfile();
+      if (!_isCurrentGeneration(generation)) {
+        return _unavailableFinancialContext();
+      }
       logInfo('Retrieved user profile for financial context: $profile',
           tag: 'USER_DATA_MANAGER');
 
@@ -265,6 +324,9 @@ class UserDataManager {
       if (income == null || income <= 0) {
         // Check onboarding status to determine if user needs to complete onboarding
         final hasCompleted = await hasCompletedOnboarding();
+        if (!_isCurrentGeneration(generation)) {
+          return _unavailableFinancialContext();
+        }
 
         if (!hasCompleted) {
           logInfo(
@@ -312,8 +374,9 @@ class UserDataManager {
       return {
         'income': income,
         'expenses': expenses is List ? expenses : <dynamic>[],
-        'goals':
-            goals is List ? goals : (goals is Map ? <dynamic>[goals] : <dynamic>['budgeting']),
+        'goals': goals is List
+            ? goals
+            : (goals is Map ? <dynamic>[goals] : <dynamic>['budgeting']),
         'habits': habits is List ? habits : <dynamic>[],
         'region': profile['region'] as String? ?? '',
         'countryCode': profile['countryCode'] as String? ?? '',
@@ -328,21 +391,25 @@ class UserDataManager {
       logError('Error getting financial context: $e', tag: 'USER_DATA_MANAGER');
 
       // Return error context to indicate API failure
-      return {
-        'api_error': true,
-        'error_message': e.toString(),
-        'incomplete_onboarding': false,
-        'needs_onboarding': false,
-        'income': 0.0,
-        'expenses': <dynamic>[],
-        'goals': <dynamic>[],
-        'habits': <dynamic>[],
-        'region': '',
-        'countryCode': '',
-        'stateCode': '',
-        'currency': 'USD',
-      };
+      return _unavailableFinancialContext(errorMessage: e.toString());
     }
+  }
+
+  Map<String, dynamic> _unavailableFinancialContext({String? errorMessage}) {
+    return {
+      'api_error': true,
+      if (errorMessage != null) 'error_message': errorMessage,
+      'incomplete_onboarding': false,
+      'needs_onboarding': false,
+      'income': 0.0,
+      'expenses': <dynamic>[],
+      'goals': <dynamic>[],
+      'habits': <dynamic>[],
+      'region': '',
+      'countryCode': '',
+      'stateCode': '',
+      'currency': 'USD',
+    };
   }
 
   // Private helper methods
@@ -363,12 +430,41 @@ class UserDataManager {
     return true;
   }
 
-  Future<void> _loadCachedData() async {
+  @visibleForTesting
+  static String cacheNamespaceForOwner(String owner) =>
+      sha256.convert(utf8.encode(owner)).toString();
+
+  String _cacheKey(String owner, String field) =>
+      'user_cache_${cacheNamespaceForOwner(owner)}_$field';
+
+  Future<T> _serializeCacheMutation<T>(Future<T> Function() mutation) {
+    final operation = _cacheMutationTail.then<T>((_) => mutation());
+    _cacheMutationTail =
+        operation.then<void>((_) {}, onError: (Object _, StackTrace __) {});
+    return operation;
+  }
+
+  Future<void> _loadCachedData(int generation, String owner) async {
     try {
-      final profileData = await _secureStorage.read(key: 'cached_user_profile');
+      final ownerMarker =
+          await _secureStorage.read(key: _cacheKey(owner, 'owner'));
+      if (!_isCurrentGeneration(generation) || _cacheOwner != owner) return;
+
+      // A namespace is not trusted without an exact owner marker. This also
+      // prevents old, unnamespaced account-A cache from being loaded for B.
+      if (ownerMarker != owner) {
+        logInfo('No owner-matched cached user data available',
+            tag: 'USER_DATA_MANAGER');
+        return;
+      }
+
+      final profileData =
+          await _secureStorage.read(key: _cacheKey(owner, 'profile'));
       final onboardingData =
-          await _secureStorage.read(key: 'cached_onboarding_data');
-      final timestampData = await _secureStorage.read(key: 'cache_timestamp');
+          await _secureStorage.read(key: _cacheKey(owner, 'onboarding'));
+      final timestampData =
+          await _secureStorage.read(key: _cacheKey(owner, 'timestamp'));
+      if (!_isCurrentGeneration(generation) || _cacheOwner != owner) return;
 
       if (profileData != null) {
         final decoded = jsonDecode(profileData) as Map<String, dynamic>;
@@ -380,8 +476,13 @@ class UserDataManager {
           logWarning(
               'Discarding invalid cached profile on load (placeholder/empty)',
               tag: 'USER_DATA_MANAGER');
-          await _secureStorage.delete(key: 'cached_user_profile');
-          await _secureStorage.delete(key: 'cache_timestamp');
+          await _serializeCacheMutation<void>(() async {
+            if (!_isCurrentGeneration(generation) || _cacheOwner != owner) {
+              return;
+            }
+            await _secureStorage.delete(key: _cacheKey(owner, 'profile'));
+            await _secureStorage.delete(key: _cacheKey(owner, 'timestamp'));
+          });
         }
       }
 
@@ -401,31 +502,90 @@ class UserDataManager {
     }
   }
 
-  Future<void> _saveCachedData() async {
+  Future<void> _saveCachedData(int generation) async {
+    if (!_isCurrentGeneration(generation)) return;
+    final owner = _cacheOwner;
+    if (owner == null || owner.isEmpty) {
+      // Account ownership is required for persistent cache writes. In-memory
+      // data remains available for the current screen.
+      return;
+    }
+
+    final profile = _cachedUserProfile == null
+        ? null
+        : Map<String, dynamic>.from(_cachedUserProfile!);
+    final onboarding = _cachedOnboardingData == null
+        ? null
+        : Map<String, dynamic>.from(_cachedOnboardingData!);
+    final refreshedAt = _lastRefresh;
+
     try {
-      if (_cachedUserProfile != null) {
-        await _secureStorage.write(
-          key: 'cached_user_profile',
-          value: jsonEncode(_cachedUserProfile!),
-        );
-      }
+      await _serializeCacheMutation<void>(() async {
+        if (!_isCurrentGeneration(generation) || _cacheOwner != owner) return;
 
-      if (_cachedOnboardingData != null) {
-        await _secureStorage.write(
-          key: 'cached_onboarding_data',
-          value: jsonEncode(_cachedOnboardingData!),
-        );
-      }
+        if (profile != null) {
+          await _secureStorage.write(
+            key: _cacheKey(owner, 'profile'),
+            value: jsonEncode(profile),
+          );
+        }
+        if (!_isCurrentGeneration(generation) || _cacheOwner != owner) return;
 
-      if (_lastRefresh != null) {
+        if (onboarding != null) {
+          await _secureStorage.write(
+            key: _cacheKey(owner, 'onboarding'),
+            value: jsonEncode(onboarding),
+          );
+        }
+        if (!_isCurrentGeneration(generation) || _cacheOwner != owner) return;
+
+        if (refreshedAt != null) {
+          await _secureStorage.write(
+            key: _cacheKey(owner, 'timestamp'),
+            value: refreshedAt.millisecondsSinceEpoch.toString(),
+          );
+        }
+        if (!_isCurrentGeneration(generation) || _cacheOwner != owner) return;
+
+        // Commit marker last: partial writes are never considered loadable.
         await _secureStorage.write(
-          key: 'cache_timestamp',
-          value: _lastRefresh!.millisecondsSinceEpoch.toString(),
+          key: _cacheKey(owner, 'owner'),
+          value: owner,
         );
-      }
+      });
     } catch (e) {
       logError('Failed to save cached data: $e', tag: 'USER_DATA_MANAGER');
     }
+  }
+
+  Future<void> _deleteCachedData(int generation, String? owner) {
+    return _serializeCacheMutation<void>(() async {
+      // This delete belongs to the logout generation. If a newer identity has
+      // already started, only the captured account namespace is touched.
+      if (!_isCurrentGeneration(generation) && owner == null) return;
+
+      if (owner != null && owner.isNotEmpty) {
+        for (final field in const [
+          'profile',
+          'onboarding',
+          'timestamp',
+          'owner',
+        ]) {
+          await _secureStorage.delete(key: _cacheKey(owner, field));
+        }
+      }
+
+      // Remove legacy unnamespaced entries. They are never loaded by the new
+      // code, but deleting them prevents residual private data from lingering.
+      for (final key in const [
+        'cached_user_profile',
+        'cached_onboarding_data',
+        'cache_timestamp',
+        'cached_data_owner',
+      ]) {
+        await _secureStorage.delete(key: key);
+      }
+    });
   }
 
   /// Numeric monthly income from either the onboarding payload shape
@@ -519,5 +679,4 @@ class UserDataManager {
       'profile_completion': 0, // Indicates incomplete profile
     };
   }
-
 }

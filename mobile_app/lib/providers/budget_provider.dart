@@ -70,7 +70,9 @@ Map<String, dynamic> mergeSavedCalendarDay(
     final spent = isFuture
         ? 0.0
         : (backendCatSpent ??
-            ((isPast || isToday) ? (spentByDayCategory[day]?[cat] ?? 0.0) : 0.0));
+            ((isPast || isToday)
+                ? (spentByDayCategory[day]?[cat] ?? 0.0)
+                : 0.0));
     mergedCats[cat] = {'planned': planned, 'spent': spent};
   }
 
@@ -85,7 +87,8 @@ Map<String, dynamic> mergeSavedCalendarDay(
     });
   }
 
-  final realSpent = isFuture ? 0.0 : (backendDaySpent ?? (spentByDay[day] ?? 0.0));
+  final realSpent =
+      isFuture ? 0.0 : (backendDaySpent ?? (spentByDay[day] ?? 0.0));
 
   // Day status
   String status;
@@ -133,15 +136,25 @@ CalendarLoadAction calendarLoadAction({
 /// Centralized budget state management provider
 /// Manages daily budgets, live status, suggestions, and redistribution
 class BudgetProvider extends ChangeNotifier {
-  final ApiService _apiService = ApiService();
-  final BudgetAdapterService _budgetService = BudgetAdapterService();
-  final LiveUpdatesService _liveUpdates = LiveUpdatesService();
+  final ApiService _apiService;
+  final BudgetAdapterService _budgetService;
+  final LiveUpdatesService _liveUpdates;
+
+  BudgetProvider({
+    ApiService? apiService,
+    BudgetAdapterService? budgetService,
+    LiveUpdatesService? liveUpdates,
+  })  : _apiService = apiService ?? ApiService(),
+        _budgetService = budgetService ?? BudgetAdapterService(),
+        _liveUpdates = liveUpdates ?? LiveUpdatesService();
 
   // State
   BudgetState _state = BudgetState.initial;
   bool _isLoading = false;
   bool _isRedistributing = false;
   String? _errorMessage;
+  String? _liveStatusError;
+  bool _liveStatusFresh = false;
 
   // Budget data
   List<Map<String, dynamic>> _dailyBudgets = [];
@@ -167,16 +180,25 @@ class BudgetProvider extends ChangeNotifier {
 
   // Subscriptions
   StreamSubscription<void>? _budgetUpdateSubscription;
+  int _sessionGeneration = 0;
+  int _dailyBudgetsRequestId = 0;
+  int _liveStatusRequestId = 0;
+  int _calendarRequestId = 0;
+  Future<void>? _initializeInFlight;
+  int? _initializeGeneration;
 
   // Getters
   BudgetState get state => _state;
   bool get isLoading => _isLoading;
   bool get isRedistributing => _isRedistributing;
   String? get errorMessage => _errorMessage;
+  String? get liveStatusError => _liveStatusError;
+  bool get liveStatusFresh => _liveStatusFresh;
   List<Map<String, dynamic>> get dailyBudgets => _dailyBudgets;
   Map<String, dynamic> get liveBudgetStatus => _liveBudgetStatus;
   Map<String, dynamic> get budgetSuggestions => _budgetSuggestions;
-  List<Map<String, dynamic>> get redistributionHistory => _redistributionHistory;
+  List<Map<String, dynamic>> get redistributionHistory =>
+      _redistributionHistory;
   String get budgetMode => _budgetMode;
   Map<String, dynamic>? get aiOptimization => _aiOptimization;
   Map<String, dynamic>? get budgetAdaptations => _budgetAdaptations;
@@ -208,43 +230,98 @@ class BudgetProvider extends ChangeNotifier {
             : (valueData is String ? double.tryParse(valueData) ?? 0.0 : 0.0);
   }
 
+  int? get monthlyTransactionCount => _liveStatusFresh
+      ? asIntOrNull(_liveBudgetStatus['transaction_count'])
+      : null;
+
   double get remaining => totalBudget - totalSpent;
   double get spendingPercentage =>
       totalBudget > 0 ? (totalSpent / totalBudget) : 0.0;
 
   /// Initialize the provider and start listening for updates
-  Future<void> initialize() async {
-    if (_state != BudgetState.initial) return;
+  Future<void> initialize() {
+    if (_state != BudgetState.initial) return Future.value();
 
+    final generation = _sessionGeneration;
+    final inFlight = _initializeInFlight;
+    if (inFlight != null && _initializeGeneration == generation) {
+      return inFlight;
+    }
+
+    final future = _doInitialize(generation);
+    _initializeInFlight = future;
+    _initializeGeneration = generation;
+    future.whenComplete(() {
+      if (identical(_initializeInFlight, future) &&
+          _initializeGeneration == generation) {
+        _initializeInFlight = null;
+        _initializeGeneration = null;
+      }
+    });
+    return future;
+  }
+
+  Future<void> _doInitialize(int generation) async {
     logInfo('Initializing BudgetProvider', tag: 'BUDGET_PROVIDER');
 
     // CRITICAL FIX: Check if user has a valid token before making API calls
     final token = await _apiService.getToken();
+    if (!_isCurrent(generation)) return;
     if (token == null || token.isEmpty) {
       logWarning(
           'No authentication token found - skipping budget data initialization',
           tag: 'BUDGET_PROVIDER');
       _state = BudgetState.error;
       _errorMessage = 'Not authenticated';
+      notifyListeners();
       return;
     }
 
-    await loadAllBudgetData();
-    _subscribeToBudgetUpdates();
+    await loadAllBudgetData(sessionGeneration: generation);
+    if (!_isCurrent(generation)) return;
+    _subscribeToBudgetUpdates(generation);
+  }
+
+  void _clearSessionData() {
+    _dailyBudgets = [];
+    _liveBudgetStatus = {};
+    _liveStatusError = null;
+    _liveStatusFresh = false;
+    _budgetSuggestions = {};
+    _redistributionHistory = [];
+    _budgetMode = 'default';
+    _aiOptimization = null;
+    _budgetAdaptations = null;
+    _calendarData = [];
+    _calendarYear = null;
+    _calendarMonth = null;
+    _calendarHasSavedData = false;
+    _automationSettings = {};
+    _budgetRecommendations = null;
+    _budgetRemaining = null;
+    _behavioralAllocation = null;
+    _errorMessage = null;
+    _state = BudgetState.initial;
+    _isLoading = false;
+    _isRedistributing = false;
+    _isUpdatingMode = false;
   }
 
   /// Subscribe to live budget updates
-  void _subscribeToBudgetUpdates() {
+  void _subscribeToBudgetUpdates(int generation) {
     _budgetUpdateSubscription?.cancel();
     _budgetUpdateSubscription = _liveUpdates.budgetUpdates.listen((budgetData) {
+      if (!_isCurrent(generation)) return;
       logDebug('Received budget update from live service',
           tag: 'BUDGET_PROVIDER');
-      loadLiveBudgetStatus();
+      loadLiveBudgetStatus(sessionGeneration: generation);
     });
   }
 
   /// Load all budget data at once
-  Future<void> loadAllBudgetData() async {
+  Future<void> loadAllBudgetData({int? sessionGeneration}) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    if (!_isCurrent(generation)) return;
     _setLoading(true);
     _state = BudgetState.loading;
     // Clear any stale error so a retry can recover; previously errorMessage
@@ -262,84 +339,126 @@ class BudgetProvider extends ChangeNotifier {
       try {
         await load();
       } catch (e) {
-        logWarning('Budget sub-load "$name" failed: $e', tag: 'BUDGET_PROVIDER');
+        logWarning('Budget sub-load "$name" failed: $e',
+            tag: 'BUDGET_PROVIDER');
         if (critical) rethrow;
       }
     }
 
     try {
       await Future.wait([
-        guard('dailyBudgets', loadDailyBudgets, critical: true),
+        guard(
+          'dailyBudgets',
+          () => loadDailyBudgets(sessionGeneration: generation),
+          critical: true,
+        ),
         // The dashboard's "Today's Budget Targets" and week strip read
         // calendarData; without this load they always rendered the
         // income/30 default-weights fallback even though a real saved
         // calendar existed.
-        guard('calendarData', loadCalendarData),
-        guard('liveStatus', loadLiveBudgetStatus),
-        guard('suggestions', loadBudgetSuggestions),
-        guard('mode', loadBudgetMode),
-        guard('redistribution', loadRedistributionHistory),
-        guard('aiOptimization', loadAIOptimization),
-        guard('adaptations', loadBudgetAdaptations),
+        guard('calendarData',
+            () => loadCalendarData(sessionGeneration: generation)),
+        guard('liveStatus',
+            () => loadLiveBudgetStatus(sessionGeneration: generation)),
+        guard('suggestions',
+            () => loadBudgetSuggestions(sessionGeneration: generation)),
+        guard('mode', () => loadBudgetMode(sessionGeneration: generation)),
+        guard(
+          'redistribution',
+          () => loadRedistributionHistory(sessionGeneration: generation),
+        ),
+        guard('aiOptimization',
+            () => loadAIOptimization(sessionGeneration: generation)),
+        guard('adaptations',
+            () => loadBudgetAdaptations(sessionGeneration: generation)),
       ]);
+      if (!_isCurrent(generation)) return;
 
       _errorMessage = null;
       _state = BudgetState.loaded;
       logInfo('All budget data loaded successfully', tag: 'BUDGET_PROVIDER');
     } catch (e) {
+      if (!_isCurrent(generation)) return;
       logError('Failed to load core budget data: $e', tag: 'BUDGET_PROVIDER');
       _errorMessage = e.toString();
       _state = BudgetState.error;
     } finally {
-      _setLoading(false);
+      if (_isCurrent(generation)) {
+        _setLoading(false);
+      }
     }
   }
 
   /// Load daily budgets
-  Future<void> loadDailyBudgets() async {
+  Future<void> loadDailyBudgets({int? sessionGeneration}) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    final requestId = ++_dailyBudgetsRequestId;
     try {
       final data = await _apiService.getDailyBudgets();
+      if (!_isCurrent(generation) || requestId != _dailyBudgetsRequestId) {
+        return;
+      }
       _dailyBudgets = asMapList(data);
       logInfo('Daily budgets loaded: ${_dailyBudgets.length} items',
           tag: 'BUDGET_PROVIDER');
       notifyListeners();
     } catch (e) {
+      if (!_isCurrent(generation) || requestId != _dailyBudgetsRequestId) {
+        return;
+      }
       logError('Error loading daily budgets: $e', tag: 'BUDGET_PROVIDER');
       _dailyBudgets = [];
     }
   }
 
   /// Load live budget status
-  Future<void> loadLiveBudgetStatus() async {
+  Future<void> loadLiveBudgetStatus({int? sessionGeneration}) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    final requestId = ++_liveStatusRequestId;
     try {
       final status = await _apiService.getLiveBudgetStatus();
+      if (!_isCurrent(generation) || requestId != _liveStatusRequestId) return;
       _liveBudgetStatus = status;
+      _liveStatusFresh = true;
+      _liveStatusError = null;
       logDebug('Live budget status loaded', tag: 'BUDGET_PROVIDER');
       notifyListeners();
     } catch (e) {
+      if (!_isCurrent(generation) || requestId != _liveStatusRequestId) return;
       logError('Error loading live budget status: $e', tag: 'BUDGET_PROVIDER');
+      // A failed refresh after a successful ledger mutation must not keep
+      // presenting the previous count/spend as current.
+      _liveBudgetStatus = {};
+      _liveStatusFresh = false;
+      _liveStatusError = 'Live budget status is unavailable';
+      notifyListeners();
     }
   }
 
   /// Load budget suggestions (enhanced)
-  Future<void> loadBudgetSuggestions() async {
+  Future<void> loadBudgetSuggestions({int? sessionGeneration}) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
     try {
       final enhancedSuggestions =
           await _budgetService.getEnhancedBudgetSuggestions();
+      if (!_isCurrent(generation)) return;
       _budgetSuggestions = enhancedSuggestions;
       logInfo(
           'Enhanced budget suggestions loaded: ${enhancedSuggestions['total_count']} suggestions',
           tag: 'BUDGET_PROVIDER');
       notifyListeners();
     } catch (e) {
+      if (!_isCurrent(generation)) return;
       logError('Error loading enhanced budget suggestions: $e',
           tag: 'BUDGET_PROVIDER');
       // Fallback to legacy API
       try {
         final legacySuggestions = await _apiService.getBudgetSuggestions();
+        if (!_isCurrent(generation)) return;
         _budgetSuggestions = legacySuggestions;
         notifyListeners();
       } catch (fallbackError) {
+        if (!_isCurrent(generation)) return;
         logError('Fallback budget suggestions also failed: $fallbackError',
             tag: 'BUDGET_PROVIDER');
       }
@@ -347,13 +466,16 @@ class BudgetProvider extends ChangeNotifier {
   }
 
   /// Load budget mode
-  Future<void> loadBudgetMode() async {
+  Future<void> loadBudgetMode({int? sessionGeneration}) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
     try {
       final mode = await _apiService.getBudgetMode();
+      if (!_isCurrent(generation)) return;
       _budgetMode = mode;
       logDebug('Budget mode loaded: $_budgetMode', tag: 'BUDGET_PROVIDER');
       notifyListeners();
     } catch (e) {
+      if (!_isCurrent(generation)) return;
       logError('Error loading budget mode: $e', tag: 'BUDGET_PROVIDER');
     }
   }
@@ -361,34 +483,42 @@ class BudgetProvider extends ChangeNotifier {
   /// Set budget mode
   Future<bool> setBudgetMode(String newMode) async {
     if (_isUpdatingMode) return false;
+    final generation = _sessionGeneration;
 
     _isUpdatingMode = true;
     notifyListeners();
 
     try {
       await _apiService.setBudgetMode(newMode);
+      if (!_isCurrent(generation)) return false;
       _budgetMode = newMode;
       logInfo('Budget mode set to: $newMode', tag: 'BUDGET_PROVIDER');
       notifyListeners();
       return true;
     } catch (e) {
+      if (!_isCurrent(generation)) return false;
       logError('Error setting budget mode: $e', tag: 'BUDGET_PROVIDER');
       _errorMessage = 'Failed to update budget mode';
       return false;
     } finally {
-      _isUpdatingMode = false;
-      notifyListeners();
+      if (_isCurrent(generation)) {
+        _isUpdatingMode = false;
+        notifyListeners();
+      }
     }
   }
 
   /// Load automation settings
-  Future<void> loadAutomationSettings() async {
+  Future<void> loadAutomationSettings({int? sessionGeneration}) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
     try {
       final settings = await _apiService.getBudgetAutomationSettings();
+      if (!_isCurrent(generation)) return;
       _automationSettings = settings;
       logDebug('Automation settings loaded', tag: 'BUDGET_PROVIDER');
       notifyListeners();
     } catch (e) {
+      if (!_isCurrent(generation)) return;
       logError('Error loading automation settings: $e', tag: 'BUDGET_PROVIDER');
     }
   }
@@ -396,13 +526,16 @@ class BudgetProvider extends ChangeNotifier {
   /// Update automation settings
   Future<bool> updateAutomationSettings(
       Map<String, dynamic> newSettings) async {
+    final generation = _sessionGeneration;
     try {
       await _apiService.updateBudgetAutomationSettings(newSettings);
+      if (!_isCurrent(generation)) return false;
       _automationSettings = {..._automationSettings, ...newSettings};
       logInfo('Automation settings updated', tag: 'BUDGET_PROVIDER');
       notifyListeners();
       return true;
     } catch (e) {
+      if (!_isCurrent(generation)) return false;
       logError('Error updating automation settings: $e',
           tag: 'BUDGET_PROVIDER');
       return false;
@@ -410,28 +543,37 @@ class BudgetProvider extends ChangeNotifier {
   }
 
   /// Load budget remaining for current month
-  Future<void> loadBudgetRemaining() async {
+  Future<void> loadBudgetRemaining({int? sessionGeneration}) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
     try {
       final now = DateTime.now();
       final remaining = await _apiService.getBudgetRemaining(
           year: now.year, month: now.month);
+      if (!_isCurrent(generation)) return;
       _budgetRemaining = remaining;
       logDebug('Budget remaining loaded', tag: 'BUDGET_PROVIDER');
       notifyListeners();
     } catch (e) {
+      if (!_isCurrent(generation)) return;
       logError('Error loading budget remaining: $e', tag: 'BUDGET_PROVIDER');
     }
   }
 
   /// Load income-based budget recommendations
-  Future<void> loadBudgetRecommendations(double monthlyIncome) async {
+  Future<void> loadBudgetRecommendations(
+    double monthlyIncome, {
+    int? sessionGeneration,
+  }) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
     try {
       final recommendations =
           await _apiService.getIncomeBasedBudgetRecommendations(monthlyIncome);
+      if (!_isCurrent(generation)) return;
       _budgetRecommendations = recommendations;
       logDebug('Budget recommendations loaded', tag: 'BUDGET_PROVIDER');
       notifyListeners();
     } catch (e) {
+      if (!_isCurrent(generation)) return;
       logError('Error loading budget recommendations: $e',
           tag: 'BUDGET_PROVIDER');
     }
@@ -439,14 +581,17 @@ class BudgetProvider extends ChangeNotifier {
 
   /// Load behavioral budget allocation
   Future<void> loadBehavioralAllocation(double monthlyIncome,
-      {Map<String, dynamic>? profile}) async {
+      {Map<String, dynamic>? profile, int? sessionGeneration}) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
     try {
       final allocation = await _apiService
           .getBehavioralBudgetAllocation(monthlyIncome, profile: profile);
+      if (!_isCurrent(generation)) return;
       _behavioralAllocation = allocation;
       logDebug('Behavioral allocation loaded', tag: 'BUDGET_PROVIDER');
       notifyListeners();
     } catch (e) {
+      if (!_isCurrent(generation)) return;
       logError('Error loading behavioral allocation: $e',
           tag: 'BUDGET_PROVIDER');
     }
@@ -455,44 +600,62 @@ class BudgetProvider extends ChangeNotifier {
   /// Load all budget settings data (for BudgetSettingsScreen)
   Future<void> loadBudgetSettingsData(double monthlyIncome,
       {String? incomeTier}) async {
+    final generation = _sessionGeneration;
     _setLoading(true);
     try {
       await Future.wait([
-        loadBudgetMode(),
-        loadAutomationSettings(),
-        loadBudgetRemaining(),
-        loadBudgetRecommendations(monthlyIncome),
+        loadBudgetMode(sessionGeneration: generation),
+        loadAutomationSettings(sessionGeneration: generation),
+        loadBudgetRemaining(sessionGeneration: generation),
+        loadBudgetRecommendations(
+          monthlyIncome,
+          sessionGeneration: generation,
+        ),
         loadBehavioralAllocation(monthlyIncome,
-            profile: incomeTier != null ? {'income_tier': incomeTier} : null),
+            profile: incomeTier != null ? {'income_tier': incomeTier} : null,
+            sessionGeneration: generation),
       ]);
+      if (!_isCurrent(generation)) return;
       logInfo('Budget settings data loaded successfully',
           tag: 'BUDGET_PROVIDER');
     } catch (e) {
+      if (!_isCurrent(generation)) return;
       logError('Error loading budget settings data: $e',
           tag: 'BUDGET_PROVIDER');
       _errorMessage = e.toString();
     } finally {
-      _setLoading(false);
+      if (_isCurrent(generation)) {
+        _setLoading(false);
+      }
     }
   }
 
   /// Load redistribution history
-  Future<void> loadRedistributionHistory() async {
+  Future<void> loadRedistributionHistory({int? sessionGeneration}) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
     try {
       final history = await _apiService.getBudgetRedistributionHistory();
+      if (!_isCurrent(generation)) return;
       _redistributionHistory = asMapList(history);
       logDebug(
           'Redistribution history loaded: ${_redistributionHistory.length} items',
           tag: 'BUDGET_PROVIDER');
       notifyListeners();
     } catch (e) {
+      if (!_isCurrent(generation)) return;
       logError('Error loading redistribution history: $e',
           tag: 'BUDGET_PROVIDER');
     }
   }
 
   /// Load calendar data with fallbacks
-  Future<void> loadCalendarData({int? year, int? month}) async {
+  Future<void> loadCalendarData({
+    int? year,
+    int? month,
+    int? sessionGeneration,
+  }) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
+    final requestId = ++_calendarRequestId;
     final now = DateTime.now();
     final targetYear = year ?? now.year;
     final targetMonth = month ?? now.month;
@@ -508,6 +671,7 @@ class BudgetProvider extends ChangeNotifier {
         year: targetYear,
         month: targetMonth,
       );
+      if (!_isCurrent(generation) || requestId != _calendarRequestId) return;
 
       // ── Step 2: Merge ──
       // The saved-calendar payload already carries backend-computed spent
@@ -559,7 +723,11 @@ class BudgetProvider extends ChangeNotifier {
           logWarning(
               'No saved calendar for $targetYear-$targetMonth — using shell preview',
               tag: 'BUDGET_PROVIDER');
-          _calendarData = asMapList(await _apiService.getCalendar());
+          final shellCalendar = await _apiService.getCalendar();
+          if (!_isCurrent(generation) || requestId != _calendarRequestId) {
+            return;
+          }
+          _calendarData = asMapList(shellCalendar);
           _calendarYear = targetYear;
           _calendarMonth = targetMonth;
           _calendarHasSavedData = false;
@@ -569,6 +737,7 @@ class BudgetProvider extends ChangeNotifier {
       _state = BudgetState.loaded;
       _errorMessage = null;
     } catch (e) {
+      if (!_isCurrent(generation) || requestId != _calendarRequestId) return;
       logError('Calendar load failed: $e', tag: 'BUDGET_PROVIDER');
       _errorMessage = 'Failed to load calendar data';
       _state = BudgetState.error;
@@ -581,13 +750,16 @@ class BudgetProvider extends ChangeNotifier {
         _calendarData = [];
       }
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (_isCurrent(generation) && requestId == _calendarRequestId) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
   /// Load AI budget optimization
-  Future<void> loadAIOptimization() async {
+  Future<void> loadAIOptimization({int? sessionGeneration}) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
     try {
       // AI context input: use the already-merged calendar when present.
       // This method used to fetch the shell preview and ASSIGN it to
@@ -598,6 +770,7 @@ class BudgetProvider extends ChangeNotifier {
       var calendarData = List<Map<String, dynamic>>.from(_calendarData);
       if (calendarData.isEmpty) {
         calendarData = asMapList(await _apiService.getCalendar());
+        if (!_isCurrent(generation)) return;
       }
 
       Map<String, dynamic> calendarDict = {};
@@ -611,6 +784,7 @@ class BudgetProvider extends ChangeNotifier {
 
       // Get user income
       final profile = await _apiService.getUserProfile();
+      if (!_isCurrent(generation)) return;
       final incomeData = asStringKeyedMap(profile['data'])['income'];
       final income = (incomeData == null)
           ? null
@@ -623,25 +797,30 @@ class BudgetProvider extends ChangeNotifier {
         calendar: calendarDict,
         income: income,
       );
+      if (!_isCurrent(generation)) return;
 
       _aiOptimization = optimization;
       logInfo('AI budget optimization loaded successfully',
           tag: 'BUDGET_PROVIDER');
       notifyListeners();
     } catch (e) {
+      if (!_isCurrent(generation)) return;
       logError('Error loading AI budget optimization: $e',
           tag: 'BUDGET_PROVIDER');
     }
   }
 
   /// Load budget adaptations
-  Future<void> loadBudgetAdaptations() async {
+  Future<void> loadBudgetAdaptations({int? sessionGeneration}) async {
+    final generation = sessionGeneration ?? _sessionGeneration;
     try {
       final adaptations = await _apiService.getBudgetAdaptations();
+      if (!_isCurrent(generation)) return;
       _budgetAdaptations = adaptations;
       logInfo('Budget adaptations loaded successfully', tag: 'BUDGET_PROVIDER');
       notifyListeners();
     } catch (e) {
+      if (!_isCurrent(generation)) return;
       logError('Error loading budget adaptations: $e', tag: 'BUDGET_PROVIDER');
     }
   }
@@ -649,6 +828,7 @@ class BudgetProvider extends ChangeNotifier {
   /// Trigger budget redistribution
   Future<bool> redistributeBudget() async {
     if (_isRedistributing) return false;
+    final generation = _sessionGeneration;
 
     _isRedistributing = true;
     notifyListeners();
@@ -658,6 +838,7 @@ class BudgetProvider extends ChangeNotifier {
 
       // Get current calendar data
       final calendarData = await _apiService.getCalendar();
+      if (!_isCurrent(generation)) return false;
       if (calendarData.isEmpty) {
         throw Exception('No calendar data available for redistribution');
       }
@@ -674,35 +855,44 @@ class BudgetProvider extends ChangeNotifier {
 
       // Trigger redistribution
       await _apiService.redistributeCalendarBudget(calendarDict);
+      if (!_isCurrent(generation)) return false;
 
       // Refresh all data
-      await loadAllBudgetData();
+      await loadAllBudgetData(sessionGeneration: generation);
+      if (!_isCurrent(generation)) return false;
 
       logInfo('Budget redistribution completed successfully',
           tag: 'BUDGET_PROVIDER');
       return true;
     } catch (e) {
+      if (!_isCurrent(generation)) return false;
       logError('Budget redistribution failed: $e', tag: 'BUDGET_PROVIDER');
       _errorMessage = 'Failed to redistribute budget: $e';
       return false;
     } finally {
-      _isRedistributing = false;
-      notifyListeners();
+      if (_isCurrent(generation)) {
+        _isRedistributing = false;
+        notifyListeners();
+      }
     }
   }
 
   /// Trigger automatic budget adaptation
   Future<bool> triggerAutoAdaptation() async {
+    final generation = _sessionGeneration;
     try {
       logInfo('Starting automatic budget adaptation', tag: 'BUDGET_PROVIDER');
 
       await _apiService.triggerBudgetAdaptation();
-      await loadAllBudgetData();
+      if (!_isCurrent(generation)) return false;
+      await loadAllBudgetData(sessionGeneration: generation);
+      if (!_isCurrent(generation)) return false;
 
       logInfo('Budget adaptation completed successfully',
           tag: 'BUDGET_PROVIDER');
       return true;
     } catch (e) {
+      if (!_isCurrent(generation)) return false;
       logError('Auto adaptation failed: $e', tag: 'BUDGET_PROVIDER');
       _errorMessage = 'Failed to adapt budget: $e';
       return false;
@@ -745,12 +935,33 @@ class BudgetProvider extends ChangeNotifier {
   /// previously only redistribution history was refreshed and the
   /// dashboard kept showing pre-mutation numbers until an app restart.
   Future<void> onLedgerChanged({bool rebalanced = false}) async {
+    final generation = _sessionGeneration;
     await Future.wait([
-      loadDailyBudgets(),
-      loadCalendarData(),
-      loadLiveBudgetStatus(),
-      if (rebalanced) loadRedistributionHistory(),
+      loadDailyBudgets(sessionGeneration: generation),
+      loadCalendarData(sessionGeneration: generation),
+      loadLiveBudgetStatus(sessionGeneration: generation),
+      if (rebalanced) loadRedistributionHistory(sessionGeneration: generation),
     ]);
+  }
+
+  /// Clear account-scoped state synchronously at an authentication boundary.
+  ///
+  /// Incrementing the generation first invalidates every pending response from
+  /// the previous account. Request sequence counters also prevent older
+  /// same-session live/calendar responses from overwriting newer ones.
+  void resetSession() {
+    _sessionGeneration += 1;
+    _dailyBudgetsRequestId += 1;
+    _liveStatusRequestId += 1;
+    _calendarRequestId += 1;
+    _initializeInFlight = null;
+    _initializeGeneration = null;
+    _budgetUpdateSubscription?.cancel();
+    _budgetUpdateSubscription = null;
+    _liveUpdates.resetSession();
+    _budgetService.resetSession();
+    _clearSessionData();
+    notifyListeners();
   }
 
   /// Clear error message
@@ -771,4 +982,6 @@ class BudgetProvider extends ChangeNotifier {
     _isLoading = loading;
     notifyListeners();
   }
+
+  bool _isCurrent(int generation) => generation == _sessionGeneration;
 }

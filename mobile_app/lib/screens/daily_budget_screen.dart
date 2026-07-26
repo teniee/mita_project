@@ -166,11 +166,27 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
   }
 
   Widget _buildLiveBudgetCard(BudgetProvider budgetProvider) {
-    final liveBudgetStatus = budgetProvider.liveBudgetStatus;
-    if (liveBudgetStatus.isEmpty) return const SizedBox.shrink();
+    if (!budgetProvider.liveStatusFresh) {
+      if (budgetProvider.liveStatusError == null) {
+        return const SizedBox.shrink();
+      }
+      return Card(
+        margin: const EdgeInsets.only(bottom: 16),
+        child: ListTile(
+          leading: const Icon(Icons.cloud_off_outlined),
+          title: const Text('Live budget unavailable'),
+          subtitle: const Text('Pull to refresh or try again.'),
+          trailing: IconButton(
+            tooltip: 'Retry live budget',
+            onPressed: budgetProvider.loadLiveBudgetStatus,
+            icon: const Icon(Icons.refresh),
+          ),
+        ),
+      );
+    }
 
-    final totalBudget = asDouble(liveBudgetStatus['total_budget']);
-    final totalSpent = asDouble(liveBudgetStatus['total_spent']);
+    final totalBudget = budgetProvider.totalBudget;
+    final totalSpent = budgetProvider.totalSpent;
     final remaining = totalBudget - totalSpent;
     final percentage = totalBudget > 0 ? (totalSpent / totalBudget) : 0.0;
 
@@ -691,7 +707,11 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                             asString(budget['status'], fallback: 'unknown');
                         final spent = asDouble(budget['spent']);
                         final limit = asDouble(budget['limit'], fallback: 1);
-                        final percentage = ((spent / limit) * 100).round();
+                        final usageRatio =
+                            limit > 0 && limit.isFinite && spent.isFinite
+                                ? spent / limit
+                                : 0.0;
+                        final percentage = (usageRatio * 100).round();
 
                         return Semantics(
                           label:
@@ -746,7 +766,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                                     label:
                                         'Progress indicator: $percentage percent of budget used',
                                     child: LinearProgressIndicator(
-                                      value: (spent / limit).clamp(0.0, 1.0),
+                                      value: usageRatio.clamp(0.0, 1.0),
                                       backgroundColor: Colors.grey[300],
                                       valueColor: AlwaysStoppedAnimation<Color>(
                                           getStatusColor(status)),

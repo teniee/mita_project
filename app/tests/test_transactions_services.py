@@ -17,6 +17,7 @@ class DummyDB:
     def __init__(self):
         self.added = []
         self.committed = False
+        self.flushed = False
         self.refreshed = []
 
     def add(self, obj):
@@ -24,6 +25,12 @@ class DummyDB:
 
     def commit(self):
         self.committed = True
+
+    def flush(self):
+        self.flushed = True
+
+    def rollback(self):
+        self.committed = False
 
     def refresh(self, obj):
         self.refreshed.append(obj)
@@ -46,11 +53,17 @@ def test_add_transaction_triggers_plan(monkeypatch):
 
     called = {}
 
-    def dummy_apply(db, txn):
+    def dummy_apply(db, txn, *, commit, run_side_effects):
+        assert commit is False
+        assert run_side_effects is False
         called["args"] = (db, txn)
 
     monkeypatch.setattr(
         "app.api.transactions.services.apply_transaction_to_plan", dummy_apply
+    )
+    monkeypatch.setattr(
+        "app.api.transactions.services.run_transaction_plan_side_effects",
+        lambda db, txn, rebalance_result=None: None,
     )
 
     db = DummyDB()
@@ -63,8 +76,10 @@ def test_add_transaction_triggers_plan(monkeypatch):
     user = SimpleNamespace(id="u1", timezone="UTC")
     result = add_transaction(user, data, db)
 
-    assert result is created["txn"]
+    assert result.transaction is created["txn"]
+    assert result.rebalance_plan is None
     assert called["args"] == (db, created["txn"])
+    assert db.flushed
     assert db.committed
 
 

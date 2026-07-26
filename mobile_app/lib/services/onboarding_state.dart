@@ -10,6 +10,7 @@ class OnboardingState {
 
   static const String _storageKey = 'onboarding_state';
   bool _isLoaded = false;
+  int _sessionGeneration = 0;
 
   String? countryCode;
   String? stateCode;
@@ -25,13 +26,16 @@ class OnboardingState {
   /// Load saved onboarding state from persistent storage
   Future<void> load() async {
     if (_isLoaded) return; // Already loaded
+    final generation = _sessionGeneration;
 
     try {
       final prefs = await SharedPreferences.getInstance();
       final jsonString = prefs.getString(_storageKey);
+      if (generation != _sessionGeneration) return;
 
       if (jsonString != null) {
         final data = jsonDecode(jsonString) as Map<String, dynamic>;
+        if (generation != _sessionGeneration) return;
 
         countryCode = data['countryCode'] as String?;
         stateCode = data['stateCode'] as String?;
@@ -60,15 +64,20 @@ class OnboardingState {
         }
       }
 
-      _isLoaded = true;
+      if (generation == _sessionGeneration) {
+        _isLoaded = true;
+      }
     } catch (e) {
       // Failed to load - continue with empty state
-      _isLoaded = true;
+      if (generation == _sessionGeneration) {
+        _isLoaded = true;
+      }
     }
   }
 
   /// Save current onboarding state to persistent storage
   Future<void> save() async {
+    final generation = _sessionGeneration;
     try {
       final data = {
         'countryCode': countryCode,
@@ -85,6 +94,7 @@ class OnboardingState {
       };
 
       final prefs = await SharedPreferences.getInstance();
+      if (generation != _sessionGeneration) return;
       await prefs.setString(_storageKey, jsonEncode(data));
     } catch (e) {
       // Failed to save - non-critical, continue
@@ -93,8 +103,10 @@ class OnboardingState {
 
   /// Clear saved onboarding state from persistent storage
   Future<void> clear() async {
+    final generation = _sessionGeneration;
     try {
       final prefs = await SharedPreferences.getInstance();
+      if (generation != _sessionGeneration) return;
       await prefs.remove(_storageKey);
     } catch (e) {
       // Failed to clear - non-critical
@@ -103,8 +115,10 @@ class OnboardingState {
 
   /// Check if there is saved onboarding progress
   Future<bool> hasSavedProgress() async {
+    final generation = _sessionGeneration;
     try {
       final prefs = await SharedPreferences.getInstance();
+      if (generation != _sessionGeneration) return false;
       return prefs.containsKey(_storageKey);
     } catch (e) {
       return false;
@@ -113,6 +127,25 @@ class OnboardingState {
 
   /// Reset in-memory state and clear persistent storage
   Future<void> reset() async {
+    final generation = beginSessionBoundary();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (generation != _sessionGeneration) return;
+      await prefs.remove(_storageKey);
+    } catch (e) {
+      // Failed to clear - non-critical
+    }
+  }
+
+  /// Invalidate pending onboarding work and synchronously erase account data.
+  int beginSessionBoundary() {
+    _sessionGeneration += 1;
+    _isLoaded = false;
+    _clearMemory();
+    return _sessionGeneration;
+  }
+
+  void _clearMemory() {
     countryCode = null;
     stateCode = null;
     income = null;
@@ -123,8 +156,6 @@ class OnboardingState {
     habits = [];
     habitsComment = null;
     spendingFrequencies = null;
-
-    await clear();
   }
 
   /// Convert onboarding state to a Map for caching with UserProvider
