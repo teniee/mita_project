@@ -30,6 +30,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 // Never a personal or production credential.
 const _runLiveE2E = bool.fromEnvironment('RUN_LIVE_E2E', defaultValue: false);
 
+// A live run must be pointed at a disposable environment explicitly.
+// AppConfig.baseUrl defaults to the production Railway host, so relying on
+// it here would silently exercise production the moment someone passed
+// RUN_LIVE_E2E=true. Require E2E_BASE_URL and refuse the production host.
+const _e2eBaseUrl = String.fromEnvironment('E2E_BASE_URL');
+const _productionHost = 'mita-production-production.up.railway.app';
+
+bool get _e2eTargetIsSafe =>
+    _e2eBaseUrl.isNotEmpty && !_e2eBaseUrl.contains(_productionHost);
+
+String get _e2eTargetProblem => _e2eBaseUrl.isEmpty
+    ? 'E2E_BASE_URL is not set - refusing to fall back to production. '
+        'Pass --dart-define=E2E_BASE_URL=https://<disposable-host>'
+    : 'E2E_BASE_URL points at production ($_productionHost) - refused.';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   // The test binding installs a mock HttpOverrides that answers 400 to all
@@ -70,12 +85,16 @@ void main() {
   var backendReachable = false;
 
   setUpAll(() async {
+    // Refuse before any request, so the failure names the real problem.
+    if (!_runLiveE2E) return;
+    if (!_e2eTargetIsSafe) fail(_e2eTargetProblem);
+
     try {
       await Dio(BaseOptions(
         connectTimeout: const Duration(seconds: 5),
         receiveTimeout: const Duration(seconds: 5),
         validateStatus: (_) => true,
-      )).get(AppConfig.fullHealthUrl);
+      )).get('$_e2eBaseUrl${AppConfig.healthEndpoint}');
       backendReachable = true;
     } catch (_) {
       backendReachable = false;
@@ -87,6 +106,9 @@ void main() {
       markTestSkipped(
           'Live E2E disabled (pass --dart-define=RUN_LIVE_E2E=true)');
       return true;
+    }
+    if (!_e2eTargetIsSafe) {
+      fail(_e2eTargetProblem);
     }
     if (!backendReachable) {
       markTestSkipped('Backend not reachable at ${AppConfig.baseUrl}');
