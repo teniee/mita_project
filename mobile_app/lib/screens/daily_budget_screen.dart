@@ -707,11 +707,16 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                             asString(budget['status'], fallback: 'unknown');
                         final spent = asDouble(budget['spent']);
                         final limit = asDouble(budget['limit'], fallback: 1);
-                        final usageRatio =
-                            limit > 0 && limit.isFinite && spent.isFinite
-                                ? spent / limit
-                                : 0.0;
+                        final hasBudgetLimit =
+                            limit > 0 && limit.isFinite && spent.isFinite;
+                        final usageRatio = hasBudgetLimit ? spent / limit : 0.0;
                         final percentage = (usageRatio * 100).round();
+                        // Without a limit there is no percentage to report.
+                        // Announcing "0 percent used" would state the opposite
+                        // of the truth for a day that has real spending.
+                        final progressSemanticLabel = hasBudgetLimit
+                            ? 'Progress indicator: $percentage percent of budget used'
+                            : 'Progress indicator: no budget limit is set.';
 
                         return Semantics(
                           label:
@@ -763,8 +768,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                                   ),
                                   const SizedBox(height: 4),
                                   Semantics(
-                                    label:
-                                        'Progress indicator: $percentage percent of budget used',
+                                    label: progressSemanticLabel,
                                     child: LinearProgressIndicator(
                                       value: usageRatio.clamp(0.0, 1.0),
                                       backgroundColor: Colors.grey[300],
