@@ -331,7 +331,33 @@ def run_transaction_plan_side_effects(
     txn: Transaction,
     rebalance_result: Optional[RebalancePlan] = None,
 ) -> None:
-    """Run non-ledger alerts after the transaction and plan commit."""
+    """Run non-ledger alerts after the transaction and plan commit.
+
+    Best-effort by contract. The ledger commit that precedes this call is
+    authoritative: the transaction and its DailyPlan rows are already
+    durable. If an alert fails here, the mutation still succeeded, so this
+    must never raise — letting it propagate would turn a committed
+    transaction into a 5xx and invite the client to retry, creating a
+    duplicate transaction for spend that was already recorded.
+
+    Only failures *before* the commit are authoritative; those still raise.
+    """
+    try:
+        _run_transaction_plan_side_effects(db, txn, rebalance_result)
+    except Exception as e:  # noqa: BLE001 - post-commit work cannot fail loudly
+        logger.warning(
+            "Post-commit side effects failed for transaction %s "
+            "(ledger already committed, not retried): %s",
+            getattr(txn, "id", "?"),
+            e,
+        )
+
+
+def _run_transaction_plan_side_effects(
+    db: Session,
+    txn: Transaction,
+    rebalance_result: Optional[RebalancePlan] = None,
+) -> None:
     tz = user_timezone_of(db, txn.user_id)
     txn_day = local_day_of(txn.spent_at, tz)
     day_start = datetime(txn_day.year, txn_day.month, txn_day.day)

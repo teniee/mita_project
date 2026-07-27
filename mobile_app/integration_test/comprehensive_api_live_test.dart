@@ -2,6 +2,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:dio/dio.dart';
 import 'package:mita/config.dart' show AppConfig;
 
+// LIVE END-TO-END TEST — contacts a real backend.
+//
+// Not part of `flutter test`, which runs only `test/` and is protected by the
+// socket guard in test/flutter_test_config.dart. This file must be named
+// explicitly AND opted into with a flag, so it can never run by accident:
+//
+//   flutter test integration_test/comprehensive_api_live_test.dart \
+//     --dart-define=RUN_LIVE_E2E=true
+//
+// Point AppConfig at a disposable environment and use a throwaway account.
+// Never a personal or production credential.
+const _runLiveE2E = bool.fromEnvironment('RUN_LIVE_E2E', defaultValue: false);
+
 /// Comprehensive API Endpoint Testing
 /// Tests all the critical endpoints mentioned in the QA requirements
 ///
@@ -44,6 +57,11 @@ void main() {
     /// Skip helper: returns true when the test should bail out because no
     /// backend is reachable from this environment.
     bool skipIfUnreachable() {
+      if (!_runLiveE2E) {
+        markTestSkipped(
+            'Live E2E disabled (pass --dart-define=RUN_LIVE_E2E=true)');
+        return true;
+      }
       if (!backendReachable) {
         markTestSkipped('Backend not reachable at ' + baseUrl);
         return true;

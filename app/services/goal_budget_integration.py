@@ -4,7 +4,7 @@ Automatically integrates goals with budget system for seamless fund allocation
 """
 
 from datetime import date, datetime, timezone
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Dict, List
 from uuid import UUID
 
@@ -272,11 +272,22 @@ class GoalBudgetIntegration:
                 commit_transaction_to_ledger,
             )
 
+            # Normalise once, in Decimal, and use that value everywhere.
+            # abs(float(amount)) round-tripped money through binary floating
+            # point before it reached a Numeric(12,2) column: 10.05 became
+            # 10.050000000000000710... and the drift then flowed on into
+            # goal progress and the API payload.
+            savings_amount = (
+                Decimal(str(amount))
+                .copy_abs()
+                .quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            )
+
             # Create a savings transaction
             transaction = Transaction(
                 user_id=user_id,
                 goal_id=goal_id,
-                amount=abs(float(amount)),  # Positive for savings
+                amount=savings_amount,  # Positive for savings
                 category="Savings",
                 # Transaction has no `source` column — passing one raised
                 # TypeError inside the try block, so this endpoint answered
@@ -290,7 +301,7 @@ class GoalBudgetIntegration:
             # service commits both, and rolls both back if the plan rebuild
             # fails, so a goal can never advance on a transaction the daily
             # plan never recorded.
-            goal.add_savings(amount)
+            goal.add_savings(savings_amount)
 
             # Previously add + commit here, bypassing the advisory lock and
             # the month rebuild entirely — a savings transfer was invisible
@@ -302,7 +313,7 @@ class GoalBudgetIntegration:
                 "success": True,
                 "transaction_id": str(transaction.id),
                 "goal_title": goal.title,
-                "amount": float(amount),
+                "amount": float(savings_amount),
                 "new_saved_amount": float(goal.saved_amount),
                 "new_progress": float(goal.progress),
             }
