@@ -48,8 +48,15 @@ def add_expense(
     # Note: expense_service expects AsyncSession but we have sync Session
     # Use Transaction model instead for now (more complete implementation)
     from app.db.models import Transaction
+    from app.services.core.engine.expense_tracker import (
+        commit_transaction_to_ledger,
+    )
 
-    # Create transaction record (expense tracking via Transaction model)
+    # Create transaction record (expense tracking via Transaction model).
+    # This used to db.add + db.commit directly, which recorded the spend in
+    # the transaction list while the daily plan never saw it: no advisory
+    # lock, no month rebuild, no redistribution. Route it through the one
+    # ledger service so this endpoint cannot drift from /api/transactions.
     transaction = Transaction(
         user_id=user.id,
         amount=expense_data["amount"],
@@ -57,9 +64,7 @@ def add_expense(
         description=f"Expense: {expense_data.get('action', 'general')}",
         spent_at=datetime.now(timezone.utc),
     )
-    db.add(transaction)
-    db.commit()
-    db.refresh(transaction)
+    commit_transaction_to_ledger(db, transaction)
 
     result = {
         "id": str(transaction.id),

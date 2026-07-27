@@ -441,6 +441,50 @@ def apply_transaction_to_plan(
     return rebalance_result
 
 
+def commit_transaction_to_ledger(
+    db: Session,
+    txn: Transaction,
+    *,
+    run_side_effects: bool = True,
+) -> Optional[RebalancePlan]:
+    """Make a new Transaction visible in the ledger. The only sanctioned way.
+
+    Every writer must go through here so that a transaction row and the
+    DailyPlan allocations it implies move together:
+
+    * the per-user advisory lock is taken before the row is inserted and is
+      held, by the surrounding transaction, until the plan rebuild commits;
+    * the insert and the month rebuild share one commit, so a failing rebuild
+      rolls the transaction back instead of leaving spend the plan never saw;
+    * notifications run only after that commit, and never abort the ledger.
+
+    Callers that build a Transaction and commit it themselves silently skip
+    redistribution: the money leaves the user's budget in the transaction
+    list but never reaches the daily plan, so the dashboard, the calendar and
+    every alert disagree with the ledger.
+    """
+    lock_user_ledger(db, txn.user_id)
+    db.add(txn)
+    try:
+        db.flush()
+        rebalance_result = apply_transaction_to_plan(
+            db,
+            txn,
+            commit=False,
+            run_side_effects=False,
+        )
+        db.commit()
+        db.refresh(txn)
+    except Exception:
+        db.rollback()
+        raise
+
+    if run_side_effects:
+        run_transaction_plan_side_effects(db, txn, rebalance_result)
+
+    return rebalance_result
+
+
 def record_expense(
     db: Session,
     user_id: UUID,

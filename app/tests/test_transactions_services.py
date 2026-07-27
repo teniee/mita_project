@@ -53,17 +53,14 @@ def test_add_transaction_triggers_plan(monkeypatch):
 
     called = {}
 
-    def dummy_apply(db, txn, *, commit, run_side_effects):
-        assert commit is False
-        assert run_side_effects is False
+    # add_transaction now delegates the whole lock/insert/rebuild/commit
+    # sequence to the one ledger service, so that is what we intercept.
+    def dummy_commit(db, txn, *, run_side_effects=True):
         called["args"] = (db, txn)
+        return None
 
     monkeypatch.setattr(
-        "app.api.transactions.services.apply_transaction_to_plan", dummy_apply
-    )
-    monkeypatch.setattr(
-        "app.api.transactions.services.run_transaction_plan_side_effects",
-        lambda db, txn, rebalance_result=None: None,
+        "app.api.transactions.services.commit_transaction_to_ledger", dummy_commit
     )
 
     db = DummyDB()
@@ -79,8 +76,9 @@ def test_add_transaction_triggers_plan(monkeypatch):
     assert result.transaction is created["txn"]
     assert result.rebalance_plan is None
     assert called["args"] == (db, created["txn"])
-    assert db.flushed
-    assert db.committed
+    # The flush/commit pair now belongs to commit_transaction_to_ledger,
+    # which is stubbed here and exercised for real against PostgreSQL in
+    # app/tests/test_ledger_entry_paths.py and the CRUD integration suite.
 
 
 def test_list_user_transactions_pagination(monkeypatch):

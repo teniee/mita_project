@@ -37,18 +37,13 @@ def test_add_transaction_records_expense(monkeypatch):
     monkeypatch.setattr("app.api.transactions.services.Transaction", DummyTxn)
     spent = {"amount": Decimal("0")}
 
-    def fake_apply(db, txn, *, commit, run_side_effects):
-        assert commit is False
-        assert run_side_effects is False
+    def fake_commit(db, txn, *, run_side_effects=True):
         spent["amount"] += txn.amount
+        return None
 
     monkeypatch.setattr(
-        "app.api.transactions.services.apply_transaction_to_plan",
-        fake_apply,
-    )
-    monkeypatch.setattr(
-        "app.api.transactions.services.run_transaction_plan_side_effects",
-        lambda db, txn, rebalance_result=None: None,
+        "app.api.transactions.services.commit_transaction_to_ledger",
+        fake_commit,
     )
 
     db = DummyDB()
@@ -61,7 +56,7 @@ def test_add_transaction_records_expense(monkeypatch):
     user = SimpleNamespace(id="u1", timezone="UTC")
     add_transaction(user, data, db)
 
-    # Daily plan should be updated once with the transaction amount
+    # Daily plan should be updated once with the transaction amount.
+    # add_transaction hands the whole ledger mutation to the canonical
+    # service, so the flush/commit assertions moved there with it.
     assert spent["amount"] == Decimal("12.5")
-    assert db.flushed
-    assert db.committed

@@ -4,16 +4,14 @@ from decimal import Decimal
 from typing import Optional
 from uuid import UUID
 
-from fastapi import BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.db.models import Transaction, User
 from app.services.core.engine.expense_tracker import (
-    apply_transaction_to_plan,
+    commit_transaction_to_ledger,
     local_day_of,
     lock_user_ledger,
     rebuild_month_plan,
-    run_transaction_plan_side_effects,
 )
 from app.services.core.engine.realtime_rebalancer import RebalancePlan
 from app.services.notification_integration import get_notification_integration
@@ -71,28 +69,16 @@ def add_transaction(user: User, data, db: Session) -> TransactionCreationResult:
         spent_at=spent_at,
         goal_id=goal_id,  # Link to goal
     )
-    lock_user_ledger(db, user.id)
-    db.add(txn)
     try:
-        db.flush()
-        rebalance_result = apply_transaction_to_plan(
-            db,
-            txn,
-            commit=False,
-            run_side_effects=False,
-        )
-        db.commit()
-        db.refresh(txn)
+        # Lock, insert, month rebuild and commit are one unit of work; the
+        # notifications inside run afterwards and cannot abort the ledger.
+        rebalance_result = commit_transaction_to_ledger(db, txn)
     except Exception as e:
         from app.core.logging_config import get_logger
 
-        db.rollback()
         logger = get_logger(__name__)
         logger.error(f"Failed to create transaction and update budget plan: {e}")
         raise
-
-    # Keep notifications outside the atomic ledger/plan commit.
-    run_transaction_plan_side_effects(db, txn, rebalance_result)
 
     # MODULE 5: Update goal progress if linked
     if goal_id:
@@ -128,55 +114,6 @@ def add_transaction(user: User, data, db: Session) -> TransactionCreationResult:
         transaction=txn,
         rebalance_plan=rebalance_result,
     )
-
-
-def add_transaction_background(
-    user: User, data, db: Session, background_tasks: BackgroundTasks
-) -> Transaction:
-    """Create a transaction and update the plan in a background task."""
-    # Ensure amount is a proper Decimal for financial accuracy
-    amount = (
-        data.amount if isinstance(data.amount, Decimal) else Decimal(str(data.amount))
-    )
-
-    # Validate amount is positive and reasonable
-    if amount <= 0:
-        raise ValueError("Transaction amount must be positive")
-    if amount > Decimal("1000000"):  # 1 million limit
-        raise ValueError("Transaction amount exceeds maximum limit")
-
-    # Handle spent_at: use provided time or current UTC time
-    if hasattr(data, "spent_at") and data.spent_at is not None:
-        spent_at = from_user_timezone(data.spent_at, user.timezone)
-    else:
-        # Default to current UTC time if not provided
-        spent_at = datetime.now(timezone.utc)
-
-    txn = Transaction(
-        user_id=user.id,
-        category=data.category,
-        amount=amount,
-        currency=getattr(data, "currency", "USD"),
-        description=getattr(data, "description", None),
-        merchant=getattr(data, "merchant", None),
-        location=getattr(data, "location", None),
-        tags=getattr(data, "tags", None),
-        is_recurring=getattr(data, "is_recurring", False),
-        confidence_score=getattr(data, "confidence_score", None),
-        receipt_url=getattr(data, "receipt_url", None),
-        notes=getattr(data, "notes", None),
-        spent_at=spent_at,
-    )
-    lock_user_ledger(db, user.id)
-    db.add(txn)
-    db.commit()
-    db.refresh(txn)
-
-    # Apply budget plan update in background
-    background_tasks.add_task(apply_transaction_to_plan, db, txn)
-
-    txn.spent_at = to_user_timezone(txn.spent_at, user.timezone)
-    return txn
 
 
 def list_user_transactions(

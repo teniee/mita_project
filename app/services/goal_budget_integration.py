@@ -268,25 +268,35 @@ class GoalBudgetIntegration:
             return {"error": "Goal is not active"}
 
         try:
+            from app.services.core.engine.expense_tracker import (
+                commit_transaction_to_ledger,
+            )
+
             # Create a savings transaction
             transaction = Transaction(
                 user_id=user_id,
                 goal_id=goal_id,
                 amount=abs(float(amount)),  # Positive for savings
                 category="Savings",
+                # Transaction has no `source` column — passing one raised
+                # TypeError inside the try block, so this endpoint answered
+                # 400 for every request since it was written. Provenance
+                # lives in the description and in goal_id.
                 description=f"Automatic savings for goal: {goal.title}",
                 spent_at=datetime.now(timezone.utc),
-                source="auto_goal_transfer",
             )
 
-            self.db.add(transaction)
-
-            # Update goal progress
+            # Update goal progress in the same unit of work: the ledger
+            # service commits both, and rolls both back if the plan rebuild
+            # fails, so a goal can never advance on a transaction the daily
+            # plan never recorded.
             goal.add_savings(amount)
 
-            self.db.commit()
+            # Previously add + commit here, bypassing the advisory lock and
+            # the month rebuild entirely — a savings transfer was invisible
+            # to the daily plan and to redistribution.
+            commit_transaction_to_ledger(self.db, transaction)
             self.db.refresh(goal)
-            self.db.refresh(transaction)
 
             return {
                 "success": True,
