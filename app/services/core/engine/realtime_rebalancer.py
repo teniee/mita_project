@@ -72,11 +72,7 @@ def _allocate_cents_with_caps(
         (max(Decimal("0"), target) * 100).to_integral_value(rounding=ROUND_DOWN)
     )
     capacity_cents = [
-        int(
-            (max(Decimal("0"), capacity) * 100).to_integral_value(
-                rounding=ROUND_DOWN
-            )
-        )
+        int((max(Decimal("0"), capacity) * 100).to_integral_value(rounding=ROUND_DOWN))
         for capacity in capacities
     ]
     target_cents = min(target_cents, sum(capacity_cents))
@@ -134,6 +130,12 @@ class RebalancePlan:
         }
 
 
+def _plan_row_day(entry: DailyPlan) -> date:
+    """Calendar day of a plan row, whether it is loaded as date or datetime."""
+    value = entry.date
+    return value.date() if hasattr(value, "date") else value
+
+
 def rebalance_after_overspend(
     db: Session,
     user_id: UUID,
@@ -143,6 +145,7 @@ def rebalance_after_overspend(
     dry_run: bool = False,
     commit: bool = True,
     record_audit: bool = True,
+    month_rows: Optional[Dict] = None,
 ) -> RebalancePlan:
     """
     Core algorithm: redistribute future budget after overspend.
@@ -154,6 +157,10 @@ def rebalance_after_overspend(
         overspend_amount: how much over the plan (positive Decimal)
         transaction_date: the date overspending occurred
         dry_run: if True, calculate but do NOT save changes to DB
+        month_rows: optional {(day, category): DailyPlan} covering the whole
+            month. A month rebuild already holds every row under the same
+            advisory lock, so re-selecting them per (day, category) bucket
+            costs two extra round trips each with no new information.
 
     Returns:
         RebalancePlan with summary of what was changed
@@ -178,17 +185,33 @@ def rebalance_after_overspend(
     )
     month_end_dt = datetime(month_end.year, month_end.month, month_end.day, 23, 59, 59)
 
-    # 1. Fetch all FUTURE DailyPlan entries in this month (strictly after transaction_date)
-    future_entries: List[DailyPlan] = (
-        db.query(DailyPlan)
-        .filter(
-            DailyPlan.user_id == user_id,
-            DailyPlan.date > day_start,
-            DailyPlan.date <= month_end_dt,
+    # 1. All FUTURE DailyPlan entries in this month (strictly after transaction_date).
+    #    Ordering must match the SQL path exactly — donor selection is
+    #    order-sensitive and the replay has to stay deterministic.
+    if month_rows is None:
+        future_entries: List[DailyPlan] = (
+            db.query(DailyPlan)
+            .filter(
+                DailyPlan.user_id == user_id,
+                DailyPlan.date > day_start,
+                DailyPlan.date <= month_end_dt,
+            )
+            .order_by(DailyPlan.date, DailyPlan.category, DailyPlan.id)
+            .all()
         )
-        .order_by(DailyPlan.date, DailyPlan.category, DailyPlan.id)
-        .all()
-    )
+    else:
+        future_entries = sorted(
+            (
+                entry
+                for (row_day, _category), entry in month_rows.items()
+                if transaction_date < row_day <= month_end
+            ),
+            key=lambda entry: (
+                _plan_row_day(entry),
+                entry.category or "",
+                str(entry.id),
+            ),
+        )
 
     if not future_entries:
         logger.info(
@@ -312,16 +335,20 @@ def rebalance_after_overspend(
             59,
             59,
         )
-        overspent_entry: Optional[DailyPlan] = (
-            db.query(DailyPlan)
-            .filter(
-                DailyPlan.user_id == user_id,
-                DailyPlan.category == overspent_category,
-                DailyPlan.date >= day_start_credit,
-                DailyPlan.date <= day_end_credit,
+        if month_rows is None:
+            overspent_entry: Optional[DailyPlan] = (
+                db.query(DailyPlan)
+                .filter(
+                    DailyPlan.user_id == user_id,
+                    DailyPlan.category == overspent_category,
+                    DailyPlan.date >= day_start_credit,
+                    DailyPlan.date <= day_end_credit,
+                )
+                .first()
             )
-            .first()
-        )
+        else:
+            # uq_daily_plan_user_date_category makes this at most one row.
+            overspent_entry = month_rows.get((transaction_date, overspent_category))
         if overspent_entry is not None:
             overspent_entry.planned_amount = (
                 Decimal(str(overspent_entry.planned_amount or 0)) + plan.covered
@@ -365,29 +392,41 @@ def check_and_rebalance(
     dry_run: bool = False,
     commit: bool = True,
     record_audit: bool = True,
+    month_rows: Optional[Dict] = None,
 ) -> Optional[RebalancePlan]:
     """
     Check if category is overspent on given date, trigger rebalance if so.
     Call this after recording a transaction. Returns None if no overspend.
-    """
-    # DailyPlan.date is DateTime — match by date range covering the full day
-    day_start = datetime(
-        transaction_date.year, transaction_date.month, transaction_date.day, 0, 0, 0
-    )
-    day_end = datetime(
-        transaction_date.year, transaction_date.month, transaction_date.day, 23, 59, 59
-    )
 
-    entry: Optional[DailyPlan] = (
-        db.query(DailyPlan)
-        .filter(
-            DailyPlan.user_id == user_id,
-            DailyPlan.category == category,
-            DailyPlan.date >= day_start,
-            DailyPlan.date <= day_end,
+    ``month_rows`` lets a caller that already holds the month's plan rows
+    (see rebuild_month_plan) skip the per-bucket lookups entirely.
+    """
+    if month_rows is None:
+        # DailyPlan.date is DateTime — match by date range covering the full day
+        day_start = datetime(
+            transaction_date.year, transaction_date.month, transaction_date.day, 0, 0, 0
         )
-        .first()
-    )
+        day_end = datetime(
+            transaction_date.year,
+            transaction_date.month,
+            transaction_date.day,
+            23,
+            59,
+            59,
+        )
+
+        entry: Optional[DailyPlan] = (
+            db.query(DailyPlan)
+            .filter(
+                DailyPlan.user_id == user_id,
+                DailyPlan.category == category,
+                DailyPlan.date >= day_start,
+                DailyPlan.date <= day_end,
+            )
+            .first()
+        )
+    else:
+        entry = month_rows.get((transaction_date, category))
 
     if not entry:
         return None
@@ -415,4 +454,5 @@ def check_and_rebalance(
         dry_run=dry_run,
         commit=commit,
         record_audit=record_audit,
+        month_rows=month_rows,
     )

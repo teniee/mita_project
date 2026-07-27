@@ -591,9 +591,7 @@ class TestFinancialRecalculation:
             "custom": "preserve-me",
         }
 
-    def test_month_rebuild_does_not_lock_transaction_rows(
-        self, db_session, user_a
-    ):
+    def test_month_rebuild_does_not_lock_transaction_rows(self, db_session, user_a):
         """A ledger rebuild must not wait on unrelated transaction row locks."""
         transaction_month = self._previous_month(datetime.now(timezone.utc).date())
         transaction_day = transaction_month.replace(day=10)
@@ -762,7 +760,73 @@ class TestFinancialRecalculation:
             user_a,
             transaction_day,
             "food",
-        )[2] == Decimal("40.00")
+        )[
+            2
+        ] == Decimal("40.00")
+
+    def test_month_rebuild_plan_reads_do_not_scale_with_bucket_count(
+        self, db_session, user_a
+    ):
+        """The rebuild must not re-read the month once per (day, category).
+
+        rebuild_month_plan already loads every plan row in the month FOR
+        UPDATE under the advisory lock. Before the month rows were handed to
+        the rebalancer, each overspent bucket issued its own entry lookup,
+        future-entries scan and credit-back lookup — 169 daily_plan SELECTs
+        for a realistic month, growing with the number of buckets.
+        """
+        from sqlalchemy import event
+
+        month = self._previous_month(datetime.now(timezone.utc).date())
+        categories = ["food", "entertainment", "shopping", "utilities"]
+
+        db_session.add_all(
+            [
+                self._new_plan(user_a, month.replace(day=day), category, "25.00")
+                for day in range(1, 21)
+                for category in categories
+            ]
+        )
+        db_session.add_all(
+            [
+                Transaction(
+                    user_id=user_a.id,
+                    category=category,
+                    amount=Decimal("30.00"),
+                    spent_at=datetime(
+                        month.year, month.month, day, 12, tzinfo=timezone.utc
+                    ),
+                )
+                for day in range(1, 21)
+                for category in categories
+            ]
+        )
+        db_session.commit()
+
+        buckets = 20 * len(categories)
+        plan_selects = []
+
+        def _count(conn, cursor, statement, params, context, executemany):
+            normalized = " ".join(statement.split()).upper()
+            if normalized.startswith("SELECT") and "DAILY_PLAN" in normalized:
+                plan_selects.append(normalized)
+
+        bind = db_session.get_bind()
+        event.listen(bind, "before_cursor_execute", _count)
+        try:
+            rebuild_month_plan(
+                db_session, user_a.id, month, tz=user_a.timezone, commit=True
+            )
+        finally:
+            event.remove(bind, "before_cursor_execute", _count)
+
+        # One FOR UPDATE load of the month is enough. Allow a small constant
+        # for session bookkeeping, but never anything proportional to buckets.
+        assert buckets == 80
+        assert len(plan_selects) <= 5, (
+            f"{len(plan_selects)} daily_plan SELECTs for {buckets} buckets - "
+            "the per-bucket re-read has come back"
+        )
 
     def test_create_edit_delete_exact_values(self, as_user_a, db_session, user_a):
         base_balance, base_spent = _dashboard_numbers(as_user_a)

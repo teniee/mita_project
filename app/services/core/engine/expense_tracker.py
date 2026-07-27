@@ -256,6 +256,9 @@ def rebuild_month_plan(
 
     rebalance_results = {}
     for day, category in sorted(totals):
+        # rows_by_key already holds every plan row in this month, loaded FOR
+        # UPDATE under the advisory lock. Handing it to the rebalancer keeps
+        # the replay from re-selecting the same rows once per bucket.
         result = check_and_rebalance(
             db=db,
             user_id=user_id,
@@ -263,6 +266,7 @@ def rebuild_month_plan(
             transaction_date=day,
             commit=False,
             record_audit=False,
+            month_rows=rows_by_key,
         )
         if result is not None:
             rebalance_results[(day, category)] = result
