@@ -298,8 +298,10 @@ class AdvancedOfflineService {
       return CacheEntry(
         data: asString(row['data']),
         contentType: asStringOrNull(row['content_type']),
-        createdAt: DateTime.fromMillisecondsSinceEpoch(asInt(row['created_at'])),
-        expiresAt: DateTime.fromMillisecondsSinceEpoch(asInt(row['expires_at'])),
+        createdAt:
+            DateTime.fromMillisecondsSinceEpoch(asInt(row['created_at'])),
+        expiresAt:
+            DateTime.fromMillisecondsSinceEpoch(asInt(row['expires_at'])),
         etag: asStringOrNull(row['etag']),
         lastModified: asStringOrNull(row['last_modified']),
       );

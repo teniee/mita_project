@@ -11,7 +11,6 @@ import 'dart:async';
 import 'api_service.dart';
 import 'logging_service.dart';
 
-
 enum ThresholdType {
   budgetAllocation('budget_allocation'),
   spendingPattern('spending_pattern'),

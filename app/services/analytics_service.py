@@ -2,7 +2,6 @@ from datetime import datetime, timezone
 from typing import List
 
 from sqlalchemy import extract, func, select
-from sqlalchemy.orm import Session
 
 from app.db.models.transaction import Transaction
 from app.services.core.analytics.monthly_aggregator import aggregate_monthly_data

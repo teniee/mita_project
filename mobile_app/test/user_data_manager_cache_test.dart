@@ -25,7 +25,8 @@ void main() {
     });
 
     test('rejects an empty cached profile', () {
-      expect(UserDataManager.isUsableCachedProfile(<String, dynamic>{}), isFalse);
+      expect(
+          UserDataManager.isUsableCachedProfile(<String, dynamic>{}), isFalse);
     });
 
     test('accepts a real server profile', () {

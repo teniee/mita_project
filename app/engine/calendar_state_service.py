@@ -34,9 +34,7 @@ def get_calendar_day_state(user_id: str, year: int, month: int, day: int):
     db = create_sync_session()
     try:
         month_start = date(year, month, 1)
-        month_end = (
-            date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
-        )
+        month_end = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
         month_rows_exist = (
             db.query(DailyPlan.id)
             .filter(
@@ -65,9 +63,7 @@ def get_calendar_day_state(user_id: str, year: int, month: int, day: int):
             logger.warning(f"[user={user_id}] Day {day_str} not found in calendar")
             return {"error": "day not found"}
 
-        planned = {
-            row.category: float(row.planned_amount or 0) for row in rows
-        }
+        planned = {row.category: float(row.planned_amount or 0) for row in rows}
         actual = {row.category: float(row.spent_amount or 0) for row in rows}
         status = _day_status(sum(planned.values()), sum(actual.values()))
         recommendations: list = []

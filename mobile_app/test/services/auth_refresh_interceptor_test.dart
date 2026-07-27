@@ -45,7 +45,8 @@ class _FakeAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
-ResponseBody _json(int status, Map<String, dynamic> body) => ResponseBody.fromString(
+ResponseBody _json(int status, Map<String, dynamic> body) =>
+    ResponseBody.fromString(
       jsonEncode(body),
       status,
       headers: {
@@ -153,7 +154,9 @@ void main() {
       if (o.path.contains('transactions')) {
         return accessExpired
             ? _json(401, {'detail': 'expired'})
-            : _json(200, {'data': {'id': 'txn1', 'amount': 100}});
+            : _json(200, {
+                'data': {'id': 'txn1', 'amount': 100}
+              });
       }
       return _json(200, {});
     });
@@ -206,7 +209,8 @@ void main() {
     for (final r in results) {
       expect(r.statusCode, 200);
     }
-    expect(h.refreshCalls, 1, reason: 'single-flight: one refresh for the wave');
+    expect(h.refreshCalls, 1,
+        reason: 'single-flight: one refresh for the wave');
   });
 
   test('replayed request 401s AGAIN → no second refresh, no loop', () async {

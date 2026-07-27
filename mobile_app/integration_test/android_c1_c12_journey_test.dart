@@ -57,7 +57,8 @@ void main() {
   testWidgets('Android C1–C12 core mobile journey (live backend)',
       (tester) async {
     if (!_runLiveE2E) {
-      markTestSkipped('Live E2E disabled (pass --dart-define=RUN_LIVE_E2E=true)');
+      markTestSkipped(
+          'Live E2E disabled (pass --dart-define=RUN_LIVE_E2E=true)');
       return;
     }
     if (!backendReachable) {
@@ -87,8 +88,7 @@ void main() {
     // ── C2: login + persist tokens in the real Keystore ─────────────────
     final login = await api.login(email, password);
     expect(login.statusCode, 200, reason: 'C2 login');
-    final loginData =
-        ((login.data as Map)['data'] ?? login.data) as Map;
+    final loginData = ((login.data as Map)['data'] ?? login.data) as Map;
     final access = loginData['access_token'] as String;
     final refresh = loginData['refresh_token'] as String;
     await api.saveTokens(access, refresh);
@@ -183,7 +183,8 @@ void main() {
     final apiAfterRestart = ApiService();
     expect(await apiAfterRestart.getToken(), isNotEmpty,
         reason: 'C10 session survives an app restart (Keystore persistence)');
-    final dashAfterRestart = await apiAfterRestart.getDashboard(userIncome: 6000);
+    final dashAfterRestart =
+        await apiAfterRestart.getDashboard(userIncome: 6000);
     expect(dashAfterRestart, isNotEmpty,
         reason: 'C10 dashboard reloads after restart');
 
@@ -195,8 +196,7 @@ void main() {
     // ── C12: re-login restores an authenticated session ─────────────────
     final relogin = await api.login(email, password);
     expect(relogin.statusCode, 200, reason: 'C12 re-login');
-    final reData =
-        ((relogin.data as Map)['data'] ?? relogin.data) as Map;
+    final reData = ((relogin.data as Map)['data'] ?? relogin.data) as Map;
     await api.saveTokens(
         reData['access_token'] as String, reData['refresh_token'] as String);
     expect(await api.getToken(), isNotEmpty, reason: 'C12 re-login session');

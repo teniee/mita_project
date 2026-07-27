@@ -199,9 +199,7 @@ class TestGoalAutoTransfer:
     """Goal auto-transfer used to commit a savings Transaction with no plan."""
 
     def test_auto_transfer_applies_to_daily_plan(self, db_session, user_a):
-        from app.services.goal_budget_integration import (
-            get_goal_budget_integration,
-        )
+        from app.services.goal_budget_integration import get_goal_budget_integration
 
         goal = Goal(
             id=uuid4(),

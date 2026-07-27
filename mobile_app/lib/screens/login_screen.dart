@@ -383,8 +383,7 @@ class _LoginScreenState extends State<LoginScreen>
         } else if (e is DioException) {
           final statusCode = e.response?.statusCode;
           if (statusCode != null) {
-            errorMsg =
-                'Google sign-in failed ($statusCode). Please try again.';
+            errorMsg = 'Google sign-in failed ($statusCode). Please try again.';
           }
         }
 
@@ -405,7 +404,6 @@ class _LoginScreenState extends State<LoginScreen>
 
   Future<void> _handleEmailLogin() async {
     if (isLoading) return;
-
 
     // Basic form validation — only check non-empty for login
     // (password strength validation is for registration, not login)
@@ -460,7 +458,8 @@ class _LoginScreenState extends State<LoginScreen>
         dev.log('Login API response received: ${response.statusCode}',
             name: 'LoginScreen');
       if (kDebugMode)
-        dev.log('Login response data keys: ${asStringKeyedMapOrNull(response.data)?.keys.toList()}',
+        dev.log(
+            'Login response data keys: ${asStringKeyedMapOrNull(response.data)?.keys.toList()}',
             name: 'LoginScreen');
 
       if (response.statusCode != 200) {

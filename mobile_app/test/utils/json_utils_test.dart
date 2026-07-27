@@ -95,8 +95,8 @@ void main() {
 
   group('asDateTimeOrNull', () {
     test('parses ISO strings and passes DateTime through', () {
-      expect(asDateTimeOrNull('2026-07-12T00:00:00Z'),
-          DateTime.utc(2026, 7, 12));
+      expect(
+          asDateTimeOrNull('2026-07-12T00:00:00Z'), DateTime.utc(2026, 7, 12));
       final now = DateTime(2026, 1, 1);
       expect(asDateTimeOrNull(now), now);
     });

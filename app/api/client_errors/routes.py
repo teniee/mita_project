@@ -43,16 +43,23 @@ _MAX_BODY_BYTES = 64 * 1024
 _REDACTIONS = [
     # JWTs (three base64url segments) — access/refresh tokens in exception
     # text or stack frames.
-    (re.compile(r"eyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]*"),
-     "[REDACTED_JWT]"),
+    (
+        re.compile(r"eyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]*"),
+        "[REDACTED_JWT]",
+    ),
     # Authorization headers pasted into error strings.
-    (re.compile(r"(?i)(authorization['\"]?\s*[:=]\s*['\"]?)(bearer\s+)?[^\s'\",}]+"),
-     r"\1[REDACTED]"),
+    (
+        re.compile(r"(?i)(authorization['\"]?\s*[:=]\s*['\"]?)(bearer\s+)?[^\s'\",}]+"),
+        r"\1[REDACTED]",
+    ),
     # password/secret/token/api_key style key-value pairs.
-    (re.compile(
-        r"(?i)((?:password|passwd|pwd|secret|api[_-]?key|refresh[_-]?token|"
-        r"access[_-]?token)['\"]?\s*[:=]\s*['\"]?)[^\s'\",}]+"),
-     r"\1[REDACTED]"),
+    (
+        re.compile(
+            r"(?i)((?:password|passwd|pwd|secret|api[_-]?key|refresh[_-]?token|"
+            r"access[_-]?token)['\"]?\s*[:=]\s*['\"]?)[^\s'\",}]+"
+        ),
+        r"\1[REDACTED]",
+    ),
     # Long opaque hex/base64 blobs (32+ chars) that are most likely keys.
     (re.compile(r"\b[A-Fa-f0-9]{32,}\b"), "[REDACTED_HEX]"),
 ]
@@ -75,7 +82,11 @@ async def report_client_error(
     report: ClientErrorReport, request: Request
 ) -> ClientErrorAck:
     content_length = request.headers.get("content-length")
-    if content_length and content_length.isdigit() and int(content_length) > _MAX_BODY_BYTES:
+    if (
+        content_length
+        and content_length.isdigit()
+        and int(content_length) > _MAX_BODY_BYTES
+    ):
         raise HTTPException(status_code=413, detail="Report too large")
 
     await rate_limiter.check_rate_limit(

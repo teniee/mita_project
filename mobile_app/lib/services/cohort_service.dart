@@ -580,10 +580,9 @@ class CohortService {
   }
 
   String _getOverallPeerComparison(Map<String, dynamic> comparison) {
-    final aboveCount =
-        comparison.values
-            .where((c) => asStringKeyedMap(c)['comparison'] == 'above')
-            .length;
+    final aboveCount = comparison.values
+        .where((c) => asStringKeyedMap(c)['comparison'] == 'above')
+        .length;
     final totalCount = comparison.length;
     final percentage = (aboveCount / totalCount * 100).round();
 

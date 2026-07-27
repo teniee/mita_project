@@ -385,7 +385,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                     const SizedBox(height: 8),
                     Text(
                       asString(insights['spending_personality'],
-                    fallback: 'Analyzing...'),
+                          fallback: 'Analyzing...'),
                       style: const TextStyle(
                         fontFamily: AppTypography.fontHeading,
                         color: Colors.white,
@@ -917,8 +917,10 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        asString(behavioralProgress['progress_message'],
-                                fallback: 'Keep up the great work!',),
+                        asString(
+                          behavioralProgress['progress_message'],
+                          fallback: 'Keep up the great work!',
+                        ),
                         style: const TextStyle(
                           fontFamily: AppTypography.fontBody,
                           color: Colors.white,
@@ -1004,7 +1006,7 @@ class _BehavioralInsightsScreenState extends State<BehavioralInsightsScreen>
                       const SizedBox(height: 8),
                       Text(
                         asString(behavioralCluster['cluster_name'],
-                      fallback: 'Unknown'),
+                            fallback: 'Unknown'),
                         style: const TextStyle(
                           fontFamily: AppTypography.fontHeading,
                           color: Colors.white,

@@ -87,8 +87,8 @@ class TransactionService {
       }
 
       return transactionList
-          .map((json) => TransactionModel.fromJson(
-              Map<String, dynamic>.from(json as Map)))
+          .map((json) =>
+              TransactionModel.fromJson(Map<String, dynamic>.from(json as Map)))
           .toList();
     } on DioException catch (e) {
       logError('Error loading transactions: ${e.message}');
@@ -102,8 +102,7 @@ class TransactionService {
   /// Get a single transaction by ID
   Future<TransactionModel> getTransaction(String transactionId) async {
     try {
-      final response =
-          await _dio.get<dynamic>('/transactions/$transactionId');
+      final response = await _dio.get<dynamic>('/transactions/$transactionId');
       final data = response.data;
       final transactionData =
           data is Map && data.containsKey('data') ? data['data'] : data;

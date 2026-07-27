@@ -1,8 +1,5 @@
 # isort: off
 from app.engine.analytics_engine import AnalyticsEngine
-from app.engine.goal_mode_ui_api import (
-    get_goal_progress as calculate_goal_progress,  # noqa: E501
-)
 from app.engine.progress_logic import get_progress_data
 
 # isort: on

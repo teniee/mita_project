@@ -153,8 +153,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           errorMessage =
               'Server is experiencing issues. This is a temporary problem - please try again in a few minutes.';
         } else if (statusCode != null && statusCode >= 500) {
-          errorMessage =
-              'Server error ($statusCode). Please try again later.';
+          errorMessage = 'Server error ($statusCode). Please try again later.';
         }
 
         // Handle timeout errors specifically

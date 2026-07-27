@@ -42,9 +42,10 @@ void main() {
     expect(find.text('MAIN DASHBOARD'), findsNothing);
 
     // A retry/recovery affordance is present (blocking, actionable error UI).
-    final hasActionableError = find.textContaining('account').evaluate().isNotEmpty ||
-        find.textContaining('log in').evaluate().isNotEmpty ||
-        find.text('Retry').evaluate().isNotEmpty;
+    final hasActionableError =
+        find.textContaining('account').evaluate().isNotEmpty ||
+            find.textContaining('log in').evaluate().isNotEmpty ||
+            find.text('Retry').evaluate().isNotEmpty;
     expect(hasActionableError, isTrue,
         reason: 'a blocking, retryable error must be shown');
   });

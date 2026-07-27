@@ -10,7 +10,9 @@ with AWARE UTC instants (independent of DB session / process timezone).
 Requires: PostgreSQL at DATABASE_URL (test_mita) with migrations at head.
 """
 
-from datetime import datetime, time as dtime, timedelta, timezone
+from datetime import datetime
+from datetime import time as dtime
+from datetime import timedelta, timezone
 from decimal import Decimal
 from uuid import uuid4
 from zoneinfo import ZoneInfo
@@ -118,9 +120,9 @@ def test_week_strip_files_0030_txn_on_the_sofia_day(
         f"txn at 00:30 Sofia must be filed on the Sofia day {local_day} "
         f"({local_label}), got week={week}"
     )
-    assert by_label[utc_label]["spent"] == pytest.approx(0.0), (
-        f"txn must NOT be filed on the UTC day {utc_day} ({utc_label})"
-    )
+    assert by_label[utc_label]["spent"] == pytest.approx(
+        0.0
+    ), f"txn must NOT be filed on the UTC day {utc_day} ({utc_label})"
 
 
 def test_monthly_spending_uses_local_month_boundary(

@@ -31,12 +31,12 @@ void main() {
 
     test('background/enrichment requests do not toast globally', () {
       expect(ApiService.isCoreJourneyPath('/ai/snapshot'), isFalse);
-      expect(ApiService.isCoreJourneyPath('/ai/financial-health-score'),
-          isFalse);
+      expect(
+          ApiService.isCoreJourneyPath('/ai/financial-health-score'), isFalse);
       expect(ApiService.isCoreJourneyPath('/cohort/insights'), isFalse);
       expect(ApiService.isCoreJourneyPath('/analytics/monthly'), isFalse);
-      expect(ApiService.isCoreJourneyPath('/insights/income_based_tips'),
-          isFalse);
+      expect(
+          ApiService.isCoreJourneyPath('/insights/income_based_tips'), isFalse);
       expect(ApiService.isCoreJourneyPath('/budget/suggestions'), isFalse);
       expect(ApiService.isCoreJourneyPath('/budget/adaptations'), isFalse);
       expect(ApiService.isCoreJourneyPath('/habits/'), isFalse);
@@ -68,7 +68,8 @@ void main() {
       var found = false;
       for (var i = 0; i < 12 && !found; i++) {
         await tester.pump(const Duration(milliseconds: 500));
-        found = find.text('Session expired. Please log in.').evaluate().isNotEmpty;
+        found =
+            find.text('Session expired. Please log in.').evaluate().isNotEmpty;
       }
       expect(found, isTrue,
           reason: 'a distinct error message must not be deduped away');

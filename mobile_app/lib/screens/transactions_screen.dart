@@ -366,7 +366,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                                           padding: const EdgeInsets.symmetric(
                                               horizontal: 8, vertical: 2),
                                           decoration: BoxDecoration(
-                                            color: Colors.blue.withValues(alpha: 0.1),
+                                            color: Colors.blue
+                                                .withValues(alpha: 0.1),
                                             borderRadius:
                                                 BorderRadius.circular(8),
                                           ),

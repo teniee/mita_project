@@ -20,7 +20,6 @@ class SmartGoalEngine {
   factory SmartGoalEngine() => _instance;
   SmartGoalEngine._internal();
 
-
   // ===========================================================================
   // SMART GOAL OPTIMIZATION
   // ===========================================================================

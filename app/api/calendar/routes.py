@@ -21,6 +21,13 @@ from app.api.calendar.schemas import (
     ShellCalendarOut,
     ShellConfig,
 )
+
+# -------------------------- Service functions -------------------
+# fetch_day_state comes from the real DailyPlan-backed service — the
+# placeholder module's version returned a static task list for every user.
+# The remaining imports are the documented in-memory dev helpers (no mobile
+# caller; see verified-defects session-5 notes).
+from app.api.calendar.services import fetch_day_state
 from app.api.dependencies import get_current_user
 from app.core.session import get_db
 from app.db.models.daily_plan import DailyPlan
@@ -29,13 +36,6 @@ from app.db.models.daily_plan import DailyPlan
 from app.engine.budget_redistributor import (
     redistribute_budget as redistribute_calendar_budget,
 )
-
-# -------------------------- Service functions -------------------
-# fetch_day_state comes from the real DailyPlan-backed service — the
-# placeholder module's version returned a static task list for every user.
-# The remaining imports are the documented in-memory dev helpers (no mobile
-# caller; see verified-defects session-5 notes).
-from app.api.calendar.services import fetch_day_state
 from app.services.calendar_service import (
     fetch_calendar,
     generate_calendar,

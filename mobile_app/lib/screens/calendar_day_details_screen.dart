@@ -367,8 +367,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
         if (!anyTxForDay && catsMap != null) {
           catsMap.forEach((cat, val) {
             if (val is Map) {
-              spentByCategory[cat] =
-                  (val['spent'] as num?)?.toDouble() ?? 0.0;
+              spentByCategory[cat] = (val['spent'] as num?)?.toDouble() ?? 0.0;
             }
           });
         }
@@ -1519,8 +1518,7 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     return _predictions!.values.fold<double>(
         0.0,
         (sum, pred) =>
-            sum +
-            asDouble(asStringKeyedMap(pred)['predicted_amount']));
+            sum + asDouble(asStringKeyedMap(pred)['predicted_amount']));
   }
 
   String _formatCategoryName(String category) {

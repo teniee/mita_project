@@ -66,8 +66,7 @@ void main() {
     // These tests intentionally use the runner\'s LOCAL timezone (CI/dev
     // machine Europe/Sofia = UTC+3 in summer) — the defect only exists
     // when device-local differs from UTC.
-    test('moving Jul 15 14:28 to Jul 14 stays on Jul 14 in UTC (UTC+3)',
-        () {
+    test('moving Jul 15 14:28 to Jul 14 stays on Jul 14 in UTC (UTC+3)', () {
       final original = DateTime(2026, 7, 15, 14, 28);
       final picked = DateTime(2026, 7, 14); // picker returns local midnight
       final moved = preserveTimeOfDay(picked, original);
@@ -86,8 +85,7 @@ void main() {
       expect(moved.toUtc().day, 31);
     });
 
-    test('first-of-month midnight edge is the known profile-tz mismatch',
-        () {
+    test('first-of-month midnight edge is the known profile-tz mismatch', () {
       // A transaction genuinely made at 00:30 local on Aug 1 belongs to
       // Jul 31 in UTC. This is inherent to a UTC profile timezone, not a
       // serialization bug — pinned here so the behavior is explicit.

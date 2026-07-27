@@ -11,7 +11,7 @@ matched "leaderboard" as a challenge id.
 Requires: PostgreSQL at DATABASE_URL (test_mita) with migrations at head.
 """
 
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest

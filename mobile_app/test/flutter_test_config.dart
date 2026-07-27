@@ -22,7 +22,8 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
 
 class _NoNetworkHttpOverrides extends HttpOverrides {
   @override
-  HttpClient createHttpClient(SecurityContext? context) => _NoNetworkHttpClient();
+  HttpClient createHttpClient(SecurityContext? context) =>
+      _NoNetworkHttpClient();
 }
 
 class BlockedTestNetworkAccess extends Error {

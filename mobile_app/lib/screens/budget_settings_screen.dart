@@ -49,11 +49,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
       description: 'Traditional budget tracking with basic redistribution',
       icon: Icons.account_balance_wallet,
       color: Colors.grey,
-      features: [
-        'Basic tracking',
-        'Manual redistribution',
-        'Standard alerts'
-      ],
+      features: ['Basic tracking', 'Manual redistribution', 'Standard alerts'],
     ),
     _BudgetMode(
       id: 'flexible',
@@ -61,11 +57,7 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
       description: 'Adaptive budget that adjusts to your spending patterns',
       icon: Icons.auto_fix_high,
       color: AppColors.successLight,
-      features: [
-        'Auto-adjustment',
-        'Smart redistribution',
-        'Flexible limits'
-      ],
+      features: ['Auto-adjustment', 'Smart redistribution', 'Flexible limits'],
     ),
     _BudgetMode(
       id: 'strict',
@@ -534,7 +526,8 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                 'Receive AI-powered budget recommendations',
                 style: TextStyle(fontSize: 12),
               ),
-              value: asBool(automationSettings['smart_suggestions'], fallback: true),
+              value: asBool(automationSettings['smart_suggestions'],
+                  fallback: true),
               onChanged: (bool value) {
                 _updateAutomationSettings({'smart_suggestions': value});
               },
@@ -551,7 +544,8 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                 'Allow AI to learn from your spending patterns',
                 style: TextStyle(fontSize: 12),
               ),
-              value: asBool(automationSettings['behavioral_learning'], fallback: true),
+              value: asBool(automationSettings['behavioral_learning'],
+                  fallback: true),
               onChanged: (bool value) {
                 _updateAutomationSettings({'behavioral_learning': value});
               },
@@ -568,7 +562,8 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                 'Get instant notifications for budget changes',
                 style: TextStyle(fontSize: 12),
               ),
-              value: asBool(automationSettings['realtime_alerts'], fallback: true),
+              value:
+                  asBool(automationSettings['realtime_alerts'], fallback: true),
               onChanged: (bool value) {
                 _updateAutomationSettings({'realtime_alerts': value});
               },

@@ -11,7 +11,6 @@ from fastapi import APIRouter, Body, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.api.behavior.schemas import BehaviorPayload
-from app.api.behavior.services import generate_behavior
 from app.api.dependencies import get_current_user
 from app.core.session import get_db
 from app.db.models.user import User

@@ -111,7 +111,7 @@ class TestAnalyticsMonthlyTrend:
         assert today_points and today_points[0]["amount"] == pytest.approx(42.00)
 
     def test_monthly_excludes_soft_deleted(self, authed, db_session, user):
-        kept = _seed_txn(db_session, user, "10.00")
+        _seed_txn(db_session, user, "10.00")
         gone = _seed_txn(db_session, user, "99.00")
         gone.deleted_at = datetime.now(timezone.utc)
         db_session.commit()

@@ -460,9 +460,8 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
         // `rebalanced` left the dashboard showing pre-create numbers
         // until restart (device-reproduced on the Phase-2 journey).
         if (mounted) {
-          unawaited(context
-              .read<BudgetProvider>()
-              .onTransactionCreated(rebalanced: transaction.rebalanced == true));
+          unawaited(context.read<BudgetProvider>().onTransactionCreated(
+              rebalanced: transaction.rebalanced == true));
         }
 
         // Show success feedback with animation

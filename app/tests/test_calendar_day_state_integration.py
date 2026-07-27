@@ -95,9 +95,7 @@ def _post_day_state(authed, day: date):
 
 
 class TestDayStateWithRealRows:
-    def test_returns_planned_actual_and_green_status(
-        self, authed, db_session, user
-    ):
+    def test_returns_planned_actual_and_green_status(self, authed, db_session, user):
         _seed_plan(db_session, user, "coffee", "5.40", "0.00")
         _seed_plan(db_session, user, "groceries", "12.52", "3.00")
 
@@ -122,9 +120,7 @@ class TestDayStateWithRealRows:
         # the key must exist even when the AI service is unavailable.
         assert "advisor_comment" in state
 
-    def test_day_without_rows_reports_day_not_found(
-        self, authed, db_session, user
-    ):
+    def test_day_without_rows_reports_day_not_found(self, authed, db_session, user):
         _seed_plan(db_session, user, "coffee", "5.40", "0.00")
         other_day = TODAY.replace(day=1 if TODAY.day != 1 else 2)
 

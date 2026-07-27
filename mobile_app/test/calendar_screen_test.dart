@@ -248,8 +248,18 @@ void main() {
     // transaction dated outside the current month — were unreachable in the UI.
     group('Month Navigation Tests', () {
       const monthNames = [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December',
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
       ];
 
       String titleFor(DateTime m) =>
@@ -324,7 +334,8 @@ void main() {
         await tester.tap(find.byIcon(Icons.chevron_left));
         await tester.pump();
 
-        expect(find.text('Calendar - December ${now.year - 1}'), findsOneWidget);
+        expect(
+            find.text('Calendar - December ${now.year - 1}'), findsOneWidget);
       });
     });
   });

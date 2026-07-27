@@ -104,9 +104,8 @@ class _EditExpenseScreenState extends State<EditExpenseScreen> {
     if (confirm == true) {
       final transactionProvider =
           Provider.of<TransactionProvider>(context, listen: false);
-      final success =
-          await transactionProvider
-              .deleteTransaction(asString(widget.expense['id']));
+      final success = await transactionProvider
+          .deleteTransaction(asString(widget.expense['id']));
 
       if (!mounted) return;
 

@@ -59,7 +59,6 @@ from app.services.core.dynamic_threshold_service import (  # noqa: E402
     UserContext,
 )
 
-
 # ---------------------------------------------------------------------------
 # 1-2. Lazy sync session initialization
 # ---------------------------------------------------------------------------
@@ -218,7 +217,6 @@ def test_financial_rating_falls_back_when_api_key_missing(monkeypatch):
 def test_gpt_ask_degrades_on_api_failures(exc_name):
     """Quota exhaustion and timeouts return the fallback string, not raise."""
     import openai
-    from unittest.mock import Mock
 
     from app.agent.gpt_agent_service import GPTAgentService
 
@@ -243,7 +241,6 @@ def test_gpt_ask_degrades_on_api_failures(exc_name):
 
 def test_snapshot_rating_falls_back_on_invalid_gpt_response(monkeypatch):
     """Non-JSON GPT output must yield the canned rating dict."""
-    from unittest.mock import Mock
 
     from app.services.core.engine import ai_personal_finance_profiler as profiler
 
@@ -316,9 +313,7 @@ def test_error_report_requires_error_text(client):
 
 
 def test_error_report_caps_pathological_sizes(client):
-    response = client.post(
-        "/api/errors/report", json=_report_body(error="x" * 5000)
-    )
+    response = client.post("/api/errors/report", json=_report_body(error="x" * 5000))
     assert response.status_code == 422
 
 
@@ -361,9 +356,7 @@ def test_error_report_redacts_secrets_from_logs(client, caplog):
 
 
 def test_error_report_log_is_single_line(client, caplog):
-    body = _report_body(
-        error="line1\nFAKE-LOG-RECORD [ERROR] injected\nline3"
-    )
+    body = _report_body(error="line1\nFAKE-LOG-RECORD [ERROR] injected\nline3")
 
     with caplog.at_level("WARNING", logger="client_errors"):
         response = client.post("/api/errors/report", json=body)

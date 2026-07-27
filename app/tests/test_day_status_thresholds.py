@@ -66,13 +66,13 @@ def _seed(db, user, planned, spent):
 @pytest.mark.parametrize(
     "planned,spent,expected",
     [
-        ("100.00", "50.00", "green"),   # under budget
+        ("100.00", "50.00", "green"),  # under budget
         ("100.00", "100.00", "green"),  # exactly on budget
-        ("100.00", "101.00", "yellow"), # over by $1 <= 5% threshold
-        ("100.00", "104.99", "yellow"), # over by $4.99 <= $5 threshold
-        ("100.00", "105.01", "red"),    # over beyond the 5% threshold
-        ("20.00", "21.50", "yellow"),   # small budget: floor is $2, over $1.50
-        ("20.00", "22.50", "red"),      # small budget: over $2.50 > $2 floor
+        ("100.00", "101.00", "yellow"),  # over by $1 <= 5% threshold
+        ("100.00", "104.99", "yellow"),  # over by $4.99 <= $5 threshold
+        ("100.00", "105.01", "red"),  # over beyond the 5% threshold
+        ("20.00", "21.50", "yellow"),  # small budget: floor is $2, over $1.50
+        ("20.00", "22.50", "red"),  # small budget: over $2.50 > $2 floor
         ("1000.00", "1024.00", "yellow"),  # big budget: cap $25, over $24
         ("1000.00", "1026.00", "red"),  # big budget: over $26 > $25 cap
     ],

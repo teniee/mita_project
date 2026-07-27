@@ -1041,7 +1041,8 @@ class _InstallmentsScreenState extends State<InstallmentsScreen> {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: _getStatusColor(installment.status).withValues(alpha: 0.2),
+                  color: _getStatusColor(installment.status)
+                      .withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(

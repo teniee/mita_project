@@ -26,6 +26,8 @@ from app.services.core.engine.expense_tracker import (
     local_day_start_utc,
     local_day_utc_window,
     recalculate_plan_spent,
+)
+from app.services.core.engine.expense_tracker import (
     record_expense as core_record_expense,
 )
 from app.services.expense_tracker import record_expense as legacy_record_expense

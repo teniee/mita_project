@@ -135,8 +135,6 @@ class OfflineFirstProvider {
     }
   }
 
-
-
   /// Generate safe default dashboard data
   Map<String, dynamic> _generateDefaultDashboard() {
     final now = DateTime.now();
@@ -227,10 +225,6 @@ class OfflineFirstProvider {
     }
     return _cachedUserProfile!;
   }
-
-
-
-
 
   /// Force refresh data (user-initiated)
   Future<void> refreshData() async {

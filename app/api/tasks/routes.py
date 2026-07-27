@@ -4,7 +4,6 @@ Provides endpoints for task status tracking and management.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from app.core.limiter_setup import optional_rate_limit
 
 from app.api.dependencies import get_current_user
 from app.api.tasks.schemas import (
@@ -19,6 +18,7 @@ from app.api.tasks.schemas import (
     TaskSubmissionResponse,
 )
 from app.core.feature_flags import is_feature_enabled
+from app.core.limiter_setup import optional_rate_limit
 from app.core.logger import get_logger
 from app.core.session import get_db
 from app.services.task_manager import task_manager

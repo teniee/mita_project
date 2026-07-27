@@ -48,9 +48,7 @@ def add_expense(
     # Note: expense_service expects AsyncSession but we have sync Session
     # Use Transaction model instead for now (more complete implementation)
     from app.db.models import Transaction
-    from app.services.core.engine.expense_tracker import (
-        commit_transaction_to_ledger,
-    )
+    from app.services.core.engine.expense_tracker import commit_transaction_to_ledger
 
     # Create transaction record (expense tracking via Transaction model).
     # This used to db.add + db.commit directly, which recorded the spend in

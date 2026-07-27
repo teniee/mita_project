@@ -23,10 +23,7 @@ from app.core.async_session import get_async_db
 from app.core.date_utils import day_to_range
 from app.db.models import ChallengeParticipation, DailyPlan, Goal, Transaction
 from app.db.models.user import User
-from app.services.core.engine.expense_tracker import (
-    local_day_of,
-    local_day_utc_window,
-)
+from app.services.core.engine.expense_tracker import local_day_of, local_day_utc_window
 from app.utils.response_wrapper import success_response
 
 logger = logging.getLogger(__name__)

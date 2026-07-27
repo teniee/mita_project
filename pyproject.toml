@@ -4,6 +4,11 @@ line-length = 88
 [tool.isort]
 profile = "black"
 line_length = 88
+# Do not lint generated or vendored files. mobile_app/ios/Flutter/ephemeral/
+# is produced by the Flutter toolchain and is gitignored, but isort does not
+# honour .gitignore by default, so `isort --check .` failed on a file that is
+# not part of the source tree at all.
+skip_gitignore = true
 
 [tool.ruff]
 line-length = 88
