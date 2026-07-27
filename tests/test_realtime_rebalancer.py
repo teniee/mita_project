@@ -392,14 +392,10 @@ class TestRebalanceAfterOverspend:
         assert small.planned_amount == Decimal("0.50")
         assert large.planned_amount == Decimal("49.50")
 
-    def test_equal_priority_donors_have_stable_category_order(
-        self, user_id, txn_date
-    ):
+    def test_equal_priority_donors_have_stable_category_order(self, user_id, txn_date):
         """Equal-priority donors use category name as a deterministic tie-break."""
         future_day = date(2026, 3, 20)
-        gaming = _make_plan(
-            "gaming", future_day, planned=100, spent=0, user_id=user_id
-        )
+        gaming = _make_plan("gaming", future_day, planned=100, spent=0, user_id=user_id)
         hobbies = _make_plan(
             "hobbies", future_day, planned=100, spent=0, user_id=user_id
         )

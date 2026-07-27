@@ -123,11 +123,7 @@ def test_date_only_record_expense_keeps_western_local_day(
     )
 
     assert result["status"] == "recorded"
-    stored = (
-        db_session.query(Transaction)
-        .filter(Transaction.user_id == user.id)
-        .one()
-    )
+    stored = db_session.query(Transaction).filter(Transaction.user_id == user.id).one()
     assert local_day_of(stored.spent_at, user.timezone) == selected_day
     assert _plan_days(db_session, user.id, "groceries")[selected_day] == Decimal(
         "12.34"
