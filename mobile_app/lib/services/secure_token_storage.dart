@@ -23,7 +23,7 @@ import '../utils/json_utils.dart';
 /// - Key rotation and versioning
 class SecureTokenStorage {
   static SecureTokenStorage? _instance;
-  static final Completer<SecureTokenStorage> _completer =
+  static Completer<SecureTokenStorage> _completer =
       Completer<SecureTokenStorage>();
 
   late final FlutterSecureStorage _refreshTokenStorage;
@@ -54,15 +54,26 @@ class SecureTokenStorage {
   /// legacy fallback store.
   bool get isLogoutTombstoned => _logoutTombstoned;
 
-  /// Get singleton instance with proper async initialization
+  /// Get singleton instance with proper async initialization.
+  ///
+  /// A failed initialization must not be cached. Completing the shared
+  /// completer with the error left an errored future that nobody awaited
+  /// (an unhandled async error), and because `_instance` was already
+  /// assigned every later call short-circuited to that same failure — one
+  /// transient Keystore/Keychain hiccup at startup permanently downgraded
+  /// the app to legacy storage. Reset instead, so the next call retries.
   static Future<SecureTokenStorage> getInstance() async {
     if (_instance == null && !_completer.isCompleted) {
-      _instance = SecureTokenStorage._internal();
+      final pending = SecureTokenStorage._internal();
+      _instance = pending;
       try {
-        await _instance!._initialize();
-        _completer.complete(_instance!);
-      } catch (error, stackTrace) {
-        _completer.completeError(error, stackTrace);
+        await pending._initialize();
+        _completer.complete(pending);
+      } catch (_) {
+        _instance = null;
+        if (!_completer.isCompleted) {
+          _completer = Completer<SecureTokenStorage>();
+        }
         rethrow;
       }
     }

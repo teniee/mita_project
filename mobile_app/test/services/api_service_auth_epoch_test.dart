@@ -324,9 +324,11 @@ void main() {
     await api.saveTokens(access, refresh);
     failingWriteKey = null;
 
-    expect(secureStore['mita_logout_tombstone_v1'], 'true');
+    // The tombstone is dropped only once the complete legacy pair is durable.
+    // Leaving it set would contradict the live session asserted below and
+    // would log this successful login straight back out on the next restart.
     expect(secureStore['access_token'], access);
-    expect(secureStore.containsKey('mita_logout_tombstone_v1'), isTrue);
+    expect(secureStore.containsKey('mita_logout_tombstone_v1'), isFalse);
     expect(await api.getToken(), access);
     expect(await api.getRefreshToken(), refresh);
     expect(await api.getUserId(), 'legacy-account');
