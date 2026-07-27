@@ -359,6 +359,93 @@ class TestRebalanceAfterOverspend:
         assert result.uncovered == Decimal("0.00")
         assert result.covered + result.uncovered == result.overspend_amount
 
+    def test_multi_donor_uneven_split_never_overcovers(self, user_id, txn_date):
+        """Two donor categories, second needing an uneven per-row split.
+
+        Device-reproduced on the deployed baseline: a $10.05 'food' overspend
+        drew 2.70 from coffee (its whole 50% cap) leaving 7.35 to take from
+        four groceries rows. The old code cut
+        (7.35 / 4).quantize(0.01) == 1.84 from EVERY row, i.e. 7.36, so the
+        target was credited 10.06 for a 10.05 overspend and every groceries
+        row landed on 10.68 instead of one of them keeping 10.69.
+
+        7.35 does not divide evenly into four cents-aligned parts, so the
+        split must be 1.84/1.84/1.84/1.83. The single-category case above
+        cannot catch this: it only exercises one donor and an even split.
+        """
+        overspent_entry = _make_plan(
+            "food", txn_date, planned=0, spent="10.05", user_id=user_id
+        )
+        # coffee is FLEXIBLE, groceries PROTECTED -> coffee is drained first.
+        coffee = _make_plan(
+            "coffee", date(2026, 3, 21), planned="5.40", spent=0, user_id=user_id
+        )
+        groceries = [
+            _make_plan(
+                "groceries",
+                date(2026, 3, day),
+                planned="12.52",
+                spent=0,
+                user_id=user_id,
+            )
+            for day in (21, 22, 23, 24)
+        ]
+        donors = [coffee, *groceries]
+        db = _make_db_with_entries(entries=donors, overspent_entry=overspent_entry)
+
+        result = rebalance_after_overspend(
+            db=db,
+            user_id=user_id,
+            overspent_category="food",
+            overspend_amount=Decimal("10.05"),
+            transaction_date=txn_date,
+            commit=False,
+        )
+
+        # 1. never cover more than the exact overspend
+        assert result.covered == Decimal("10.05")
+        assert result.uncovered == Decimal("0.00")
+        assert result.covered + result.uncovered == result.overspend_amount
+
+        # 2. donors give up exactly what was covered
+        taken_coffee = Decimal("5.40") - Decimal(str(coffee.planned_amount))
+        taken_groceries = sum(
+            (Decimal("12.52") - Decimal(str(row.planned_amount)) for row in groceries),
+            Decimal("0.00"),
+        )
+        assert taken_coffee == Decimal("2.70")
+        assert taken_groceries == Decimal("7.35")
+        assert taken_coffee + taken_groceries == Decimal("10.05")
+
+        # 3. the target is credited exactly that much
+        assert Decimal(str(overspent_entry.planned_amount)) == Decimal("10.05")
+        assert overspent_entry.daily_budget == overspent_entry.planned_amount
+
+        # 4. the uneven cent lands on exactly one row - not on all of them
+        remaining_rows = sorted(Decimal(str(row.planned_amount)) for row in groceries)
+        assert remaining_rows == [
+            Decimal("10.68"),
+            Decimal("10.68"),
+            Decimal("10.68"),
+            Decimal("10.69"),
+        ]
+
+        # 5. no donor is driven negative or past its 50% cap
+        for row, original in [(coffee, Decimal("5.40"))] + [
+            (row, Decimal("12.52")) for row in groceries
+        ]:
+            planned = Decimal(str(row.planned_amount))
+            assert planned >= Decimal("0.00")
+            assert planned >= original * Decimal("0.50")
+            assert row.daily_budget == row.planned_amount
+
+        # 6. the audit transfers agree with what actually moved
+        transferred = sum(
+            (Decimal(str(t["total_taken"])) for t in result.transfers),
+            Decimal("0.00"),
+        )
+        assert transferred == Decimal("10.05")
+
     def test_uneven_donor_rows_use_available_capacity(self, user_id, txn_date):
         """A small row must not strand capacity in a larger donor row."""
         small = _make_plan(
