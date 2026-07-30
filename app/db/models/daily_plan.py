@@ -50,8 +50,16 @@ class DailyPlan(Base):
         index=True,
     )
 
-    # JSONB for additional metadata and backward compatibility
-    plan_json = Column(JSONB, nullable=True)
+    # JSONB for additional metadata and backward compatibility.
+    #
+    # none_as_null: assigning Python None must produce SQL NULL, not the JSON
+    # `null` literal. Without it, clearing the column (consume_realtime_adjustment
+    # sets `plan_json = metadata or None` once the last key is consumed) left
+    # 'null'::jsonb behind, so a row that started as SQL NULL did not return to
+    # SQL NULL after a create/edit/delete round trip. Purely a storage
+    # representation change - no schema migration is involved, and readers
+    # already treat both as absent.
+    plan_json = Column(JSONB(none_as_null=True), nullable=True)
 
     created_at = Column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)

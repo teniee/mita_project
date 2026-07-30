@@ -464,6 +464,72 @@ class TestFinancialRecalculation:
         assert response.status_code == 200, response.text
         assert self._allocation_snapshot(db_session, user_a) == baseline
 
+    def test_crud_journey_restores_sql_null_plan_json_not_json_null(
+        self, as_user_a, db_session, user_a
+    ):
+        """A row that starts as SQL NULL must come back as SQL NULL.
+
+        Device-reproduced twice on the local branch backend: after a full
+        create/edit/move/delete journey every money column matched the
+        pre-create snapshot exactly, but rows that the rebalancer had touched
+        came back holding the JSON `null` literal instead of SQL NULL, because
+        consume_realtime_adjustment assigns `plan_json = metadata or None` and
+        a plain JSONB column serialises Python None as 'null'::jsonb. The
+        structural snapshot therefore did not match even though the ledger
+        did. Readers treat both as absent, so nothing broke - but "restores
+        the exact original snapshot" has to mean exactly that.
+        """
+        month = self._previous_month(datetime.now(timezone.utc).date())
+        spend_day = month.replace(day=10)
+        donor_day = month.replace(day=20)
+
+        rows = [
+            self._new_plan(user_a, spend_day, "food", "0.00"),
+            self._new_plan(user_a, donor_day, "shopping", "100.00"),
+        ]
+        db_session.add_all(rows)
+        db_session.commit()
+
+        def plan_json_repr():
+            # Must be raw SQL: the JSONB type deserialises the JSON `null`
+            # literal to Python None, so an ORM-level `is None` check cannot
+            # tell 'null'::jsonb apart from SQL NULL and would pass either way.
+            db_session.commit()
+            return {
+                (row[0], row[1]): row[2]
+                for row in db_session.execute(
+                    text(
+                        "SELECT (date AT TIME ZONE 'UTC')::date, category, "
+                        "CASE WHEN plan_json IS NULL THEN 'SQL_NULL' "
+                        "ELSE 'json:' || plan_json::text END "
+                        "FROM daily_plan WHERE user_id = :uid"
+                    ),
+                    {"uid": str(user_a.id)},
+                ).all()
+            }
+
+        baseline_json = plan_json_repr()
+        # Both rows start life as SQL NULL.
+        assert set(baseline_json.values()) == {"SQL_NULL"}, baseline_json
+
+        txn_id = _create_txn(
+            as_user_a,
+            amount="60.00",
+            category="food",
+            spent_at=datetime(
+                spend_day.year, spend_day.month, spend_day.day, 12, tzinfo=timezone.utc
+            ),
+        )
+        # The rebalance must have written adjustment metadata somewhere,
+        # otherwise this test would pass trivially.
+        assert any(
+            value != "SQL_NULL" for value in plan_json_repr().values()
+        ), "no realtime adjustment recorded - test would be vacuous"
+
+        assert as_user_a.delete(f"/api/transactions/{txn_id}").status_code == 200
+
+        assert plan_json_repr() == baseline_json
+
     def test_month_rebuild_replays_shared_donor_and_preserves_metadata(
         self, as_user_a, db_session, user_a
     ):
