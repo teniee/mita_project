@@ -419,11 +419,14 @@ class UserDataManager {
     return DateTime.now().difference(_lastRefresh!) < _cacheExpiry;
   }
 
-  /// A cached profile is only usable if it isn't the synthetic placeholder
-  /// produced by [_getDefaultUserProfile] (or empty). Persisting/serving that
+  /// A profile is only usable if it isn't the synthetic placeholder produced
+  /// by [_getDefaultUserProfile] (or empty). Persisting/serving that
   /// placeholder poisoned the dashboard with a fake "MITA User" / income 0
   /// state that survived restarts.
-  @visibleForTesting
+  ///
+  /// Public, not test-only: the splash screen needs the same test to tell an
+  /// unresolved session apart from a genuinely new user, because
+  /// getUserProfile answers a 401 with the placeholder rather than an error.
   static bool isUsableCachedProfile(Map<String, dynamic> profile) {
     if (profile.isEmpty) return false;
     if (profile['email'] == 'user@mita.finance') return false;

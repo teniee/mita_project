@@ -7,6 +7,7 @@ import '../providers/settings_provider.dart';
 import '../providers/user_provider.dart';
 import '../services/api_service.dart';
 import '../services/logging_service.dart';
+import '../services/user_data_manager.dart';
 import '../l10n/generated/app_localizations.dart';
 
 /// Welcome screen with splash animation and auto-navigation
@@ -20,6 +21,31 @@ import '../l10n/generated/app_localizations.dart';
 /// Provider Usage:
 /// - context.read<T>() for one-time access in initialization methods
 /// - No context.watch<T>() needed as this screen navigates away after initialization
+/// Where a launch with a stored token should land.
+///
+/// Split out as a pure rule so the expired-session case is testable without
+/// the ApiService singleton and secure storage that the screen needs.
+enum StartupRoute { main, onboarding, login }
+
+/// Decide the post-splash destination.
+///
+/// [hasOnboarded] comes from UserProvider, which reports `false` both for a
+/// genuinely new user AND when `/users/me` could not be answered at all - a
+/// stale token whose refresh 401s resolves no identity. Routing that second
+/// case to onboarding is always wrong: submitting onboarding needs a live
+/// session, so the user completes seven steps and fails at the end.
+///
+/// [hasProfile] is the discriminator. An onboarded user keeps reaching the
+/// dashboard from cache while offline; only the not-onboarded branch is gated.
+StartupRoute resolveStartupRoute({
+  required bool hasOnboarded,
+  required bool hasProfile,
+}) {
+  if (hasOnboarded) return StartupRoute.main;
+  if (!hasProfile) return StartupRoute.login;
+  return StartupRoute.onboarding;
+}
+
 class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
 
@@ -204,13 +230,35 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       logInfo('Onboarding status from UserProvider: $hasOnboarded',
           tag: 'WELCOME_SCREEN');
 
-      if (hasOnboarded) {
+      // Not `isNotEmpty`: on a 401 UserDataManager hands back a synthetic
+      // "MITA User" placeholder rather than nothing, so a non-empty map does
+      // not mean an identity was resolved. isUsableCachedProfile is the
+      // existing test for a real profile.
+      final route = resolveStartupRoute(
+        hasOnboarded: hasOnboarded,
+        hasProfile:
+            UserDataManager.isUsableCachedProfile(userProvider.userProfile),
+      );
+
+      if (route == StartupRoute.main) {
         setState(() => _statusText = l10n.loadingDashboard);
         await Future<void>.delayed(const Duration(milliseconds: 500));
 
         setState(() => _statusText = l10n.welcomeBackExclamation);
         await Future<void>.delayed(const Duration(milliseconds: 800));
         if (mounted) _navigateToMain();
+      } else if (route == StartupRoute.login) {
+        // Device-reproduced: a session left past the refresh-token lifetime
+        // relaunched straight into onboarding step 1 for an already-onboarded
+        // account, because the 401 made hasCompletedOnboarding read false.
+        logWarning(
+            'Onboarding incomplete but no user profile resolved - '
+            'treating as an expired session and routing to login',
+            tag: 'WELCOME_SCREEN');
+        await userProvider.logout();
+        setState(() => _statusText = l10n.pleaseLoginToContinue);
+        await Future<void>.delayed(const Duration(milliseconds: 800));
+        if (mounted) _navigateToLogin();
       } else {
         setState(() => _statusText = l10n.continuingSetup);
         await Future<void>.delayed(const Duration(milliseconds: 800));
