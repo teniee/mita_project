@@ -1242,7 +1242,24 @@ async def on_shutdown():
         except Exception as e:
             logging.error(f"❌ Error closing audit system: {e}")
 
-        # Step 3: Close main database connections
+        # Step 3: Close Redis clients while the event loop is still running.
+        # A redis.asyncio connection is bound to its loop; if it is still open
+        # when the loop goes away, finalisation calls transport.close() on a
+        # dead loop and raises "RuntimeError: Event loop is closed" from
+        # __del__. Each of these owns a different client.
+        try:
+            from app.core.security import close_redis_client
+
+            await close_redis_client()
+            limiter_client = getattr(app.state, "redis_client", None)
+            if limiter_client is not None:
+                await limiter_client.aclose()
+                app.state.redis_client = None
+            logging.info("✅ Redis connections closed")
+        except Exception as e:
+            logging.error(f"❌ Error closing Redis connections: {e}")
+
+        # Step 4: Close main database connections
         await close_database()
         logging.info("✅ Main database connections closed")
 
