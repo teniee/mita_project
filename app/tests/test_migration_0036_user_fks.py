@@ -288,3 +288,61 @@ class TestReversibleAndIdempotent:
         assert set(_user_fks(pg, "daily_plan")) == {
             "legacy_dp_user_fk"
         }, "must not stack a duplicate FK on a column that already has one"
+
+    def test_downgrade_preserves_every_row(self, pg):
+        """Reversing a constraint change must not touch data.
+
+        A downgrade that loses rows is worse than the drift it undoes, and it
+        is the step most likely to be run in a hurry during an incident.
+        """
+        uid = _seed_user(pg)
+        _seed_plan_rows(pg, uid, days=5)
+        before_plan = _count(pg, "daily_plan")
+        before_users = _count(pg, "users")
+
+        _run(pg, "upgrade")
+        _run(pg, "downgrade")
+
+        assert _count(pg, "daily_plan") == before_plan
+        assert _count(pg, "users") == before_users
+        assert _count(pg, "daily_plan", user_id=uid) == 5
+
+    def test_upgrade_downgrade_upgrade_round_trip(self, pg):
+        """The full cycle must land exactly where a single upgrade would."""
+        uid = _seed_user(pg)
+        _seed_plan_rows(pg, uid, days=3)
+
+        _run(pg, "upgrade")
+        after_first = (_user_fks(pg, "daily_plan"), _user_fks(pg, "goals"))
+
+        _run(pg, "downgrade")
+        assert _user_fks(pg, "daily_plan") == {}
+        assert _user_fks(pg, "goals") == {}
+
+        _run(pg, "upgrade")
+        assert (_user_fks(pg, "daily_plan"), _user_fks(pg, "goals")) == after_first
+        assert _count(pg, "daily_plan", user_id=uid) == 3
+        # and the constraint still behaves, not merely exists
+        with pg.begin() as conn:
+            conn.execute(sa.text("DELETE FROM users WHERE id = :i"), {"i": str(uid)})
+        assert _count(pg, "daily_plan", user_id=uid) == 0
+
+    def test_orphan_detection_is_deterministic_across_repeated_runs(self, pg):
+        """The same database must produce the same verdict every time.
+
+        A check that sometimes passes and sometimes refuses would be worse than
+        no check at all - it would get retried until it happened to succeed.
+        """
+        orphan = uuid.uuid4()
+        _seed_plan_rows(pg, orphan, days=4)
+
+        messages = []
+        for _ in range(3):
+            with pytest.raises(RuntimeError) as exc:
+                _run(pg, "upgrade")
+            messages.append(str(exc.value))
+
+        assert len(set(messages)) == 1, f"verdict changed between runs: {messages}"
+        assert "daily_plan: 4 row(s)" in messages[0]
+        assert _count(pg, "daily_plan", user_id=orphan) == 4
+        assert _user_fks(pg, "daily_plan") == {}
