@@ -13,21 +13,32 @@ B1-B7 + A6-A25):
   -> re-login -> onboarded data persisted
 
 Usage:
-    python scripts/production_e2e_test.py \
-        --base-url https://mita-production-production.up.railway.app
+    python scripts/production_e2e_test.py --base-url http://localhost:8000
 
-Creates one throwaway `e2e_<ts>@mita-audit.dev` account per run.
-Exit code 0 = all checks pass.
+Creates one throwaway `e2e_<ts>@mita-audit.dev` account per run, so it must NEVER
+be pointed at production. The target is required and production hosts are rejected
+by scripts/_target_guard.py with no override. Despite the historical filename, this
+suite verifies a DEPLOYED BUILD on disposable infrastructure, not production.
+Exit code 0 = all checks pass, 2 = refused (bad or production target).
 """
 
 import argparse
 import json
+import os
 import secrets
 import sys
 import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _target_guard import (  # noqa: E402
+    ENV_VAR,
+    ProductionTargetError,
+    assert_writable_target,
+)
 
 RESULTS = []
 
@@ -286,9 +297,18 @@ def finish():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    # No default. This suite registers an account and writes financial data, so a
+    # default target is a loaded gun - the previous default was production.
     parser.add_argument(
         "--base-url",
-        default="https://mita-production-production.up.railway.app",
+        default=os.environ.get(ENV_VAR),
+        help=f"Disposable backend to test against (or set {ENV_VAR}). "
+        "Production hosts are rejected.",
     )
     args = parser.parse_args()
-    sys.exit(run(args.base_url.rstrip("/")))
+    try:
+        target = assert_writable_target(args.base_url, purpose="production_e2e_test.py")
+    except ProductionTargetError as exc:
+        print(f"REFUSED: {exc}", file=sys.stderr)
+        sys.exit(2)
+    sys.exit(run(target))
