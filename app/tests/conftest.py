@@ -104,6 +104,43 @@ def _reset_async_engine_between_tests():
 _ENGINE_RESET_COUNTER = 0
 
 
+@pytest.fixture(autouse=True)
+def _release_redis_client_between_tests():
+    """Stop a Redis client from outliving the event loop that created it.
+
+    app.core.security caches one client in a module global. pytest-asyncio
+    closes each test's loop, but the global keeps the client (and its open
+    connections) alive into the next test. Whenever the garbage collector then
+    finalises it, redis's AbstractConnection.__del__ calls writer.close() ->
+    loop.call_soon() on the dead loop and raises "RuntimeError: Event loop is
+    closed" at an arbitrary, unrelated point in the run. That is the
+    intermittent teardown failure this fixture removes.
+    """
+    yield
+
+    from app.core import security
+
+    client = security.redis_client
+    loop = security._redis_client_loop
+    owned = security._redis_client_owned
+    security.redis_client = None
+    security._redis_client_loop = None
+    security._redis_client_owned = False
+
+    if client is None or not owned:
+        return
+    if loop is not None and not loop.is_closed():
+        # Preferred path: a real aclose() on the loop that owns the sockets.
+        try:
+            loop.run_until_complete(client.aclose())
+            return
+        except Exception:
+            pass
+    # The loop is already gone, which is the normal case here because
+    # pytest-asyncio closes it before fixture teardown runs.
+    security.force_release_redis_client(client)
+
+
 def _sweep_idle_connections():
     """Terminate leaked 'idle in transaction' backends on the test database."""
     import re as _re
