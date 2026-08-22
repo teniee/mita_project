@@ -5,6 +5,7 @@ advanced rate limiting, input sanitization, and security monitoring
 """
 
 import asyncio
+import contextlib
 import hashlib
 import logging
 import os
@@ -32,12 +33,101 @@ logger = logging.getLogger(__name__)
 # Improved Redis client management with async support
 redis_client = None
 
+# A redis.asyncio client binds its connections to the event loop that created
+# them, so the cache has to remember which loop that was. Reusing a client
+# across loops is not merely untidy: the connection's transport belongs to a
+# loop that may be gone, and redis's AbstractConnection.__del__ calls
+# writer.close() -> loop.call_soon() during finalisation, which raises
+# "RuntimeError: Event loop is closed" at whatever unrelated moment the garbage
+# collector happens to run. That is the intermittent teardown failure seen in
+# the test suite, and in production it leaks a connection per worker restart
+# because nothing ever closed this client.
+_redis_client_loop = None
+# Only close what we created: get_redis_client() may hand back the client owned
+# by limiter_setup via app.state, and closing that one out from under its owner
+# would break rate limiting.
+_redis_client_owned = False
+
+
+def _running_loop():
+    try:
+        return asyncio.get_running_loop()
+    except RuntimeError:
+        return None
+
+
+def force_release_redis_client(client) -> None:
+    """Release a client whose event loop is already gone.
+
+    aclose() cannot be awaited without a live loop, and transport.close()
+    schedules `_call_connection_lost` on it, which is precisely the
+    "Event loop is closed" RuntimeError. Simply dropping the reference is not
+    enough either: that only defers the same error to whenever the collector
+    finalises the connection.
+
+    So close the socket directly - that releases the file descriptor without
+    the loop - and clear _writer/_reader so AbstractConnection.__del__ becomes
+    a no-op and cannot touch the dead loop at all.
+    """
+    pool = getattr(client, "connection_pool", None)
+    if pool is None:
+        return
+    connections = list(getattr(pool, "_available_connections", None) or [])
+    connections += list(getattr(pool, "_in_use_connections", None) or [])
+    for conn in connections:
+        writer = getattr(conn, "_writer", None)
+        if writer is None:
+            continue
+        try:
+            sock = writer.transport.get_extra_info("socket")
+            if sock is not None:
+                sock.close()
+        except Exception:  # noqa: BLE001 - best effort fd release
+            pass
+        conn._writer = None
+        conn._reader = None
+
+
+async def close_redis_client() -> None:
+    """Release the cached Redis client. Idempotent; safe with nothing cached.
+
+    Await it while the owning loop is still alive and it does a clean aclose().
+    If the loop is already gone it falls back to force_release_redis_client(),
+    which still leaves nothing armed to fire later.
+    """
+    global redis_client, _redis_client_loop, _redis_client_owned
+    client, loop, owned = redis_client, _redis_client_loop, _redis_client_owned
+    redis_client = None
+    _redis_client_loop = None
+    _redis_client_owned = False
+
+    if client is None or not owned:
+        return
+    if loop is not None and loop.is_closed():
+        logger.warning(
+            "Redis client outlived its event loop; releasing its sockets "
+            "directly. Something failed to close it before the loop ended."
+        )
+        force_release_redis_client(client)
+        return
+    try:
+        await client.aclose()
+    except Exception as exc:  # noqa: BLE001 - shutdown must not raise
+        logger.warning("Closing Redis client failed: %s", exc)
+        force_release_redis_client(client)
+
 
 async def get_redis_client():
     """Get Redis client with lazy async initialization"""
-    global redis_client
+    global redis_client, _redis_client_loop, _redis_client_owned
+    loop = _running_loop()
+
     if redis_client is not None:
-        return redis_client
+        if _redis_client_loop is loop and not (loop is not None and loop.is_closed()):
+            return redis_client
+        # Cached on a different or already-closed loop. Returning it would hand
+        # the caller a client whose connections cannot be used from here.
+        await close_redis_client()
 
     try:
         import inspect
@@ -58,6 +148,8 @@ async def get_redis_client():
 
         if app and hasattr(app.state, "redis_client"):
             redis_client = app.state.redis_client
+            _redis_client_loop = loop
+            _redis_client_owned = False  # limiter_setup owns this one
             return redis_client
 
         # Fallback to direct connection
@@ -67,7 +159,7 @@ async def get_redis_client():
             return None
 
         # redis.asyncio.from_url() returns an async client directly (no await needed)
-        redis_client = redis.from_url(
+        client = redis.from_url(
             redis_url,
             encoding="utf-8",
             decode_responses=True,
@@ -75,17 +167,34 @@ async def get_redis_client():
             socket_timeout=3,
         )
 
-        # Test connection with timeout (ping IS async)
-        await asyncio.wait_for(redis_client.ping(), timeout=2.0)
+        # from_url() has already allocated the pool, so a failure from here on
+        # must close `client` explicitly. Assigning None to the global would
+        # only drop the last reference and leave finalisation to __del__, on a
+        # loop that may be closed by then.
+        try:
+            # Test connection with timeout (ping IS async)
+            await asyncio.wait_for(client.ping(), timeout=2.0)
+        except BaseException:
+            with contextlib.suppress(Exception):
+                await client.aclose()
+            raise
+
+        redis_client = client
+        _redis_client_loop = loop
+        _redis_client_owned = True
         logger.info("Redis connection established successfully")
         return redis_client
 
     except asyncio.TimeoutError:
         redis_client = None
+        _redis_client_loop = None
+        _redis_client_owned = False
         logger.warning("Redis connection timed out - using in-memory rate limiting")
         return None
     except Exception as e:
         redis_client = None
+        _redis_client_loop = None
+        _redis_client_owned = False
         logger.warning(
             f"Redis connection failed: {str(e)} - using in-memory rate limiting"
         )

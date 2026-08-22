@@ -1,30 +1,32 @@
 name: Deployed Backend Smoke Test
 
-# Manually-dispatched verification of the ACTUAL deployed backend.
-# GitHub runners can reach the Railway host (unlike the development
-# sandbox, whose egress policy blocks it). Creates exactly one
-# throwaway smoke user per run.
+# Manually-dispatched verification of a DEPLOYED backend.
+#
+# This suite REGISTERS AN ACCOUNT and writes financial data, so it must never
+# touch production. Two things that used to make that possible are gone:
+#
+#   1. the `base_url` input defaulted to the production Railway host
+#   2. a push to `claude/**` whose commit message contained [deployed-smoke]
+#      ran it automatically, against that same default
+#
+# Between them, production accumulated 78+ synthetic accounts and irreversible
+# daily_plan drift. The target is now required, has no default, and
+# scripts/_target_guard.py rejects production hosts with no override — so a
+# mistake here fails the job instead of writing to the live ledger.
 on:
   workflow_dispatch:
     inputs:
       base_url:
-        description: 'Deployed backend base URL'
+        description: >-
+          Disposable backend base URL (ephemeral/staging/preview).
+          Production hosts are rejected by the guard.
         required: true
-        default: 'https://mita-production-production.up.railway.app'
-  # Fallback trigger for environments whose GitHub token cannot call the
-  # workflow-dispatch API: a push whose head commit message contains
-  # [deployed-smoke] runs the smoke test against the default (Railway
-  # production) URL. Ordinary pushes never touch production.
-  push:
-    branches: [ 'claude/**' ]
+        type: string
 
 jobs:
   smoke:
     name: Remote smoke (deployed backend)
     runs-on: ubuntu-latest
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      contains(github.event.head_commit.message, '[deployed-smoke]')
     timeout-minutes: 10
 
     steps:
@@ -36,7 +38,10 @@ jobs:
         with:
           python-version: '3.12'
 
+      # Fail before checkout artifacts or network calls if someone hand-edits
+      # the workflow to reintroduce a production default.
+      - name: Verify target is not production
+        run: python scripts/_target_guard_cli.py "${{ inputs.base_url }}"
+
       - name: Run remote smoke test
-        run: >-
-          python scripts/remote_smoke_test.py
-          --base-url "${{ inputs.base_url || 'https://mita-production-production.up.railway.app' }}"
+        run: python scripts/remote_smoke_test.py --base-url "${{ inputs.base_url }}"

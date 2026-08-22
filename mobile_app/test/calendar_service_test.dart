@@ -1,6 +1,21 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mita/services/calendar_fallback_service.dart';
 
+/// Income-tier assertions must not depend on today's date.
+///
+/// A day's limit is `round(monthlyBudget * weekdayWeight / monthWeightSum)`, and
+/// `monthWeightSum` depends on how many Mondays/Fridays/weekends the month
+/// happens to contain. For income 5500 at a neutral location that moves a
+/// mid-week limit between 98 and 111 across the twelve months of 2026, so the
+/// old `greaterThan(100)` assertion passed in eight months and failed in four
+/// (Jan/May/Aug/Oct) — 99 and 100 are perfectly correct outputs.
+///
+/// The service already accepts an explicit year/month, so these tests pin one.
+/// Tests that are genuinely about "now" (day count, is_today, is_weekend) stay
+/// dynamic and derive their expectation from DateTime.now().
+const _pinnedYear = 2026;
+const _pinnedMonth = 1; // January 2026: 31 days, starts on a Thursday.
+
 void main() {
   group('Calendar Fallback Service Tests', () {
     late CalendarFallbackService fallbackService;
@@ -10,55 +25,79 @@ void main() {
     });
 
     group('Income Tier Classification', () {
+      /// Mid-week days (Tue-Thu) carry weight 1.00-1.05, avoiding the Monday
+      /// reduction (0.80) and the Friday/weekend ramp (1.30-1.50).
+      List<int> midWeekLimits(List<Map<String, dynamic>> days) => days
+          .where((d) {
+            final dow = d['day_of_week'] as int;
+            return dow >= 2 && dow <= 4;
+          })
+          .map((d) => d['limit'] as int)
+          .toList();
+
       test('should classify low income correctly', () async {
         final result = await fallbackService.generateFallbackCalendarData(
           monthlyIncome: 2000,
           location: 'Rural Iowa',
+          year: _pinnedYear,
+          month: _pinnedMonth,
         );
 
         expect(result, isNotEmpty);
-        final expectedDays =
-            DateTime(DateTime.now().year, DateTime.now().month + 1, 0).day;
-        expect(result.length, equals(expectedDays)); // Current month days
+        expect(result.length, equals(31)); // January 2026
 
-        // Verify that low income has appropriate budget amounts
         final firstDay = result.first;
         expect(firstDay['limit'], isA<int>());
         expect(firstDay['limit'], greaterThan(0));
-        expect(firstDay['limit'],
-            lessThan(100)); // Low income should have lower daily budgets
+        // 2000 * 0.65 * 0.75 (rural) spread over the month.
+        expect(midWeekLimits(result), everyElement(inInclusiveRange(20, 40)));
       });
 
       test('should classify mid income correctly', () async {
         final result = await fallbackService.generateFallbackCalendarData(
           monthlyIncome: 5500,
           location: 'Chicago, IL',
+          year: _pinnedYear,
+          month: _pinnedMonth,
         );
 
         expect(result, isNotEmpty);
-
-        // Check a mid-week day (Tuesday-Thursday) to avoid Monday reduction (0.8x)
-        // and Friday/weekend increases (1.3x-1.5x)
-        final midWeekDay = result.firstWhere((day) {
-          final dayOfWeek = day['day_of_week'] as int;
-          return dayOfWeek >= 2 && dayOfWeek <= 4; // Tuesday-Thursday
-        });
-
-        expect(midWeekDay['limit'],
-            greaterThan(100)); // Mid income should have higher daily budgets
-        expect(midWeekDay['limit'], lessThan(300));
+        // 5500 * 0.65 * 1.0 (baseline metro). Bounds sit outside the natural
+        // month-to-month spread rather than on top of it.
+        expect(midWeekLimits(result), everyElement(inInclusiveRange(90, 130)));
       });
 
       test('should classify high income correctly', () async {
         final result = await fallbackService.generateFallbackCalendarData(
           monthlyIncome: 15000,
           location: 'San Francisco, CA',
+          year: _pinnedYear,
+          month: _pinnedMonth,
         );
 
         expect(result, isNotEmpty);
-        final firstDay = result.first;
-        expect(firstDay['limit'],
-            greaterThan(200)); // High income should have higher daily budgets
+        // 15000 * 0.65 * 1.30 (high-cost metro).
+        expect(midWeekLimits(result), everyElement(greaterThan(300)));
+      });
+
+      test('daily budget rises strictly with income at a fixed location',
+          () async {
+        // The actual contract of "income tier classification": holding location
+        // and month constant, a higher income tier must yield a higher daily
+        // budget. This is what the absolute thresholds above were reaching for.
+        final limits = <int>[];
+        for (final income in [2000, 5500, 15000]) {
+          final result = await fallbackService.generateFallbackCalendarData(
+            monthlyIncome: income,
+            location: 'Chicago, IL', // neutral 1.0 multiplier for all three
+            year: _pinnedYear,
+            month: _pinnedMonth,
+          );
+          limits.add(result.first['limit'] as int);
+        }
+
+        expect(limits[0], lessThan(limits[1]));
+        expect(limits[1], lessThan(limits[2]));
       });
     });
 
@@ -77,8 +116,8 @@ void main() {
         );
 
         // San Francisco should have higher daily budgets than Austin
-        expect(highCostResult.first['limit'],
-            greaterThan(normalCostResult.first['limit']));
+        expect(highCostResult.first['limit'] as int,
+            greaterThan(normalCostResult.first['limit'] as int));
       });
 
       test('should apply low-cost location multiplier', () async {
@@ -95,8 +134,8 @@ void main() {
         );
 
         // Rural Iowa should have lower daily budgets than Chicago
-        expect(lowCostResult.first['limit'],
-            lessThan(normalCostResult.first['limit']));
+        expect(lowCostResult.first['limit'] as int,
+            lessThan(normalCostResult.first['limit'] as int));
       });
     });
 
@@ -192,6 +231,31 @@ void main() {
           final spent = day['spent'] as int;
           expect(spent, equals(0)); // Future days should have no spending
         }
+      });
+
+      test('a month that is not the current month carries no spend at all',
+          () async {
+        // The two tests above only exercise their loop bodies for whatever
+        // today happens to be: run on the 1st, "past days" is empty and passes
+        // vacuously. Spend accrual is only defined for the current month, so
+        // pin a different month and assert that directly.
+        final result = await fallbackService.generateFallbackCalendarData(
+          monthlyIncome: 5000,
+          year: _pinnedYear,
+          month: _pinnedMonth,
+        );
+        final now = DateTime.now();
+        expect(
+          now.year == _pinnedYear && now.month == _pinnedMonth,
+          isFalse,
+          reason: 'pin a month that is not the current one for this assertion',
+        );
+
+        expect(result, isNotEmpty);
+        expect(result.map((d) => d['spent'] as int), everyElement(equals(0)));
+        expect(result.map((d) => d['status'] as String),
+            everyElement(equals('good')));
+        expect(result.map((d) => d['is_today'] as bool), everyElement(isFalse));
       });
 
       test('should calculate status correctly', () async {
