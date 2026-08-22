@@ -24,12 +24,21 @@ Creates exactly one throwaway user per run (smoke.<timestamp>@mita-smoketest.dev
 import argparse
 import calendar as _calendar
 import json
+import os
 import re
 import sys
 import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _target_guard import (  # noqa: E402
+    ENV_VAR,
+    ProductionTargetError,
+    assert_writable_target,
+)
 
 DATE_KEY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -145,9 +154,18 @@ def find_tokens(payload):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--base-url", required=True)
+    parser.add_argument(
+        "--base-url",
+        default=os.environ.get(ENV_VAR),
+        help=f"Disposable backend to smoke-test (or set {ENV_VAR}). "
+        "Production hosts are rejected: this suite registers a user.",
+    )
     args = parser.parse_args()
-    base = args.base_url.rstrip("/")
+    try:
+        base = assert_writable_target(args.base_url, purpose="remote_smoke_test.py")
+    except ProductionTargetError as exc:
+        print(f"REFUSED: {exc}", file=sys.stderr)
+        return 2
 
     now = datetime.now(timezone.utc)
     today_key = now.date().isoformat()
@@ -425,4 +443,6 @@ def finish():
 
 
 if __name__ == "__main__":
-    main()
+    # main() exits directly on its own pass/fail paths; the guard's early
+    # `return 2` only becomes a non-zero exit status if it is propagated.
+    sys.exit(main())

@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:dio/dio.dart';
 import 'package:mita/config.dart' show AppConfig;
 
+import 'target_guard.dart';
+
 // LIVE END-TO-END TEST — contacts a real backend.
 //
 // Not part of `flutter test`, which runs only `test/` and is protected by the
@@ -18,17 +20,15 @@ const _runLiveE2E = bool.fromEnvironment('RUN_LIVE_E2E', defaultValue: false);
 // A live run must be pointed at a disposable environment explicitly.
 // AppConfig.baseUrl defaults to the production Railway host, so relying on
 // it here would silently exercise production the moment someone passed
-// RUN_LIVE_E2E=true. Require E2E_BASE_URL and refuse the production host.
-const _e2eBaseUrl = String.fromEnvironment('E2E_BASE_URL');
-const _productionHost = 'mita-production-production.up.railway.app';
+// RUN_LIVE_E2E=true. The policy - required target, exact-host production
+// block, no override - lives in target_guard.dart so every live suite shares
+// one host list. The previous local check tested a single host with
+// contains(), which missed the other production aliases.
+const _e2eBaseUrl = kE2eBaseUrl;
 
-bool get _e2eTargetIsSafe =>
-    _e2eBaseUrl.isNotEmpty && !_e2eBaseUrl.contains(_productionHost);
+bool get _e2eTargetIsSafe => e2eTargetIsSafe;
 
-String get _e2eTargetProblem => _e2eBaseUrl.isEmpty
-    ? 'E2E_BASE_URL is not set - refusing to fall back to production. '
-        'Pass --dart-define=E2E_BASE_URL=https://<disposable-host>'
-    : 'E2E_BASE_URL points at production ($_productionHost) - refused.';
+String get _e2eTargetProblem => e2eTargetProblem;
 
 /// Comprehensive API Endpoint Testing
 /// Tests all the critical endpoints mentioned in the QA requirements
