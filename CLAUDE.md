@@ -91,3 +91,22 @@ Then open http://localhost:8765
 - Feature icon backgrounds: solid brand color tints (not gradients)
 - Phone mockup exterior stays dark (phone frames are conventionally dark)
 - Dot grid on body uses navy dots `rgba(25,60,87,0.06)` instead of white dots
+
+## Backend deployment (Railway) — verified 2026-08-23
+
+The FastAPI backend in `app/` deploys to Railway, project **Mita Finance**
+(`d44d0580-3476-4e46-bc4c-b2d95dac64cd`), environment **production**
+(`d4970d5d-3c58-4be7-b64e-5c05d359de3b`), service **mita-production**
+(`b6cebfcc-201f-4e00-8b12-a8119cbef5a9`).
+
+- Source: GitHub `teniee/mita_project`, branch `main`. Auto-deploy enabled,
+  no watch patterns, no root directory, no check-suite gating.
+- Start command: `bash start.sh`, which runs `alembic upgrade head` before
+  launching uvicorn and **aborts startup in production if the migration
+  fails** — every deploy is also a migration.
+- Public URL: `https://mita-production-production.up.railway.app`
+  (`GET /health` is the liveness endpoint).
+
+Release invariant: push to `main` -> Railway builds exactly that commit ->
+deployment becomes active. Verify the deployed SHA against GitHub `main`
+after every release.
