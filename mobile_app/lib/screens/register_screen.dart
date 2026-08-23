@@ -205,121 +205,138 @@ class _RegisterScreenState extends State<RegisterScreen> {
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
       ),
+      // The card is taller than the viewport once the keyboard opens, and an
+      // overflowing child is clipped OUT OF HIT TESTING, not just out of
+      // paint: the Register button stayed visible but stopped responding to
+      // taps, so registration silently did nothing until the user happened to
+      // dismiss the keyboard. Scrolling the card keeps every control reachable
+      // at any viewport height, and minHeight keeps it centred when there is
+      // room to spare.
       body: SafeArea(
-        child: Center(
-          child: Card(
-            elevation: 3,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(28),
-            ),
-            color: Colors.white,
-            margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 28),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Compact logo and title
-                  Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.textPrimary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: const Icon(
-                          Icons.account_balance_wallet_rounded,
-                          size: 24,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'Create account',
-                        style: TextStyle(
-                          fontFamily: AppTypography.fontHeading,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 20,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ],
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Center(
+                child: Card(
+                  elevation: 3,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(28),
                   ),
-                  const SizedBox(height: 24),
-                  TextField(
-                    controller: _emailController,
-                    decoration: InputDecoration(
-                      labelText: 'Email',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Password must be at least 8 characters long',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey,
-                      fontFamily: AppTypography.fontBody,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _loading
-                      ? const CircularProgressIndicator()
-                      : ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.secondary,
-                            foregroundColor: AppColors.textPrimary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
+                  color: Colors.white,
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 40, horizontal: 28),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Compact logo and title
+                        Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.textPrimary
+                                    .withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: const Icon(
+                                Icons.account_balance_wallet_rounded,
+                                size: 24,
+                                color: AppColors.textPrimary,
+                              ),
                             ),
-                            padding: const EdgeInsets.symmetric(
-                                vertical: 16, horizontal: 24),
-                            textStyle: const TextStyle(
-                              fontFamily: AppTypography.fontHeading,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
+                            const SizedBox(height: 12),
+                            const Text(
+                              'Create account',
+                              style: TextStyle(
+                                fontFamily: AppTypography.fontHeading,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 20,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        TextField(
+                          controller: _emailController,
+                          decoration: InputDecoration(
+                            labelText: 'Email',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
                             ),
                           ),
-                          onPressed: _register,
-                          child: const Text('Register'),
                         ),
-                  TextButton(
-                    onPressed: () {
-                      // FIX: Handle case where there's no previous route (black screen bug)
-                      if (Navigator.canPop(context)) {
-                        Navigator.pop(context);
-                      } else {
-                        // No previous route - navigate to login explicitly
-                        Navigator.pushReplacementNamed(context, '/login');
-                      }
-                    },
-                    child: const Text('Back to login'),
-                  ),
-                  if (_error != null) ...[
-                    const SizedBox(height: 16),
-                    Text(
-                      _error!,
-                      style: const TextStyle(
-                        color: Colors.red,
-                        fontFamily: AppTypography.fontBody,
-                      ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _passwordController,
+                          obscureText: true,
+                          decoration: InputDecoration(
+                            labelText: 'Password',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Password must be at least 8 characters long',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                            fontFamily: AppTypography.fontBody,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _loading
+                            ? const CircularProgressIndicator()
+                            : ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.secondary,
+                                  foregroundColor: AppColors.textPrimary,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(18),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 16, horizontal: 24),
+                                  textStyle: const TextStyle(
+                                    fontFamily: AppTypography.fontHeading,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                onPressed: _register,
+                                child: const Text('Register'),
+                              ),
+                        TextButton(
+                          onPressed: () {
+                            // FIX: Handle case where there's no previous route (black screen bug)
+                            if (Navigator.canPop(context)) {
+                              Navigator.pop(context);
+                            } else {
+                              // No previous route - navigate to login explicitly
+                              Navigator.pushReplacementNamed(context, '/login');
+                            }
+                          },
+                          child: const Text('Back to login'),
+                        ),
+                        if (_error != null) ...[
+                          const SizedBox(height: 16),
+                          Text(
+                            _error!,
+                            style: const TextStyle(
+                              color: Colors.red,
+                              fontFamily: AppTypography.fontBody,
+                            ),
+                          ),
+                        ]
+                      ],
                     ),
-                  ]
-                ],
+                  ),
+                ),
               ),
             ),
           ),
