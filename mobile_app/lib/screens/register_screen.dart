@@ -18,10 +18,26 @@ class RegisterScreen extends StatefulWidget {
   State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
+/// What the account actually requires. PasswordValidationService rejects
+/// anything weaker, so the screen must not advertise a looser rule — the old
+/// "at least 8 characters long" hint sent people round a loop of rejections
+/// they could not explain.
+const String _passwordRequirements =
+    'Use at least 8 characters with upper- and lowercase letters, a number '
+    'and a symbol.';
+
 class _RegisterScreenState extends State<RegisterScreen> {
   final ApiService _api = ApiService();
   bool _loading = false;
+  bool _obscurePassword = true;
   String? _error;
+
+  /// Drop a stale rejection as soon as the user starts fixing it, so the red
+  /// text always describes the values currently in the fields.
+  void _clearError(String _) {
+    if (_error != null) setState(() => _error = null);
+  }
+
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
@@ -48,14 +64,52 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     final passwordValidation = _validatePassword(password);
-    if (!passwordValidation.isValid) {
-      return passwordValidation.issues.first;
-    }
-    if (!passwordValidation.isStrong) {
-      return 'Password does not meet security requirements. ${passwordValidation.issues.join('; ')}';
+    if (!passwordValidation.isValid || !passwordValidation.isStrong) {
+      // One concrete reason, not the whole list: the message renders inline
+      // above the button and has to stay readable on a small phone.
+      return passwordValidation.issues.isNotEmpty
+          ? passwordValidation.issues.first
+          : _passwordRequirements;
     }
 
     return null;
+  }
+
+  /// Turn a 400/409/422 registration rejection into a message that is true.
+  ///
+  /// Never surfaces the API's own prose: backend wording leaks internals and
+  /// is not written for end users. We classify, then say it in our own words.
+  String _messageForRegistrationRejection(DioException e) {
+    final body = asStringKeyedMapOrNull(e.response?.data);
+    final error = asStringKeyedMapOrNull(body?['error']) ?? const {};
+    final code = asString(error['code']).toUpperCase();
+    final apiMessage = asString(error['message']).toLowerCase();
+
+    final looksDuplicate = code.startsWith('RESOURCE_3002') ||
+        apiMessage.contains('already exists') ||
+        apiMessage.contains('already registered');
+    if (looksDuplicate) {
+      return 'This email is already registered. Please try logging in instead.';
+    }
+
+    if (code.startsWith('VALIDATION') || e.response?.statusCode == 422) {
+      // Point at the field the API rejected so the user knows what to change.
+      final details = asStringKeyedMapOrNull(error['details']);
+      final fields = (details?['validation_errors'] as List?)
+              ?.map((v) => asString(asStringKeyedMapOrNull(v)?['field']))
+              .join(' ')
+              .toLowerCase() ??
+          '';
+      if (fields.contains('email')) {
+        return 'Please enter a valid email address.';
+      }
+      if (fields.contains('password')) {
+        return _passwordRequirements;
+      }
+      return 'Please check your email and password and try again.';
+    }
+
+    return 'We could not create your account. Please check your details and try again.';
   }
 
   Future<void> _register() async {
@@ -118,12 +172,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
           'Registration complete - navigating to ${hasOnboarded ? "main" : "onboarding"}',
           tag: 'REGISTER');
 
-      // Navigate based on onboarding status
-      if (hasOnboarded) {
-        Navigator.pushReplacementNamed(context, '/main');
-      } else {
-        Navigator.pushReplacementNamed(context, '/onboarding_location');
-      }
+      // Navigate based on onboarding status.
+      // removeUntil, not replace: /login is still underneath this route, so a
+      // pushReplacement left a freshly-registered (and authenticated) user one
+      // Android Back press away from a blank login screen on onboarding step 1.
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        hasOnboarded ? '/main' : '/onboarding_location',
+        (route) => false,
+      );
     } catch (e) {
       logError('FastAPI registration FAILED', tag: 'REGISTER', error: e);
 
@@ -132,23 +189,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
       // Extract more specific error message from DioException
       if (e is DioException) {
         final statusCode = e.response?.statusCode;
-        final errorData = e.response?.data?.toString() ?? '';
 
-        if (statusCode == 400) {
-          if (errorData.contains('already registered') ||
-              errorData.contains('Email already registered')) {
-            errorMessage =
-                'This email is already registered. Please try logging in instead.';
-          } else if (errorData.contains('Password too short')) {
-            errorMessage = 'Password must be at least 8 characters long.';
-          } else if (errorData.contains('Invalid email')) {
-            errorMessage = 'Please enter a valid email address.';
-          } else {
-            errorMessage = 'Invalid email or password format.';
-          }
-        } else if (statusCode == 409 || statusCode == 422) {
-          errorMessage =
-              'This email is already registered. Please try logging in instead.';
+        // The API answers BOTH "this email already exists" (RESOURCE_3002) and
+        // "this request is malformed" (VALIDATION_2002) with HTTP 422, so the
+        // status code alone cannot tell them apart. Blanket-mapping 422 to
+        // "already registered" told users with a typo'd address that they
+        // already had an account and sent them to a login they could never
+        // pass. Read the error envelope instead and only claim "duplicate"
+        // when the API actually said duplicate.
+        if (statusCode == 400 || statusCode == 409 || statusCode == 422) {
+          errorMessage = _messageForRegistrationRejection(e);
         } else if (statusCode == 500) {
           errorMessage =
               'Server is experiencing issues. This is a temporary problem - please try again in a few minutes.';
@@ -263,6 +313,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         const SizedBox(height: 24),
                         TextField(
                           controller: _emailController,
+                          onChanged: _clearError,
+                          keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
                             labelText: 'Email',
                             border: OutlineInputBorder(
@@ -273,23 +325,60 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         const SizedBox(height: 12),
                         TextField(
                           controller: _passwordController,
-                          obscureText: true,
+                          obscureText: _obscurePassword,
+                          onChanged: _clearError,
                           decoration: InputDecoration(
                             labelText: 'Password',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(16),
                             ),
+                            suffixIcon: IconButton(
+                              icon: Icon(_obscurePassword
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined),
+                              tooltip: _obscurePassword
+                                  ? 'Show password'
+                                  : 'Hide password',
+                              onPressed: () => setState(
+                                  () => _obscurePassword = !_obscurePassword),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 8),
-                        const Text(
-                          'Password must be at least 8 characters long',
-                          style: TextStyle(
+                        Text(
+                          _passwordRequirements,
+                          style: const TextStyle(
                             fontSize: 12,
                             color: Colors.grey,
                             fontFamily: AppTypography.fontBody,
                           ),
                         ),
+                        // The error belongs HERE, immediately under the fields
+                        // and above the button. It used to render after "Back
+                        // to login" at the very bottom of the card, which with
+                        // the keyboard open sits below the fold — so tapping
+                        // Register on an invalid password looked like the
+                        // button did nothing at all.
+                        if (_error != null) ...[
+                          const SizedBox(height: 12),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(Icons.error_outline,
+                                  color: Colors.red, size: 18),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _error!,
+                                  style: const TextStyle(
+                                    color: Colors.red,
+                                    fontFamily: AppTypography.fontBody,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                         const SizedBox(height: 16),
                         _loading
                             ? const CircularProgressIndicator()
@@ -323,16 +412,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           },
                           child: const Text('Back to login'),
                         ),
-                        if (_error != null) ...[
-                          const SizedBox(height: 16),
-                          Text(
-                            _error!,
-                            style: const TextStyle(
-                              color: Colors.red,
-                              fontFamily: AppTypography.fontBody,
-                            ),
-                          ),
-                        ]
                       ],
                     ),
                   ),

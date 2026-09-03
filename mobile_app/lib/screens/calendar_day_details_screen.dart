@@ -70,14 +70,49 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     _initializeProviders();
   }
 
-  /// Header budget/spent read from the refreshed day entry when available,
-  /// falling back to the route args only before the first load completes.
+  /// This day's persisted category allocations: {category: {planned, spent}}.
+  ///
+  /// THE single source of truth for everything this screen shows. The header
+  /// card and the Category Breakdown are both derived from it, so they cannot
+  /// disagree — which is exactly what they did before: the card showed a $79
+  /// flat daily average from the shell preview while the breakdown listed
+  /// categories that summed to nothing like it.
+  Map<String, dynamic> get _dayCategories {
+    final cats = _dayData?['categories'];
+    if (cats is Map) return Map<String, dynamic>.from(cats);
+    final fromWidget = widget.dayData?['categories'];
+    if (fromWidget is Map) return Map<String, dynamic>.from(fromWidget);
+    return const <String, dynamic>{};
+  }
+
+  /// True when this day's entry came from /calendar/shell — a planning preview
+  /// whose "limit" is a monthly total divided by the day count, identical for
+  /// every day of the month. It is not this day's budget.
+  bool get _isPreviewDay {
+    final v = _dayData?['is_preview'] ?? widget.dayData?['is_preview'];
+    return v == true;
+  }
+
+  /// True when this day carries a real persisted plan.
+  bool get _hasPersistedPlan => !_isPreviewDay && _dayCategories.isNotEmpty;
+
+  /// Budget for the selected day == SUM of its persisted category planned
+  /// amounts. Never an average, never a fallback, never the route argument.
   double get _headerLimit {
-    final l = _dayData?['limit'];
-    return l is num ? l.toDouble() : widget.limit.toDouble();
+    if (_isPreviewDay) return 0.0;
+    var total = 0.0;
+    _dayCategories.forEach((_, val) {
+      if (val is Map) {
+        total += (val['planned'] as num?)?.toDouble() ?? 0.0;
+      } else if (val is num) {
+        total += val.toDouble();
+      }
+    });
+    return total;
   }
 
   double get _headerSpent {
+    if (!_hasPersistedPlan) return 0.0;
     final s = _dayData?['spent'];
     return s is num ? s.toDouble() : widget.spent.toDouble();
   }
@@ -310,17 +345,25 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
       final Map<String, double> plannedByCategory = {};
       final Map<String, double> spentByCategory = {};
 
-      Map<String, dynamic>? catsMap;
-      if (_dayData != null && _dayData!['categories'] != null) {
-        catsMap = Map<String, dynamic>.from(_dayData!['categories'] as Map);
-      } else {
+      // The SAME canonical map the header card sums. Reading a different
+      // source here is how the card and this list came to disagree.
+      // A preview day contributes nothing: its per-category numbers are a
+      // monthly total spread evenly, not this day's allocation.
+      Map<String, dynamic>? catsMap =
+          (_isPreviewDay || _dayCategories.isEmpty) ? null : _dayCategories;
+      if (catsMap == null) {
         final budgetProvider = context.read<BudgetProvider>();
         final dayEntry = budgetProvider.calendarData.firstWhere(
           (d) => d['day'] == widget.dayNumber,
           orElse: () => <String, dynamic>{},
         );
-        if (dayEntry.isNotEmpty && dayEntry['categories'] != null) {
-          catsMap = Map<String, dynamic>.from(dayEntry['categories'] as Map);
+        final entryCats = dayEntry['categories'];
+        if (dayEntry['is_preview'] != true &&
+            entryCats is Map &&
+            entryCats.isNotEmpty) {
+          catsMap = Map<String, dynamic>.from(entryCats);
+          // Adopt it as _dayData so the header sums the identical numbers.
+          _dayData = {...?_dayData, 'categories': catsMap};
         }
       }
 
@@ -401,18 +444,17 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
       });
 
       if (mounted) {
-        setState(() {
-          _categoryBreakdown = breakdown.isEmpty
-              ? _generateDefaultCategoryBreakdown()
-              : breakdown;
-        });
+        // No invented categories. An empty breakdown means this day genuinely
+        // has no persisted allocation, and the UI says so instead of splitting
+        // a made-up daily average 40/25/20/15 across four hardcoded names.
+        setState(() => _categoryBreakdown = breakdown);
       }
     } catch (e) {
       logWarning('Failed to load category breakdown: $e',
           tag: 'CALENDAR_DAY_DETAILS');
-      setState(() {
-        _categoryBreakdown = _generateDefaultCategoryBreakdown();
-      });
+      if (mounted) {
+        setState(() => _categoryBreakdown = []);
+      }
     }
   }
 
@@ -686,7 +728,9 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
                   ),
                 ],
               ),
-              if (!isFuture) ...[
+              // A progress bar against a budget that does not exist reads as
+              // "0% of your budget used" rather than "you have no budget".
+              if (!isFuture && _hasPersistedPlan) ...[
                 const SizedBox(height: 16),
                 _buildProgressIndicator(
                     spentPercentage, colorScheme, textTheme),
@@ -889,8 +933,11 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
           ),
           const SizedBox(height: 16),
 
-          ..._categoryBreakdown.map((category) =>
-              _buildCategoryItem(category, colorScheme, textTheme)),
+          if (_categoryBreakdown.isEmpty)
+            _buildNoPlanState(colorScheme, textTheme)
+          else
+            ..._categoryBreakdown.map((category) =>
+                _buildCategoryItem(category, colorScheme, textTheme)),
 
           const SizedBox(height: 24),
 
@@ -971,9 +1018,12 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
+                    // Cents matter: whole-dollar rounding rendered a real
+                    // $0.30 allocation as "$0", which is what made a day with
+                    // a genuine plan look like it had none.
                     _isFuture()
-                        ? '\$${budgeted.toStringAsFixed(0)}'
-                        : '\$${spent.toStringAsFixed(0)} / \$${budgeted.toStringAsFixed(0)}',
+                        ? '\$${formatMoney(budgeted)}'
+                        : '\$${formatMoney(spent)} / \$${formatMoney(budgeted)}',
                     style: textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: percentage > 1.0
@@ -1574,37 +1624,55 @@ class _CalendarDayDetailsScreenState extends State<CalendarDayDetailsScreen>
     }
   }
 
-  List<Map<String, dynamic>> _generateDefaultCategoryBreakdown() {
-    return [
-      {
-        'name': 'Food & Dining',
-        'budgeted': (widget.limit * 0.4).toDouble(),
-        'spent': (widget.spent * 0.4).toDouble(),
-        'color': Colors.green,
-        'icon': Icons.restaurant_outlined,
-      },
-      {
-        'name': 'Transportation',
-        'budgeted': (widget.limit * 0.25).toDouble(),
-        'spent': (widget.spent * 0.3).toDouble(),
-        'color': Colors.blue,
-        'icon': Icons.directions_car_outlined,
-      },
-      {
-        'name': 'Entertainment',
-        'budgeted': (widget.limit * 0.2).toDouble(),
-        'spent': (widget.spent * 0.2).toDouble(),
-        'color': Colors.purple,
-        'icon': Icons.movie_outlined,
-      },
-      {
-        'name': 'Shopping',
-        'budgeted': (widget.limit * 0.15).toDouble(),
-        'spent': (widget.spent * 0.1).toDouble(),
-        'color': Colors.orange,
-        'icon': Icons.shopping_bag_outlined,
-      },
-    ];
+  /// Shown when the selected day carries no persisted category allocation.
+  ///
+  /// The screen used to fill this space with four invented categories sized as
+  /// fractions of a daily average, so a day with no plan looked like a day with
+  /// a budget. Saying "no budget" is the only honest option: the numbers do not
+  /// exist to show.
+  Widget _buildNoPlanState(ColorScheme colorScheme, TextTheme textTheme) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainer.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: colorScheme.outline.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.event_busy_outlined,
+            size: 40,
+            color: colorScheme.onSurface.withValues(alpha: 0.4),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _isPreviewDay
+                ? 'Budget preview only'
+                : 'No budget set for this day',
+            style: textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              fontFamily: AppTypography.fontHeading,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _isPreviewDay
+                ? 'This month has no saved plan yet, so there is no per-day '
+                    'allocation to show.'
+                : 'This day has no category allocation yet, so there is no '
+                    'daily budget to show.',
+            textAlign: TextAlign.center,
+            style: textTheme.bodySmall?.copyWith(
+              color: colorScheme.onSurface.withValues(alpha: 0.6),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildEmptyTransactionsState(

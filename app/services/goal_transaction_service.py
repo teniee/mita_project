@@ -111,7 +111,9 @@ class GoalTransactionService:
             transaction = (
                 db.query(Transaction)
                 .filter(
-                    Transaction.id == transaction_id, Transaction.user_id == user_id
+                    Transaction.id == transaction_id,
+                    Transaction.user_id == user_id,
+                    Transaction.deleted_at.is_(None),
                 )
                 .first()
             )
@@ -166,7 +168,9 @@ class GoalTransactionService:
             transaction = (
                 db.query(Transaction)
                 .filter(
-                    Transaction.id == transaction_id, Transaction.user_id == user_id
+                    Transaction.id == transaction_id,
+                    Transaction.user_id == user_id,
+                    Transaction.deleted_at.is_(None),
                 )
                 .first()
             )
@@ -217,7 +221,11 @@ class GoalTransactionService:
         try:
             transactions = (
                 db.query(Transaction)
-                .filter(Transaction.goal_id == goal_id, Transaction.user_id == user_id)
+                .filter(
+                    Transaction.goal_id == goal_id,
+                    Transaction.user_id == user_id,
+                    Transaction.deleted_at.is_(None),
+                )
                 .order_by(Transaction.spent_at.desc())
                 .all()
             )
@@ -247,7 +255,10 @@ class GoalTransactionService:
             from sqlalchemy import func
 
             total = db.query(func.sum(Transaction.amount)).filter(
-                Transaction.goal_id == goal_id, Transaction.user_id == user_id
+                Transaction.goal_id == goal_id,
+                Transaction.user_id == user_id,
+                # A deleted contribution is not progress toward the goal.
+                Transaction.deleted_at.is_(None),
             ).scalar() or Decimal("0")
 
             return abs(Decimal(str(total)))

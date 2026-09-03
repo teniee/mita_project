@@ -246,13 +246,19 @@ class _BudgetSettingsScreenState extends State<BudgetSettingsScreen> {
                       children: [
                         Row(
                           children: [
-                            Text(
-                              mode.name,
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: colorScheme.onSurface,
-                                fontFamily: AppTypography.fontHeading,
+                            // Flexible + ellipsis: the mode name plus the
+                            // "Active" badge overflowed this Row by 22px on a
+                            // 360dp-wide phone.
+                            Flexible(
+                              child: Text(
+                                mode.name,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: colorScheme.onSurface,
+                                  fontFamily: AppTypography.fontHeading,
+                                ),
                               ),
                             ),
                             if (isSelected) ...[

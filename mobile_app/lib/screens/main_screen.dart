@@ -586,44 +586,19 @@ class _MainScreenState extends State<MainScreen> {
       }
     }
 
-    // Fallback: Use default weights only if no calendar data available
-    logWarning('No calendar data available - using fallback default weights',
+    // No calendar data yet: show nothing rather than a plausible invention.
+    //
+    // This used to synthesise "Food & Dining / Transportation / Entertainment
+    // / Shopping" targets by splitting income/30 across default weights. Those
+    // numbers are not the user's budget — they are not even in the vocabulary
+    // the planner uses ("groceries", "transport public", "coffee") — yet they
+    // rendered in the same cards, with the same styling, as the real thing.
+    // On a slow connection a first-time user read invented figures as their
+    // plan. The caller already renders "No budget targets set for today" for
+    // an empty list, which is the honest answer while the calendar loads.
+    logWarning('No calendar data available - showing no targets',
         tag: 'MAIN_SCREEN');
-
-    final dailyBudget = _monthlyIncome / 30;
-    final weights = _incomeService
-        .getDefaultBudgetWeights(_incomeTier ?? IncomeTier.middle);
-
-    return [
-      {
-        'category': 'Food & Dining',
-        'limit': dailyBudget * (weights['food'] ?? 0.35),
-        'spent': 0.0,
-        'icon': Icons.restaurant,
-        'color': const Color(0xFF4CAF50),
-      },
-      {
-        'category': 'Transportation',
-        'limit': dailyBudget * (weights['transportation'] ?? 0.25),
-        'spent': 0.0,
-        'icon': Icons.directions_car,
-        'color': const Color(0xFF2196F3),
-      },
-      {
-        'category': 'Entertainment',
-        'limit': dailyBudget * (weights['entertainment'] ?? 0.20),
-        'spent': 0.0,
-        'icon': Icons.movie,
-        'color': const Color(0xFF9C27B0),
-      },
-      {
-        'category': 'Shopping',
-        'limit': dailyBudget * (weights['shopping'] ?? 0.20),
-        'spent': 0.0,
-        'icon': Icons.shopping_bag,
-        'color': const Color(0xFFFF9800),
-      },
-    ];
+    return [];
   }
 
   /// Convert calendar data to week data format
@@ -1199,14 +1174,19 @@ class _MainScreenState extends State<MainScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
+                          // Spending a budget down to exactly zero is not an
+                          // overspend. `remaining > 0` sent the exact-zero case
+                          // to the red branch, which rendered the self-
+                          // contradicting "Over budget: $0" and coloured a
+                          // perfectly on-plan category as a problem.
                           Text(
-                            remaining > 0
+                            remaining >= 0
                                 ? 'Remaining: \$${formatMoney(remaining, decimals: 0)}'
                                 : 'Over budget: \$${formatMoney(-remaining, decimals: 0)}',
                             style: TextStyle(
                               fontFamily: 'Manrope',
                               fontSize: 13,
-                              color: remaining > 0
+                              color: remaining >= 0
                                   ? Colors.grey[600]
                                   : Colors.red.shade600,
                               fontWeight: FontWeight.w600,

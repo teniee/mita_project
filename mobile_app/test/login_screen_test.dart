@@ -25,6 +25,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Sign In'), findsOneWidget);
-    expect(find.text('Continue with Google'), findsOneWidget);
+    // Google sign-in is hidden unless the build actually ships Firebase /
+    // Google OAuth config (AppConfig.googleSignInEnabled, off by default).
+    // Without it the button always fails — a dead end on the first screen of
+    // the app — so its ABSENCE is the correct default and is pinned here.
+    expect(find.text('Continue with Google'), findsNothing);
   });
 }

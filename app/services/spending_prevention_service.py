@@ -9,9 +9,10 @@ from decimal import Decimal
 from typing import Dict, List, Optional
 from uuid import UUID
 
-from sqlalchemy import and_
+from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 
+from app.config.category_aliases import plan_categories_for
 from app.core.budget_thresholds import (
     THRESHOLD_DANGER,
     THRESHOLD_EXCEEDED,
@@ -20,6 +21,7 @@ from app.core.budget_thresholds import (
 )
 from app.db.models.daily_plan import DailyPlan
 from app.db.models.goal import Goal
+from app.services.monthly_plan_service import ensure_month_plan_safe
 
 
 class SpendingPreventionService:
@@ -41,6 +43,19 @@ class SpendingPreventionService:
     def __init__(self, db: Session, user_id: UUID):
         self.db = db
         self.user_id = user_id
+
+    def _ensure_plan_for(self, day: date) -> None:
+        """Materialize the month ``day`` falls in before reading plan rows.
+
+        Every method on this service answers "what budget does this user have
+        on this day", and with no rows for the month the honest-looking answer
+        ("no budget set for 'food'") was in fact the September rollover gap:
+        the user had a budget, the month had simply never been generated. This
+        is the service-level hook, so both POST /transactions/check-
+        affordability and GET /transactions/budget-status get it without either
+        router knowing about lazy generation.
+        """
+        ensure_month_plan_safe(self.db, self.user_id, day.year, day.month)
 
     def check_affordability(
         self,
@@ -77,25 +92,40 @@ class SpendingPreventionService:
             else transaction_date
         )
 
-        # Get today's daily plan for this category
-        daily_plan = (
+        self._ensure_plan_for(trans_date)
+
+        # Today's plan rows this category spends from.
+        #
+        # An exact `category ==` match was wrong: the planner writes plan-
+        # vocabulary buckets ("groceries", "dining out", "coffee") while the app
+        # sends API categories ("food"), so the lookup missed for every user and
+        # every category, and everyone was told they had no budget. Resolve the
+        # aliases and aggregate whatever the user actually has for the day.
+        wanted = plan_categories_for(category)
+        daily_plans = (
             self.db.query(DailyPlan)
             .filter(
                 and_(
                     DailyPlan.user_id == self.user_id,
                     DailyPlan.date == trans_date,
-                    DailyPlan.category == category,
+                    func.lower(DailyPlan.category).in_(wanted),
                 )
             )
-            .first()
+            .all()
         )
 
         # If no daily plan exists, can't validate (allow with warning)
-        if not daily_plan:
+        if not daily_plans:
             return self._build_no_budget_response(category, amount)
 
-        daily_budget = Decimal(str(daily_plan.daily_budget or 0))
-        current_spent = Decimal(str(daily_plan.spent_amount or 0))
+        daily_budget = sum(
+            (Decimal(str(p.daily_budget or 0)) for p in daily_plans),
+            Decimal("0"),
+        )
+        current_spent = sum(
+            (Decimal(str(p.spent_amount or 0)) for p in daily_plans),
+            Decimal("0"),
+        )
 
         # Calculate impact
         new_total = current_spent + amount
@@ -353,6 +383,8 @@ class SpendingPreventionService:
         """
         if transaction_date is None:
             transaction_date = date.today()
+
+        self._ensure_plan_for(transaction_date)
 
         daily_plans = (
             self.db.query(DailyPlan)

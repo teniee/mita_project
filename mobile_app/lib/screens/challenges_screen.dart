@@ -196,14 +196,46 @@ class _ChallengesScreenState extends State<ChallengesScreen>
 
     return RefreshIndicator(
       onRefresh: () => challengesProvider.refresh(),
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: availableChallenges.length,
-        itemBuilder: (context, index) {
-          final challenge = availableChallenges[index];
-          return _buildAvailableChallengeCard(challenge);
-        },
-      ),
+      child: availableChallenges.isEmpty
+          // A fresh account has no available challenges, and an empty
+          // ListView.builder renders a blank white screen with nothing to pull
+          // on — reached straight from the dashboard's "Browse Challenges"
+          // button, so it read as a broken screen.
+          ? ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 64),
+              physics: const AlwaysScrollableScrollPhysics(),
+              children: const [
+                Icon(Icons.emoji_events_outlined, size: 64, color: Colors.grey),
+                SizedBox(height: 16),
+                Text(
+                  'No challenges available right now',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: AppTypography.fontHeading,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Check back soon — new challenges are added regularly.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: AppTypography.fontBody,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: availableChallenges.length,
+              itemBuilder: (context, index) {
+                final challenge = availableChallenges[index];
+                return _buildAvailableChallengeCard(challenge);
+              },
+            ),
     );
   }
 

@@ -224,6 +224,8 @@ class _CalendarScreenState extends State<CalendarScreen>
       );
     }
 
+    final isPreview = context.watch<BudgetProvider>().calendarIsPreview;
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -231,6 +233,37 @@ class _CalendarScreenState extends State<CalendarScreen>
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
+            // A shell preview is one monthly total spread evenly across the
+            // days, so every cell shows the same figure. Say so rather than
+            // letting it read as this month's real per-day budget.
+            if (isPreview) ...[
+              Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: colorScheme.secondaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline,
+                        size: 18, color: colorScheme.onSecondaryContainer),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Preview only — no saved plan for this month yet. '
+                        'These are estimates, not your daily budgets.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSecondaryContainer,
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             // Weekday headers
             _buildWeekdayHeaders(),
             const SizedBox(height: 12),

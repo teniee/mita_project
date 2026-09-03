@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.error_handler import MITAException
 from app.services.core.engine.budget_tracker import BudgetTracker
+from app.services.monthly_plan_service import ensure_month_plan_safe
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,11 @@ def fetch_spent_by_category(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Year must be between 2020 and 2030",
             )
+
+        # BudgetTracker groups DailyPlan rows by category for this month; with
+        # no rows it returns {} and the client renders an empty budget. Make
+        # sure the month exists first (idempotent, and safe: it never raises).
+        ensure_month_plan_safe(db, user_id, year, month)
 
         tracker = BudgetTracker(db=db, user_id=user_id, year=year, month=month)
         result = tracker.get_spent()
@@ -77,6 +83,8 @@ def fetch_remaining_budget(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Year must be between 2020 and 2030",
             )
+
+        ensure_month_plan_safe(db, user_id, year, month)
 
         tracker = BudgetTracker(db=db, user_id=user_id, year=year, month=month)
         result = tracker.get_remaining_per_category()

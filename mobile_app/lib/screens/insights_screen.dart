@@ -208,25 +208,6 @@ class _InsightsScreenState extends State<InsightsScreen>
       ..sort((a, b) => (a['date'] as String).compareTo(b['date'] as String));
   }
 
-  void _generateSampleAnalyticsData() {
-    final dailyBudget = _monthlyIncome / 30;
-    final now = DateTime.now();
-
-    // Generate sample daily spending for past 2 weeks
-    dailyTotals = List.generate(14, (index) {
-      final date = now.subtract(Duration(days: 13 - index));
-      final isWeekend = date.weekday == 6 || date.weekday == 7;
-      final spendingMultiplier = isWeekend ? 1.3 : 0.8;
-      final amount =
-          (dailyBudget * spendingMultiplier * (0.7 + (index % 3) * 0.2));
-
-      return {
-        'date': DateFormat('yyyy-MM-dd').format(date),
-        'amount': amount,
-      };
-    });
-  }
-
   /// Create a fresh AI snapshot and fetch it
   Future<void> _createAndFetchAISnapshot() async {
     try {
@@ -234,13 +215,12 @@ class _InsightsScreenState extends State<InsightsScreen>
       await _apiService.createAISnapshot(year: now.year, month: now.month);
       aiSnapshot = await _apiService.getLatestAISnapshot();
     } catch (e) {
+      // Leave the snapshot null so the honest empty state renders. Inventing a
+      // rating here told a day-one user with no transactions that they had a
+      // "B+" and were "doing well with food budgeting" — a fabricated
+      // financial assessment of an account with no data.
       logError('Error creating/fetching AI snapshot: $e');
-      aiSnapshot = {
-        'rating': 'B+',
-        'risk': 'moderate',
-        'summary':
-            'Your spending patterns show good discipline with occasional room for improvement. You\'re doing well with food budgeting but could optimize transportation costs.',
-      };
+      aiSnapshot = null;
     }
   }
 
@@ -362,9 +342,9 @@ class _InsightsScreenState extends State<InsightsScreen>
     // Compute daily totals from transaction provider data
     if (transactionProvider.transactions.isNotEmpty) {
       _computeDailyTotals(transactionProvider.transactions);
-    } else if (_monthlyIncome > 0 && dailyTotals.isEmpty) {
-      _generateSampleAnalyticsData();
     }
+    // No synthetic series when there are no transactions: a fabricated
+    // fortnight of "spending" derived from income is not this user's data.
 
     // Use enhanced budget insights from provider if available
     if (budgetProvider.budgetSuggestions.isNotEmpty &&
@@ -887,7 +867,11 @@ class _InsightsScreenState extends State<InsightsScreen>
   }
 
   Widget _buildFinancialHealthCard() {
-    if (financialHealthScore == null) {
+    // A missing score or grade is "we don't know yet", not 75/B+. Defaulting
+    // them stated a financial assessment the server never made.
+    final rawScore = financialHealthScore?['score'];
+    final rawGrade = financialHealthScore?['grade'];
+    if (financialHealthScore == null || rawScore == null || rawGrade == null) {
       return InsightsEmptyStateWidgets.buildSectionEmptyCard(
         title: 'Financial Health Score',
         icon: Icons.health_and_safety,
@@ -897,8 +881,8 @@ class _InsightsScreenState extends State<InsightsScreen>
       );
     }
 
-    final score = financialHealthScore!['score'] ?? 75;
-    final grade = financialHealthScore!['grade'] ?? 'B+';
+    final score = rawScore;
+    final grade = rawGrade;
     final improvements = asStringList(financialHealthScore!['improvements']);
 
     return Container(
@@ -1016,7 +1000,12 @@ class _InsightsScreenState extends State<InsightsScreen>
   }
 
   Widget _buildAISnapshotCard() {
-    if (aiSnapshot == null) {
+    // Same rule as the health score: an analysis with no rating or no summary
+    // is not an analysis. Filling the gaps with "B" / "moderate" attributed an
+    // opinion to MITA that MITA never formed.
+    final rating = asStringOrNull(aiSnapshot?['rating']);
+    final summary = asStringOrNull(aiSnapshot?['summary']);
+    if (aiSnapshot == null || rating == null || summary == null) {
       return InsightsEmptyStateWidgets.buildSectionEmptyCard(
         title: 'AI Financial Analysis',
         icon: Icons.psychology,
@@ -1025,10 +1014,7 @@ class _InsightsScreenState extends State<InsightsScreen>
       );
     }
 
-    final rating = asString(aiSnapshot!['rating'], fallback: 'B');
-    final risk = asString(aiSnapshot!['risk'], fallback: 'moderate');
-    final summary =
-        asString(aiSnapshot!['summary'], fallback: 'No summary available');
+    final risk = asString(aiSnapshot!['risk'], fallback: 'unrated');
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1684,7 +1670,11 @@ class _InsightsScreenState extends State<InsightsScreen>
   }
 
   Widget _buildBudgetOptimizationCard() {
-    if (_budgetOptimization == null) {
+    // A missing overall_score is "not scored yet", not a perfect 100%. The
+    // old `fallback: 100.0` painted a green "100%" badge over a budget the
+    // server had never actually scored.
+    if (_budgetOptimization == null ||
+        _budgetOptimization!['overall_score'] == null) {
       return InsightsEmptyStateWidgets.buildSectionEmptyCard(
         title: 'Budget Optimization',
         icon: Icons.tune_rounded,
@@ -1696,8 +1686,7 @@ class _InsightsScreenState extends State<InsightsScreen>
     }
 
     final suggestions = asStringList(_budgetOptimization!['suggestions']);
-    final overallScore =
-        asDouble(_budgetOptimization!['overall_score'], fallback: 100.0);
+    final overallScore = asDouble(_budgetOptimization!['overall_score']);
     final primaryColor = _incomeTier != null
         ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
         : AppColors.textPrimary;
@@ -1861,7 +1850,7 @@ class _InsightsScreenState extends State<InsightsScreen>
                       ),
                     ),
                     Text(
-                      'Based on successful $tierName patterns',
+                      'Habits that suit a $tierName budget',
                       style: TextStyle(
                         fontFamily: AppTypography.fontBody,
                         fontSize: 12,
@@ -1929,23 +1918,11 @@ class _InsightsScreenState extends State<InsightsScreen>
                             ],
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            '${habit['peer_adoption']} adopt',
-                            style: const TextStyle(
-                              fontFamily: AppTypography.fontBody,
-                              fontSize: 10,
-                              color: Colors.green,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
+                        // No "% adopt" badge: those percentages are a
+                        // hardcoded table in cohort_service.dart, not a
+                        // measured statistic. Presenting them as peer
+                        // behaviour invented evidence for a cohort that, on a
+                        // new install, has no members at all.
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -2044,7 +2021,7 @@ class _InsightsScreenState extends State<InsightsScreen>
                       ),
                     ),
                     Text(
-                      'Popular goals among $tierName users',
+                      'Goals that suit a $tierName budget',
                       style: TextStyle(
                         fontFamily: AppTypography.fontBody,
                         fontSize: 12,
@@ -2090,23 +2067,7 @@ class _InsightsScreenState extends State<InsightsScreen>
                               ),
                             ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              '${(asDouble(goal['peer_adoption']) * 100).toStringAsFixed(0)}% adopt',
-                              style: const TextStyle(
-                                fontFamily: AppTypography.fontBody,
-                                fontSize: 10,
-                                color: Colors.blue,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
+                          // See above: peer_adoption is hardcoded, not measured.
                         ],
                       ),
                       const SizedBox(height: 8),

@@ -1006,9 +1006,13 @@ class _UserSettingsScreenState extends State<UserSettingsScreen> {
 
         // Navigate to welcome screen
         if (mounted) {
+          // '/' is the registered WelcomeScreen route; '/welcome' is not in the
+          // table (main.dart) and fell through to the "Page Not Found"
+          // fallback with the whole stack already wiped — so a successful,
+          // irreversible account deletion looked like the app had crashed.
           Navigator.pushNamedAndRemoveUntil(
             context,
-            '/welcome',
+            '/',
             (route) => false,
           );
         }

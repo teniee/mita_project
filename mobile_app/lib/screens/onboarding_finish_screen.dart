@@ -469,18 +469,25 @@ class _OnboardingFinishScreenState extends State<OnboardingFinishScreen> {
                                   _canRetry() ? 'Retry' : 'Retry Disabled'),
                             ),
                             const SizedBox(height: 12),
+                            // Deliberately does NOT reset OnboardingState: the
+                            // saved answers are the only copy of the seven
+                            // steps the user just filled in, and the submit
+                            // failed, so the server has nothing. Wiping them
+                            // here meant a transient 502 cost the user every
+                            // answer and dropped them back on step 1 with
+                            // empty fields. Going back to the start of
+                            // onboarding with the answers intact lets them
+                            // walk forward and submit again.
                             TextButton(
                               onPressed: () {
-                                // Clear the error state and navigate
-                                OnboardingState.instance.reset();
                                 Navigator.pushNamedAndRemoveUntil(
                                   context,
-                                  '/main',
+                                  '/onboarding_location',
                                   (route) => false,
                                 );
                               },
                               child: const Text(
-                                'Skip for now',
+                                'Back to start',
                                 style: TextStyle(color: AppColors.textPrimary),
                               ),
                             ),

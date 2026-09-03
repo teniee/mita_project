@@ -358,6 +358,50 @@ class PeerComparisonCard extends StatelessWidget {
     required this.monthlyIncome,
   });
 
+  /// Shown until there are real peers to compare against. Says so plainly
+  /// rather than inventing an average or a percentile.
+  Widget _buildNoPeerDataCard(
+      BuildContext context, String tierName, Color primaryColor) {
+    return Card(
+      elevation: 3,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.people_outline_rounded, color: primaryColor, size: 28),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Compare with $tierName Peers',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          fontFamily: AppTypography.fontHeading,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Not enough people in your income range have joined yet. '
+                    'Peer comparisons will appear here once there are.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.grey.shade700,
+                          fontFamily: AppTypography.fontBody,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     try {
@@ -367,10 +411,28 @@ class PeerComparisonCard extends StatelessWidget {
       final primaryColor = incomeService.getIncomeTierPrimaryColor(tier);
 
       final yourSpending = comparisonData['your_spending'] as double? ?? 0.0;
-      final peerAverage = comparisonData['peer_average'] as double? ?? 0.0;
-      final percentile = comparisonData['percentile'] as int? ?? 50;
+      final peerAverageOrNull = comparisonData['peer_average'] as double?;
+      final percentileOrNull = comparisonData['percentile'] as int?;
+      final peerCount = comparisonData['peer_count'] as int?;
       final insights = asStringList(comparisonData['insights']);
 
+      // No peers, no comparison. The API is explicit about this — it returns
+      // peer_average/percentile as null with comparison
+      // "insufficient_peer_data" and peer_count 0 — but this card used to
+      // default them to \$0 and "50th percentile", so a day-one user was told
+      // they ranked mid-pack against a cohort of nobody, and simultaneously
+      // that they were "#0 (0th percentile)" further down the same screen.
+      final hasPeers = peerAverageOrNull != null &&
+          percentileOrNull != null &&
+          (peerCount == null || peerCount > 0) &&
+          comparisonData['comparison'] != 'insufficient_peer_data';
+
+      if (!hasPeers) {
+        return _buildNoPeerDataCard(context, tierName, primaryColor);
+      }
+
+      final peerAverage = peerAverageOrNull;
+      final percentile = percentileOrNull;
       final isAboveAverage = yourSpending > peerAverage;
       final difference = peerAverage > 0
           ? ((yourSpending - peerAverage) / peerAverage * 100).abs()

@@ -32,6 +32,7 @@ from app.services.core.engine.budget_logic import generate_budget_from_answers
 from app.services.core.engine.budget_mode_selector import resolve_budget_mode
 from app.services.core.engine.budget_suggestion_engine import suggest_budget_adjustments
 from app.services.core.income_classification_service import IncomeClassificationService
+from app.services.monthly_plan_service import ensure_month_plan_async
 from app.utils.response_wrapper import success_response
 
 from app.api.budget.services import fetch_remaining_budget  # isort:skip
@@ -383,6 +384,10 @@ async def get_budget_forecast(
     month_end_dt = datetime(target_year, target_month, days_in_month, 23, 59, 59)
 
     # ── Fetch DailyPlan rows for the month ───────────────────────────────────
+    # With no rows compute_forecast short-circuits to status="no_data"; give it
+    # the month first.
+    await ensure_month_plan_async(db, user.id, target_year, target_month)
+
     result = await db.execute(
         select(DailyPlan).where(
             DailyPlan.user_id == user.id,
@@ -451,6 +456,10 @@ async def get_daily_budgets(
     now = datetime.now(timezone.utc)
     year = year or now.year
     month = month or now.month
+
+    # No rows for the month meant an empty list here, which the app renders as
+    # a month with no budget. Materialize it first (idempotent, never raises).
+    await ensure_month_plan_async(db, user.id, year, month)
 
     # Query daily plans for the month
     end_date = (
@@ -673,6 +682,10 @@ async def get_live_budget_status(
     # "Today" is the USER's calendar day, not the UTC date — at 01:00 in
     # Sofia the UTC date is still yesterday and every daily figure was off.
     today_local = local_day_of(now, user.timezone)
+
+    # Materialize today's month before reading it — with no rows this endpoint
+    # reported daily_budget 0.0 / status "neutral" for a user who has a budget.
+    await ensure_month_plan_async(db, user.id, today_local.year, today_local.month)
 
     # Get today's plan rows. There is one DailyPlan row PER CATEGORY per day,
     # so scalar_one_or_none() raised MultipleResultsFound -> 500 on every

@@ -76,154 +76,168 @@ class _OnboardingHabitsScreenState extends State<OnboardingHabitsScreen>
           onPressed: () => Navigator.pop(context),
         ),
       ),
+      // Scrollable, not a fixed Column with an Expanded list. On a 360x640
+      // phone with the keyboard open this body gets ~196px for ~415px of
+      // content, and the overflow is clipped OUT OF HIT TESTING — Continue
+      // became untappable mid-onboarding. Same shape as register_screen.dart:
+      // scroll always, stay centred when there is room to spare.
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 8),
-              const OnboardingProgressIndicator(
-                currentStep: 6,
-                totalSteps: 7,
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: constraints.maxHeight - 48,
               ),
-              const SizedBox(height: 24),
-              const Text(
-                'Which financial habits are hurting you?',
-                style: TextStyle(
-                  fontFamily: AppTypography.fontHeading,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 22,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Expanded(
-                child: ListView(
-                  children: [
-                    ...habits.map((habit) {
-                      final isSelected = selectedHabits.contains(habit['id']);
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: GestureDetector(
-                          onTap: () => _toggleHabit(asString(habit['id'])),
-                          child: Card(
-                            elevation: isSelected ? 4 : 1,
-                            color:
-                                isSelected ? AppColors.secondary : Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                              side: BorderSide(
-                                color: isSelected
-                                    ? AppColors.textPrimary
-                                    : Colors.transparent,
-                                width: 1.5,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 8),
+                  const OnboardingProgressIndicator(
+                    currentStep: 6,
+                    totalSteps: 7,
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Which financial habits are hurting you?',
+                    style: TextStyle(
+                      fontFamily: AppTypography.fontHeading,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 22,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  ListView(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    children: [
+                      ...habits.map((habit) {
+                        final isSelected = selectedHabits.contains(habit['id']);
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: GestureDetector(
+                            onTap: () => _toggleHabit(asString(habit['id'])),
+                            child: Card(
+                              elevation: isSelected ? 4 : 1,
+                              color: isSelected
+                                  ? AppColors.secondary
+                                  : Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                                side: BorderSide(
+                                  color: isSelected
+                                      ? AppColors.textPrimary
+                                      : Colors.transparent,
+                                  width: 1.5,
+                                ),
                               ),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  vertical: 20, horizontal: 16),
-                              child: Row(
-                                children: [
-                                  Icon(habit['icon'] as IconData,
-                                      color: AppColors.textPrimary),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Text(
-                                      asString(habit['label']),
-                                      style: const TextStyle(
-                                        fontFamily: AppTypography.fontBody,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 16,
-                                        color: AppColors.textPrimary,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 20, horizontal: 16),
+                                child: Row(
+                                  children: [
+                                    Icon(habit['icon'] as IconData,
+                                        color: AppColors.textPrimary),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Text(
+                                        asString(habit['label']),
+                                        style: const TextStyle(
+                                          fontFamily: AppTypography.fontBody,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 16,
+                                          color: AppColors.textPrimary,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  if (isSelected)
-                                    const Icon(Icons.check_circle,
-                                        color: AppColors.textPrimary),
-                                ],
+                                    if (isSelected)
+                                      const Icon(Icons.check_circle,
+                                          color: AppColors.textPrimary),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                      );
-                    }),
-                    const SizedBox(height: 12),
-                    const Text(
-                      "Anything else?",
-                      style: TextStyle(
-                        fontFamily: AppTypography.fontBody,
-                        fontSize: 16,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    TextFormField(
-                      controller: commentController,
-                      decoration: InputDecoration(
-                        hintText: 'Describe your situation...',
-                        filled: true,
-                        fillColor: Colors.white,
-                        contentPadding: const EdgeInsets.symmetric(
-                            vertical: 14, horizontal: 16),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          borderSide: BorderSide.none,
+                        );
+                      }),
+                      const SizedBox(height: 12),
+                      const Text(
+                        "Anything else?",
+                        style: TextStyle(
+                          fontFamily: AppTypography.fontBody,
+                          fontSize: 16,
+                          color: AppColors.textPrimary,
                         ),
                       ),
-                      maxLines: 3,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: selectedHabits.isNotEmpty ? _submitHabits : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.textPrimary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    textStyle: const TextStyle(
-                      fontFamily: AppTypography.fontHeading,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: commentController,
+                        decoration: InputDecoration(
+                          hintText: 'Describe your situation...',
+                          filled: true,
+                          fillColor: Colors.white,
+                          contentPadding: const EdgeInsets.symmetric(
+                              vertical: 14, horizontal: 16),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        maxLines: 3,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed:
+                          selectedHabits.isNotEmpty ? _submitHabits : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.textPrimary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        textStyle: const TextStyle(
+                          fontFamily: AppTypography.fontHeading,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                      child: const Text("Continue"),
                     ),
                   ),
-                  child: const Text("Continue"),
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  onPressed: () async {
-                    // Skip habits - set empty list
-                    final isValid = await validateSessionBeforeNavigation();
-                    if (!isValid) return;
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: () async {
+                        // Skip habits - set empty list
+                        final isValid = await validateSessionBeforeNavigation();
+                        if (!isValid) return;
 
-                    OnboardingState.instance.habits = [];
-                    OnboardingState.instance.habitsComment = null;
-                    await OnboardingState.instance.save();
+                        OnboardingState.instance.habits = [];
+                        OnboardingState.instance.habitsComment = null;
+                        await OnboardingState.instance.save();
 
-                    // Navigate to finish screen (which will handle backend submission and caching)
-                    if (!mounted) return;
-                    Navigator.pushNamed(context, '/onboarding_finish');
-                  },
-                  child: const Text(
-                    "Skip for now",
-                    style: TextStyle(
-                        fontFamily: AppTypography.fontHeading,
-                        color: Colors.grey),
+                        // Navigate to finish screen (which will handle backend submission and caching)
+                        if (!mounted) return;
+                        Navigator.pushNamed(context, '/onboarding_finish');
+                      },
+                      child: const Text(
+                        "Skip for now",
+                        style: TextStyle(
+                            fontFamily: AppTypography.fontHeading,
+                            color: Colors.grey),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
