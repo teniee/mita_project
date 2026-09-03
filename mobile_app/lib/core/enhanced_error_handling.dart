@@ -12,6 +12,20 @@ import '../services/financial_error_service.dart';
 import 'app_error_handler.dart';
 import 'error_handling.dart';
 
+/// An error whose message is already written for the user.
+///
+/// The error dialogs render `error.toString()`. Wrapping a human sentence in a
+/// plain `Exception` therefore showed it as "Exception: <sentence>". This type
+/// carries the same sentence and returns it verbatim.
+class UserFacingError implements Exception {
+  const UserFacingError(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
+}
+
 /// Enhanced error handling patterns for Flutter operations
 class EnhancedErrorHandling {
   /// Execute operation with comprehensive error handling and automatic retry
@@ -348,8 +362,12 @@ mixin RobustErrorHandlingMixin<T extends StatefulWidget> on State<T> {
   }) async {
     if (!mounted) return;
 
-    // Create error with financial context
-    final error = Exception(message);
+    // NOT `Exception(message)`. The dialog renders the error's toString(), and
+    // Exception's toString() prefixes "Exception: " — so a message written for
+    // a human ("Unable to sign in...") reached the user as
+    // "Exception: Unable to sign in...". Every call site of this helper leaked
+    // that prefix.
+    final error = UserFacingError(message);
 
     await errorService.showError(
       context,

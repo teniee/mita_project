@@ -35,7 +35,8 @@ void main() {
       expect(find.text('Email address'), findsOneWidget);
       expect(find.text('Password'), findsOneWidget);
       expect(find.text('Remember me'), findsOneWidget);
-      expect(find.text('Continue with Google'), findsOneWidget);
+      // Hidden by default — see AppConfig.googleSignInEnabled.
+      expect(find.text('Continue with Google'), findsNothing);
       expect(find.text('Sign In'), findsOneWidget);
     });
 
@@ -64,7 +65,8 @@ void main() {
       expect(find.text('Dirección de correo electrónico'), findsOneWidget);
       expect(find.text('Contraseña'), findsOneWidget);
       expect(find.text('Recordarme'), findsOneWidget);
-      expect(find.text('Continuar con Google'), findsOneWidget);
+      // Hidden by default — see AppConfig.googleSignInEnabled.
+      expect(find.text('Continuar con Google'), findsNothing);
       expect(find.text('Iniciar Sesión'), findsOneWidget);
     });
 

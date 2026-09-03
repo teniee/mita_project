@@ -1,6 +1,7 @@
 import datetime
 import hashlib
 import random
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Dict, List
 
 CATEGORY_BEHAVIOR: Dict[str, str] = {
@@ -66,6 +67,30 @@ class CalendarDay:
         }
 
 
+def split_amount_exactly(total, parts: int) -> List[Decimal]:
+    """Split ``total`` across ``parts`` rows so the parts re-sum to it exactly.
+
+    ``round(total / n, 2)`` per row does not conserve money: $100.00 over 22
+    weekdays became $100.10 and $1000.00 became $999.90, so a month's persisted
+    daily_plan rows never summed back to the allocation they came from. The
+    remainder is spread one cent at a time over the leading rows, the same
+    integer-cent discipline `_allocate_cents_with_caps` uses in the real-time
+    rebalancer.
+    """
+    if parts <= 0:
+        return []
+    if not isinstance(total, Decimal):
+        total = Decimal(str(total))
+    total_cents = int((total * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+    sign = -1 if total_cents < 0 else 1
+    magnitude = abs(total_cents)
+    base, remainder = divmod(magnitude, parts)
+    return [
+        Decimal(sign * (base + (1 if index < remainder else 0))) / Decimal(100)
+        for index in range(parts)
+    ]
+
+
 def distribute_budget_over_days(
     days: List[CalendarDay], category: str, total: float, user_frequency: int = None
 ) -> None:
@@ -88,7 +113,7 @@ def distribute_budget_over_days(
             if category in ["rent", "mortgage", "school fees"]
             else min(4, num_days - 1)
         )
-        days[index].planned_budget[category] = round(total, 2)
+        days[index].planned_budget[category] = split_amount_exactly(total, 1)[0]
 
     elif behavior == "spread":
         weekday_days = [d for d in days if d.day_type == "weekday"]
@@ -107,9 +132,10 @@ def distribute_budget_over_days(
         if len(spread_days) == 0:
             spread_days = days  # Fallback to all days if no weekdays
 
-        per_day = round(total / len(spread_days), 2)
-        for day in spread_days:
-            day.planned_budget[category] = per_day
+        for day, share in zip(
+            spread_days, split_amount_exactly(total, len(spread_days))
+        ):
+            day.planned_budget[category] = share
 
     elif behavior == "clustered":
         # Use user frequency for clustered items too
@@ -146,6 +172,20 @@ def distribute_budget_over_days(
         selected_days = rng.sample(
             candidate_days, min(num_cluster_days, len(candidate_days))
         )
-        chunk = round(total / len(selected_days), 2)
-        for day in selected_days:
-            day.planned_budget[category] = chunk
+        if not selected_days:
+            # Reachable only via a user_frequency in (0, 1), which int()s to 0.
+            # The previous `total / len(selected_days)` raised ZeroDivisionError
+            # here; keep failing loudly rather than silently dropping the whole
+            # category's budget, which is what an empty zip() would do.
+            raise ValueError(
+                f"no days available to distribute {category!r} over "
+                f"(frequency={user_frequency!r}, days={num_days})"
+            )
+        # Deterministic order so the cent remainder lands on the same days on
+        # every regeneration of this month (rng.sample order is stable for the
+        # seed, but sorting keeps the plan readable and replay-safe).
+        selected_days.sort(key=lambda day: day.date)
+        for day, share in zip(
+            selected_days, split_amount_exactly(total, len(selected_days))
+        ):
+            day.planned_budget[category] = share

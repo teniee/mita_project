@@ -1,4 +1,5 @@
 import logging
+from calendar import monthrange
 from collections import defaultdict
 from datetime import datetime, timezone
 
@@ -42,6 +43,7 @@ from app.services.calendar_service import (
     generate_shell_calendar,
     update_day,
 )
+from app.services.monthly_plan_service import ensure_month_plan_safe
 from app.utils.response_wrapper import success_response
 
 router = APIRouter(prefix="/calendar", tags=["calendar"])
@@ -130,19 +132,43 @@ async def redistribute(payload: RedistributeInput):
     return success_response({"updated_calendar": updated_calendar})
 
 
+def _as_fraction(weight) -> float:
+    """Interpret a category weight as a fraction of income.
+
+    The mobile client sends fractions (0.15). Older callers and some saved
+    configs send percentages (15). Treat anything above 1 as a percentage so
+    both are handled, instead of silently budgeting 100x too little.
+    """
+    value = float(weight or 0)
+    return value / 100 if value > 1 else value
+
+
 @router.post("/shell", response_model=ShellCalendarOut)
 async def get_shell(
     payload: ShellConfig,
     user=Depends(get_current_user),  # noqa: B008
 ):
     try:
-        # Convert ShellConfig to the format expected by generate_shell_calendar
+        # Convert ShellConfig to the format expected by generate_shell_calendar.
+        #
+        # num_days is the real length of the requested month. Hardcoding 30
+        # dropped 31 August entirely and inflated every February day, and the
+        # flat "monthly total / 30" it produced was being displayed as a
+        # specific day's budget (the "$79 on every day" report).
+        days_in_month = monthrange(payload.year, payload.month)[1]
+
+        # weights arrive as FRACTIONS (0.15 = 15%), which is what the mobile
+        # client sends. Dividing by 100 as well made every discretionary
+        # allocation 100x too small — $6000 income produced a $9/month food
+        # budget, i.e. $0.30/day, which rendered as "$0" next to a headline
+        # figure made almost entirely of the fixed expenses below.
         shell_data = {
             "start_date": f"{payload.year}-{payload.month:02d}-01",
-            "num_days": 30,  # Default to 30 days for shell calendar
+            "num_days": days_in_month,
             "budget_plan": {
-                # Convert the weights to actual budget amounts based on income
-                category: float(payload.income * weight / 100) if weight else 0.0
+                category: (
+                    float(payload.income * _as_fraction(weight)) if weight else 0.0
+                )
                 for category, weight in payload.weights.items()
             },
         }
@@ -175,6 +201,17 @@ async def get_shell(
 
 def _fetch_saved_calendar_data(db: Session, user_id, year: int, month: int):
     """Shared logic to retrieve saved calendar data from DailyPlan table."""
+    # Materialize the month before reading it. Onboarding only ever wrote its
+    # own month, so without this the first request of every new month returned
+    # an empty calendar to a user who has a budget. Idempotent: an existing
+    # month is returned untouched.
+    #
+    # Deliberately OUTSIDE the try below — that block turns any exception into
+    # the same empty {"calendar": []} this fix exists to eliminate, so a broken
+    # ensure would be invisible. ensure_month_plan_safe does its own logging
+    # and degrading.
+    ensure_month_plan_safe(db, user_id, year, month)
+
     try:
         rows = (
             db.query(DailyPlan)

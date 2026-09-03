@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:dio/dio.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:provider/provider.dart';
+import '../config.dart';
 import '../services/api_service.dart';
 import '../providers/user_provider.dart';
 import '../services/secure_push_token_manager.dart';
@@ -629,20 +630,40 @@ class _LoginScreenState extends State<LoginScreen>
 
         if (e is DioException) {
           final statusCode = e.response?.statusCode;
-          if (statusCode == 401) {
+          // Connection failures must NOT be reported as bad credentials.
+          // Offline, the default message sent people off to retype a correct
+          // password and then to a password reset that also could not work.
+          if (e.type == DioExceptionType.connectionError ||
+              e.type == DioExceptionType.connectionTimeout ||
+              e.type == DioExceptionType.sendTimeout ||
+              e.type == DioExceptionType.receiveTimeout) {
+            errorMsg =
+                'Can\'t reach MITA right now. Check your internet connection '
+                'and try again.';
+          } else if (statusCode == 401) {
             errorMsg = 'Invalid email or password. Please try again.';
           } else if (statusCode == 422) {
             errorMsg = 'Invalid credentials format. Please check your input.';
           } else if (statusCode == 429) {
             errorMsg =
                 'Too many login attempts. Please try again in a few minutes.';
+          } else if (statusCode != null && statusCode >= 500) {
+            errorMsg =
+                'MITA is having trouble right now. Please try again in a few '
+                'minutes.';
           } else if (statusCode != null) {
             errorMsg = 'Login failed ($statusCode). Please try again.';
+          } else {
+            errorMsg =
+                'Can\'t reach MITA right now. Check your internet connection '
+                'and try again.';
           }
         } else if (e.toString().contains('timeout') ||
-            e.toString().contains('TimeoutException')) {
+            e.toString().contains('TimeoutException') ||
+            e.toString().contains('SocketException')) {
           errorMsg =
-              'Login request timed out. Please check your connection and try again.';
+              'Can\'t reach MITA right now. Check your internet connection '
+              'and try again.';
         }
 
         showEnhancedErrorDialog(
@@ -1118,93 +1139,98 @@ class _LoginScreenState extends State<LoginScreen>
                                         ),
                                 ),
 
-                                const SizedBox(height: 16),
+                                // Google sign-in is only offered when the build
+                                // actually ships Firebase/Google OAuth config;
+                                // otherwise the button is a guaranteed dead end.
+                                if (AppConfig.googleSignInEnabled) ...[
+                                  const SizedBox(height: 16),
 
-                                // Divider
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Divider(
-                                        color: colorScheme.outline
-                                            .withValues(alpha: 0.5),
-                                      ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 16),
-                                      child: Text(
-                                        l10n.or,
-                                        style:
-                                            theme.textTheme.bodySmall?.copyWith(
-                                          color: colorScheme.onSurface
-                                              .withValues(alpha: 0.6),
+                                  // Divider
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Divider(
+                                          color: colorScheme.outline
+                                              .withValues(alpha: 0.5),
                                         ),
                                       ),
-                                    ),
-                                    Expanded(
-                                      child: Divider(
-                                        color: colorScheme.outline
-                                            .withValues(alpha: 0.5),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 16),
+                                        child: Text(
+                                          l10n.or,
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                            color: colorScheme.onSurface
+                                                .withValues(alpha: 0.6),
+                                          ),
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                ),
-
-                                const SizedBox(height: 16),
-
-                                // Google sign-in button
-                                Semantics(
-                                  label: _accessibilityService
-                                      .createButtonSemanticLabel(
-                                    action: 'Continue with Google',
-                                    context:
-                                        'Alternative sign in method using your Google account',
-                                    isDisabled: _loading,
+                                      Expanded(
+                                        child: Divider(
+                                          color: colorScheme.outline
+                                              .withValues(alpha: 0.5),
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  button: true,
-                                  child: OutlinedButton.icon(
-                                    onPressed:
-                                        _loading ? null : _handleGoogleSignIn,
-                                    icon: Semantics(
-                                      label: 'Google logo',
-                                      child: Container(
-                                        padding: const EdgeInsets.all(2),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius:
-                                              BorderRadius.circular(4),
-                                        ),
-                                        child: Image.asset(
-                                          'assets/logo/mitalogo.png',
-                                          width: 20,
-                                          height: 20,
-                                          semanticLabel: 'Google logo',
-                                          errorBuilder:
-                                              (context, error, stackTrace) {
-                                            return Icon(
-                                              Icons.g_mobiledata,
-                                              size: 20,
-                                              color: colorScheme.primary,
-                                            );
-                                          },
-                                        ),
-                                      ),
+
+                                  const SizedBox(height: 16),
+
+                                  // Google sign-in button
+                                  Semantics(
+                                    label: _accessibilityService
+                                        .createButtonSemanticLabel(
+                                      action: 'Continue with Google',
+                                      context:
+                                          'Alternative sign in method using your Google account',
+                                      isDisabled: _loading,
                                     ),
-                                    label: Text(l10n.continueWithGoogle),
-                                    style: OutlinedButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 16),
-                                      side: BorderSide(
-                                        color: colorScheme.outline,
-                                        width: 1,
+                                    button: true,
+                                    child: OutlinedButton.icon(
+                                      onPressed:
+                                          _loading ? null : _handleGoogleSignIn,
+                                      icon: Semantics(
+                                        label: 'Google logo',
+                                        child: Container(
+                                          padding: const EdgeInsets.all(2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius:
+                                                BorderRadius.circular(4),
+                                          ),
+                                          child: Image.asset(
+                                            'assets/logo/mitalogo.png',
+                                            width: 20,
+                                            height: 20,
+                                            semanticLabel: 'Google logo',
+                                            errorBuilder:
+                                                (context, error, stackTrace) {
+                                              return Icon(
+                                                Icons.g_mobiledata,
+                                                size: 20,
+                                                color: colorScheme.primary,
+                                              );
+                                            },
+                                          ),
+                                        ),
                                       ),
-                                      textStyle:
-                                          theme.textTheme.titleMedium?.copyWith(
-                                        fontWeight: FontWeight.w600,
+                                      label: Text(l10n.continueWithGoogle),
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 16),
+                                        side: BorderSide(
+                                          color: colorScheme.outline,
+                                          width: 1,
+                                        ),
+                                        textStyle: theme.textTheme.titleMedium
+                                            ?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                        ),
                                       ),
-                                    ),
-                                  ).withMinimumTouchTarget(),
-                                ),
+                                    ).withMinimumTouchTarget(),
+                                  ),
+                                ],
                               ],
                             ),
                           ),

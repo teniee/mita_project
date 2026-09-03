@@ -107,11 +107,48 @@ def test_live_status_with_multiple_category_rows(authed, db_session, user):
     assert data["remaining_today"] == pytest.approx(1558.00)
 
 
-def test_live_status_no_plan_rows(authed):
-    # No daily_plan rows at all must still be 200 (neutral), not 500.
+def test_live_status_no_plan_rows(authed, db_session, user):
+    # A user with genuinely nothing to plan from — no rows, and no income to
+    # generate any — must still be 200 (neutral), not 500. This is the original
+    # MultipleResultsFound regression and it stays covered.
+    #
+    # The precondition has to be set explicitly now: since the monthly rollover
+    # fix, /budget/live_status calls ensure_month_plan, so an onboarded user WHO
+    # HAS INCOME can no longer reach this endpoint with zero plan rows — that is
+    # the point of the fix, and the next test pins it.
+    user.monthly_income = Decimal("0.00")
+    db_session.commit()
+
     resp = authed.get("/api/budget/live_status")
     assert resp.status_code == 200, resp.text
     assert resp.json()["data"]["status"] == "neutral"
+    assert resp.json()["data"]["daily_budget"] == pytest.approx(0.0)
+
+
+def test_live_status_materializes_the_month_for_a_user_with_income(
+    authed, db_session, user
+):
+    """The rollover fix, at this endpoint.
+
+    Before it, an account whose plan month had rolled over reported
+    daily_budget 0.0 / status "neutral" while the user had a real budget —
+    indistinguishable from having no budget at all.
+    """
+    assert (
+        db_session.query(DailyPlan).filter_by(user_id=user.id).count() == 0
+    ), "precondition: the user starts with no plan rows"
+
+    resp = authed.get("/api/budget/live_status")
+    assert resp.status_code == 200, resp.text
+    data = resp.json()["data"]
+
+    assert data["daily_budget"] > 0.0
+    assert data["status"] != "neutral"
+
+    db_session.expire_all()
+    assert (
+        db_session.query(DailyPlan).filter_by(user_id=user.id).count() > 0
+    ), "the month must be persisted server-side, not computed per request"
 
 
 def test_live_status_counts_only_active_month_to_date_transactions(

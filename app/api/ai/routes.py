@@ -286,6 +286,11 @@ async def get_ai_profile(
             result = await db.execute(
                 select(Transaction).filter(
                     Transaction.user_id == user.id,
+                    # Deleted transactions are not spending. Without this the
+                    # AI profile and budget optimisation were computed from a
+                    # total the ledger, dashboard and calendar all disagreed
+                    # with (device-reproduced: 208 vs the real 200).
+                    Transaction.deleted_at.is_(None),
                     Transaction.spent_at >= thirty_days_ago,
                 )
             )
@@ -404,6 +409,11 @@ async def get_budget_optimization(
             result = await db.execute(
                 select(Transaction).filter(
                     Transaction.user_id == user.id,
+                    # Deleted transactions are not spending. Without this the
+                    # AI profile and budget optimisation were computed from a
+                    # total the ledger, dashboard and calendar all disagreed
+                    # with (device-reproduced: 208 vs the real 200).
+                    Transaction.deleted_at.is_(None),
                     Transaction.spent_at >= thirty_days_ago,
                 )
             )

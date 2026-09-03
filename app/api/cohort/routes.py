@@ -49,7 +49,11 @@ def cohort_insights(
     thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
     user_transactions = (
         db.query(Transaction)
-        .filter(Transaction.user_id == user.id, Transaction.spent_at >= thirty_days_ago)
+        .filter(
+            Transaction.user_id == user.id,
+            Transaction.deleted_at.is_(None),
+            Transaction.spent_at >= thirty_days_ago,
+        )
         .all()
     )
 
@@ -187,7 +191,11 @@ def income_classification(
     ninety_days_ago = datetime.now(timezone.utc) - timedelta(days=90)
     transactions = (
         db.query(Transaction)
-        .filter(Transaction.user_id == user.id, Transaction.spent_at >= ninety_days_ago)
+        .filter(
+            Transaction.user_id == user.id,
+            Transaction.deleted_at.is_(None),
+            Transaction.spent_at >= ninety_days_ago,
+        )
         .all()
     )
 
@@ -296,7 +304,15 @@ def get_peer_comparison(
     thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
     user_spending = (
         db.query(func.sum(Transaction.amount))
-        .filter(Transaction.user_id == user.id, Transaction.spent_at >= thirty_days_ago)
+        .filter(
+            Transaction.user_id == user.id,
+            # A deleted transaction is not spending. Without this the Peer
+            # Insights screen showed a user $208 after they had deleted an $8
+            # expense down to $200 — money the ledger, dashboard and calendar
+            # all agreed was gone.
+            Transaction.deleted_at.is_(None),
+            Transaction.spent_at >= thirty_days_ago,
+        )
         .scalar()
         or 0.0
     )
@@ -326,6 +342,7 @@ def get_peer_comparison(
                 db.query(func.sum(Transaction.amount))
                 .filter(
                     Transaction.user_id.in_(peer_user_ids),
+                    Transaction.deleted_at.is_(None),
                     Transaction.spent_at >= thirty_days_ago,
                 )
                 .group_by(Transaction.user_id)

@@ -1104,7 +1104,19 @@ void main() {
         // The 30s load window collides with the framework's default 30s
         // per-test timeout (in-flight operations still wind down after the
         // window closes), so the test needs explicit headroom.
-      }, timeout: const Timeout(Duration(seconds: 90)));
+        //
+        // How much headroom is not a constant: runLoadTest checks
+        // `stopwatch.elapsed < testDuration` BEFORE each operation, so up to
+        // `concurrentUsers` operations can still be in flight when the window
+        // closes, and they all run to completion on one isolate. This case is
+        // the heaviest in the file — 25 workers doing device-ID entropy plus
+        // password validation — so its wind-down is the longest. Alone it
+        // finishes in ~32s; sharing a machine with the rest of the suite it
+        // repeatedly blew past 90s and timed out, while the two assertions
+        // above (which are what the test is actually for) never failed.
+        // The deadline is widened to cover the wind-down; neither threshold
+        // is relaxed.
+      }, timeout: const Timeout(Duration(minutes: 4)));
 
       test('Concurrent user simulation - Income Classification', () async {
         final simulator = LoadTestSimulator(

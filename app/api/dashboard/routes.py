@@ -24,6 +24,7 @@ from app.core.date_utils import day_to_range
 from app.db.models import ChallengeParticipation, DailyPlan, Goal, Transaction
 from app.db.models.user import User
 from app.services.core.engine.expense_tracker import local_day_of, local_day_utc_window
+from app.services.monthly_plan_service import ensure_months_span_async, months_covering
 from app.utils.response_wrapper import success_response
 
 logger = logging.getLogger(__name__)
@@ -55,6 +56,21 @@ async def get_dashboard(
         # category spending, DailyPlan targets and the week strip were all
         # reading the wrong day. Mirrors /budget/live_status.
         today = local_day_of(now, user.timezone)
+
+        # Materialize the plan for every month this response reads before any
+        # of it is read. Without it the first dashboard of a new month found no
+        # DailyPlan rows and fell through to the monthly_income/30 placeholder
+        # below — the "$0 of $0" the user actually saw.
+        #
+        # The week strip goes back six days, so on the 1st-6th this response
+        # spans TWO months; ensuring only the current one would leave those
+        # cells on the placeholder budget. Idempotent per month: an existing
+        # month is returned untouched.
+        await ensure_months_span_async(
+            db,
+            user_id,
+            months_covering([today - timedelta(days=offset) for offset in (6, 0)]),
+        )
 
         # Get user's monthly income
         monthly_income = float(user.monthly_income) if user.monthly_income else 0.0

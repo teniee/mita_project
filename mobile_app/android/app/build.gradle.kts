@@ -24,8 +24,13 @@ android {
         applicationId = "mita.finance"
         minSdk = 24
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        // Read from Flutter (pubspec.yaml `version:`, overridable with
+        // --build-name/--build-number) rather than pinning here. Hardcoding
+        // versionCode = 1 meant the first AAB uploads fine and every later one
+        // is rejected by Play with "Version code 1 has already been used"
+        // until someone remembers to hand-edit this file.
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
     }
 
     // Load keystore properties from file or environment variables

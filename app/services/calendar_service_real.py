@@ -14,7 +14,11 @@ logger = logging.getLogger(__name__)
 
 
 def save_calendar_for_user(
-    db: Session, user_id: UUID, calendar: Union[Dict[str, Dict[str, float]], List[Dict]]
+    db: Session,
+    user_id: UUID,
+    calendar: Union[Dict[str, Dict[str, float]], List[Dict]],
+    *,
+    commit: bool = True,
 ):
     """
     Save calendar data to DailyPlan table.
@@ -25,6 +29,13 @@ def save_calendar_for_user(
 
     CRITICAL FIX: Now includes explicit UUID generation and comprehensive error handling
     to prevent silent failures during calendar save.
+
+    ``commit=False`` flushes instead, so a caller that is materializing a whole
+    month under the per-user ledger lock (see
+    app/services/monthly_plan_service.py) can make the plan rows, the spend
+    rebuild and its own bookkeeping land in ONE transaction. A month must never
+    become half-visible to a concurrent reader, and this function committing on
+    its own is exactly how that would happen.
     """
     try:
         # Handle list format (returned by build_monthly_budget)
@@ -94,7 +105,10 @@ def save_calendar_for_user(
                     existing[(day_date, category)] = db_plan
                     entries_created += 1
 
-        db.commit()
+        if commit:
+            db.commit()
+        else:
+            db.flush()
 
         # Verify save succeeded
         saved_count = db.query(DailyPlan).filter_by(user_id=user_id).count()
@@ -111,7 +125,11 @@ def save_calendar_for_user(
 
     except Exception as e:
         logger.error(f"Calendar save failed for user {user_id}: {e}", exc_info=True)
-        db.rollback()
+        # Only the owner of the transaction may roll it back. When commit=False
+        # the caller is mid-unit-of-work and rolls back itself; rolling back
+        # here would silently discard the work it did before calling us.
+        if commit:
+            db.rollback()
         raise
 
 

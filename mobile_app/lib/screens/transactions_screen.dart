@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../providers/transaction_provider.dart';
 import '../providers/budget_provider.dart';
+import '../services/logging_service.dart';
 import 'add_transaction_screen.dart';
 
 class TransactionsScreen extends StatefulWidget {
@@ -27,29 +28,37 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     });
   }
 
-  Future<void> _deleteTransaction(String transactionId) async {
+  /// [confirm] is false when the caller already asked. The swipe path confirms
+  /// in `confirmDismiss` and only then removes the row, so prompting a second
+  /// time here was both redundant and unsafe: answering "Cancel" to the second
+  /// dialog left the row gone from the list while the expense was still in the
+  /// ledger, so the list and the user's money disagreed until a manual refresh.
+  Future<void> _deleteTransaction(String transactionId,
+      {bool confirm = true}) async {
     try {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Delete Transaction'),
-          content:
-              const Text('Are you sure you want to delete this transaction?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Delete'),
-            ),
-          ],
-        ),
-      );
+      final confirmed = !confirm ||
+          await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Delete Transaction'),
+                  content: const Text(
+                      'Are you sure you want to delete this transaction?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                      child: const Text('Delete'),
+                    ),
+                  ],
+                ),
+              ) ==
+              true;
 
-      if (confirmed == true) {
+      if (confirmed) {
         final provider = context.read<TransactionProvider>();
         final success = await provider.deleteTransaction(transactionId);
         if (!mounted) return;
@@ -62,17 +71,24 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
             const SnackBar(content: Text('Transaction deleted successfully')),
           );
         } else {
+          // The row was already removed from the list by the swipe. The delete
+          // did not happen, so put the ledger back on screen.
+          provider.refresh();
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            const SnackBar(
                 content: Text(
-                    'Failed to delete transaction: ${provider.errorMessage}')),
+                    'Could not delete that transaction. Please try again.')),
           );
         }
       }
     } catch (e) {
       if (!mounted) return;
+      logError('Failed to delete transaction', tag: 'TRANSACTIONS', error: e);
+      context.read<TransactionProvider>().refresh();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to delete transaction: $e')),
+        const SnackBar(
+            content:
+                Text('Could not delete that transaction. Please try again.')),
       );
     }
   }
@@ -264,7 +280,8 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
                           );
                         },
                         onDismissed: (direction) {
-                          _deleteTransaction(transaction.id);
+                          // confirmDismiss already asked; do not ask again.
+                          _deleteTransaction(transaction.id, confirm: false);
                         },
                         child: GestureDetector(
                           onTap: () async {

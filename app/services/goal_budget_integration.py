@@ -155,6 +155,7 @@ class GoalBudgetIntegration:
             monthly_savings = self.db.query(func.sum(Transaction.amount)).filter(
                 Transaction.goal_id == goal.id,
                 Transaction.user_id == user_id,
+                Transaction.deleted_at.is_(None),
                 Transaction.spent_at >= first_day,
                 Transaction.spent_at < last_day,
             ).scalar() or Decimal("0")

@@ -110,3 +110,85 @@ The FastAPI backend in `app/` deploys to Railway, project **Mita Finance**
 Release invariant: push to `main` -> Railway builds exactly that commit ->
 deployment becomes active. Verify the deployed SHA against GitHub `main`
 after every release.
+
+## Monthly plan rollover — invariant (added 2026-09-03)
+
+`daily_plan` rows are materialized **lazily, on read**, by
+`app/services/monthly_plan_service.py::ensure_month_plan(db, user_id, year, month)`.
+
+Onboarding only ever wrote its own month. Nothing created the next one, so on
+the 1st of every month an account went blank at once: `/calendar/saved` returned
+an empty list, the dashboard fell through to its `monthly_income / 30`
+placeholder ("$0 of $0"), and affordability answered "no budget set".
+
+**Correctness must not depend on a scheduler.** Nothing periodic runs in
+production — `start.sh` launches uvicorn only, and `scripts/rq_scheduler.py` has
+no worker starting it. A cron job may be added later to warm months ahead of the
+first read, but only as an optimization: `ensure_month_plan` is idempotent, so
+running it never, twice, or concurrently with a user request gives the same
+result.
+
+Rules for anyone touching this:
+
+- **One boundary.** Read paths call `ensure_month_plan_safe` /
+  `ensure_month_plan_async` / `ensure_months_span_async`. Never re-implement
+  "if the month is missing, generate it" in a router.
+- **Not a second budget algorithm.** Totals come from the user's own last
+  persisted month, or from `generate_budget_from_answers`; layout comes from
+  `distribute_budget_over_days`; rows are written by `save_calendar_for_user`;
+  spend is accrued by `rebuild_month_plan`. All pre-existing, all canonical.
+- **Never guard on "does the month have rows".** `rebuild_month_plan` creates
+  `planned_amount = 0` rows tagged `_mita_transaction_generated_v1` for spend
+  with no plan behind it, and the rebalancer can credit one to a non-zero
+  amount. `GoalBudgetSyncService` writes `goal_savings` rows too. Guard on a
+  real allocation — that is what `month_has_plan` does.
+- **Roll forward the BASE plan.** `_mita_realtime_adjustment_v1` records an
+  in-month rebalance and is backed out before a month is carried forward;
+  otherwise a one-off overspend would permanently reshape every later month.
+- **Serialize with `lock_user_ledger`.** The same per-user
+  `pg_advisory_xact_lock` every ledger mutation takes — a second lock would
+  deadlock. The mobile app fires several budget reads in one `Future.wait` on
+  cold start, so the race is the normal case.
+- **Write midnight UTC, never a NULL category.** `uq_daily_plan_user_date_category`
+  is on the raw timestamptz and PostgreSQL treats NULLs as distinct, so either
+  mistake silently creates a duplicate parallel month.
+- **Money conserves to the cent.** `split_amount_exactly` in
+  `app/services/core/engine/calendar_engine.py` replaced per-day `round(x/n, 2)`,
+  which drifted by up to ±0.10 per category. `_materialize_month` refuses to
+  commit a month whose daily rows do not re-sum to their allocation.
+
+Regressions: `app/tests/test_monthly_plan_rollover.py`.
+
+## Calendar day budget — invariant (added 2026-09-03)
+
+For a selected date D, the day-details summary card and its Category Breakdown
+must both derive from the SAME persisted plan:
+
+    day_budget    == SUM(daily_plan.planned_amount for D)
+    day_remaining == day_budget - day_spent
+
+The screen showed `Budget $79.00` with `$0 / $0` categories on 2026-08-04,
+2026-08-05 and 2026-08-18 — three days whose real plans sum to $49.11, $409.11
+and $49.11. The $79 came from `POST /calendar/shell`: a monthly total divided
+by a hardcoded 30 days, so every day of the month carried the same figure.
+
+Rules:
+
+- **The card sums the categories.** `_headerLimit` in
+  `calendar_day_details_screen.dart` is the sum of `_dayCategories`; it must
+  never read an independent `limit` field.
+- **Never invent categories.** `_generateDefaultCategoryBreakdown()` (four
+  hardcoded names at 40/25/20/15 % of the day limit) was deleted. No
+  allocation → `_buildNoPlanState`, not a fabricated split.
+- **A preview is not a budget.** `/calendar/shell` days are tagged
+  `is_preview: true` (`ApiService._transformCalendarData`); the saved calendar
+  tags `is_preview: false` (`mergeSavedCalendarDay`). A preview day yields no
+  day budget and is labelled as an estimate.
+- **Render cents.** `toStringAsFixed(0)` displayed a real $0.30 allocation as
+  "$0", which is what made a planned day look unplanned. Use `formatMoney`.
+- **Shell weights are fractions.** `_as_fraction()` in
+  `app/api/calendar/routes.py` accepts both 0.15 and 15; `num_days` is the real
+  month length, never a hardcoded 30.
+
+Regressions: `mobile_app/test/screens/calendar_day_details_consistency_test.dart`
+and `TestDayBudgetEqualsCategorySum` in `app/tests/test_monthly_plan_rollover.py`.

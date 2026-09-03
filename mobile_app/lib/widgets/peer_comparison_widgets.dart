@@ -4,6 +4,21 @@ import '../services/income_service.dart';
 import '../services/api_service.dart';
 import '../theme/app_typography.dart';
 
+/// True only when the API actually returned peers to compare against.
+///
+/// `/api/cohort/peer_comparison` is explicit when it cannot compare: it sends
+/// `peer_count: 0`, `comparison: "insufficient_peer_data"` and null averages.
+/// Widgets used to paper over that with `?? 0.0`, `?? 50` or
+/// `userAmount * 1.15`, so a first-day user was shown a peer average, a
+/// percentile and a verdict derived from a cohort of nobody.
+bool hasSufficientPeerData(Map<String, dynamic>? peerData) {
+  if (peerData == null) return false;
+  if (peerData['comparison'] == 'insufficient_peer_data') return false;
+  final count = peerData['peer_count'];
+  if (count is num && count <= 0) return false;
+  return peerData['peer_average'] != null;
+}
+
 /// Peer spending insights widget for category breakdown
 class PeerSpendingInsightsWidget extends StatelessWidget {
   final String category;
@@ -21,6 +36,9 @@ class PeerSpendingInsightsWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Same rule as SpendingTrendsComparisonWidget: no peers, no comparison.
+    if (!hasSufficientPeerData(peerData)) return const SizedBox.shrink();
+
     final incomeService = IncomeService();
     final tier = incomeService.classifyIncome(monthlyIncome);
     final primaryColor = incomeService.getIncomeTierPrimaryColor(tier);
@@ -282,6 +300,53 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
     final insights = asStringList(_cohortData!['top_insights']);
     final recommendations = asStringList(_cohortData!['recommendations']);
 
+    // An empty cohort supports no ranking. This used to render
+    // "0 users • You're #0 (0th percentile)" and, underneath, "Room for
+    // improvement compared to peers" — a judgement passed on a first-day user
+    // against nobody at all.
+    if (cohortSize <= 0) {
+      return Card(
+        elevation: 3,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.groups_outlined, color: primaryColor, size: 28),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Your $tierName Cohort',
+                      style: TextStyle(
+                        fontFamily: AppTypography.fontHeading,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: primaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'No one else in your income range has joined yet, so '
+                      'there is nothing to rank against.',
+                      style: TextStyle(
+                        fontFamily: AppTypography.fontBody,
+                        fontSize: 14,
+                        color: Colors.grey.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(
@@ -494,6 +559,12 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Nothing to compare against. The two cards above this one already tell
+    // the user why, so stay silent rather than invent a peer average
+    // (this used to fall back to userAmount * 1.15 and render "Peers $230"
+    // beside a green thumbs-up, with peer_count = 0).
+    if (!hasSufficientPeerData(peerData)) return const SizedBox.shrink();
+
     final incomeService = IncomeService();
     final tier = incomeService.classifyIncome(monthlyIncome);
     final primaryColor = incomeService.getIncomeTierPrimaryColor(tier);

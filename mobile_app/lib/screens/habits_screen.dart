@@ -582,7 +582,9 @@ class _HabitsScreenState extends State<HabitsScreen>
   }
 
   Widget _buildEmptyState() {
-    return Center(
+    // Scrollable: this empty state is ~312px tall and overflowed a short
+    // viewport (360x640 with the keyboard up) by 52px.
+    return SingleChildScrollView(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [

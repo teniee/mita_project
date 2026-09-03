@@ -425,14 +425,22 @@ class _AddExpenseScreenState extends State<AddExpenseScreen>
 
     _formKey.currentState!.save();
 
+    // Claim the in-flight flag BEFORE the affordability round-trip, not after.
+    // The Save button's onPressed is gated on this same flag, so setting it
+    // only after the await left the button live for the whole network call
+    // (plus any warning dialog) — two taps both passed the guard above and
+    // both reached createTransaction, writing the expense twice.
+    setState(() => _isSubmitting = true);
+
     // REAL-TIME SPENDING PREVENTION CHECK
     // Check affordability BEFORE submitting transaction
     final canProceed = await _checkAffordability();
+    if (!mounted) return;
     if (!canProceed) {
-      // User cancelled or chose alternative category
+      // User cancelled or chose alternative category — release the button.
+      setState(() => _isSubmitting = false);
       return;
     }
-    setState(() => _isSubmitting = true);
 
     // Start submit animation
     _submitAnimationController.forward();

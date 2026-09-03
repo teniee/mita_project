@@ -69,148 +69,162 @@ class _OnboardingGoalScreenState extends State<OnboardingGoalScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
+      // Scrollable, not a fixed Column with an Expanded list. On a 360x640
+      // phone with the keyboard open this body gets ~196px for ~415px of
+      // content, and the overflow is clipped OUT OF HIT TESTING — Continue
+      // became untappable mid-onboarding. Same shape as register_screen.dart:
+      // scroll always, stay centred when there is room to spare.
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 8),
-              const OnboardingProgressIndicator(
-                currentStep: 4,
-                totalSteps: 7,
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: constraints.maxHeight - 48,
               ),
-              const SizedBox(height: 24),
-              const Text(
-                'What are your financial goals?',
-                style: TextStyle(
-                  fontFamily: AppTypography.fontHeading,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 22,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Expanded(
-                child: ListView.separated(
-                  itemCount: goals.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 16),
-                  itemBuilder: (context, index) {
-                    final goal = goals[index];
-                    final isSelected = selectedGoals.contains(goal['id']);
-                    return GestureDetector(
-                      onTap: () => _toggleGoal(asString(goal['id'])),
-                      child: Card(
-                        elevation: isSelected ? 4 : 1,
-                        color: isSelected ? AppColors.secondary : Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          side: BorderSide(
-                            color: isSelected
-                                ? AppColors.textPrimary
-                                : Colors.transparent,
-                            width: 1.5,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 8),
+                  const OnboardingProgressIndicator(
+                    currentStep: 4,
+                    totalSteps: 7,
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'What are your financial goals?',
+                    style: TextStyle(
+                      fontFamily: AppTypography.fontHeading,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 22,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: goals.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 16),
+                    itemBuilder: (context, index) {
+                      final goal = goals[index];
+                      final isSelected = selectedGoals.contains(goal['id']);
+                      return GestureDetector(
+                        onTap: () => _toggleGoal(asString(goal['id'])),
+                        child: Card(
+                          elevation: isSelected ? 4 : 1,
+                          color:
+                              isSelected ? AppColors.secondary : Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            side: BorderSide(
+                              color: isSelected
+                                  ? AppColors.textPrimary
+                                  : Colors.transparent,
+                              width: 1.5,
+                            ),
                           ),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 20, horizontal: 16),
-                          child: Row(
-                            children: [
-                              Icon(goal['icon'] as IconData,
-                                  color: AppColors.textPrimary),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Text(
-                                  asString(goal['label']),
-                                  style: const TextStyle(
-                                    fontFamily: AppTypography.fontBody,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 16,
-                                    color: AppColors.textPrimary,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 20, horizontal: 16),
+                            child: Row(
+                              children: [
+                                Icon(goal['icon'] as IconData,
+                                    color: AppColors.textPrimary),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Text(
+                                    asString(goal['label']),
+                                    style: const TextStyle(
+                                      fontFamily: AppTypography.fontBody,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
+                                      color: AppColors.textPrimary,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              if (isSelected)
-                                const Icon(Icons.check_circle,
-                                    color: AppColors.textPrimary),
-                            ],
+                                if (isSelected)
+                                  const Icon(Icons.check_circle,
+                                      color: AppColors.textPrimary),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Monthly savings goal (optional)',
-                style: TextStyle(
-                  fontFamily: AppTypography.fontBody,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _savingsAmountController,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(
-                  hintText: 'How much do you want to save per month?',
-                  prefixText: '\$ ',
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: const BorderSide(color: AppColors.textPrimary),
+                      );
+                    },
                   ),
-                  contentPadding:
-                      const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-                ),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: selectedGoals.isNotEmpty ? _submitGoals : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.textPrimary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    textStyle: const TextStyle(
-                      fontFamily: AppTypography.fontHeading,
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Monthly savings goal (optional)',
+                    style: TextStyle(
+                      fontFamily: AppTypography.fontBody,
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
+                      color: AppColors.textPrimary,
                     ),
                   ),
-                  child: const Text("Continue"),
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  onPressed: () {
-                    // Skip goals - set empty list
-                    OnboardingState.instance.goals = [];
-                    OnboardingState.instance.savingsGoalAmount = 0.0;
-                    Navigator.pushNamed(
-                        context, '/onboarding_spending_frequency');
-                  },
-                  child: const Text(
-                    "Skip for now",
-                    style: TextStyle(
-                        fontFamily: AppTypography.fontHeading,
-                        color: Colors.grey),
+                  const SizedBox(height: 8),
+                  TextFormField(
+                    controller: _savingsAmountController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    decoration: InputDecoration(
+                      hintText: 'How much do you want to save per month?',
+                      prefixText: '\$ ',
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide:
+                            const BorderSide(color: AppColors.textPrimary),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                          vertical: 16, horizontal: 16),
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: selectedGoals.isNotEmpty ? _submitGoals : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.textPrimary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        textStyle: const TextStyle(
+                          fontFamily: AppTypography.fontHeading,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                      child: const Text("Continue"),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: () {
+                        // Skip goals - set empty list
+                        OnboardingState.instance.goals = [];
+                        OnboardingState.instance.savingsGoalAmount = 0.0;
+                        Navigator.pushNamed(
+                            context, '/onboarding_spending_frequency');
+                      },
+                      child: const Text(
+                        "Skip for now",
+                        style: TextStyle(
+                            fontFamily: AppTypography.fontHeading,
+                            color: Colors.grey),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),

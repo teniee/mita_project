@@ -464,25 +464,20 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
                     ),
                     const SizedBox(height: 16),
 
-                    // Sample mood history
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _buildMoodHistoryItem(
-                            'Mon', '😊', Colors.green.shade400),
-                        _buildMoodHistoryItem(
-                            'Tue', '😐', Colors.grey.shade400),
-                        _buildMoodHistoryItem(
-                            'Wed', '😔', Colors.orange.shade400),
-                        _buildMoodHistoryItem(
-                            'Thu', '😊', Colors.green.shade400),
-                        _buildMoodHistoryItem(
-                            'Fri', '😄', Colors.blue.shade400),
-                        _buildMoodHistoryItem(
-                            'Sat', '😊', Colors.green.shade400),
-                        _buildMoodHistoryItem(
-                            'Today', '?', Colors.grey.shade300),
-                      ],
+                    // No hardcoded history here. This block used to render a
+                    // fixed week of moods (happy Mon, neutral Tue, sad Wed ...)
+                    // that a user who registered minutes ago had never entered,
+                    // and that never changed once they did. MoodProvider has no
+                    // history feed yet, so say so plainly instead.
+                    Text(
+                      context.watch<MoodProvider>().moodHistory.isEmpty
+                          ? 'No mood history yet \u2014 check in daily and your trend will appear here.'
+                          : 'Your recent check-ins are saved.',
+                      style: const TextStyle(
+                        fontFamily: 'Manrope',
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
                     ),
                   ],
                 ),
@@ -491,37 +486,6 @@ class _MoodScreenState extends State<MoodScreen> with TickerProviderStateMixin {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildMoodHistoryItem(String day, String emoji, Color color) {
-    return Column(
-      children: [
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.2),
-            shape: BoxShape.circle,
-            border: Border.all(color: color, width: 2),
-          ),
-          child: Center(
-            child: Text(
-              emoji,
-              style: const TextStyle(fontSize: 20),
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          day,
-          style: const TextStyle(
-            fontFamily: 'Manrope',
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
     );
   }
 }

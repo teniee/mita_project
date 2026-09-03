@@ -63,7 +63,20 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
           _selectedCountry = 'US';
           if (location['country'] == 'US') {
             _selectedState = location['state'];
-            _isLocationDetected = true;
+            // Only claim a detection when a state actually came back.
+            //
+            // getUserLocation() falls back to {'country': 'US', 'state': null}
+            // whenever detection fails — and it ALWAYS fails on a shipped
+            // build, because both location permissions are stripped from the
+            // manifest. Setting this flag on the fallback armed the "Location
+            // Detected" card to appear the instant the user tapped a state,
+            // which (a) claimed we had detected a location we never detected
+            // and (b) inserted ~200dp ABOVE the picker, shoving every state
+            // row down and pushing Continue off-screen mid-interaction. The
+            // next tap then landed on a different state and silently changed
+            // the answer. Gate it on real data and the card can only ever
+            // render before the user touches anything.
+            _isLocationDetected = location['state'] != null;
           } else {
             _locationError =
                 'MITA currently supports USA only. Please select your state manually.';
@@ -259,7 +272,10 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                             ),
                             const SizedBox(width: 12),
                             Text(
-                              'Location Detected',
+                              // Not "Location Detected": this card also shows a
+                              // state restored from the user's own earlier
+                              // choice, which the app did not detect at all.
+                              'Your location',
                               style: TextStyle(
                                 fontFamily: AppTypography.fontHeading,
                                 fontWeight: FontWeight.bold,
@@ -473,43 +489,47 @@ class _OnboardingLocationScreenState extends State<OnboardingLocationScreen> {
                       ),
               ),
 
-              const SizedBox(height: 32),
-
-              // Continue button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed:
-                      _selectedState != null ? _continueWithLocation : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.textPrimary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 18),
-                    textStyle: const TextStyle(
-                      fontFamily: AppTypography.fontHeading,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 18,
-                    ),
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('Continue'),
-                      SizedBox(width: 8),
-                      Icon(
-                        Icons.arrow_forward_rounded,
-                        size: 20,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 40),
+              const SizedBox(height: 24),
             ],
+          ),
+        ),
+      ),
+      // Continue lives in a pinned footer, not at the end of the scroll view.
+      // The state picker is a fixed-height inner ListView that swallows drag
+      // gestures, so a Continue button placed after it could sit below the
+      // fold with no obvious way to scroll to it — and it moved whenever
+      // anything above the picker changed height. A footer is always visible,
+      // always the same place, and costs no layout stability.
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+        child: SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: _selectedState != null ? _continueWithLocation : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.textPrimary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              textStyle: const TextStyle(
+                fontFamily: AppTypography.fontHeading,
+                fontWeight: FontWeight.w600,
+                fontSize: 18,
+              ),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('Continue'),
+                SizedBox(width: 8),
+                Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 20,
+                ),
+              ],
+            ),
           ),
         ),
       ),

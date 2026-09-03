@@ -1670,6 +1670,12 @@ class ApiService {
               (map['planned_budget'] as Map?) ??
                   (map['categories'] as Map?) ??
                   {}),
+          // /calendar/shell is a PLANNING PREVIEW: a monthly total divided by
+          // the day count, identical for every day. It is not any day's actual
+          // budget and must never be shown as one — that is what produced the
+          // "$79 budget, $0/$0 categories" screen. Tag it so the UI can say
+          // what it is.
+          'is_preview': true,
           'is_today': date != null &&
               date.year == now.year &&
               date.month == now.month &&

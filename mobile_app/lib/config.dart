@@ -27,6 +27,17 @@ class AppConfig {
 
   static const String apiPath = '/api';
 
+  /// Whether to offer "Continue with Google" on the login screen.
+  ///
+  /// Google sign-in needs a real `google-services.json` (Android) plus the
+  /// build's signing SHA registered in the Firebase/GCP project. Without those
+  /// the flow always dies — either at ApiException 10 (DEVELOPER_ERROR) or at
+  /// "Missing Google authentication token" — so the button is a guaranteed
+  /// dead end. Default OFF and turn it on for builds that ship the config:
+  ///   flutter build appbundle --dart-define=GOOGLE_SIGN_IN_ENABLED=true
+  static const bool googleSignInEnabled =
+      bool.fromEnvironment('GOOGLE_SIGN_IN_ENABLED', defaultValue: false);
+
   /// Web app URL — used for deep-link redirects (e.g. password reset).
   /// Override at build time with `--dart-define=WEB_APP_URL=...`.
   static const String webAppUrl = String.fromEnvironment(

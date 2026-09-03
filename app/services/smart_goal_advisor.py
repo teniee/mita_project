@@ -174,7 +174,11 @@ class SmartGoalAdvisor:
         # Recent activity check
         transactions = (
             self.db.query(Transaction)
-            .filter(Transaction.goal_id == goal_id, Transaction.user_id == user_id)
+            .filter(
+                Transaction.goal_id == goal_id,
+                Transaction.user_id == user_id,
+                Transaction.deleted_at.is_(None),
+            )
             .order_by(desc(Transaction.spent_at))
             .limit(5)
             .all()
@@ -218,6 +222,7 @@ class SmartGoalAdvisor:
         thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
         recent_spending = self.db.query(func.sum(Transaction.amount)).filter(
             Transaction.user_id == user_id,
+            Transaction.deleted_at.is_(None),
             Transaction.spent_at >= thirty_days_ago,
             Transaction.amount < 0,  # Expenses are negative
         ).scalar() or Decimal("0")
@@ -295,7 +300,9 @@ class SmartGoalAdvisor:
         transactions = (
             self.db.query(Transaction)
             .filter(
-                Transaction.user_id == user_id, Transaction.spent_at >= three_months_ago
+                Transaction.user_id == user_id,
+                Transaction.deleted_at.is_(None),
+                Transaction.spent_at >= three_months_ago,
             )
             .all()
         )

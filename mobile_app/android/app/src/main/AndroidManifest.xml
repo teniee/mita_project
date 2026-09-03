@@ -83,6 +83,16 @@
             android:name="com.baseflow.geolocator.GeolocatorLocationService"
             tools:node="remove" />
 
+        <!-- image_cropper (uCrop) requires this activity to be declared by the
+             host app; the plugin does not merge it in. Without it "Scan
+             Receipt" on Add Expense reached the crop step and threw
+             ActivityNotFoundException, which surfaced to the user as a raw
+             PlatformException string on the money-entry screen. -->
+        <activity
+            android:name="com.yalantis.ucrop.UCropActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+
         <!-- Firebase Cloud Messaging -->
         <service
             android:name="com.google.firebase.messaging.FirebaseMessagingService"

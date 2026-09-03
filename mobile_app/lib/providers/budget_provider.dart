@@ -105,6 +105,9 @@ Map<String, dynamic> mergeSavedCalendarDay(
   return {
     'day': day,
     'date': dateStr,
+    // Persisted plan, not a preview — the saved calendar is backed by
+    // daily_plan rows for this exact day.
+    'is_preview': false,
     'limit': limit.round(), // int expected by calendar_screen.dart
     'status': status,
     'spent': realSpent.round(), // int expected by calendar_screen.dart
@@ -203,6 +206,13 @@ class BudgetProvider extends ChangeNotifier {
   Map<String, dynamic>? get aiOptimization => _aiOptimization;
   Map<String, dynamic>? get budgetAdaptations => _budgetAdaptations;
   List<Map<String, dynamic>> get calendarData => _calendarData;
+
+  /// True when [calendarData] is a /calendar/shell PLANNING PREVIEW rather
+  /// than the user's persisted plan. A preview is one monthly total spread
+  /// evenly, so every day carries the same figure — it must be labelled, never
+  /// presented as any day's actual budget.
+  bool get calendarIsPreview =>
+      _calendarData.isNotEmpty && !_calendarHasSavedData;
   Map<String, dynamic> get automationSettings => _automationSettings;
   Map<String, dynamic>? get budgetRecommendations => _budgetRecommendations;
   Map<String, dynamic>? get budgetRemaining => _budgetRemaining;
