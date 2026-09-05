@@ -235,46 +235,23 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
         });
       }
     } catch (e) {
+      // No fabricated cohort. A null cohort_size drives the existing
+      // "nothing to rank against" empty state below rather than inventing
+      // a peer group, a rank and a percentile for the user.
       if (mounted) {
         setState(() {
-          _cohortData = _getDefaultCohortData();
+          _cohortData = <String, dynamic>{
+            'error': 'Cohort insights service is currently unavailable',
+            'cohort_size': null,
+            'your_rank': null,
+            'percentile': null,
+            'top_insights': <String>[],
+            'recommendations': <String>[],
+          };
           _isLoading = false;
         });
       }
     }
-  }
-
-  Map<String, dynamic> _getDefaultCohortData() {
-    final tier = _incomeService.classifyIncome(widget.monthlyIncome);
-    final tierName = _incomeService.getIncomeTierName(tier);
-
-    return {
-      'cohort_size': tier == IncomeTier.low
-          ? 2847
-          : tier == IncomeTier.lowerMiddle
-              ? 3241
-              : tier == IncomeTier.middle
-                  ? 4126
-                  : tier == IncomeTier.upperMiddle
-                      ? 2089
-                      : 1653,
-      'your_rank': tier == IncomeTier.low
-          ? 842
-          : tier == IncomeTier.lowerMiddle
-              ? 973
-              : tier == IncomeTier.middle
-                  ? 1247
-                  : tier == IncomeTier.upperMiddle
-                      ? 542
-                      : 423,
-      'percentile': 70,
-      'top_insights': [
-        '$tierName users typically save ${tier == IncomeTier.low ? "8-12" : tier == IncomeTier.lowerMiddle ? "12-16" : tier == IncomeTier.middle ? "15-20" : tier == IncomeTier.upperMiddle ? "20-28" : "25-35"}% of income',
-        'Most peers spend ${tier == IncomeTier.low ? "40" : tier == IncomeTier.lowerMiddle ? "35-38" : tier == IncomeTier.middle ? "30-35" : tier == IncomeTier.upperMiddle ? "28-32" : "25-30"}% on housing',
-        'Food expenses average ${tier == IncomeTier.low ? "15-18" : tier == IncomeTier.lowerMiddle ? "13-16" : tier == IncomeTier.middle ? "12-15" : tier == IncomeTier.upperMiddle ? "10-13" : "8-12"}% in your group',
-      ],
-      'recommendations': _incomeService.getFinancialTips(tier).take(3).toList(),
-    };
   }
 
   @override

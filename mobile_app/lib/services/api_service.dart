@@ -3653,52 +3653,14 @@ class ApiService {
       );
       return _envelopeListOf(response);
     } catch (e) {
-      // Return demo available challenges
-      return [
-        {
-          'id': '4',
-          'title': 'Meal Prep Master',
-          'description': 'Cook at home for 10 days straight',
-          'type': 'habit_building',
-          'target_value': 10,
-          'reward_points': 300,
-          'reward_amount': 75.0,
-          'difficulty': 'medium',
-          'duration_days': 14,
-          'category': 'Food & Dining',
-          'participants': 127,
-          'success_rate': 0.78,
-        },
-        {
-          'id': '5',
-          'title': 'No-Spend Weekend',
-          'description':
-              'Complete a weekend without any non-essential spending',
-          'type': 'spending_freeze',
-          'target_value': 1,
-          'reward_points': 150,
-          'reward_amount': 30.0,
-          'difficulty': 'easy',
-          'duration_days': 2,
-          'category': 'Entertainment',
-          'participants': 89,
-          'success_rate': 0.65,
-        },
-        {
-          'id': '6',
-          'title': 'Subscription Audit',
-          'description': 'Review and cancel at least 2 unused subscriptions',
-          'type': 'cost_optimization',
-          'target_value': 2,
-          'reward_points': 400,
-          'reward_amount': 120.0,
-          'difficulty': 'easy',
-          'duration_days': 7,
-          'category': 'Subscriptions',
-          'participants': 234,
-          'success_rate': 0.92,
-        },
-      ];
+      // No fabricated challenges. Inventing challenges with made-up
+      // participant counts, success rates and cash rewards presented them to
+      // the user as real, joinable offers backed by real money. The
+      // Challenges screen already renders an honest "No challenges available
+      // right now" empty state for an empty list.
+      logError('Available challenges service unavailable: $e',
+          tag: 'CHALLENGES');
+      return <dynamic>[];
     }
   }
 
@@ -3728,40 +3690,11 @@ class ApiService {
       }
       return asList(leaderboard);
     } catch (e) {
-      // Return demo leaderboard
-      return [
-        {
-          'rank': 1,
-          'user_id': 'user_123',
-          'username': 'BudgetNinja',
-          'points': 2850,
-          'level': 8,
-          'badges_count': 15,
-          'challenges_completed': 23,
-          'avatar_url': null,
-        },
-        {
-          'rank': 2,
-          'user_id': 'user_456',
-          'username': 'SavingsHero',
-          'points': 2720,
-          'level': 7,
-          'badges_count': 12,
-          'challenges_completed': 19,
-          'avatar_url': null,
-        },
-        {
-          'rank': 42,
-          'user_id': 'current_user',
-          'username': 'You',
-          'points': 1250,
-          'level': 5,
-          'badges_count': 3,
-          'challenges_completed': 8,
-          'avatar_url': null,
-          'is_current_user': true,
-        },
-      ];
+      // No fabricated leaderboard. Inventing ranked users ("BudgetNinja",
+      // 2850 points) showed the user a competitive standing against people
+      // who do not exist.
+      logError('Leaderboard service unavailable: $e', tag: 'CHALLENGES');
+      return <dynamic>[];
     }
   }
 
@@ -3906,22 +3839,20 @@ class ApiService {
       );
       return _envelopeMapOf(response);
     } catch (e) {
-      // Return demo cohort insights
+      // Mirrors getPeerComparison: report unavailability instead of
+      // fabricating a cohort. The old fallback claimed a cohort of 1247, a
+      // rank of 312 and a 75th percentile — a completely invented social
+      // standing shown to the user during onboarding and on Insights.
+      // A null cohort_size makes CohortInsightsWidget render its existing
+      // honest "nothing to rank against" empty state.
+      logError('Cohort insights service unavailable: $e', tag: 'COHORT');
       return {
-        'cohort_size': 1247,
-        'your_rank': 312,
-        'percentile': 75,
-        'top_insights': [
-          'Users in your income group typically save 18% of their income',
-          'Most peers allocate 12-15% to food expenses',
-          'Transportation costs vary widely (8-20%) in your group',
-          'Entertainment spending peaks on weekends for your cohort',
-        ],
-        'recommendations': [
-          'Consider increasing your savings rate to match top performers',
-          'Your food spending is well-optimized compared to peers',
-          'Look into carpooling or public transit to reduce transportation costs',
-        ],
+        'error': 'Cohort insights service is currently unavailable',
+        'cohort_size': null,
+        'your_rank': null,
+        'percentile': null,
+        'top_insights': <String>[],
+        'recommendations': <String>[],
       };
     }
   }

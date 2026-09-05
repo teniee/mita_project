@@ -192,3 +192,41 @@ Rules:
 
 Regressions: `mobile_app/test/screens/calendar_day_details_consistency_test.dart`
 and `TestDayBudgetEqualsCategorySum` in `app/tests/test_monthly_plan_rollover.py`.
+
+## Never invent the user's standing (cohort, challenges, leaderboard)
+
+`ApiService` methods used to swallow their own exception and return hardcoded
+sample data. Because the API layer never rethrew, the honest empty/error states
+already written upstream were **unreachable dead code**:
+
+- `getCohortInsights()` returned `cohort_size 1247`, `your_rank 312`,
+  `percentile 75` plus four invented peer "insights". Shown on Insights
+  (`CohortInsightsWidget`) and during onboarding
+  (`OnboardingPeerComparisonScreen`) — a brand-new user was told they ranked
+  312nd of 1247 people. The onboarding screen's own honest `catch` could never
+  fire, because the call never threw.
+- `getAvailableChallenges()` returned "Meal Prep Master" / "No-Spend Weekend" /
+  "Subscription Audit", each with a fabricated `participants`, `success_rate`
+  and a cash `reward_amount` — joinable offers backed by no real money.
+- `getLeaderboard()` returned "BudgetNinja" and friends, ranking the user
+  against people who do not exist.
+- `CohortInsightsWidget._getDefaultCohortData()` was a *second* fabrication
+  layer that would have re-introduced the invented cohort even after
+  `ApiService` was made honest. Fixing only the API layer moves the lie
+  downstream — both had to change together.
+
+Rules:
+
+- **An API failure is not data.** A failed call reports unavailability
+  (`error` + `null` fields, or an empty list). It never returns a plausible
+  sample. `getPeerComparison()` is the reference shape.
+- **Fix the layer that swallows.** An honest empty state upstream is dead code
+  if the service beneath it never fails. When adding an empty state, verify the
+  path that reaches it can actually happen.
+- **A null cohort renders the empty state.** `asInt(null) == 0` drives
+  `CohortInsightsWidget`'s existing "nothing to rank against" card; an empty
+  list drives `challenges_screen`'s "No challenges available right now" and the
+  leaderboard's "No leaderboard standings yet."
+
+Regression: `mobile_app/test/no_fabricated_personal_data_test.dart` fails if any
+of the fabricated literals return.
