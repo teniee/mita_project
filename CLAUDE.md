@@ -520,6 +520,62 @@ Regression: `mobile_app/test/services/transaction_parse_isolation_test.dart`
 drives the real Dio through a fake adapter and fails if a broken row again
 takes the intact ones with it.
 
+### The diagnostic must not carry the row
+
+The first version of the skip logged `'Skipping unparseable transaction: $e'`.
+That sends the user's money off the device. Dart's `FormatException` embeds its
+input in `toString()`:
+
+    double.parse('1234.56USD')          -> FormatException: Invalid double
+                                           1234.56USD
+    DateTime.parse('2026-13-99 x')      -> FormatException: Invalid date format
+                                           2026-13-99 x
+
+`logError` forwards to Firebase Crashlytics in release builds, and
+`LoggingService.log()` stores `_maskPII(error.toString())` — so any object
+handed to it is stringified and shipped. `_maskPII` matches emails, cards,
+phones, SSNs, IBANs, tokens and password fields; an **amount**, a merchant, a
+description or a note matches none of them and would be reported verbatim.
+(A `_TypeError` from a failed `as` cast carries only type names and is safe —
+but the two `parse` calls are the reachable NULL/garbage cases, so the
+exception can never be logged.)
+
+Rules:
+
+- **Classify, never quote.** `_describeParseFailure(row, error)` in
+  `transaction_service.dart` checks the row against the schema
+  `TransactionModel.fromJson` requires and reports **field names and Dart
+  runtime type names only** — `amount is a String that is not a number`,
+  `spent_at is not an ISO-8601 date`, `category is int, expected String`. When
+  nothing in the row explains the failure it falls back to
+  `error.runtimeType`, which is also just a type name. No value, ever.
+- **The index locates the row, the id identifies the user.** Failures are
+  keyed by position (`#3`), not by `transactions.id`. The id is user-linked
+  and adds nothing the position does not.
+- **One report per load, not one per row.** A page where every row is
+  malformed would otherwise emit up to `limit` (100) Crashlytics non-fatals
+  from a single screen open. The per-row detail is aggregated into one
+  `logError`.
+- **Not silent.** It is reported at **error** level so it reaches Crashlytics —
+  a malformed server payload is an operator-visible event — with the stack
+  trace of the first failure and `TransactionParseException(dropped, total)`,
+  a value-free stand-in whose `toString()` is counts only.
+
+**Partial responses are not surfaced to the user, deliberately.**
+`TransactionProvider` has `TransactionState.{initial,loading,loaded,error}` and
+a single `errorMessage`; there is no partial-results state, and none was added.
+A load that drops rows reports `loaded` with the rows that parsed. The rest of
+the history stays usable and no error banner appears — an alarming message
+about a payload the user cannot act on is worse than a short list. The signal
+for a dropped row is the Crashlytics report, which is where it can actually be
+acted on. If a partial-results state is ever wanted, it belongs in
+`TransactionProvider` alongside `errorMessage`, not in the service.
+
+Regression: the `never reaches the log` / `is reported, not silent` /
+`not used as the diagnostic key` / `one report, not one per row` cases in the
+same file. Reinstating `'#$i $e'` in place of the classifier fails three of
+them.
+
 ## Swept and found clean (do not re-derive)
 
 Recorded so a later audit does not spend the effort again. Each was checked to
