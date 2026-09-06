@@ -86,10 +86,35 @@ class TransactionService {
         transactionList = [];
       }
 
-      return transactionList
-          .map((json) =>
-              TransactionModel.fromJson(Map<String, dynamic>.from(json as Map)))
-          .toList();
+      // One unparseable row must not blank the whole history.
+      //
+      // TransactionModel.fromJson hard-casts id/category/amount and
+      // DateTime.parses spent_at/created_at, so a single row missing any of
+      // them threw out of this .map() and the catch below rethrew — the user
+      // lost every transaction, not one. The transactions table permits NULL
+      // spent_at/created_at (0001_initial declares them with neither
+      // nullable=False nor a server_default; only the ORM-side `default=`
+      // fills them), so the payload that triggers this is reachable from a
+      // row written outside the ORM.
+      final transactions = <TransactionModel>[];
+      var skipped = 0;
+      for (final json in transactionList) {
+        try {
+          transactions.add(TransactionModel.fromJson(
+              Map<String, dynamic>.from(json as Map)));
+        } catch (e) {
+          skipped++;
+          logError('Skipping unparseable transaction: $e',
+              tag: 'TRANSACTION_SERVICE');
+        }
+      }
+      if (skipped > 0) {
+        logWarning(
+            'Dropped $skipped of ${transactionList.length} transactions that '
+            'failed to parse',
+            tag: 'TRANSACTION_SERVICE');
+      }
+      return transactions;
     } on DioException catch (e) {
       logError('Error loading transactions: ${e.message}');
       _mapError(e, 'load transactions');

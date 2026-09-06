@@ -485,3 +485,37 @@ the UI multiplies by 100, but has no production callers either.
 
 Regression: the added groups in
 `mobile_app/test/no_fabricated_personal_data_test.dart`.
+
+## One bad row must not blank the whole list
+
+`TransactionService.getTransactions()` mapped every row through
+`TransactionModel.fromJson` inside a single `.map()`. `fromJson` hard-casts
+`id` / `category` / `amount` and `DateTime.parse`s `spent_at` / `created_at`,
+so one row missing any of them threw out of the map, the surrounding `catch`
+rethrew, and the user lost **every** transaction rather than one. Rows are now
+parsed individually; a row that fails is logged and skipped.
+
+That payload is reachable, not hypothetical. In `alembic/0001_initial`:
+
+    sa.Column("spent_at", sa.DateTime(), index=True)
+    sa.Column("created_at", sa.DateTime())
+
+Neither carries `nullable=False` nor a `server_default` (line 86 of the same
+migration uses `server_default=sa.func.now()` for another table, so the pattern
+was known). `Transaction.spent_at` / `.created_at` / `.currency` rely on
+SQLAlchemy's **Python-side** `default=`, which only applies when the ORM builds
+the object — any insert that bypasses it writes NULL. `TxnOut` then declares
+`spent_at: datetime` and `created_at: datetime` as non-Optional, so a NULL row
+fails Pydantic serialization and 500s the whole list endpoint.
+
+**Open recommendation (not applied):** give those three columns `nullable=False`
+plus a `server_default`, after backfilling any NULLs. That is a NOT NULL
+migration on a populated production table — it needs a lock and a backfill, so
+it is a deliberate release decision, not something to slip into a bug-fix
+branch. No current code path writes NULL (no `bulk_insert_mappings`,
+`bulk_save_objects` or raw INSERT on `transactions` exists), so this is latent
+robustness, not an active defect.
+
+Regression: `mobile_app/test/services/transaction_parse_isolation_test.dart`
+drives the real Dio through a fake adapter and fails if a broken row again
+takes the intact ones with it.
