@@ -364,6 +364,48 @@ Regressions: `mobile_app/test/services/social_comparison_no_fabricated_peers_tes
 `mobile_app/test/budget_suggestions_contract_test.dart`, and the updated
 assertions in `app/tests/test_client_error_report_and_sync_session.py`.
 
+## Making a producer honest can expose a dishonest consumer
+
+Fixing `getCohortInsights()` to report `cohort_size: null` / `percentile: null`
+instead of the invented 1247 / 75 did not finish the job — it moved the problem
+downstream. `onboarding_peer_comparison_screen` read those with `?? 0`, so a
+brand-new user was then told, mid-onboarding:
+
+    Connect with 0 other Middle users
+    You're in the 0th percentile of your peer group! This means you're
+    already doing better than most users with similar income levels.
+
+Two separate faults, one exposed and one pre-existing:
+
+- `?? 0` printed the absence instead of suppressing the card. The peer-group
+  card is now gated on `_cohortSize > 0`, the percentile line on a non-null
+  percentile, and the Peer Insights / Recommendations cards on non-empty lists
+  (a heading with no rows under it is not a card).
+- The congratulation was **unconditional**: a user in the 10th percentile was
+  told they were "already doing better than most users with similar income
+  levels". It is now stated only when the percentile supports it.
+
+`as List<String>?` on a JSON-decoded `List<dynamic>` returns null, so real peer
+insights could silently vanish. The accessors read every element as a string.
+
+In the service itself, two claims outran the data. The API sends a **mean, not
+a distribution**, so nothing there can establish a ranking:
+"You're ahead of most peers in your tier" became "well above the average for
+your income tier", and "increase your savings rate by 2-3%" — a figure nothing
+computed — now points at the average instead.
+`SocialComparisonService._calculatePercentile()` is a ratio band, not a
+distribution percentile; it exists only to pick a sentence.
+`SocialComparisonInsight.percentile` is never rendered. **Keep it that way**
+unless the API starts sending a real distribution.
+
+Rule: after removing a fabricated value, grep for every consumer of that field.
+A producer that starts telling the truth will surface every `?? 0`, `?? 50` and
+`as List<String>?` that was relying on it to lie.
+
+Regression: the `onboarding never states a cohort standing it does not have`
+and `no peer claim outruns the data behind it` groups in
+`mobile_app/test/no_fabricated_personal_data_test.dart`.
+
 ## The dashboard reports the persisted plan, including when it is zero
 
 `GET /api/dashboard` had two surviving `monthly_income / 30` placeholders. The

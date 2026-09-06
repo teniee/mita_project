@@ -123,8 +123,16 @@ class SocialComparisonService {
     };
   }
 
+  /// Where this user sits relative to the peer *average*, as a 0-1 band.
+  ///
+  /// This is NOT a distribution percentile: the API sends a mean, not a
+  /// distribution, so nothing here can say how many peers a user is ahead of.
+  /// It is only used to pick which sentence to show. Do not surface this
+  /// number to the user as "your percentile" — that would claim a ranking the
+  /// data cannot support. `SocialComparisonInsight.percentile` is currently
+  /// never rendered; keep it that way unless the API starts sending a real
+  /// distribution.
   double _calculatePercentile(double userValue, double peerAverage) {
-    // Simplified percentile calculation
     final ratio = userValue / peerAverage;
     if (ratio > 1.5) return 0.95;
     if (ratio > 1.2) return 0.80;
@@ -170,9 +178,14 @@ class SocialComparisonService {
         }
       case 'savings_rate':
         if (percentile > 0.8) {
-          return 'Excellent savings rate! You\'re ahead of most peers in your tier';
+          // Was "You're ahead of most peers in your tier". Being above the
+          // peer *mean* does not establish being ahead of *most* peers — the
+          // API sends an average, not a distribution.
+          return 'Excellent savings rate — well above the average for your income tier';
         } else if (percentile < 0.3) {
-          return 'Consider increasing your savings rate by 2-3% to match your peers';
+          // The "2-3%" was invented: nothing here computes the gap needed
+          // to reach the peer average.
+          return 'Consider increasing your savings rate toward the average for your income tier';
         } else {
           return 'Your savings rate is on track with similar users';
         }

@@ -89,6 +89,62 @@ void main() {
     });
   });
 
+  group('onboarding never states a cohort standing it does not have', () {
+    final onboarding =
+        File('lib/screens/onboarding_peer_comparison_screen.dart')
+            .readAsStringSync()
+            .split('\n')
+            .where((l) => !l.trimLeft().startsWith('//'))
+            .join('\n');
+
+    test('no "0th percentile" / "0 other users" can be printed', () {
+      // getCohortInsights() now reports unavailability with nulls rather than
+      // the invented cohort_size 1247 / percentile 75, and `?? 0` turned those
+      // into "Connect with 0 other Middle users" and "You're in the 0th
+      // percentile of your peer group!" mid-onboarding.
+      expect(onboarding, isNot(contains("['cohort_size'] ?? 0")));
+      expect(onboarding, isNot(contains("['percentile'] ?? 0")));
+    });
+
+    test('the peer-group card is gated on a real cohort', () {
+      expect(onboarding, contains('if (_cohortSize > 0)'));
+      expect(onboarding, contains('if (_cohortPercentile != null)'));
+    });
+
+    test('empty insight and recommendation lists render no card', () {
+      expect(onboarding, contains('if (_cohortTopInsights.isNotEmpty)'));
+      expect(onboarding, contains('if (_cohortRecommendations.isNotEmpty)'));
+    });
+
+    test('the congratulation is not unconditional', () {
+      // A user in the 10th percentile used to be told they were "already
+      // doing better than most users with similar income levels".
+      expect(
+        onboarding,
+        isNot(contains('already doing better than most users')),
+      );
+      expect(onboarding, contains('_cohortPercentile! > 50'));
+    });
+  });
+
+  group('no peer claim outruns the data behind it', () {
+    final service = File('lib/services/social_comparison_service.dart')
+        .readAsStringSync()
+        .split('\n')
+        .where((l) => !l.trimLeft().startsWith('//'))
+        .join('\n');
+
+    test('no claim of being ahead of most peers', () {
+      // The API sends a mean, not a distribution: being above the peer
+      // average does not establish being ahead of most peers.
+      expect(service, isNot(contains('ahead of most peers')));
+    });
+
+    test('no invented gap-to-peers figure', () {
+      expect(service, isNot(contains('by 2-3%')));
+    });
+  });
+
   group('the budget engine never measures against an invented budget', () {
     final master = File('lib/services/enhanced_master_budget_engine.dart')
         .readAsStringSync()
