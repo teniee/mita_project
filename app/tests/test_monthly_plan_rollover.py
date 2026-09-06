@@ -835,16 +835,31 @@ class TestReadPathsMaterializeTheMonth:
         assert resp.status_code == 200, resp.text
         data = resp.json()["data"]
 
-        targets = data["daily_targets"]
-        assert targets
-        assert sum(Decimal(str(t["limit"])) for t in targets) > Decimal("0.00")
-
         rows = _rows(db_session, user, today.year, today.month)
         assert rows, "the dashboard must have materialized the current month"
+        assert _month_planned_total(rows) > Decimal(
+            "0.00"
+        ), "materializing the month must produce a real plan"
+
+        # The dashboard reports this day's persisted allocation, whatever it
+        # is. It must not assert a day-independent weekday shape:
+        # distribute_budget_over_days() spreads "spread" categories across
+        # weekday_days only, so a Saturday or Sunday legitimately carries no
+        # rows — and this assertion used to fail every weekend because the
+        # endpoint answered monthly_income / 30 split over four hardcoded
+        # categories instead of reporting the real (empty) allocation.
+        targets = data["daily_targets"]
         today_rows = [r for r in rows if _row_day(r) == today]
-        assert sum(Decimal(str(t["limit"])) for t in targets) == sum(
-            Decimal(str(r.planned_amount or 0)) for r in today_rows
-        )
+        expected = sum(Decimal(str(r.planned_amount or 0)) for r in today_rows)
+        assert sum(Decimal(str(t["limit"])) for t in targets) == expected
+
+        if not today_rows:
+            assert targets == [], (
+                "a day with no allocation must report no targets, not an "
+                "invented default breakdown"
+            )
+        placeholder = Decimal(str(user.monthly_income)) / 30
+        assert sum(Decimal(str(t["limit"])) for t in targets) != placeholder
 
     def test_affordability_uses_the_newly_rolled_month(self, authed, db_session, user):
         today = datetime.now(timezone.utc).date()
@@ -858,10 +873,19 @@ class TestReadPathsMaterializeTheMonth:
         assert resp.status_code == 200, resp.text
         data = resp.json()["data"]
 
-        assert "No budget set" not in data["impact_message"]
-        assert Decimal(str(data["daily_budget"])) > Decimal("0.00")
-
+        # The month must exist after the read; today's own allocation may be
+        # zero on a weekend (spread categories cover weekdays only), so this
+        # asserts the rolled month is what answers, not that every day has a
+        # budget.
         assert month_has_plan(db_session, user.id, today.year, today.month)
+
+        rows = _rows(db_session, user, today.year, today.month)
+        today_rows = [r for r in rows if _row_day(r) == today]
+        expected = sum(Decimal(str(r.planned_amount or 0)) for r in today_rows)
+        assert Decimal(str(data["daily_budget"])) == expected
+
+        if expected > Decimal("0.00"):
+            assert "No budget set" not in data["impact_message"]
 
     def test_budget_live_status_reports_a_daily_budget(self, authed, db_session, user):
         today = datetime.now(timezone.utc).date()
@@ -871,8 +895,17 @@ class TestReadPathsMaterializeTheMonth:
         resp = authed.get("/api/budget/live_status")
         assert resp.status_code == 200, resp.text
         data = resp.json()["data"]
-        assert Decimal(str(data["daily_budget"])) > Decimal("0.00")
-        assert data["status"] != "neutral"
+
+        # Same weekday caveat as the dashboard test: report this day's real
+        # allocation rather than requiring every day to carry one.
+        rows = _rows(db_session, user, today.year, today.month)
+        assert rows, "live_status must have materialized the current month"
+        today_rows = [r for r in rows if _row_day(r) == today]
+        expected = sum(Decimal(str(r.planned_amount or 0)) for r in today_rows)
+        assert Decimal(str(data["daily_budget"])) == expected
+
+        if expected > Decimal("0.00"):
+            assert data["status"] != "neutral"
 
     def test_repeated_reads_do_not_rewrite_the_month(self, authed, db_session, user):
         _seed_month(db_session, user, *AUG)

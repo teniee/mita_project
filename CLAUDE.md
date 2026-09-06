@@ -363,3 +363,43 @@ Regression: `app/tests/test_no_fabricated_verdicts.py`.
 Regressions: `mobile_app/test/services/social_comparison_no_fabricated_peers_test.dart`,
 `mobile_app/test/budget_suggestions_contract_test.dart`, and the updated
 assertions in `app/tests/test_client_error_report_and_sync_session.py`.
+
+## The dashboard reports the persisted plan, including when it is zero
+
+`GET /api/dashboard` had two surviving `monthly_income / 30` placeholders. The
+rollover work removed the one that fired when a month had not been
+materialized; these fired when a **day** had no allocation, which is a normal
+state, not an error.
+
+`distribute_budget_over_days()` gives `behavior == "spread"` categories to
+`weekday_days` only, so a Saturday or Sunday legitimately carries no
+`daily_plan` rows. On those days the dashboard answered:
+
+- `daily_targets`: `monthly_income / 30` split across four hardcoded categories
+  (Food & Dining 35 %, Transportation 25 %, Entertainment 20 %, Shopping 20 %)
+  — the same invented breakdown deleted from the calendar day-details screen.
+  For the test user that is a $173.33 daily budget nothing had planned, which
+  the user could then overspend against.
+- the week strip: `result.scalar() or (monthly_income / 30)`, where `or` also
+  swallows a real `0.00`, so a day planned at zero was scored `good` / `warning`
+  / `over` against a placeholder.
+
+Rules:
+
+- **No allocation is an answer.** An empty `today_plans` yields
+  `daily_targets: []`; `main_screen._buildBudgetTargets()` already renders an
+  empty state for it. `ensure_months_span_async()` runs first, so an empty day
+  means the day is genuinely unallocated, not that the month is missing.
+- **`or` is not a null check on money.** Use `is not None`; `0.00` is a real
+  budget, and a day with none is `neutral` — it cannot be over or under.
+
+This also explains a class of flaky test: three
+`TestReadPathsMaterializeTheMonth` cases asserted that today carries a non-zero
+budget, so they passed Monday–Friday and failed every Saturday and Sunday. They
+now assert that each endpoint reports **this day's persisted allocation**,
+whatever it is, and that an unallocated day reports no targets rather than the
+placeholder. Do not restore a "today must have a budget" assertion — it encodes
+the weekday shape of one seed plan, not an invariant.
+
+Regression: `TestReadPathsMaterializeTheMonth` in
+`app/tests/test_monthly_plan_rollover.py` (fails if either placeholder returns).

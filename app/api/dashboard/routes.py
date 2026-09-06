@@ -178,30 +178,24 @@ async def get_dashboard(
                         "color": category_colors.get(category.lower(), "#9E9E9E"),
                     }
                 )
-        else:
-            # Fallback: generate default targets based on monthly income
-            daily_budget = monthly_income / 30  # Simple daily budget
-
-            default_weights = {
-                "Food & Dining": 0.35,
-                "Transportation": 0.25,
-                "Entertainment": 0.20,
-                "Shopping": 0.20,
-            }
-
-            for category, weight in default_weights.items():
-                category_key = category.lower().replace(" & ", "_").replace(" ", "_")
-                spent = today_spending_by_category.get(category_key, 0.0)
-
-                daily_targets.append(
-                    {
-                        "category": category,
-                        "limit": daily_budget * weight,
-                        "spent": spent,
-                        "icon": category_icons.get(category_key, "category"),
-                        "color": category_colors.get(category_key, "#9E9E9E"),
-                    }
-                )
+        # No else-branch placeholder. This used to answer a day with no
+        # DailyPlan rows with monthly_income / 30 split across four hardcoded
+        # categories (Food & Dining 35 / Transportation 25 / Entertainment 20
+        # / Shopping 20) — the same invented breakdown that was deleted from
+        # the calendar day-details screen, and the same monthly_income / 30
+        # placeholder the rollover work removed for the "month not
+        # materialized" case.
+        #
+        # It still fired for a day whose plan is legitimately empty.
+        # distribute_budget_over_days() spreads weekday-shaped categories
+        # across weekdays, so a Saturday or Sunday can carry no rows at all —
+        # and the dashboard then showed a $173.33 daily budget (5200 / 30) that
+        # nothing had planned and that the user could overspend against.
+        #
+        # ensure_months_span_async() above guarantees the month is
+        # materialized, so an empty today_plans means this day genuinely has no
+        # allocation. main_screen._buildBudgetTargets() already renders an
+        # empty state for an empty list.
 
         # Get weekly overview (last 7 days)
         week_data = []
@@ -232,12 +226,19 @@ async def get_dashboard(
                     DailyPlan.date <= plan_end,
                 )
             )
-            day_budget = result.scalar() or (monthly_income / 30)
+            # `or` also swallowed a real zero, so a day planned at 0.00 was
+            # scored against monthly_income / 30 like any other. A day with no
+            # allocation has no budget to be over or under — it is neutral,
+            # the same value this endpoint's degraded response already uses.
+            planned = result.scalar()
+            day_budget = float(planned) if planned is not None else 0.0
 
             # Determine status
-            if float(day_spent) > float(day_budget):
+            if planned is None or day_budget <= 0:
+                status = "neutral"
+            elif float(day_spent) > day_budget:
                 status = "over"
-            elif float(day_spent) > float(day_budget) * 0.9:
+            elif float(day_spent) > day_budget * 0.9:
                 status = "warning"
             else:
                 status = "good"
