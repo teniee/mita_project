@@ -89,6 +89,52 @@ void main() {
     });
   });
 
+  group('the budget engine never measures against an invented budget', () {
+    final master = File('lib/services/enhanced_master_budget_engine.dart')
+        .readAsStringSync()
+        .split('\n')
+        .where((l) => !l.trimLeft().startsWith('//'))
+        .join('\n');
+
+    test('velocity analysis is not defaulted to 50/day or 1500/month', () {
+      // EnhancedProductionBudgetEngine._convertOnboardingToProfile() emits no
+      // dailyBudget/monthlyBudget key at all, so these defaults fired on every
+      // live call — and the result feeds back into the user's own number via
+      // `adjustedBudget = velocityAdjustment.adjustedDailyBudget` and reaches
+      // the Daily Budget screen through intelligentInsights.
+      expect(master, isNot(contains("?? 50.0")));
+      expect(master, isNot(contains("?? 1500.0")));
+    });
+
+    test('velocity analysis requires a real budget before running', () {
+      expect(master, contains('knownDailyBudget != null'));
+      expect(master, contains('knownMonthlyBudget != null'));
+    });
+  });
+
+  group('the profile screen states no invented account facts', () {
+    final profile = File('lib/screens/user_profile_screen.dart')
+        .readAsStringSync()
+        .split('\n')
+        .where((l) => !l.trimLeft().startsWith('//'))
+        .join('\n');
+
+    test('no placeholder email is shown as the user\'s own', () {
+      expect(profile, isNot(contains("'user@mita.finance'")));
+    });
+
+    test('no invented profile completion', () {
+      expect(profile, isNot(contains('profile_completion\'] as int? ?? 85')));
+    });
+
+    test('no fabricated join date', () {
+      expect(
+        profile,
+        isNot(contains('DateTime.now().subtract(const Duration(days: 30))')),
+      );
+    });
+  });
+
   group('CohortInsightsWidget has no second fabrication layer', () {
     test('_getDefaultCohortData is gone', () {
       expect(

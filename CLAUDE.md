@@ -403,3 +403,43 @@ the weekday shape of one seed plan, not an invariant.
 
 Regression: `TestReadPathsMaterializeTheMonth` in
 `app/tests/test_monthly_plan_rollover.py` (fails if either placeholder returns).
+
+## Never measure against an invented budget, or invent account facts
+
+`EnhancedMasterBudgetEngine.calculateEnhancedDailyBudget()` step 3 read
+`userProfile['dailyBudget'] ?? 50.0` and `userProfile['monthlyBudget'] ?? 1500.0`.
+`EnhancedProductionBudgetEngine._convertOnboardingToProfile()` emits
+`monthlyIncome` / `incomeTier` / `goals` / `habits` and **no budget key at
+all**, so on every live call the spending-velocity analysis ran against a
+constant $50 day and $1500 month regardless of what the user earns or plans.
+
+That is not cosmetic. The result feeds straight back into the user's own
+number — `adjustedBudget = velocityAdjustment.adjustedDailyBudget` — and its
+recommendations reach the Daily Budget screen via `_generateRecommendations`
+-> `intelligentInsights` -> `BudgetAdapterService` `suggestions[].message`.
+
+Nothing at that point can supply a real baseline: step 3 runs *before* the base
+budget is calculated (step 2 passes `0.0, // Will be set after base
+calculation`). The step is therefore skipped unless a real budget is known —
+`velocityAdjustment` is nullable and every consumer already guards on null. A
+wrong adjustment to someone's daily budget is worse than no adjustment.
+**Restore this step by threading the real budget in, never by reinstating a
+default.**
+
+`user_profile_screen` stated three invented facts about the account: a
+placeholder `user@mita.finance` shown as the user's own email, a
+`profile_completion ?? 85`, and a join date of "30 days ago" fabricated
+whenever `member_since` failed to parse. Each is now hidden when unknown.
+
+Checked and left alone (unreachable — backlog, not blockers):
+`ContextualNudgeService._personalizeMessage()` fills `{amount}`/`{days}`/
+`{percentage}` with 50/5/75, which would render "75% of users in your income
+tier save more than you this month" — but `suggestedNudge` is
+`PersonalizedNudge? get suggestedNudge => null`, so `contextualNudge` is never
+non-null and no nudge reaches the UI. `CalendarFallbackService` (194 lines
+generating a month of fake `spent` amounts) has no production callers.
+`ResilientGPTService.categorize_expense` returns `confidence: 50` on a 0–1 scale
+the UI multiplies by 100, but has no production callers either.
+
+Regression: the added groups in
+`mobile_app/test/no_fabricated_personal_data_test.dart`.

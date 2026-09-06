@@ -185,12 +185,13 @@ class _UserProfileScreenState extends State<UserProfileScreen>
   Widget _buildProfileHeader(
       ColorScheme colorScheme, TextTheme textTheme, UserProvider userProvider) {
     final name = userProvider.userName;
-    final email = userProvider.userEmail.isNotEmpty
-        ? userProvider.userEmail
-        : 'user@mita.finance';
+    // Three invented facts about the account used to live here: a placeholder
+    // address shown as the user's own email, a profile completion of 85% the
+    // server never reported, and a join date of "30 days ago" fabricated
+    // whenever member_since failed to parse.
+    final email = userProvider.userEmail;
     final memberSince = userProvider.userProfile['member_since'] as String?;
-    final completion =
-        userProvider.userProfile['profile_completion'] as int? ?? 85;
+    final completion = userProvider.userProfile['profile_completion'] as int?;
     final verified =
         userProvider.userProfile['verified_email'] as bool? ?? false;
 
@@ -199,7 +200,9 @@ class _UserProfileScreenState extends State<UserProfileScreen>
       try {
         joinDate = DateTime.parse(memberSince);
       } catch (e) {
-        joinDate = DateTime.now().subtract(const Duration(days: 30));
+        // An unparseable member_since is an unknown join date, not a recent
+        // one. The "Member since" line is already conditional on non-null.
+        joinDate = null;
       }
     }
 
@@ -303,14 +306,16 @@ class _UserProfileScreenState extends State<UserProfileScreen>
                             ),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        email,
-                        style: textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onSurface.withValues(alpha: 0.7),
-                          fontFamily: AppTypography.fontBody,
+                      if (email.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          email,
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: colorScheme.onSurface.withValues(alpha: 0.7),
+                            fontFamily: AppTypography.fontBody,
+                          ),
                         ),
-                      ),
+                      ],
                       if (joinDate != null) ...[
                         const SizedBox(height: 8),
                         Text(
@@ -333,35 +338,37 @@ class _UserProfileScreenState extends State<UserProfileScreen>
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Profile Completion',
-                      style: textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                        fontFamily: AppTypography.fontHeading,
+                if (completion != null) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Profile Completion',
+                        style: textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w500,
+                          fontFamily: AppTypography.fontHeading,
+                        ),
                       ),
-                    ),
-                    Text(
-                      '$completion%',
-                      style: textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: colorScheme.primary,
-                        fontFamily: AppTypography.fontHeading,
+                      Text(
+                        '$completion%',
+                        style: textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.primary,
+                          fontFamily: AppTypography.fontHeading,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                LinearProgressIndicator(
-                  value: completion / 100,
-                  backgroundColor: colorScheme.surfaceContainer,
-                  valueColor:
-                      AlwaysStoppedAnimation<Color>(colorScheme.primary),
-                  minHeight: 8,
-                  borderRadius: BorderRadius.circular(4),
-                ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  LinearProgressIndicator(
+                    value: completion / 100,
+                    backgroundColor: colorScheme.surfaceContainer,
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(colorScheme.primary),
+                    minHeight: 8,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ],
               ],
             ),
           ],
