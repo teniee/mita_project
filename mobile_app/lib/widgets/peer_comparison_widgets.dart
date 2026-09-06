@@ -3,21 +3,12 @@ import '../utils/json_utils.dart';
 import '../services/income_service.dart';
 import '../services/api_service.dart';
 import '../theme/app_typography.dart';
+import '../utils/peer_data.dart';
 
-/// True only when the API actually returned peers to compare against.
-///
-/// `/api/cohort/peer_comparison` is explicit when it cannot compare: it sends
-/// `peer_count: 0`, `comparison: "insufficient_peer_data"` and null averages.
-/// Widgets used to paper over that with `?? 0.0`, `?? 50` or
-/// `userAmount * 1.15`, so a first-day user was shown a peer average, a
-/// percentile and a verdict derived from a cohort of nobody.
-bool hasSufficientPeerData(Map<String, dynamic>? peerData) {
-  if (peerData == null) return false;
-  if (peerData['comparison'] == 'insufficient_peer_data') return false;
-  final count = peerData['peer_count'];
-  if (count is num && count <= 0) return false;
-  return peerData['peer_average'] != null;
-}
+// Re-exported so existing widget-side imports of hasSufficientPeerData keep
+// resolving; the canonical definition lives in utils/peer_data.dart so that
+// services can share it without importing Flutter.
+export '../utils/peer_data.dart' show hasSufficientPeerData;
 
 /// Peer spending insights widget for category breakdown
 class PeerSpendingInsightsWidget extends StatelessWidget {

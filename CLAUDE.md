@@ -230,3 +230,136 @@ Rules:
 
 Regression: `mobile_app/test/no_fabricated_personal_data_test.dart` fails if any
 of the fabricated literals return.
+
+## Never invent a verdict: peer comparisons and financial ratings
+
+A second sweep found the same fabrication pattern in four more places. All of
+them share one shape: **a failure path that returns a plausible answer instead
+of admitting it has none**, which also makes the honest empty state upstream
+unreachable.
+
+### Peer comparisons (`social_comparison_service.dart`)
+
+`generateSocialInsights()` fell back to `_generateFallbackPeerData()` — a
+hardcoded table of per-income-tier peer averages (2200 / 3200 / 4800 / 7500 /
+12000) and cohort sizes (1500 / 2200 / 3100 / 1800 / 800) — whenever the peer
+API reported an error. `ApiService.getPeerComparison()` returns an honest
+`{'error': ...}` envelope on *any* failure, so that fallback fired on every
+failure, and `_generateComparisonText()` then told the user "You spend 12% more
+than similar users" against a peer group that was a constant in the file.
+`_extractPeerData()` also defaulted a missing peer savings rate to `0.15` and a
+missing cohort to `1000` people, so even a *successful* response missing those
+fields produced confident comparisons.
+
+This was not confined to a peer widget. The text travels:
+
+    EnhancedMasterBudgetEngine._generatePersonalizedInsights
+      -> personalizedInsights
+      -> EnhancedProductionBudgetEngine.intelligentInsights
+      -> BudgetAdapterService.getEnhancedBudgetSuggestions() suggestions[].message
+      -> BudgetProvider.budgetSuggestions
+      -> daily_budget_screen "AI Budget Suggestions" card
+
+Rules:
+
+- **Guard once, share it.** `hasSufficientPeerData()` now lives in
+  `utils/peer_data.dart` so services and widgets apply the same test;
+  `peer_comparison_widgets.dart` re-exports it for existing imports.
+- **No peers, no claim.** An insufficient cohort or a failed call returns an
+  empty insight list. The two master-engine consumers are already guarded
+  (`if (socialInsights.isNotEmpty)` and `socialInsights.take(1)`), so an empty
+  list produces no text — that is what closes the chain above.
+- **Never default a peer statistic.** A field the server did not send is
+  absent, and the insight that needs it is skipped.
+
+### Financial rating (`ai_personal_finance_profiler.py`)
+
+`generate_financial_rating()` returned `{"rating": "B", "risk": "moderate",
+"summary": "User spending is generally steady..."}` when GPT was unavailable or
+its answer did not parse. `save_ai_snapshot()` persists that straight into
+`AIAnalysisSnapshot`, and the app renders it as an AI assessment of the user's
+own finances. It now returns `None` for all three. The resilience requirement
+is unchanged — it still must not raise, so the endpoint degrades rather than
+500ing.
+
+`main_screen._buildSnapshotPreview()` printed `Rating: B` for any snapshot
+whose rating was null (`asString(..., fallback: 'B')`) — exactly what the
+backend stored. It now requires a real rating and summary, matching
+`insights_screen._buildAISnapshotCard()`, which already did.
+
+### Weekly trend (`/ai/weekly-insights`)
+
+The endpoint's `except` branch returned `"trend": "stable"` (plus two generic
+recommendations) whenever `AIFinancialAnalyzer` threw. `insights_screen` read
+it with `fallback: 'stable'` and drew `_buildTrendIndicator` — an arrow and a
+"Stable" badge — so a failed analysis was presented as a finding about which
+way the user's spending was moving. Both sides now use null, and the badge is
+only drawn for a real trend.
+
+This one also hid a broken test: `test_get_weekly_insights` patched
+`app.services.ai_financial_analyzer.AIFinancialAnalyzer`, but
+`app/api/ai/routes.py` binds that name at import, so the route kept using the
+real analyzer, raised against the mock session, and fell into the degraded
+branch. The test passed only because that branch hardcoded `"stable"`. Patch
+where the name is looked up (`app.api.ai.routes.AIFinancialAnalyzer`).
+
+### `budgetSuggestions` producer/consumer contract
+
+`insights_screen` and `main_screen` read `confidence`, `intelligent_insights`
+and `category_insights`. No producer emits any of them
+(`BudgetAdapterService` emits `confidence_level`; `/budget/suggestions` emits
+`suggestions` / `total_potential_savings` / `priority_areas`), so both blocks
+were dead. **Do not "fix" this by mapping `confidence_level` onto
+`confidence`** — the blocks derived a health score and letter grade from
+budget-engine confidence (`(confidence * 100).round()`,
+`_getGradeFromConfidence`). Engine confidence describes how sure the allocator
+is about its own arithmetic, not the user's financial health. Both blocks were
+deleted.
+
+Item shape differs between producers too: the adapter emits `message`, the
+backend emits `text`. `daily_budget_screen` read only `message` and fell back
+to `suggestion.toString()`, rendering the raw Dart map into the card.
+
+### A failed analysis is not a finding (AI + behaviour endpoints)
+
+The same shape appeared across six endpoints. Each answered a caught exception
+with a plausible payload:
+
+| Endpoint | Invented |
+|---|---|
+| `/api/ai/financial-health-score` | `score 50`, `grade "C"`, every component `50` |
+| `/api/ai/goal-analysis` | `on_track: True` |
+| `/api/ai/spending-prediction` | `trend: "stable"` |
+| `/api/ai/weekly-insights` | `trend: "stable"` |
+| `/api/behavior/analysis` | `behavioral_score: 0.5` |
+| `/api/behavior/patterns` | `dominant_pattern: "balanced"` |
+
+`on_track: True` is the sharpest: a failed analysis telling the user their goal
+is on track is a false reassurance about their own money. The health score is
+the most reachable: `insights_screen` already renders "Add more transactions to
+calculate your financial health score" when score/grade are null, and this
+payload is precisely why that guard never fired.
+
+Rules:
+
+- **Degrade, don't invent.** These endpoints must keep answering 200 — a broken
+  analyzer must not 500 the screen — but every *finding* field is null/empty
+  and an `error` key says so. Zeroes that are genuinely zero
+  (`confidence: 0.0`, `predicted_amount: 0.0`) stay.
+- **Patch where the name is looked up.** `test_get_weekly_insights` and
+  `test_get_financial_health_score` both patched
+  `app.services.ai_financial_analyzer.AIFinancialAnalyzer` while
+  `app/api/ai/routes.py` binds that name at import. The route kept the real
+  analyzer, raised against the mock session, and fell into the degraded
+  branch — so both tests were green without ever reaching the analyzer they
+  claimed to exercise, asserting instead on the hardcoded `"stable"` and
+  `50`/`"C"`. Patch `app.api.ai.routes.AIFinancialAnalyzer`.
+- **No hardcoded timestamps.** `/api/ai/spending-patterns` reported
+  `analysis_date: "2025-01-29T00:00:00Z"` — a fixed past date presented as when
+  the analysis ran.
+
+Regression: `app/tests/test_no_fabricated_verdicts.py`.
+
+Regressions: `mobile_app/test/services/social_comparison_no_fabricated_peers_test.dart`,
+`mobile_app/test/budget_suggestions_contract_test.dart`, and the updated
+assertions in `app/tests/test_client_error_report_and_sync_session.py`.

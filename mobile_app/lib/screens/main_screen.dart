@@ -27,7 +27,6 @@ class _MainScreenState extends State<MainScreen> {
 
   // AI Insights Data (can be moved to a separate provider later)
   Map<String, dynamic>? aiSnapshot;
-  Map<String, dynamic>? financialHealthScore;
   Map<String, dynamic>? weeklyInsights;
   List<Map<String, dynamic>> spendingAnomalies = [];
 
@@ -150,20 +149,14 @@ class _MainScreenState extends State<MainScreen> {
       cohortInsights = _getDefaultCohortInsights();
       latestAdvice = _getDefaultAdvice();
 
-      // Update financial health score from budget insights - SAFE type casting
-      final budgetProvider = context.read<BudgetProvider>();
-      final confidenceValue = budgetProvider.budgetSuggestions['confidence'];
-      if (confidenceValue != null) {
-        final confidence = (confidenceValue is num)
-            ? confidenceValue.toDouble()
-            : (confidenceValue is String
-                ? double.tryParse(confidenceValue) ?? 0.0
-                : 0.0);
-        financialHealthScore = {
-          'score': (confidence * 100).round(),
-          'grade': _getGradeFromConfidence(confidence),
-        };
-      }
+      // No financial-health score is derived here. This block read
+      // budgetSuggestions['confidence'], a key no producer emits
+      // (BudgetAdapterService emits 'confidence_level'; the legacy
+      // /budget/suggestions endpoint emits neither), so it never ran. Wiring
+      // the key up would have turned budget-engine confidence — how sure the
+      // allocator is about its own arithmetic — into a user-facing score and
+      // letter grade, which is not a measurement of anyone's financial health.
+      // The dashboard's score comes from a real API result or renders empty.
     } else {
       _loadSafeIncompleteState();
     }
@@ -195,7 +188,6 @@ class _MainScreenState extends State<MainScreen> {
     cohortInsights = null;
 
     aiSnapshot = null;
-    financialHealthScore = null;
     weeklyInsights = null;
     spendingAnomalies = [];
 
@@ -2160,12 +2152,10 @@ class _MainScreenState extends State<MainScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            if (aiSnapshot != null)
+            if (_hasRenderableSnapshot)
               _buildSnapshotPreview()
             else if (weeklyInsights != null)
               _buildWeeklyInsightsPreview()
-            else if (financialHealthScore != null)
-              _buildBudgetEngineInsightsPreview()
             else
               _buildAdviceContent(dashboardData),
             if (spendingAnomalies.isNotEmpty) ...[
@@ -2204,9 +2194,21 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  /// An analysis with no rating or no summary is not an analysis.
+  ///
+  /// `asString(aiSnapshot!['rating'], fallback: 'B')` printed "Rating: B" for
+  /// any snapshot whose rating was null — and the backend stored exactly that
+  /// whenever GPT was unavailable, so MITA showed the user a grade on their
+  /// finances that MITA never formed. insights_screen._buildAISnapshotCard()
+  /// already applies this rule; the dashboard preview did not.
+  bool get _hasRenderableSnapshot =>
+      aiSnapshot != null &&
+      asStringOrNull(aiSnapshot!['rating']) != null &&
+      asStringOrNull(aiSnapshot!['summary']) != null;
+
   Widget _buildSnapshotPreview() {
-    final rating = asString(aiSnapshot!['rating'], fallback: 'B');
-    final summary = asString(aiSnapshot!['summary']);
+    final rating = asStringOrNull(aiSnapshot!['rating'])!;
+    final summary = asStringOrNull(aiSnapshot!['summary'])!;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2274,47 +2276,6 @@ class _MainScreenState extends State<MainScreen> {
         const SizedBox(height: 8),
         Text(
           insights.length > 100 ? '${insights.substring(0, 100)}...' : insights,
-          style: TextStyle(
-            fontFamily: 'Manrope',
-            fontSize: 14,
-            color: Colors.white.withValues(alpha: 0.9),
-            height: 1.4,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBudgetEngineInsightsPreview() {
-    final score = asInt(financialHealthScore!['score'], fallback: 75);
-    final grade = asString(financialHealthScore!['grade'], fallback: 'B');
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                'Budget Score: $grade',
-                style: const TextStyle(
-                  fontFamily: 'Sora',
-                  fontWeight: FontWeight.w600,
-                  fontSize: 12,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Your personalized budget is ${score >= 80 ? 'excellent' : score >= 70 ? 'good' : 'needs improvement'} and based on your real income, goals, and spending habits.',
           style: TextStyle(
             fontFamily: 'Manrope',
             fontSize: 14,
@@ -2615,16 +2576,4 @@ class _MainScreenState extends State<MainScreen> {
   }
 
   /// Convert confidence score to letter grade
-  String _getGradeFromConfidence(double confidence) {
-    if (confidence >= 0.9) return 'A+';
-    if (confidence >= 0.85) return 'A';
-    if (confidence >= 0.8) return 'A-';
-    if (confidence >= 0.75) return 'B+';
-    if (confidence >= 0.7) return 'B';
-    if (confidence >= 0.65) return 'B-';
-    if (confidence >= 0.6) return 'C+';
-    if (confidence >= 0.55) return 'C';
-    if (confidence >= 0.5) return 'C-';
-    return 'D';
-  }
 }

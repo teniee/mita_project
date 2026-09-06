@@ -45,7 +45,10 @@ def get_behavioral_analysis(
         return success_response(
             {
                 "spending_patterns": [],
-                "behavioral_score": 0.5,
+                # Not 0.5. A failed analysis has no score for this user, and a
+                # mid-scale number reads as a real measurement of their
+                # behaviour rather than an absent one.
+                "behavioral_score": None,
                 "insights": [
                     "Complete more transactions to enable detailed behavioral analysis"
                 ],
@@ -71,7 +74,9 @@ def get_spending_pattern_analysis(
         return success_response(patterns)
     except Exception:
         return success_response(
-            {"patterns": [], "dominant_pattern": "balanced", "confidence": 0.0}
+            # "balanced" is a verdict on how this person spends. With no
+            # patterns and zero confidence there is nothing to name.
+            {"patterns": [], "dominant_pattern": None, "confidence": 0.0}
         )
 
 

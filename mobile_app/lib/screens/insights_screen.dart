@@ -306,20 +306,6 @@ class _InsightsScreenState extends State<InsightsScreen>
     }
   }
 
-  /// Convert enhanced confidence to letter grade
-  String _getGradeFromConfidence(double confidence) {
-    if (confidence >= 0.9) return 'A+';
-    if (confidence >= 0.85) return 'A';
-    if (confidence >= 0.8) return 'A-';
-    if (confidence >= 0.75) return 'B+';
-    if (confidence >= 0.7) return 'B';
-    if (confidence >= 0.65) return 'B-';
-    if (confidence >= 0.6) return 'C+';
-    if (confidence >= 0.55) return 'C';
-    if (confidence >= 0.5) return 'C-';
-    return 'D';
-  }
-
   @override
   Widget build(BuildContext context) {
     final userProvider = context.watch<UserProvider>();
@@ -346,45 +332,22 @@ class _InsightsScreenState extends State<InsightsScreen>
     // No synthetic series when there are no transactions: a fabricated
     // fortnight of "spending" derived from income is not this user's data.
 
-    // Use enhanced budget insights from provider if available
-    if (budgetProvider.budgetSuggestions.isNotEmpty &&
-        budgetProvider.budgetSuggestions['confidence'] != null) {
-      final confidence =
-          asDouble(budgetProvider.budgetSuggestions['confidence']);
-      final intelligentInsights =
-          asMapList(budgetProvider.budgetSuggestions['intelligent_insights']);
-      financialHealthScore ??= {
-        'score': (confidence * 100).round(),
-        'grade': _getGradeFromConfidence(confidence),
-        'improvements': intelligentInsights
-            .map((insight) =>
-                asStringOrNull(insight['message']) ?? insight.toString())
-            .toList(),
-      };
-
-      if (intelligentInsights.isNotEmpty) {
-        personalizedFeedback ??= {
-          'feedback':
-              'Based on your spending patterns and financial goals, here are personalized insights from our enhanced budget intelligence system.',
-          'tips': intelligentInsights
-              .map((insight) =>
-                  asStringOrNull(insight['message']) ?? insight.toString())
-              .toList(),
-        };
-      }
-
-      if (budgetProvider.budgetSuggestions['category_insights'] != null) {
-        final categoryInsights =
-            budgetProvider.budgetSuggestions['category_insights'] as List;
-        spendingPatterns ??= {
-          'patterns': categoryInsights
-              .map((insight) =>
-                  asStringOrNull(asStringKeyedMap(insight)['message']) ??
-                  'Smart category optimization detected')
-              .toList(),
-        };
-      }
-    }
+    // No enhanced-insights block here. It was gated on
+    // budgetSuggestions['confidence'], a key no producer emits:
+    // BudgetAdapterService.getEnhancedBudgetSuggestions() returns
+    // 'confidence_level', and the legacy /budget/suggestions endpoint returns
+    // only suggestions/total_potential_savings/priority_areas. It was
+    // therefore dead code — and repairing the key would have been worse than
+    // deleting it, because the block derived a financial-health score and a
+    // letter grade from a budget-engine *confidence* value:
+    //   'score': (confidence * 100).round()
+    //   'grade': _getGradeFromConfidence(confidence)
+    // Engine confidence measures how sure the allocator is about its own
+    // arithmetic. It is not a measurement of the user's financial health, and
+    // presenting it as a B+ is the same fabrication class already removed from
+    // Insights and Mood. A real score comes from
+    // ApiService.getAIFinancialHealthScore() (see _loadInsights), or the
+    // section renders its honest empty state.
 
     final primaryColor = _incomeTier != null
         ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
@@ -1185,7 +1148,11 @@ class _InsightsScreenState extends State<InsightsScreen>
 
     final insights = asString(weeklyInsights!['insights'],
         fallback: 'No insights available this week.');
-    final trend = asString(weeklyInsights!['trend'], fallback: 'stable');
+    // No trend badge without a trend. `fallback: 'stable'` drew a "Stable"
+    // arrow whenever the field was absent — and /ai/weekly-insights sent
+    // exactly that shape whenever its analyzer threw, so a failed analysis
+    // was rendered as a finding about the user's spending direction.
+    final trend = asStringOrNull(weeklyInsights!['trend']);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1228,7 +1195,7 @@ class _InsightsScreenState extends State<InsightsScreen>
                 ),
               ),
               const Spacer(),
-              _buildTrendIndicator(trend),
+              if (trend != null) _buildTrendIndicator(trend),
             ],
           ),
           const SizedBox(height: 16),

@@ -470,11 +470,31 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
     );
   }
 
+  /// Renderable copy for one suggestion.
+  ///
+  /// Reading only 'message' made every legacy-path suggestion fall through to
+  /// suggestion.toString(), rendering the raw Dart map — "{id: 1, text: Keep
+  /// tracking expenses..., category: general, potential_savings: 0,
+  /// difficulty: easy}" — inside the AI Budget Suggestions card.
+  String? _suggestionText(Map<String, dynamic> suggestion) {
+    final message = asStringOrNull(suggestion['message']);
+    if (message != null && message.trim().isNotEmpty) return message;
+    final text = asStringOrNull(suggestion['text']);
+    if (text != null && text.trim().isNotEmpty) return text;
+    return null;
+  }
+
   Widget _buildSuggestionsCard(BudgetProvider budgetProvider) {
     final budgetSuggestions = budgetProvider.budgetSuggestions;
     if (budgetSuggestions.isEmpty) return const SizedBox.shrink();
 
-    final suggestions = asMapList(budgetSuggestions['suggestions']);
+    // Two producers, two field names: BudgetAdapterService emits 'message',
+    // the backend /budget/suggestions emits 'text'. Keep only entries that
+    // actually carry renderable copy — a suggestion with neither is not
+    // something to show the user, and the card hides entirely if none remain.
+    final suggestions = asMapList(budgetSuggestions['suggestions'])
+        .where((s) => _suggestionText(s) != null)
+        .toList();
     if (suggestions.isEmpty) return const SizedBox.shrink();
 
     return Card(
@@ -518,8 +538,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            asStringOrNull(suggestion['message']) ??
-                                suggestion.toString(),
+                            _suggestionText(suggestion) ?? '',
                             style: const TextStyle(
                                 fontSize: 14, color: AppColors.textPrimary),
                           ),
