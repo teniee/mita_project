@@ -519,3 +519,43 @@ robustness, not an active defect.
 Regression: `mobile_app/test/services/transaction_parse_isolation_test.dart`
 drives the real Dio through a fake adapter and fails if a broken row again
 takes the intact ones with it.
+
+## Swept and found clean (do not re-derive)
+
+Recorded so a later audit does not spend the effort again. Each was checked to
+the point of proof, not skimmed.
+
+**Divisions that look unguarded but cannot produce NaN/Infinity.** Dart's
+`clamp()` on NaN returns a *bound* (so a bad ratio silently becomes the worst
+legal value rather than NaN), `toStringAsFixed` renders the literal `"NaN"` /
+`"Infinity"`, and `.round()` **throws** `Unsupported operation`. Of 34
+unguarded divisions in live files: `social_comparison_service` is guarded at
+its call site (`peerAverage <= 0` returns early); `cohort_service:587`'s map is
+built by `currentAllocations.forEach` and the only caller guards
+`categoryTotals.isNotEmpty`; `income_service:295` guards on the line above;
+`onboarding_progress_indicator` takes `totalSteps: 7` at all six call sites.
+The rest are dead: `smart_goal_engine` and `enhanced_budget_service` have no
+importers, `dynamic_threshold_service` is imported only by the former, and
+`predictive_budget_service`'s "Risk of exceeding monthly budget by
+{Infinity}%" alert sits inside `generateBudgetIntelligence`, which has no
+external callers.
+
+**Transaction input validation.** `TxnIn.amount` is
+`condecimal(max_digits=12, decimal_places=2, gt=0)` *plus* a MIN/MAX sanitizer;
+`category` is length-bounded; `tags` capped at 10; `confidence_score` is
+`ge=0.0, le=1.0`; `spent_at` defaults to now, coerces naive timestamps to UTC
+(explicitly to avoid a 500 on an aware/naive comparison), and rejects dates
+more than a day ahead or past retention.
+
+**Other list parsers.** Only `TransactionService` needed per-row isolation.
+Goals hard-cast but `goals.created_at` / `.title` are `nullable=False`, so the
+payload cannot occur; habits share the nullable gap but `Habit.fromJson` is
+defensive throughout. The other 109 hard casts in `lib/models` are not worth
+churning.
+
+**Transaction rebalance contract.** `TxnOut` does not declare `rebalanced`, but
+`FinancialResponseHelper.transaction_created` deliberately copies `rebalanced`
+/ `rebalance_covered` / `rebalance_fully_covered` onto the top-level payload
+because the Flutter model reads them there. The rebalance banner and the
+redistribution-history refresh both work. Do not "fix" this by adding the
+fields to `TxnOut`.
