@@ -34,10 +34,17 @@ class PeerSpendingInsightsWidget extends StatelessWidget {
     final tier = incomeService.classifyIncome(monthlyIncome);
     final primaryColor = incomeService.getIncomeTierPrimaryColor(tier);
 
-    final peerAverage = asDoubleOrNull(asStringKeyedMap(
-            asStringKeyedMap(peerData?['categories'])[
-                category.toLowerCase()])['peer_average']) ??
-        userAmount * 1.2;
+    // No per-category fallback. /cohort/peer_comparison sends an overall
+    // peer_average and no `categories` map at all, so `userAmount * 1.2` was
+    // never a stand-in for a missing figure — it was the only figure, and
+    // getPeerComparisonMessage turned it into "You spend 17% less on
+    // $category than other ${tierName}s" for every category and every user,
+    // because (u - 1.2u) / 1.2u is a constant.
+    final peerAverage = asDoubleOrNull(asStringKeyedMap(asStringKeyedMap(
+        peerData?['categories'])[category.toLowerCase()])['peer_average']);
+    if (peerAverage == null || peerAverage <= 0) {
+      return const SizedBox.shrink();
+    }
     final userPercentage =
         incomeService.getIncomePercentage(userAmount, monthlyIncome);
     final peerPercentage =
@@ -525,6 +532,11 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
     this.peerData,
   });
 
+  /// The server's own peer average for one category, or null when it did not
+  /// send one. Never a value derived from the user's own spending.
+  double? _peerAverageFor(String category) => asDoubleOrNull(asStringKeyedMap(
+      asStringKeyedMap(peerData?['categories'])[category])['peer_average']);
+
   @override
   Widget build(BuildContext context) {
     // Nothing to compare against. The two cards above this one already tell
@@ -532,6 +544,18 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
     // (this used to fall back to userAmount * 1.15 and render "Peers $230"
     // beside a green thumbs-up, with peer_count = 0).
     if (!hasSufficientPeerData(peerData)) return const SizedBox.shrink();
+
+    // A cohort exists, but that does not mean a PER-CATEGORY comparison does.
+    // The endpoint sends one overall peer_average and no `categories` map, so
+    // this fell through to `userAmount * 1.15` for every row: the "Peers"
+    // figure beside each category was the user's own spending plus 15%, and
+    // `isUserBetter` (userAmount < peerAmount) was therefore true for every
+    // category, always — a green thumbs-up on every line, derived from
+    // nothing. Only categories the server actually priced are shown.
+    final comparable = userSpending.entries
+        .where((entry) => (_peerAverageFor(entry.key) ?? 0) > 0)
+        .toList();
+    if (comparable.isEmpty) return const SizedBox.shrink();
 
     final incomeService = IncomeService();
     final tier = incomeService.classifyIncome(monthlyIncome);
@@ -575,13 +599,10 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 20),
-            ...userSpending.entries.map((entry) {
+            ...comparable.map((entry) {
               final category = entry.key;
               final userAmount = entry.value;
-              final peerAmount = asDoubleOrNull(asStringKeyedMap(
-                          asStringKeyedMap(peerData?['categories'])[category])[
-                      'peer_average']) ??
-                  userAmount * 1.15;
+              final peerAmount = _peerAverageFor(category)!;
               final userPercentage =
                   incomeService.getIncomePercentage(userAmount, monthlyIncome);
               final peerPercentage =

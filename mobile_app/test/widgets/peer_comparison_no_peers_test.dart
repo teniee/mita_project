@@ -46,6 +46,18 @@ const Map<String, dynamic> _withPeers = {
   'peer_count': 12,
 };
 
+/// The same envelope plus a per-category map. The endpoint does NOT send this
+/// today (app/api/cohort/routes.py returns nine keys and no `categories`), so
+/// it stands for the only payload that may legitimately drive a per-category
+/// peer bar — and proves the widget still works if the server starts sending
+/// one.
+const Map<String, dynamic> _withCategoryPeers = {
+  ..._withPeers,
+  'categories': {
+    'transportation': {'peer_average': 320.0},
+  },
+};
+
 void main() {
   group('hasSufficientPeerData', () {
     test('false when the API says the data is insufficient', () {
@@ -122,18 +134,93 @@ void main() {
       expect(find.textContaining('230'), findsNothing);
     });
 
-    testWidgets('renders the comparison when peers really exist',
+    testWidgets('renders the real peer average when the server sends one',
         (tester) async {
       await tester.pumpWidget(_host(
         const SpendingTrendsComparisonWidget(
           userSpending: {'transportation': 200.0},
+          monthlyIncome: 6000,
+          peerData: _withCategoryPeers,
+        ),
+      ));
+      await tester.pump();
+
+      expect(find.text('Spending vs Peers'), findsOneWidget);
+      expect(find.text('\$320'), findsOneWidget,
+          reason: "the server's own figure, not one derived from the user");
+    });
+  });
+
+  // A real cohort does not imply a per-category comparison.
+  //
+  // hasSufficientPeerData() passes as soon as the endpoint reports a cohort
+  // and an overall peer_average, but the per-category rows read
+  // peerData['categories'][c]['peer_average'] — a key the endpoint never
+  // sends. Each row therefore fell through to `userAmount * 1.15`, so the
+  // "Peers" figure was the user's own spending plus 15%, and
+  // `isUserBetter` (userAmount < peerAmount) was true for every category,
+  // always: a green thumbs-up on every line, for every user, derived from
+  // nothing. This is the same fabrication the no-peers case already guarded,
+  // one layer further in.
+  group(
+      'SpendingTrendsComparisonWidget with a real cohort but no '
+      'per-category peer data', () {
+    testWidgets('invents no per-category peer figure', (tester) async {
+      await tester.pumpWidget(_host(
+        const SpendingTrendsComparisonWidget(
+          userSpending: {'transportation': 200.0, 'food': 400.0},
           monthlyIncome: 6000,
           peerData: _withPeers,
         ),
       ));
       await tester.pump();
 
-      expect(find.text('Spending vs Peers'), findsOneWidget);
+      expect(find.text('\$230'), findsNothing,
+          reason: '200 * 1.15 — the user\'s own spending sold back to them');
+      expect(find.text('\$460'), findsNothing, reason: '400 * 1.15');
+      expect(find.text('Spending vs Peers'), findsNothing,
+          reason: 'no comparable category means no comparison card at all');
+    });
+
+    testWidgets('shows only the categories the server actually priced',
+        (tester) async {
+      await tester.pumpWidget(_host(
+        const SpendingTrendsComparisonWidget(
+          // Only transportation is priced in _withCategoryPeers.
+          userSpending: {'transportation': 200.0, 'food': 400.0},
+          monthlyIncome: 6000,
+          peerData: _withCategoryPeers,
+        ),
+      ));
+      await tester.pump();
+
+      expect(find.text('TRANSPORTATION'), findsOneWidget);
+      expect(find.text('FOOD'), findsNothing,
+          reason: 'no peer average for food, so no food comparison');
+      expect(find.text('\$460'), findsNothing);
+    });
+  });
+
+  // PeerSpendingInsightsWidget has no callers today, but carried the same
+  // fallback with a 1.2 multiplier. Because (u - 1.2u) / 1.2u is a constant,
+  // getPeerComparisonMessage rendered "You spend 17% less on {category} than
+  // other {tier}s" for every category and every user.
+  group('PeerSpendingInsightsWidget', () {
+    testWidgets('states no comparison without a real per-category average',
+        (tester) async {
+      await tester.pumpWidget(_host(
+        const PeerSpendingInsightsWidget(
+          category: 'food',
+          userAmount: 400.0,
+          monthlyIncome: 6000,
+          peerData: _withPeers,
+        ),
+      ));
+      await tester.pump();
+
+      expect(find.textContaining('17%'), findsNothing);
+      expect(find.textContaining('less on food'), findsNothing);
+      expect(find.text('\$480'), findsNothing, reason: '400 * 1.2');
     });
   });
 }
