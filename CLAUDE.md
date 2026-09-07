@@ -192,3 +192,426 @@ Rules:
 
 Regressions: `mobile_app/test/screens/calendar_day_details_consistency_test.dart`
 and `TestDayBudgetEqualsCategorySum` in `app/tests/test_monthly_plan_rollover.py`.
+
+## Never invent the user's standing (cohort, challenges, leaderboard)
+
+`ApiService` methods used to swallow their own exception and return hardcoded
+sample data. Because the API layer never rethrew, the honest empty/error states
+already written upstream were **unreachable dead code**:
+
+- `getCohortInsights()` returned `cohort_size 1247`, `your_rank 312`,
+  `percentile 75` plus four invented peer "insights". Shown on Insights
+  (`CohortInsightsWidget`) and during onboarding
+  (`OnboardingPeerComparisonScreen`) — a brand-new user was told they ranked
+  312nd of 1247 people. The onboarding screen's own honest `catch` could never
+  fire, because the call never threw.
+- `getAvailableChallenges()` returned "Meal Prep Master" / "No-Spend Weekend" /
+  "Subscription Audit", each with a fabricated `participants`, `success_rate`
+  and a cash `reward_amount` — joinable offers backed by no real money.
+- `getLeaderboard()` returned "BudgetNinja" and friends, ranking the user
+  against people who do not exist.
+- `CohortInsightsWidget._getDefaultCohortData()` was a *second* fabrication
+  layer that would have re-introduced the invented cohort even after
+  `ApiService` was made honest. Fixing only the API layer moves the lie
+  downstream — both had to change together.
+
+Rules:
+
+- **An API failure is not data.** A failed call reports unavailability
+  (`error` + `null` fields, or an empty list). It never returns a plausible
+  sample. `getPeerComparison()` is the reference shape.
+- **Fix the layer that swallows.** An honest empty state upstream is dead code
+  if the service beneath it never fails. When adding an empty state, verify the
+  path that reaches it can actually happen.
+- **A null cohort renders the empty state.** `asInt(null) == 0` drives
+  `CohortInsightsWidget`'s existing "nothing to rank against" card; an empty
+  list drives `challenges_screen`'s "No challenges available right now" and the
+  leaderboard's "No leaderboard standings yet."
+
+Regression: `mobile_app/test/no_fabricated_personal_data_test.dart` fails if any
+of the fabricated literals return.
+
+## Never invent a verdict: peer comparisons and financial ratings
+
+A second sweep found the same fabrication pattern in four more places. All of
+them share one shape: **a failure path that returns a plausible answer instead
+of admitting it has none**, which also makes the honest empty state upstream
+unreachable.
+
+### Peer comparisons (`social_comparison_service.dart`)
+
+`generateSocialInsights()` fell back to `_generateFallbackPeerData()` — a
+hardcoded table of per-income-tier peer averages (2200 / 3200 / 4800 / 7500 /
+12000) and cohort sizes (1500 / 2200 / 3100 / 1800 / 800) — whenever the peer
+API reported an error. `ApiService.getPeerComparison()` returns an honest
+`{'error': ...}` envelope on *any* failure, so that fallback fired on every
+failure, and `_generateComparisonText()` then told the user "You spend 12% more
+than similar users" against a peer group that was a constant in the file.
+`_extractPeerData()` also defaulted a missing peer savings rate to `0.15` and a
+missing cohort to `1000` people, so even a *successful* response missing those
+fields produced confident comparisons.
+
+This was not confined to a peer widget. The text travels:
+
+    EnhancedMasterBudgetEngine._generatePersonalizedInsights
+      -> personalizedInsights
+      -> EnhancedProductionBudgetEngine.intelligentInsights
+      -> BudgetAdapterService.getEnhancedBudgetSuggestions() suggestions[].message
+      -> BudgetProvider.budgetSuggestions
+      -> daily_budget_screen "AI Budget Suggestions" card
+
+Rules:
+
+- **Guard once, share it.** `hasSufficientPeerData()` now lives in
+  `utils/peer_data.dart` so services and widgets apply the same test;
+  `peer_comparison_widgets.dart` re-exports it for existing imports.
+- **No peers, no claim.** An insufficient cohort or a failed call returns an
+  empty insight list. The two master-engine consumers are already guarded
+  (`if (socialInsights.isNotEmpty)` and `socialInsights.take(1)`), so an empty
+  list produces no text — that is what closes the chain above.
+- **Never default a peer statistic.** A field the server did not send is
+  absent, and the insight that needs it is skipped.
+
+### Financial rating (`ai_personal_finance_profiler.py`)
+
+`generate_financial_rating()` returned `{"rating": "B", "risk": "moderate",
+"summary": "User spending is generally steady..."}` when GPT was unavailable or
+its answer did not parse. `save_ai_snapshot()` persists that straight into
+`AIAnalysisSnapshot`, and the app renders it as an AI assessment of the user's
+own finances. It now returns `None` for all three. The resilience requirement
+is unchanged — it still must not raise, so the endpoint degrades rather than
+500ing.
+
+`main_screen._buildSnapshotPreview()` printed `Rating: B` for any snapshot
+whose rating was null (`asString(..., fallback: 'B')`) — exactly what the
+backend stored. It now requires a real rating and summary, matching
+`insights_screen._buildAISnapshotCard()`, which already did.
+
+### Weekly trend (`/ai/weekly-insights`)
+
+The endpoint's `except` branch returned `"trend": "stable"` (plus two generic
+recommendations) whenever `AIFinancialAnalyzer` threw. `insights_screen` read
+it with `fallback: 'stable'` and drew `_buildTrendIndicator` — an arrow and a
+"Stable" badge — so a failed analysis was presented as a finding about which
+way the user's spending was moving. Both sides now use null, and the badge is
+only drawn for a real trend.
+
+This one also hid a broken test: `test_get_weekly_insights` patched
+`app.services.ai_financial_analyzer.AIFinancialAnalyzer`, but
+`app/api/ai/routes.py` binds that name at import, so the route kept using the
+real analyzer, raised against the mock session, and fell into the degraded
+branch. The test passed only because that branch hardcoded `"stable"`. Patch
+where the name is looked up (`app.api.ai.routes.AIFinancialAnalyzer`).
+
+### `budgetSuggestions` producer/consumer contract
+
+`insights_screen` and `main_screen` read `confidence`, `intelligent_insights`
+and `category_insights`. No producer emits any of them
+(`BudgetAdapterService` emits `confidence_level`; `/budget/suggestions` emits
+`suggestions` / `total_potential_savings` / `priority_areas`), so both blocks
+were dead. **Do not "fix" this by mapping `confidence_level` onto
+`confidence`** — the blocks derived a health score and letter grade from
+budget-engine confidence (`(confidence * 100).round()`,
+`_getGradeFromConfidence`). Engine confidence describes how sure the allocator
+is about its own arithmetic, not the user's financial health. Both blocks were
+deleted.
+
+Item shape differs between producers too: the adapter emits `message`, the
+backend emits `text`. `daily_budget_screen` read only `message` and fell back
+to `suggestion.toString()`, rendering the raw Dart map into the card.
+
+### A failed analysis is not a finding (AI + behaviour endpoints)
+
+The same shape appeared across six endpoints. Each answered a caught exception
+with a plausible payload:
+
+| Endpoint | Invented |
+|---|---|
+| `/api/ai/financial-health-score` | `score 50`, `grade "C"`, every component `50` |
+| `/api/ai/goal-analysis` | `on_track: True` |
+| `/api/ai/spending-prediction` | `trend: "stable"` |
+| `/api/ai/weekly-insights` | `trend: "stable"` |
+| `/api/behavior/analysis` | `behavioral_score: 0.5` |
+| `/api/behavior/patterns` | `dominant_pattern: "balanced"` |
+
+`on_track: True` is the sharpest: a failed analysis telling the user their goal
+is on track is a false reassurance about their own money. The health score is
+the most reachable: `insights_screen` already renders "Add more transactions to
+calculate your financial health score" when score/grade are null, and this
+payload is precisely why that guard never fired.
+
+Rules:
+
+- **Degrade, don't invent.** These endpoints must keep answering 200 — a broken
+  analyzer must not 500 the screen — but every *finding* field is null/empty
+  and an `error` key says so. Zeroes that are genuinely zero
+  (`confidence: 0.0`, `predicted_amount: 0.0`) stay.
+- **Patch where the name is looked up.** `test_get_weekly_insights` and
+  `test_get_financial_health_score` both patched
+  `app.services.ai_financial_analyzer.AIFinancialAnalyzer` while
+  `app/api/ai/routes.py` binds that name at import. The route kept the real
+  analyzer, raised against the mock session, and fell into the degraded
+  branch — so both tests were green without ever reaching the analyzer they
+  claimed to exercise, asserting instead on the hardcoded `"stable"` and
+  `50`/`"C"`. Patch `app.api.ai.routes.AIFinancialAnalyzer`.
+- **No hardcoded timestamps.** `/api/ai/spending-patterns` reported
+  `analysis_date: "2025-01-29T00:00:00Z"` — a fixed past date presented as when
+  the analysis ran.
+
+Regression: `app/tests/test_no_fabricated_verdicts.py`.
+
+Regressions: `mobile_app/test/services/social_comparison_no_fabricated_peers_test.dart`,
+`mobile_app/test/budget_suggestions_contract_test.dart`, and the updated
+assertions in `app/tests/test_client_error_report_and_sync_session.py`.
+
+## Making a producer honest can expose a dishonest consumer
+
+Fixing `getCohortInsights()` to report `cohort_size: null` / `percentile: null`
+instead of the invented 1247 / 75 did not finish the job — it moved the problem
+downstream. `onboarding_peer_comparison_screen` read those with `?? 0`, so a
+brand-new user was then told, mid-onboarding:
+
+    Connect with 0 other Middle users
+    You're in the 0th percentile of your peer group! This means you're
+    already doing better than most users with similar income levels.
+
+Two separate faults, one exposed and one pre-existing:
+
+- `?? 0` printed the absence instead of suppressing the card. The peer-group
+  card is now gated on `_cohortSize > 0`, the percentile line on a non-null
+  percentile, and the Peer Insights / Recommendations cards on non-empty lists
+  (a heading with no rows under it is not a card).
+- The congratulation was **unconditional**: a user in the 10th percentile was
+  told they were "already doing better than most users with similar income
+  levels". It is now stated only when the percentile supports it.
+
+`as List<String>?` on a JSON-decoded `List<dynamic>` returns null, so real peer
+insights could silently vanish. The accessors read every element as a string.
+
+In the service itself, two claims outran the data. The API sends a **mean, not
+a distribution**, so nothing there can establish a ranking:
+"You're ahead of most peers in your tier" became "well above the average for
+your income tier", and "increase your savings rate by 2-3%" — a figure nothing
+computed — now points at the average instead.
+`SocialComparisonService._calculatePercentile()` is a ratio band, not a
+distribution percentile; it exists only to pick a sentence.
+`SocialComparisonInsight.percentile` is never rendered. **Keep it that way**
+unless the API starts sending a real distribution.
+
+Rule: after removing a fabricated value, grep for every consumer of that field.
+A producer that starts telling the truth will surface every `?? 0`, `?? 50` and
+`as List<String>?` that was relying on it to lie.
+
+Regression: the `onboarding never states a cohort standing it does not have`
+and `no peer claim outruns the data behind it` groups in
+`mobile_app/test/no_fabricated_personal_data_test.dart`.
+
+## The dashboard reports the persisted plan, including when it is zero
+
+`GET /api/dashboard` had two surviving `monthly_income / 30` placeholders. The
+rollover work removed the one that fired when a month had not been
+materialized; these fired when a **day** had no allocation, which is a normal
+state, not an error.
+
+`distribute_budget_over_days()` gives `behavior == "spread"` categories to
+`weekday_days` only, so a Saturday or Sunday legitimately carries no
+`daily_plan` rows. On those days the dashboard answered:
+
+- `daily_targets`: `monthly_income / 30` split across four hardcoded categories
+  (Food & Dining 35 %, Transportation 25 %, Entertainment 20 %, Shopping 20 %)
+  — the same invented breakdown deleted from the calendar day-details screen.
+  For the test user that is a $173.33 daily budget nothing had planned, which
+  the user could then overspend against.
+- the week strip: `result.scalar() or (monthly_income / 30)`, where `or` also
+  swallows a real `0.00`, so a day planned at zero was scored `good` / `warning`
+  / `over` against a placeholder.
+
+Rules:
+
+- **No allocation is an answer.** An empty `today_plans` yields
+  `daily_targets: []`; `main_screen._buildBudgetTargets()` already renders an
+  empty state for it. `ensure_months_span_async()` runs first, so an empty day
+  means the day is genuinely unallocated, not that the month is missing.
+- **`or` is not a null check on money.** Use `is not None`; `0.00` is a real
+  budget, and a day with none is `neutral` — it cannot be over or under.
+
+This also explains a class of flaky test: three
+`TestReadPathsMaterializeTheMonth` cases asserted that today carries a non-zero
+budget, so they passed Monday–Friday and failed every Saturday and Sunday. They
+now assert that each endpoint reports **this day's persisted allocation**,
+whatever it is, and that an unallocated day reports no targets rather than the
+placeholder. Do not restore a "today must have a budget" assertion — it encodes
+the weekday shape of one seed plan, not an invariant.
+
+Regression: `TestReadPathsMaterializeTheMonth` in
+`app/tests/test_monthly_plan_rollover.py` (fails if either placeholder returns).
+
+## Never measure against an invented budget, or invent account facts
+
+`EnhancedMasterBudgetEngine.calculateEnhancedDailyBudget()` step 3 read
+`userProfile['dailyBudget'] ?? 50.0` and `userProfile['monthlyBudget'] ?? 1500.0`.
+`EnhancedProductionBudgetEngine._convertOnboardingToProfile()` emits
+`monthlyIncome` / `incomeTier` / `goals` / `habits` and **no budget key at
+all**, so on every live call the spending-velocity analysis ran against a
+constant $50 day and $1500 month regardless of what the user earns or plans.
+
+That is not cosmetic. The result feeds straight back into the user's own
+number — `adjustedBudget = velocityAdjustment.adjustedDailyBudget` — and its
+recommendations reach the Daily Budget screen via `_generateRecommendations`
+-> `intelligentInsights` -> `BudgetAdapterService` `suggestions[].message`.
+
+Nothing at that point can supply a real baseline: step 3 runs *before* the base
+budget is calculated (step 2 passes `0.0, // Will be set after base
+calculation`). The step is therefore skipped unless a real budget is known —
+`velocityAdjustment` is nullable and every consumer already guards on null. A
+wrong adjustment to someone's daily budget is worse than no adjustment.
+**Restore this step by threading the real budget in, never by reinstating a
+default.**
+
+`user_profile_screen` stated three invented facts about the account: a
+placeholder `user@mita.finance` shown as the user's own email, a
+`profile_completion ?? 85`, and a join date of "30 days ago" fabricated
+whenever `member_since` failed to parse. Each is now hidden when unknown.
+
+Checked and left alone (unreachable — backlog, not blockers):
+`ContextualNudgeService._personalizeMessage()` fills `{amount}`/`{days}`/
+`{percentage}` with 50/5/75, which would render "75% of users in your income
+tier save more than you this month" — but `suggestedNudge` is
+`PersonalizedNudge? get suggestedNudge => null`, so `contextualNudge` is never
+non-null and no nudge reaches the UI. `CalendarFallbackService` (194 lines
+generating a month of fake `spent` amounts) has no production callers.
+`ResilientGPTService.categorize_expense` returns `confidence: 50` on a 0–1 scale
+the UI multiplies by 100, but has no production callers either.
+
+Regression: the added groups in
+`mobile_app/test/no_fabricated_personal_data_test.dart`.
+
+## One bad row must not blank the whole list
+
+`TransactionService.getTransactions()` mapped every row through
+`TransactionModel.fromJson` inside a single `.map()`. `fromJson` hard-casts
+`id` / `category` / `amount` and `DateTime.parse`s `spent_at` / `created_at`,
+so one row missing any of them threw out of the map, the surrounding `catch`
+rethrew, and the user lost **every** transaction rather than one. Rows are now
+parsed individually; a row that fails is logged and skipped.
+
+That payload is reachable, not hypothetical. In `alembic/0001_initial`:
+
+    sa.Column("spent_at", sa.DateTime(), index=True)
+    sa.Column("created_at", sa.DateTime())
+
+Neither carries `nullable=False` nor a `server_default` (line 86 of the same
+migration uses `server_default=sa.func.now()` for another table, so the pattern
+was known). `Transaction.spent_at` / `.created_at` / `.currency` rely on
+SQLAlchemy's **Python-side** `default=`, which only applies when the ORM builds
+the object — any insert that bypasses it writes NULL. `TxnOut` then declares
+`spent_at: datetime` and `created_at: datetime` as non-Optional, so a NULL row
+fails Pydantic serialization and 500s the whole list endpoint.
+
+**Open recommendation (not applied):** give those three columns `nullable=False`
+plus a `server_default`, after backfilling any NULLs. That is a NOT NULL
+migration on a populated production table — it needs a lock and a backfill, so
+it is a deliberate release decision, not something to slip into a bug-fix
+branch. No current code path writes NULL (no `bulk_insert_mappings`,
+`bulk_save_objects` or raw INSERT on `transactions` exists), so this is latent
+robustness, not an active defect.
+
+Regression: `mobile_app/test/services/transaction_parse_isolation_test.dart`
+drives the real Dio through a fake adapter and fails if a broken row again
+takes the intact ones with it.
+
+### The diagnostic must not carry the row
+
+The first version of the skip logged `'Skipping unparseable transaction: $e'`.
+That sends the user's money off the device. Dart's `FormatException` embeds its
+input in `toString()`:
+
+    double.parse('1234.56USD')          -> FormatException: Invalid double
+                                           1234.56USD
+    DateTime.parse('2026-13-99 x')      -> FormatException: Invalid date format
+                                           2026-13-99 x
+
+`logError` forwards to Firebase Crashlytics in release builds, and
+`LoggingService.log()` stores `_maskPII(error.toString())` — so any object
+handed to it is stringified and shipped. `_maskPII` matches emails, cards,
+phones, SSNs, IBANs, tokens and password fields; an **amount**, a merchant, a
+description or a note matches none of them and would be reported verbatim.
+(A `_TypeError` from a failed `as` cast carries only type names and is safe —
+but the two `parse` calls are the reachable NULL/garbage cases, so the
+exception can never be logged.)
+
+Rules:
+
+- **Classify, never quote.** `_describeParseFailure(row, error)` in
+  `transaction_service.dart` checks the row against the schema
+  `TransactionModel.fromJson` requires and reports **field names and Dart
+  runtime type names only** — `amount is a String that is not a number`,
+  `spent_at is not an ISO-8601 date`, `category is int, expected String`. When
+  nothing in the row explains the failure it falls back to
+  `error.runtimeType`, which is also just a type name. No value, ever.
+- **The index locates the row, the id identifies the user.** Failures are
+  keyed by position (`#3`), not by `transactions.id`. The id is user-linked
+  and adds nothing the position does not.
+- **One report per load, not one per row.** A page where every row is
+  malformed would otherwise emit up to `limit` (100) Crashlytics non-fatals
+  from a single screen open. The per-row detail is aggregated into one
+  `logError`.
+- **Not silent.** It is reported at **error** level so it reaches Crashlytics —
+  a malformed server payload is an operator-visible event — with the stack
+  trace of the first failure and `TransactionParseException(dropped, total)`,
+  a value-free stand-in whose `toString()` is counts only.
+
+**Partial responses are not surfaced to the user, deliberately.**
+`TransactionProvider` has `TransactionState.{initial,loading,loaded,error}` and
+a single `errorMessage`; there is no partial-results state, and none was added.
+A load that drops rows reports `loaded` with the rows that parsed. The rest of
+the history stays usable and no error banner appears — an alarming message
+about a payload the user cannot act on is worse than a short list. The signal
+for a dropped row is the Crashlytics report, which is where it can actually be
+acted on. If a partial-results state is ever wanted, it belongs in
+`TransactionProvider` alongside `errorMessage`, not in the service.
+
+Regression: the `never reaches the log` / `is reported, not silent` /
+`not used as the diagnostic key` / `one report, not one per row` cases in the
+same file. Reinstating `'#$i $e'` in place of the classifier fails three of
+them.
+
+## Swept and found clean (do not re-derive)
+
+Recorded so a later audit does not spend the effort again. Each was checked to
+the point of proof, not skimmed.
+
+**Divisions that look unguarded but cannot produce NaN/Infinity.** Dart's
+`clamp()` on NaN returns a *bound* (so a bad ratio silently becomes the worst
+legal value rather than NaN), `toStringAsFixed` renders the literal `"NaN"` /
+`"Infinity"`, and `.round()` **throws** `Unsupported operation`. Of 34
+unguarded divisions in live files: `social_comparison_service` is guarded at
+its call site (`peerAverage <= 0` returns early); `cohort_service:587`'s map is
+built by `currentAllocations.forEach` and the only caller guards
+`categoryTotals.isNotEmpty`; `income_service:295` guards on the line above;
+`onboarding_progress_indicator` takes `totalSteps: 7` at all six call sites.
+The rest are dead: `smart_goal_engine` and `enhanced_budget_service` have no
+importers, `dynamic_threshold_service` is imported only by the former, and
+`predictive_budget_service`'s "Risk of exceeding monthly budget by
+{Infinity}%" alert sits inside `generateBudgetIntelligence`, which has no
+external callers.
+
+**Transaction input validation.** `TxnIn.amount` is
+`condecimal(max_digits=12, decimal_places=2, gt=0)` *plus* a MIN/MAX sanitizer;
+`category` is length-bounded; `tags` capped at 10; `confidence_score` is
+`ge=0.0, le=1.0`; `spent_at` defaults to now, coerces naive timestamps to UTC
+(explicitly to avoid a 500 on an aware/naive comparison), and rejects dates
+more than a day ahead or past retention.
+
+**Other list parsers.** Only `TransactionService` needed per-row isolation.
+Goals hard-cast but `goals.created_at` / `.title` are `nullable=False`, so the
+payload cannot occur; habits share the nullable gap but `Habit.fromJson` is
+defensive throughout. The other 109 hard casts in `lib/models` are not worth
+churning.
+
+**Transaction rebalance contract.** `TxnOut` does not declare `rebalanced`, but
+`FinancialResponseHelper.transaction_created` deliberately copies `rebalanced`
+/ `rebalance_covered` / `rebalance_fully_covered` onto the top-level payload
+because the Flutter model reads them there. The rebalance banner and the
+redistribution-history refresh both work. Do not "fix" this by adding the
+fields to `TxnOut`.

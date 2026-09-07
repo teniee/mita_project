@@ -98,8 +98,22 @@ def generate_financial_rating(user_profile: dict, db) -> dict:
     try:
         return json.loads(result)
     except Exception:
+        # GPT is unavailable or its answer did not parse. Degrade honestly:
+        # the caller persists this straight into AIAnalysisSnapshot.rating /
+        # .risk / .summary and the app shows it as an AI assessment of the
+        # user's finances, so a hardcoded "B" / "moderate" / "User spending is
+        # generally steady but occasionally exceeds the budget." was an
+        # invented verdict on a real person's money — indistinguishable, to
+        # them, from a real one.
+        #
+        # The resilience requirement is unchanged: this must not raise, so the
+        # snapshot endpoint still returns its primary output (the profile)
+        # instead of 500ing when the GPT SDK is broken or unconfigured.
+        # Consumers already handle an absent rating: insights_screen reads
+        # asStringOrNull(rating) and falls back to "unrated" for risk.
+        logger.warning("Financial rating unavailable; storing no verdict")
         return {
-            "rating": "B",
-            "risk": "moderate",
-            "summary": "User spending is generally steady but occasionally exceeds the budget.",
+            "rating": None,
+            "risk": None,
+            "summary": None,
         }

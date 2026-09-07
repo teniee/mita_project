@@ -185,10 +185,14 @@ def test_financial_rating_falls_back_when_gpt_client_unusable(monkeypatch):
         db=None,
     )
 
+    # No invented verdict. A hardcoded "B" / "moderate" plus a canned summary
+    # was persisted to AIAnalysisSnapshot and shown to the user as an AI
+    # assessment of their own finances. The call must still not raise, so the
+    # snapshot endpoint degrades instead of 500ing.
     assert rating == {
-        "rating": "B",
-        "risk": "moderate",
-        "summary": "User spending is generally steady but occasionally exceeds the budget.",
+        "rating": None,
+        "risk": None,
+        "summary": None,
     }
 
 
@@ -210,7 +214,7 @@ def test_financial_rating_falls_back_when_api_key_missing(monkeypatch):
         {"total_by_category": {}, "status_breakdown": {}, "behavior_tags": []},
         db=None,
     )
-    assert rating["rating"] == "B"
+    assert rating["rating"] is None
 
 
 @pytest.mark.parametrize("exc_name", ["RateLimitError", "APITimeoutError"])
@@ -261,10 +265,14 @@ def test_snapshot_rating_falls_back_on_invalid_gpt_response(monkeypatch):
         {"total_by_category": {}, "status_breakdown": {}, "behavior_tags": []},
         db=None,
     )
+    # No invented verdict. A hardcoded "B" / "moderate" plus a canned summary
+    # was persisted to AIAnalysisSnapshot and shown to the user as an AI
+    # assessment of their own finances. The call must still not raise, so the
+    # snapshot endpoint degrades instead of 500ing.
     assert rating == {
-        "rating": "B",
-        "risk": "moderate",
-        "summary": "User spending is generally steady but occasionally exceeds the budget.",
+        "rating": None,
+        "risk": None,
+        "summary": None,
     }
 
 

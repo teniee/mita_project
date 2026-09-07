@@ -86,10 +86,52 @@ class TransactionService {
         transactionList = [];
       }
 
-      return transactionList
-          .map((json) =>
-              TransactionModel.fromJson(Map<String, dynamic>.from(json as Map)))
-          .toList();
+      // One unparseable row must not blank the whole history.
+      //
+      // TransactionModel.fromJson hard-casts id/category/amount and
+      // DateTime.parses spent_at/created_at, so a single row missing any of
+      // them threw out of this .map() and the catch below rethrew — the user
+      // lost every transaction, not one. The transactions table permits NULL
+      // spent_at/created_at (0001_initial declares them with neither
+      // nullable=False nor a server_default; only the ORM-side `default=`
+      // fills them), so the payload that triggers this is reachable from a
+      // row written outside the ORM.
+      //
+      // The diagnostic must never carry the row's data. Dart's FormatException
+      // embeds its input in toString(): double.parse('1234.56USD') throws
+      // "Invalid double\n1234.56USD" and DateTime.parse does the same with the
+      // offending date string. logError forwards to Crashlytics in release
+      // builds and LoggingService._maskPII only masks emails, cards, phones,
+      // IBANs and tokens — an amount, a merchant or a note passes through
+      // untouched. So the exception is classified against the schema and
+      // discarded; only field names and runtime type names are reported.
+      final transactions = <TransactionModel>[];
+      final failures = <String>[];
+      StackTrace? firstFailureStack;
+      for (var i = 0; i < transactionList.length; i++) {
+        try {
+          transactions.add(TransactionModel.fromJson(
+              Map<String, dynamic>.from(transactionList[i] as Map)));
+        } catch (e, stackTrace) {
+          firstFailureStack ??= stackTrace;
+          failures.add('#$i ${_describeParseFailure(transactionList[i], e)}');
+        }
+      }
+      if (failures.isNotEmpty) {
+        // One report per load, not one per row: a payload where every row is
+        // malformed would otherwise emit up to `limit` Crashlytics non-fatals.
+        // Reported at error level so a malformed server payload is visible to
+        // an operator, with the stack of the first failure and a value-free
+        // stand-in exception — the real one is never attached.
+        logError(
+            'Dropped ${failures.length} of ${transactionList.length} '
+            'transactions that failed to parse: ${failures.join('; ')}',
+            tag: 'TRANSACTION_SERVICE',
+            error: TransactionParseException(
+                failures.length, transactionList.length),
+            stackTrace: firstFailureStack);
+      }
+      return transactions;
     } on DioException catch (e) {
       logError('Error loading transactions: ${e.message}');
       _mapError(e, 'load transactions');
@@ -267,4 +309,139 @@ class TransactionService {
     }
     return categoryTotals;
   }
+}
+
+/// Raised in place of the real parse exception when a transaction row cannot
+/// be decoded.
+///
+/// Exists purely so the failure report carries a type and a stack trace
+/// without carrying the row. The real exception is discarded at the catch
+/// site: see the note in [TransactionService.getTransactions].
+class TransactionParseException implements Exception {
+  const TransactionParseException(this.dropped, this.total);
+
+  /// How many rows in the response failed to parse.
+  final int dropped;
+
+  /// How many rows the response contained.
+  final int total;
+
+  @override
+  String toString() =>
+      'TransactionParseException: dropped $dropped of $total transaction rows';
+}
+
+// Field groups mirroring what TransactionModel.fromJson requires, used to
+// classify a parse failure without reading any value.
+const _requiredStrings = ['id', 'category'];
+const _optionalStrings = [
+  'currency',
+  'description',
+  'merchant',
+  'location',
+  'receipt_url',
+  'notes',
+];
+const _requiredDates = ['spent_at', 'created_at'];
+const _optionalDates = ['updated_at'];
+const _optionalBools = [
+  'is_recurring',
+  'rebalanced',
+  'rebalance_fully_covered'
+];
+const _optionalNums = ['confidence_score', 'rebalance_covered'];
+
+/// Describe why a row failed to parse using only schema information.
+///
+/// Reports field names and Dart runtime type names — never a field value, and
+/// never the caught exception's message, which for FormatException embeds the
+/// input that failed. When nothing in the row explains the failure, it falls
+/// back to the exception's runtime type, which is likewise a type name
+/// (`FormatException`, `_TypeError`) and carries no data.
+String _describeParseFailure(Object? row, Object error) {
+  if (row is! Map) {
+    return 'row is ${row.runtimeType}, expected Map';
+  }
+
+  final problems = <String>[];
+
+  void checkString(String key, {required bool required}) {
+    final value = row[key];
+    if (value == null) {
+      if (required) problems.add('$key missing');
+      return;
+    }
+    if (value is! String) {
+      problems.add('$key is ${value.runtimeType}, expected String');
+    }
+  }
+
+  void checkDate(String key, {required bool required}) {
+    final value = row[key];
+    if (value == null) {
+      if (required) problems.add('$key missing');
+      return;
+    }
+    if (value is! String) {
+      problems.add('$key is ${value.runtimeType}, expected String');
+      return;
+    }
+    if (DateTime.tryParse(value) == null) {
+      problems.add('$key is not an ISO-8601 date');
+    }
+  }
+
+  void checkTyped(String key, bool Function(Object) ok, String expected) {
+    // Typed as Object? rather than left dynamic so the null check below
+    // promotes it for `ok`, which takes a non-nullable Object.
+    final Object? value = row[key];
+    if (value == null) return;
+    if (!ok(value)) {
+      problems.add('$key is ${value.runtimeType}, expected $expected');
+    }
+  }
+
+  for (final key in _requiredStrings) {
+    checkString(key, required: true);
+  }
+  for (final key in _optionalStrings) {
+    checkString(key, required: false);
+  }
+  for (final key in _requiredDates) {
+    checkDate(key, required: true);
+  }
+  for (final key in _optionalDates) {
+    checkDate(key, required: false);
+  }
+  for (final key in _optionalBools) {
+    checkTyped(key, (v) => v is bool, 'bool');
+  }
+  for (final key in _optionalNums) {
+    checkTyped(key, (v) => v is num, 'num');
+  }
+
+  final amount = row['amount'];
+  if (amount == null) {
+    problems.add('amount missing');
+  } else if (amount is String) {
+    if (double.tryParse(amount) == null) {
+      problems.add('amount is a String that is not a number');
+    }
+  } else if (amount is! num) {
+    problems.add('amount is ${amount.runtimeType}, expected num or String');
+  }
+
+  final tags = row['tags'];
+  if (tags != null) {
+    if (tags is! List) {
+      problems.add('tags is ${tags.runtimeType}, expected List');
+    } else if (tags.any((t) => t is! String)) {
+      problems.add('tags contains a non-String element');
+    }
+  }
+
+  if (problems.isEmpty) {
+    return 'unclassified ${error.runtimeType}';
+  }
+  return problems.join(', ');
 }

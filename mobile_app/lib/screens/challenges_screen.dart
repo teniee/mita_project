@@ -973,6 +973,53 @@ class _ChallengesScreenState extends State<ChallengesScreen>
   Widget _buildLeaderboardSection(ChallengesProvider challengesProvider) {
     final leaderboard = challengesProvider.leaderboard;
 
+    // An unavailable or empty leaderboard renders an honest row rather than a
+    // bare card. The fabricated "BudgetNinja" fallback that used to fill this
+    // section was removed, and an empty Column under the heading left a blank
+    // card behind it.
+    if (leaderboard.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Leaderboard',
+            style: TextStyle(
+              fontFamily: AppTypography.fontHeading,
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Card(
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            elevation: 2,
+            child: const Padding(
+              padding: EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  Icon(Icons.leaderboard_outlined,
+                      color: Colors.grey, size: 24),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'No leaderboard standings yet.',
+                      style: TextStyle(
+                        fontFamily: AppTypography.fontBody,
+                        fontSize: 14,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

@@ -3,21 +3,12 @@ import '../utils/json_utils.dart';
 import '../services/income_service.dart';
 import '../services/api_service.dart';
 import '../theme/app_typography.dart';
+import '../utils/peer_data.dart';
 
-/// True only when the API actually returned peers to compare against.
-///
-/// `/api/cohort/peer_comparison` is explicit when it cannot compare: it sends
-/// `peer_count: 0`, `comparison: "insufficient_peer_data"` and null averages.
-/// Widgets used to paper over that with `?? 0.0`, `?? 50` or
-/// `userAmount * 1.15`, so a first-day user was shown a peer average, a
-/// percentile and a verdict derived from a cohort of nobody.
-bool hasSufficientPeerData(Map<String, dynamic>? peerData) {
-  if (peerData == null) return false;
-  if (peerData['comparison'] == 'insufficient_peer_data') return false;
-  final count = peerData['peer_count'];
-  if (count is num && count <= 0) return false;
-  return peerData['peer_average'] != null;
-}
+// Re-exported so existing widget-side imports of hasSufficientPeerData keep
+// resolving; the canonical definition lives in utils/peer_data.dart so that
+// services can share it without importing Flutter.
+export '../utils/peer_data.dart' show hasSufficientPeerData;
 
 /// Peer spending insights widget for category breakdown
 class PeerSpendingInsightsWidget extends StatelessWidget {
@@ -235,46 +226,23 @@ class _CohortInsightsWidgetState extends State<CohortInsightsWidget> {
         });
       }
     } catch (e) {
+      // No fabricated cohort. A null cohort_size drives the existing
+      // "nothing to rank against" empty state below rather than inventing
+      // a peer group, a rank and a percentile for the user.
       if (mounted) {
         setState(() {
-          _cohortData = _getDefaultCohortData();
+          _cohortData = <String, dynamic>{
+            'error': 'Cohort insights service is currently unavailable',
+            'cohort_size': null,
+            'your_rank': null,
+            'percentile': null,
+            'top_insights': <String>[],
+            'recommendations': <String>[],
+          };
           _isLoading = false;
         });
       }
     }
-  }
-
-  Map<String, dynamic> _getDefaultCohortData() {
-    final tier = _incomeService.classifyIncome(widget.monthlyIncome);
-    final tierName = _incomeService.getIncomeTierName(tier);
-
-    return {
-      'cohort_size': tier == IncomeTier.low
-          ? 2847
-          : tier == IncomeTier.lowerMiddle
-              ? 3241
-              : tier == IncomeTier.middle
-                  ? 4126
-                  : tier == IncomeTier.upperMiddle
-                      ? 2089
-                      : 1653,
-      'your_rank': tier == IncomeTier.low
-          ? 842
-          : tier == IncomeTier.lowerMiddle
-              ? 973
-              : tier == IncomeTier.middle
-                  ? 1247
-                  : tier == IncomeTier.upperMiddle
-                      ? 542
-                      : 423,
-      'percentile': 70,
-      'top_insights': [
-        '$tierName users typically save ${tier == IncomeTier.low ? "8-12" : tier == IncomeTier.lowerMiddle ? "12-16" : tier == IncomeTier.middle ? "15-20" : tier == IncomeTier.upperMiddle ? "20-28" : "25-35"}% of income',
-        'Most peers spend ${tier == IncomeTier.low ? "40" : tier == IncomeTier.lowerMiddle ? "35-38" : tier == IncomeTier.middle ? "30-35" : tier == IncomeTier.upperMiddle ? "28-32" : "25-30"}% on housing',
-        'Food expenses average ${tier == IncomeTier.low ? "15-18" : tier == IncomeTier.lowerMiddle ? "13-16" : tier == IncomeTier.middle ? "12-15" : tier == IncomeTier.upperMiddle ? "10-13" : "8-12"}% in your group',
-      ],
-      'recommendations': _incomeService.getFinancialTips(tier).take(3).toList(),
-    };
   }
 
   @override

@@ -1,14 +1,20 @@
 import '../models/budget_intelligence_models.dart';
 import 'api_service.dart';
+import '../utils/peer_data.dart';
 
 /// Social comparison intelligence service for peer-based insights
 class SocialComparisonService {
   static final SocialComparisonService _instance =
       SocialComparisonService._internal();
   factory SocialComparisonService() => _instance;
-  SocialComparisonService._internal();
+  SocialComparisonService._internal() : _apiService = ApiService();
 
-  final _apiService = ApiService();
+  /// Test seam: inject a stubbed [ApiService] so the peer-data guard can be
+  /// exercised for real API failure / insufficient-cohort / valid-cohort
+  /// responses without touching the network or the singleton.
+  SocialComparisonService.withApiService(this._apiService);
+
+  final ApiService _apiService;
 
   /// Generate social comparison insights
   Future<List<SocialComparisonInsight>> generateSocialInsights(
@@ -21,19 +27,31 @@ class SocialComparisonService {
     // Get real peer comparison data from backend
     final peerComparisonData = await _apiService.getPeerComparison();
 
-    // Check if API returned valid data
-    if (peerComparisonData['error'] != null) {
-      // Fallback to estimated data if API is unavailable
-      final peerData = _generateFallbackPeerData(userProfile.incomeTier);
-      return _generateInsightsFromFallbackData(peerData, userMetrics);
+    // No peers, no comparison. This used to fall back to
+    // _generateFallbackPeerData(), a hardcoded table of per-income-tier peer
+    // averages (2200/3200/4800/7500/12000) and cohort sizes
+    // (1500/2200/3100/1800/800). Those fed _generateComparisonText(), so the
+    // user was told "You spend 12% more than similar users" against a peer
+    // group that was a constant in this file. That text is not cosmetic: it
+    // reaches the Daily Budget screen through
+    //   master engine -> personalizedInsights -> intelligentInsights
+    //   -> BudgetAdapterService suggestions[].message -> daily_budget_screen.
+    // An unavailable peer service now yields no social insights at all; the
+    // caller keeps whatever non-peer insights it derived from real data.
+    if (!hasSufficientPeerData(peerComparisonData)) {
+      return const <SocialComparisonInsight>[];
     }
 
     final peerData = _extractPeerData(peerComparisonData);
+    final peerAverage = peerData['averageSpending'];
+    if (peerAverage == null || peerAverage <= 0) {
+      return const <SocialComparisonInsight>[];
+    }
 
     // Spending comparison
     final userSpending =
         (userMetrics['monthlySpending'] as num?)?.toDouble() ?? 0.0;
-    final peerAverageSpending = peerData['averageSpending']!;
+    final peerAverageSpending = peerAverage;
     final spendingPercentile =
         _calculatePercentile(userSpending, peerAverageSpending);
 
@@ -54,10 +72,16 @@ class SocialComparisonService {
       },
     ));
 
-    // Savings rate comparison
+    // Savings rate comparison — only when the API actually sent a peer
+    // savings rate. This used to default to 0.15, so "You save 40% less than
+    // similar users" could be measured against a 15% peer rate that no peer
+    // ever reported.
+    final peerAverageSavingsRate = peerData['averageSavingsRate'];
+    if (peerAverageSavingsRate == null || peerAverageSavingsRate <= 0) {
+      return insights;
+    }
     final userSavingsRate =
         (userMetrics['savingsRate'] as num?)?.toDouble() ?? 0.0;
-    final peerAverageSavingsRate = peerData['averageSavingsRate']!;
     final savingsPercentile =
         _calculatePercentile(userSavingsRate, peerAverageSavingsRate);
 
@@ -82,88 +106,33 @@ class SocialComparisonService {
     return insights;
   }
 
-  /// Extract peer data from API response
-  Map<String, double> _extractPeerData(Map<String, dynamic> apiResponse) {
+  /// Extract peer data from the API response.
+  ///
+  /// Every value is nullable on purpose. The old version defaulted a missing
+  /// peer savings rate to 0.15 and a missing cohort to 1000 people, so a
+  /// response that carried no such fields still produced confident
+  /// comparisons and a "sampleSize: 1000" badge. A field the server did not
+  /// send is absent here, and the caller skips the insight that needs it.
+  Map<String, double?> _extractPeerData(Map<String, dynamic> apiResponse) {
     return {
-      'averageSpending':
-          (apiResponse['peer_average'] as num?)?.toDouble() ?? 0.0,
+      'averageSpending': (apiResponse['peer_average'] as num?)?.toDouble(),
       'averageSavingsRate':
-          (apiResponse['peer_savings_rate'] as num?)?.toDouble() ?? 0.15,
-      'sampleSize': (apiResponse['cohort_size'] as num?)?.toDouble() ?? 1000.0,
+          (apiResponse['peer_savings_rate'] as num?)?.toDouble(),
+      'sampleSize': (apiResponse['cohort_size'] as num?)?.toDouble() ??
+          (apiResponse['peer_count'] as num?)?.toDouble(),
     };
   }
 
-  /// Generate fallback insights when API is unavailable
-  List<SocialComparisonInsight> _generateInsightsFromFallbackData(
-    Map<String, double> peerData,
-    Map<String, dynamic> userMetrics,
-  ) {
-    final insights = <SocialComparisonInsight>[];
-
-    final userSpending =
-        (userMetrics['monthlySpending'] as num?)?.toDouble() ?? 0.0;
-    final peerAverageSpending = peerData['averageSpending']!;
-    final spendingPercentile =
-        _calculatePercentile(userSpending, peerAverageSpending);
-
-    insights.add(SocialComparisonInsight(
-      insightId: 'spending_comparison_${DateTime.now().millisecondsSinceEpoch}',
-      insightType: 'spending_comparison',
-      category: 'overall_spending',
-      userValue: userSpending,
-      peerAverage: peerAverageSpending,
-      percentile: spendingPercentile,
-      comparisonText: _generateComparisonText(
-          'spending', spendingPercentile, userSpending, peerAverageSpending),
-      recommendation: _generateRecommendation('spending', spendingPercentile),
-      confidenceLevel: 0.6, // Lower confidence for fallback data
-      metadata: {
-        'sampleSize': peerData['sampleSize'],
-        'fallback': true,
-      },
-    ));
-
-    return insights;
-  }
-
-  Map<String, double> _generateFallbackPeerData(IncomeTier incomeTier) {
-    // Fallback peer averages based on income tier (used when API is unavailable)
-    switch (incomeTier) {
-      case IncomeTier.low:
-        return {
-          'averageSpending': 2200.0,
-          'averageSavingsRate': 0.08,
-          'sampleSize': 1500.0,
-        };
-      case IncomeTier.lowerMiddle:
-        return {
-          'averageSpending': 3200.0,
-          'averageSavingsRate': 0.12,
-          'sampleSize': 2200.0,
-        };
-      case IncomeTier.middle:
-        return {
-          'averageSpending': 4800.0,
-          'averageSavingsRate': 0.18,
-          'sampleSize': 3100.0,
-        };
-      case IncomeTier.upperMiddle:
-        return {
-          'averageSpending': 7500.0,
-          'averageSavingsRate': 0.25,
-          'sampleSize': 1800.0,
-        };
-      case IncomeTier.high:
-        return {
-          'averageSpending': 12000.0,
-          'averageSavingsRate': 0.35,
-          'sampleSize': 800.0,
-        };
-    }
-  }
-
+  /// Where this user sits relative to the peer *average*, as a 0-1 band.
+  ///
+  /// This is NOT a distribution percentile: the API sends a mean, not a
+  /// distribution, so nothing here can say how many peers a user is ahead of.
+  /// It is only used to pick which sentence to show. Do not surface this
+  /// number to the user as "your percentile" — that would claim a ranking the
+  /// data cannot support. `SocialComparisonInsight.percentile` is currently
+  /// never rendered; keep it that way unless the API starts sending a real
+  /// distribution.
   double _calculatePercentile(double userValue, double peerAverage) {
-    // Simplified percentile calculation
     final ratio = userValue / peerAverage;
     if (ratio > 1.5) return 0.95;
     if (ratio > 1.2) return 0.80;
@@ -209,9 +178,14 @@ class SocialComparisonService {
         }
       case 'savings_rate':
         if (percentile > 0.8) {
-          return 'Excellent savings rate! You\'re ahead of most peers in your tier';
+          // Was "You're ahead of most peers in your tier". Being above the
+          // peer *mean* does not establish being ahead of *most* peers — the
+          // API sends an average, not a distribution.
+          return 'Excellent savings rate — well above the average for your income tier';
         } else if (percentile < 0.3) {
-          return 'Consider increasing your savings rate by 2-3% to match your peers';
+          // The "2-3%" was invented: nothing here computes the gap needed
+          // to reach the peer average.
+          return 'Consider increasing your savings rate toward the average for your income tier';
         } else {
           return 'Your savings rate is on track with similar users';
         }

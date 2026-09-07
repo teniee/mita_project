@@ -68,21 +68,47 @@ class EnhancedMasterBudgetEngine {
         _mapTemporalBudgetToMap(temporalAdjustment);
 
     // Step 3: Spending Velocity Analysis
+    //
+    // Velocity means "spending fast or slow *relative to a budget*", so it
+    // needs a real budget to measure against. These two reads used to default
+    // to 50.0 a day and 1500.0 a month, and
+    // EnhancedProductionBudgetEngine._convertOnboardingToProfile() never sets
+    // either key — it emits monthlyIncome / incomeTier / goals / habits and no
+    // budget at all. So on every live call the analysis ran against a constant
+    // $50 day and $1500 month regardless of what the user actually earns or
+    // plans, and the result is not cosmetic: it feeds back into the user's own
+    // number at `adjustedBudget = velocityAdjustment.adjustedDailyBudget`
+    // below, and its recommendations reach the Daily Budget screen through
+    // _generateRecommendations -> intelligentInsights ->
+    // BudgetAdapterService suggestions[].message.
+    //
+    // Nothing here can supply a real baseline: this step runs before the base
+    // budget is calculated (see the `0.0, // Will be set after base
+    // calculation` above). So skip the analysis rather than invent the budget
+    // it is measured against — a wrong adjustment to someone's daily budget is
+    // worse than no adjustment. velocityAdjustment is nullable and every
+    // consumer already guards on null. Restore this step by threading the real
+    // budget in, not by reinstating a default.
     AdaptiveBudgetAllocation? velocityAdjustment;
-    if (transactionHistory.length >= 10) {
+    final knownDailyBudget = (userProfile['dailyBudget'] as num?)?.toDouble();
+    final knownMonthlyBudget =
+        (userProfile['monthlyBudget'] as num?)?.toDouble();
+    if (transactionHistory.length >= 10 &&
+        knownDailyBudget != null &&
+        knownDailyBudget > 0 &&
+        knownMonthlyBudget != null &&
+        knownMonthlyBudget > 0) {
       final velocityAnalysis = await _velocityService.analyzeSpendingVelocity(
         recentTransactions: transactionHistory.take(30).toList(),
         historicalTransactions: transactionHistory,
-        currentDailyBudget:
-            (userProfile['dailyBudget'] as num?)?.toDouble() ?? 50.0,
+        currentDailyBudget: knownDailyBudget,
         analysisDate: targetDate,
       );
 
       velocityAdjustment =
           await _velocityService.createAdaptiveBudgetAllocation(
         velocityAnalysis: velocityAnalysis,
-        monthlyBudget:
-            (userProfile['monthlyBudget'] as num?)?.toDouble() ?? 1500.0,
+        monthlyBudget: knownMonthlyBudget,
         startDate: targetDate,
         daysAhead: 30,
       );

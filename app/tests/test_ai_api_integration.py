@@ -415,9 +415,14 @@ class TestSpendingAnalysisEndpoints:
             "recommendations": ["Consider reducing discretionary spending"],
         }
 
-        with patch(
-            "app.services.ai_financial_analyzer.AIFinancialAnalyzer"
-        ) as mock_analyzer:
+        # Patch where the name is looked up. app/api/ai/routes.py binds
+        # AIFinancialAnalyzer at import, so patching the defining module left
+        # the route using the real analyzer, which raised against the Mock
+        # session and sent the request down the degraded branch. The
+        # assertion then passed only because that branch used to return a
+        # hardcoded "trend": "stable" — the test was green without ever
+        # reaching the analyzer it claimed to exercise.
+        with patch("app.api.ai.routes.AIFinancialAnalyzer") as mock_analyzer:
             mock_instance = Mock()
             mock_instance.generate_weekly_insights.return_value = weekly_data
             mock_analyzer.return_value = mock_instance
@@ -427,8 +432,8 @@ class TestSpendingAnalysisEndpoints:
             assert response.status_code == 200
             data = response.json()
             assert "data" in data
-            assert "trend" in data["data"]
-            assert data["data"]["trend"] in ["increasing", "decreasing", "stable"]
+            assert data["data"]["trend"] == "increasing"
+            assert data["data"]["weekly_summary"]["total_spent"] == 342.50
 
 
 # ============================================================================
@@ -446,9 +451,12 @@ class TestFinancialHealthEndpoints:
         app.dependency_overrides[get_current_user] = lambda: mock_user
         app.dependency_overrides[get_async_db] = lambda: mock_db
 
-        with patch(
-            "app.services.ai_financial_analyzer.AIFinancialAnalyzer"
-        ) as mock_analyzer:
+        # Patch where the name is looked up — same trap as
+        # test_get_weekly_insights. Patching the defining module left the
+        # route on the real analyzer, which raised against the Mock session
+        # and returned the degraded payload; the assertions passed only
+        # because that payload hardcoded score 50 / grade "C".
+        with patch("app.api.ai.routes.AIFinancialAnalyzer") as mock_analyzer:
             mock_instance = Mock()
             mock_instance.calculate_financial_health_score.return_value = (
                 sample_financial_health_score
@@ -460,21 +468,36 @@ class TestFinancialHealthEndpoints:
             assert response.status_code == 200
             data = response.json()
             assert "data" in data
-            assert "score" in data["data"]
-            assert 0 <= data["data"]["score"] <= 100
-            assert "grade" in data["data"]
-            assert data["data"]["grade"] in [
-                "A+",
-                "A",
-                "B+",
-                "B",
-                "C+",
-                "C",
-                "D+",
-                "D",
-                "F",
-            ]
-            assert "components" in data["data"]
+            assert data["data"]["score"] == 78
+            assert data["data"]["grade"] == "B+"
+            assert data["data"]["components"]["budgeting"] == 82
+
+    def test_financial_health_score_degrades_without_inventing_a_grade(
+        self, client, mock_user, mock_db
+    ):
+        """A failed analysis must not invent a score or a letter grade.
+
+        The fallback used to answer score 50 / grade "C" with every component
+        at 50 — a verdict on a real person's finances that nothing computed.
+        insights_screen renders its "Add more transactions to calculate your
+        financial health score" empty state on a null score/grade, and this
+        payload was the reason that guard never fired.
+        """
+        app.dependency_overrides[get_current_user] = lambda: mock_user
+        app.dependency_overrides[get_async_db] = lambda: mock_db
+
+        with patch("app.api.ai.routes.AIFinancialAnalyzer") as mock_analyzer:
+            mock_analyzer.side_effect = RuntimeError("analyzer unavailable")
+
+            response = client.get("/api/ai/financial-health-score")
+
+            assert response.status_code == 200
+            payload = response.json()["data"]
+            assert payload["score"] is None
+            assert payload["grade"] is None
+            assert payload["components"] == {}
+            assert payload["trend"] is None
+            assert "error" in payload
 
     def test_get_financial_profile(self, client, mock_user, mock_db):
         """Test financial profile generation"""

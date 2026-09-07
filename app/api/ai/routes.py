@@ -4,6 +4,7 @@ Production-ready FastAPI routes with proper validation and error handling
 """
 
 import logging
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -89,7 +90,9 @@ async def get_spending_patterns(
             {
                 "patterns": [],
                 "confidence": 0.0,
-                "analysis_date": "2025-01-29T00:00:00Z",
+                # Was hardcoded to "2025-01-29T00:00:00Z" — a fixed date in
+                # the past presented as when this analysis ran.
+                "analysis_date": datetime.now(timezone.utc).isoformat(),
                 "error": "Insufficient data for analysis",
             }
         )
@@ -138,16 +141,16 @@ async def get_weekly_insights(
         return success_response(insights_data)
     except Exception:
         logger.exception("weekly-insights failed for user %s", user.id)
-        # Fallback response
+        # Degraded response: still 200 so the screen renders, but no invented
+        # findings. "trend": "stable" was a claim about which way this user's
+        # spending is moving, drawn by the app as a "Stable" badge with a
+        # trend arrow, when the analyzer had in fact just failed.
         return success_response(
             {
                 "insights": "Continue tracking expenses to receive weekly insights.",
-                "trend": "stable",
+                "trend": None,
                 "weekly_summary": {},
-                "recommendations": [
-                    "Track daily expenses",
-                    "Set weekly spending goals",
-                ],
+                "recommendations": [],
             }
         )
 
@@ -188,23 +191,20 @@ async def get_financial_health_score(
         return success_response(score_data)
     except Exception:
         logger.exception("financial-health-score failed for user %s", user.id)
-        # Fallback response
+        # Degraded response: no invented assessment. A score of 50 with a
+        # grade of "C" and four components at 50 is a verdict on a real
+        # person's finances that nothing computed. insights_screen already
+        # renders its "Add more transactions to calculate your financial
+        # health score" empty state when score/grade are null — this fallback
+        # was the reason that guard never fired.
         return success_response(
             {
-                "score": 50,
-                "grade": "C",
-                "components": {
-                    "budgeting": 50,
-                    "spending_efficiency": 50,
-                    "saving_potential": 50,
-                    "consistency": 50,
-                },
-                "improvements": [
-                    "Track expenses regularly",
-                    "Set budget categories",
-                    "Monitor spending patterns",
-                ],
-                "trend": "stable",
+                "score": None,
+                "grade": None,
+                "components": {},
+                "improvements": [],
+                "trend": None,
+                "error": "Financial health score is currently unavailable",
             }
         )
 
@@ -667,7 +667,8 @@ async def get_spending_prediction(
                 "confidence": 0.0,
                 "category": category,
                 "period_days": days,
-                "trend": "stable",
+                # A failed prediction has no trend to report.
+                "trend": None,
                 "factors": ["Insufficient historical data"],
                 "recommendations": [
                     "Continue tracking expenses for accurate predictions"
@@ -694,11 +695,14 @@ async def get_goal_analysis(
         return success_response(
             {
                 "goal_id": goal_id,
-                "on_track": True,
+                # Not "True". A failed analysis telling the user their goal is
+                # on track is a false reassurance about their own money.
+                "on_track": None,
                 "projected_completion": None,
                 "confidence": 0.0,
                 "adjustments_needed": [],
                 "insights": ["Set up a goal to receive AI-powered progress analysis"],
+                "error": "Goal analysis is currently unavailable",
             }
         )
 
