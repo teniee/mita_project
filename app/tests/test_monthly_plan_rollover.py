@@ -26,6 +26,7 @@ from uuid import uuid4
 import pytest
 from fastapi.testclient import TestClient
 
+from app.config.category_aliases import plan_categories_for
 from app.db.models import DailyPlan, Transaction, User
 from app.services.calendar_service_real import save_calendar_for_user
 from app.services.core.engine.calendar_engine import split_amount_exactly
@@ -879,8 +880,23 @@ class TestReadPathsMaterializeTheMonth:
         # budget.
         assert month_has_plan(db_session, user.id, today.year, today.month)
 
+        # Scope the expectation the way the endpoint scopes its answer.
+        #
+        # check-affordability was asked about "food", and
+        # SpendingPreventionService filters the day's rows through
+        # plan_categories_for(category) before summing, so it reports the FOOD
+        # budget for today — not the whole day's. Summing every category here
+        # added unrelated ones (AUGUST_PLAN's "transport public" is 5.45 of a
+        # 29.90 day) and asserted 24.45 == 29.90 against a correct endpoint.
+        # Imported from app.config.category_aliases, the same module the
+        # service uses, so the two cannot drift apart.
+        wanted = plan_categories_for("food")
         rows = _rows(db_session, user, today.year, today.month)
-        today_rows = [r for r in rows if _row_day(r) == today]
+        today_rows = [
+            r
+            for r in rows
+            if _row_day(r) == today and (r.category or "").lower() in wanted
+        ]
         expected = sum(Decimal(str(r.planned_amount or 0)) for r in today_rows)
         assert Decimal(str(data["daily_budget"])) == expected
 
