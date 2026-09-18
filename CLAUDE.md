@@ -576,6 +576,81 @@ Regression: the `never reaches the log` / `is reported, not silent` /
 same file. Reinstating `'#$i $e'` in place of the classifier fails three of
 them.
 
+## A real cohort does not imply a per-category comparison
+
+`hasSufficientPeerData()` gates the peer widgets on the endpoint reporting a
+cohort and an overall `peer_average`. That closed the no-peers case. It did not
+close the layer beneath it.
+
+`SpendingTrendsComparisonWidget` draws one row per spending category, and each
+row read `peerData['categories'][c]['peer_average']` — a key
+`/api/cohort/peer_comparison` **never sends**. Its success branch returns nine
+keys (`your_spending`, `peer_average`, `peer_median`, `percentile`,
+`comparison`, `savings_potential`, `peer_count`, `income_bracket`,
+`analysis_period_days`) and no `categories` map at all. Every row therefore
+fell through to:
+
+    ?? userAmount * 1.15
+
+So for a user **with a genuine cohort**, the "Peers" figure beside each
+category was their own spending plus 15 %, and because
+`isUserBetter = userAmount < peerAmount` compares a number against itself
+times 1.15, it was true for every category, always — a green thumbs-up on
+every line of the card, derived from nothing. Reached from
+`insights_screen.dart:169` -> `ApiService.getPeerComparison()` ->
+`insights_screen.dart:489`.
+
+`PeerSpendingInsightsWidget` next door had the same fallback with `* 1.2`. It
+has no callers, but the constant is worse there: `(u - 1.2u) / 1.2u` does not
+depend on `u`, so `getPeerComparisonMessage` rendered "You spend 17 % less on
+{category} than other {tier}s" for every category and every user.
+
+Rules:
+
+- **A guard at the envelope is not a guard at the field.** `peer_count > 0`
+  says a cohort exists; it says nothing about whether the server priced any
+  particular category. Check the field you are about to render, not the
+  envelope around it.
+- **No per-category fallback.** A category the server did not price is not
+  shown. If no category is priced, the card does not render — a "Spending vs
+  Peers" heading over rows built from the user's own numbers is worse than no
+  card.
+- **Watch for a comparison against a scaled copy of the same input.** Any
+  `x` vs `x * k` comparison has a constant answer. It will look like a finding
+  and always say the same thing.
+
+Note the test that let this through: `renders the comparison when peers really
+exist` asserted `find.text('Spending vs Peers')` and nothing else, so it stayed
+green while the fabricated `$230` sat directly beneath that heading. Assert on
+the number, not the heading.
+
+Regression: the `with a real cohort but no per-category peer data` and
+`PeerSpendingInsightsWidget` groups in
+`mobile_app/test/widgets/peer_comparison_no_peers_test.dart`. Reinstating
+either multiplier fails two of them.
+
+## Confirmed but NOT fixed here: financial values in log `extra`
+
+Tracked as a separate open issue, deliberately not fixed here — pre-existing,
+in five call sites across four files unrelated to peer comparison — but
+confirmed reachable and recorded so it is not lost.
+
+`LoggingService._sendToCrashlytics` writes every `extra` entry as a Crashlytics
+custom key (`setCustomKey('extra_$key', value.toString())`), and
+`_maskPIIInMap` applies `_maskPII` only to **String** values — a `double` falls
+to the `else` branch and is stored unchanged. These call sites therefore ship
+the user's own money off the device in release builds:
+
+    add_expense_screen.dart:524        'amount': _amount
+    expense_state_service.dart:150,254 'amount': amount
+    expense_integration_helper.dart:28 'amount': result['amount']
+    bottom_navigation.dart:115         'expenseAmount': expenseData['amount']
+    api_service.dart:144               'errorData': e.response?.data
+
+All five predate `d23f621`. Fixing them means touching four files unrelated to
+this PR's purpose, so it belongs in its own change — the same treatment as the
+NOT NULL migration above.
+
 ## Swept and found clean (do not re-derive)
 
 Recorded so a later audit does not spend the effort again. Each was checked to
