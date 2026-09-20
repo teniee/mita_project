@@ -651,6 +651,62 @@ All five predate `d23f621`. Fixing them means touching four files unrelated to
 this PR's purpose, so it belongs in its own change — the same treatment as the
 NOT NULL migration above.
 
+## An aggregate over one person is that person's data
+
+`/api/cohort/peer_comparison` compared the caller against everyone within
+±20 % of the caller's **own** income and published `peer_average`,
+`peer_median`, `percentile`, `comparison` and `savings_potential` as soon as
+**one** of them had spent anything.
+
+Reproduced against the real route: a victim on $7,777/month with expenses of
+$111.11 and $222.22 made the endpoint answer another account with
+
+    peer_average = 333.33, peer_median = 333.33, peer_count = 1
+
+— that victim's exact 30-day spending, relabelled as a cohort statistic. Two
+peers were no better: the median is the larger and `2 × average − median` the
+smaller, so both totals come straight back out.
+
+The bracket moved with the caller, and `monthly_income` is writable
+(`PATCH /api/users/me`), so the caller could steer it. Sweeping income and
+reading `peer_count` located another user's income to within a rounding error
+(probes 25252/25253/37878/37879 → counts 0/1/1/0, pinning $30,303). README.md
+calls this feature "anonymized peer comparison" and PRIVACY_POLICY.md says peer
+data is "aggregated and anonymized".
+
+Rules:
+
+- **A mean is not anonymisation.** Publishing an aggregate over k people
+  publishes an individual when k is small; at k = 1 the "average" *is* the
+  person. `MIN_PEER_COHORT` (app/api/cohort/routes.py) is the floor, and it
+  counts the peers who actually **contributed a figure** — a tier of 50 where
+  one person spent is still a cohort of one.
+- **Never let the caller choose the cohort.** A window centred on a
+  caller-settable field is a query the caller can walk one person at a time,
+  and two overlapping windows differencing by one member give that member's
+  exact value at *any* k. The cohort is the server-defined income tier:
+  disjoint, identical for everyone in it, and unchanged when the caller edits
+  their income inside it. The region is pinned; passing `user.region` would
+  make the tiers overlap again.
+- **An exact count is a census.** Poll an exact `peer_count` and the day one
+  person joins, their spending falls out of `(n+1)·avg_new − n·avg_old`. The
+  published count is rounded down to a multiple of the threshold.
+- **Suppress honestly.** Below the threshold the endpoint returns its existing
+  `insufficient_peer_data` envelope (null average/median/percentile,
+  `peer_count` 0) — never a substituted or synthetic number. Every client
+  already renders that state (`hasSufficientPeerData`, peer_data.dart).
+
+Residual, accepted and not closed by this change: an attacker who can register
+many accounts can pad a tier and solve for a victim; the median on an odd count
+is still one member's real number; and sustained polling across the rolling
+30-day window can difference a cohort whose membership changes. Registration
+throttling and monitoring are the answers to those, not a larger k.
+
+Regression: `app/tests/test_cohort_peer_anonymity.py`. Restoring the old
+`if peer_amounts:` gate fails three of them, restoring the ±20 % caller window
+fails the probing test, and publishing an exact `peer_count` fails the
+coarsening test.
+
 ## Swept and found clean (do not re-derive)
 
 Recorded so a later audit does not spend the effort again. Each was checked to
