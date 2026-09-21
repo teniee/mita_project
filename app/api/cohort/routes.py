@@ -1,4 +1,6 @@
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
+from statistics import median_low
+from typing import Optional, Tuple
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -8,16 +10,12 @@ from app.api.dependencies import get_current_user
 from app.core.session import get_db
 from app.db.models.user import User
 from app.services.cohort_service import assign_user_cohort, get_user_drift
-from app.services.core.income_classification_service import (
-    IncomeClassificationService,
-    IncomeTier,
-    classify_income,
-)
+from app.services.core.income_classification_service import IncomeClassificationService
 from app.utils.response_wrapper import success_response
 
 router = APIRouter(prefix="/cohort", tags=["cohort"])
 
-# Smallest cohort whose aggregate may be published.
+# Smallest number of contributing peers whose statistic may be published.
 #
 # "Anonymized peer comparison" (README.md) and "aggregated and anonymized"
 # (PRIVACY_POLICY.md) were the promise; the endpoint had no minimum at all, so
@@ -26,56 +24,190 @@ router = APIRouter(prefix="/cohort", tags=["cohort"])
 # The repository defines no threshold to inherit — the only one that existed
 # was an unnamed `if peer_users:`, i.e. k = 1 — so this is a new constant.
 #
-# 10 keeps any single member under a tenth of the published mean, which is the
-# conservative end of the usual statistical-disclosure minimum cell size (5-10)
-# and cheap to raise. It is deliberately NOT tuned to make the feature light up
-# for MITA's current user count: below it, the honest "insufficient_peer_data"
-# answer the clients already render is the correct answer.
+# 10 is the conservative end of the usual statistical-disclosure minimum cell
+# size (5-10). It is NOT what stops differencing — the published contract
+# below does that — and it is deliberately not tuned to make the feature light
+# up for MITA's current user count: below it, the honest
+# "insufficient_peer_data" answer the clients already render is the answer.
 MIN_PEER_COHORT = 10
+
+# The one peer statistic published, peer_median, is rounded to this many
+# dollars. $100 keeps the published median within 0.2-1.8% of the true one
+# across the five tiers while leaving a caller who can steer one input no more
+# than the member's $100 bucket. Rounding must not be made finer to "improve
+# accuracy": it is the only thing between the median and a real member's total.
+PEER_MEDIAN_INCREMENT = Decimal("100")
 
 # Pinned: see the comment in get_peer_comparison. Never user.region.
 PEER_COHORT_REGION = "US"
 
-# One instance; its constructor re-validates the region profiles on every call.
-_INCOME_SERVICE = IncomeClassificationService()
 
-# Tier edges as MONTHLY income. The service stores the ladder annually.
-_TIER_ORDER = (
-    IncomeTier.LOW,
-    IncomeTier.LOWER_MIDDLE,
-    IncomeTier.MIDDLE,
-    IncomeTier.UPPER_MIDDLE,
-    IncomeTier.HIGH,
-)
-_TIER_EDGES = [
-    _INCOME_SERVICE.get_tier_thresholds(PEER_COHORT_REGION)[key] / 12
-    for key in ("low", "lower_middle", "middle", "upper_middle")
-]
+def _peer_income_tiers() -> tuple:
+    """The five cohort tiers as monthly (lower, upper] bounds, exact Decimals.
 
+    Edges come from the pinned region's income ladder (annual, so divided by
+    12). The bottom tier starts above 0: an income of 0, a negative or a NULL
+    one is "no income on record", which is also what makes the caller's own
+    request answer "Set monthly income" — such users are no one's peers. The
+    top tier has no upper bound (None).
 
-def _tier_income_bounds(monthly_income: float) -> tuple:
-    """Monthly (lower, upper] bounds of the income tier `monthly_income` is in.
-
-    Mirrors IncomeClassificationService.classify_income, which compares
-    annualised income against the region's ladder with `<=`. The lowest tier
-    has no lower bound (-1 admits an income of 0) and the highest none above it
-    (None). The five tiers partition the axis, so every user falls in exactly
-    one and no two callers see overlapping cohorts.
+    Membership is decided ONLY by _peer_tier() and the SQL filter in
+    _peer_spending_by_user(), both reading these bounds with the same `>` /
+    `<=`, so a caller and a peer on the same finite income always land in the
+    same tier. An exact edge (3000.00) belongs to the tier below it. (A NaN or
+    Infinity income gets the caller no comparison; PostgreSQL orders both
+    above every number, so as a peer such a user counts in the top tier.)
     """
-    tier = classify_income(monthly_income, PEER_COHORT_REGION)
-    index = _TIER_ORDER.index(tier)
-    lower = -1.0 if index == 0 else _TIER_EDGES[index - 1]
-    upper = _TIER_EDGES[index] if index < len(_TIER_EDGES) else None
-    return lower, upper
+    ladder = IncomeClassificationService().get_tier_thresholds(PEER_COHORT_REGION)
+    edges = [
+        Decimal(str(ladder[key])) / 12
+        for key in ("low", "lower_middle", "middle", "upper_middle")
+    ]
+    lowers = [Decimal("0")] + edges
+    uppers = edges + [None]
+    return tuple(zip(lowers, uppers))
 
 
-def _tier_bracket_label(lower: float, upper) -> str:
+_PEER_INCOME_TIERS = _peer_income_tiers()
+
+
+def _peer_tier(monthly_income) -> Optional[Tuple[Decimal, Optional[Decimal]]]:
+    """The (lower, upper] tier `monthly_income` falls in, or None if no income."""
+    if monthly_income is None:
+        return None
+    income = Decimal(str(monthly_income))
+    # PATCH /users/me accepts NaN and Infinity (JSON `NaN` parses, float allows
+    # it). Neither is an income, and Decimal('NaN') > 0 raises.
+    if not income.is_finite():
+        return None
+    for lower, upper in _PEER_INCOME_TIERS:
+        if income > lower and (upper is None or income <= upper):
+            return lower, upper
+    return None
+
+
+def _tier_bracket_label(lower: Decimal, upper: Optional[Decimal]) -> str:
     """Human label for the tier, stable for everyone inside it."""
-    if lower < 0:
+    if lower == 0:
         return f"Up to ${upper:,.0f}/month"
     if upper is None:
         return f"Above ${lower:,.0f}/month"
     return f"${lower:,.0f} - ${upper:,.0f}/month"
+
+
+def _peer_spending_by_user(db: Session, caller_id, caller_income, since) -> dict:
+    """{peer user id: 30-day spending} for the caller's tier, caller excluded.
+
+    Only peers who actually CONTRIBUTED — at least one non-deleted transaction
+    since `since` — appear. A tier member with no spending contributes no
+    figure and does not count towards MIN_PEER_COHORT.
+    """
+    from sqlalchemy import func
+
+    from app.db.models import User as UserModel
+    from app.db.models.transaction import Transaction
+
+    tier = _peer_tier(caller_income)
+    if tier is None:
+        return {}
+    lower, upper = tier
+
+    bracket_filters = [
+        UserModel.id != caller_id,
+        UserModel.monthly_income > lower,
+    ]
+    if upper is not None:
+        bracket_filters.append(UserModel.monthly_income <= upper)
+
+    peer_user_ids = [
+        p.id for p in db.query(UserModel.id).filter(*bracket_filters).all()
+    ]
+    if not peer_user_ids:
+        return {}
+
+    rows = (
+        db.query(Transaction.user_id, func.sum(Transaction.amount))
+        .filter(
+            Transaction.user_id.in_(peer_user_ids),
+            Transaction.deleted_at.is_(None),
+            Transaction.spent_at >= since,
+        )
+        .group_by(Transaction.user_id)
+        .all()
+    )
+    return {user_id: total for user_id, total in rows if total is not None}
+
+
+def _round_to_increment(value) -> Decimal:
+    """Round half-up to the nearest PEER_MEDIAN_INCREMENT dollars."""
+    steps = (Decimal(str(value)) / PEER_MEDIAN_INCREMENT).quantize(
+        Decimal("1"), rounding=ROUND_HALF_UP
+    )
+    return steps * PEER_MEDIAN_INCREMENT
+
+
+def _peer_comparison_payload(
+    your_spending: float, peer_totals, income_bracket: str
+) -> Optional[dict]:
+    """The published comparison, or None when the cohort is too small.
+
+    What is published, and why nothing else is:
+
+    * peer_median — median_low of the contributors' 30-day totals, rounded to
+      PEER_MEDIAN_INCREMENT. median_low is always ONE member's figure, never
+      the mean of two: a caller who controls one input (a second account in
+      the tier) sees the published value follow a clamp of their own figure,
+      which gives away at most the neighbouring member's rounding bucket. An
+      interpolated median is linear in that input and gives it away exactly.
+    * peer_average — withheld (None). A mean is linear in every member, so
+      deterministic rounding cannot hide it from a caller who controls one
+      member: stepping that member a cent at a time finds two rounding edges,
+      and those give the cohort's exact size and exact sum at ANY increment.
+      From there a single member joining, leaving or spending is exact.
+    * percentile — withheld (None). Ranking the caller's spending against the
+      raw totals turns the caller's own spending into a search probe: sweeping
+      it walked every member's exact total out, one rank step at a time.
+    * comparison and savings_potential — computed from the PUBLISHED median
+      and the caller's own spending only, never from the raw cohort. They are
+      then arithmetic on what the response already says, and sweeping one's
+      own spending cannot reveal anything the median does not.
+    * peer_count — the constant MIN_PEER_COHORT, meaning "at least this many".
+      Any count that moves with membership (exact, or rounded to a multiple)
+      shows the moment one person joins or leaves at some boundary.
+    """
+    if len(peer_totals) < MIN_PEER_COHORT:
+        return None
+
+    peer_median = float(_round_to_increment(median_low(peer_totals)))
+
+    if your_spending < peer_median * 0.9:
+        comparison = "well_below_average"
+    elif your_spending < peer_median:
+        comparison = "below_average"
+    elif your_spending <= peer_median * 1.1:
+        comparison = "average"
+    elif your_spending <= peer_median * 1.3:
+        comparison = "above_average"
+    else:
+        comparison = "well_above_average"
+
+    savings_potential = max(your_spending - peer_median, 0.0)
+
+    return {
+        "your_spending": round(your_spending, 2),
+        "peer_average": None,
+        "peer_median": peer_median,
+        "percentile": None,
+        "comparison": comparison,
+        "savings_potential": round(savings_potential, 2),
+        "peer_count": MIN_PEER_COHORT,
+        "income_bracket": income_bracket,
+        "analysis_period_days": 30,
+        "note": (
+            f"Median of at least {MIN_PEER_COHORT} people in your income tier, "
+            f"rounded to the nearest ${PEER_MEDIAN_INCREMENT:,.0f}"
+        ),
+    }
 
 
 @router.post("/assign", response_model=CohortOut)
@@ -387,113 +519,27 @@ def get_peer_comparison(
     #
     # A ±20% window centred on the caller is attacker-steerable: monthly_income
     # is writable through PATCH /api/users/me, so sweeping it and watching the
-    # response walked the window one person at a time. Two windows differing by
-    # one member also give that member's exact spend by differencing the means,
-    # at any cohort size. Tiers are server-defined, disjoint and identical for
-    # everyone in them, so the answer does not move when the caller edits their
-    # income within a tier, and there is no sliding window to difference.
+    # response walked the window one person at a time. Tiers are server-defined
+    # and disjoint, so editing income INSIDE a tier changes nothing. The caller
+    # can still pick which of the five tiers to look at by editing income —
+    # that is five fixed cohorts, each seeing what every member of it sees, not
+    # a window that can be slid past one person.
     #
-    # The region is PINNED. classify_income picks per-region ladders, so passing
-    # user.region (client-settable, users_service.py) would make the brackets
-    # overlap again and reopen the differencing attack.
-    if user_income > 0:
-        lower_bound, upper_bound = _tier_income_bounds(user_income)
-
-        bracket_filters = [
-            UserModel.id != user.id,
-            UserModel.monthly_income > lower_bound,
-        ]
-        if upper_bound is not None:
-            bracket_filters.append(UserModel.monthly_income <= upper_bound)
-
-        # Find users in the same income tier
-        peer_users = db.query(UserModel.id).filter(*bracket_filters).all()
-
-        peer_user_ids = [p.id for p in peer_users]
-
-        if peer_user_ids:
-            # Calculate actual peer spending
-            peer_spending_data = (
-                db.query(func.sum(Transaction.amount))
-                .filter(
-                    Transaction.user_id.in_(peer_user_ids),
-                    Transaction.deleted_at.is_(None),
-                    Transaction.spent_at >= thirty_days_ago,
-                )
-                .group_by(Transaction.user_id)
-                .all()
-            )
-
-            if peer_spending_data:
-                # .all() returns Row tuples — take the summed column
-                peer_amounts = [
-                    float(s[0]) for s in peer_spending_data if s[0] is not None
-                ]
-                # k-anonymity gate. The threshold counts the peers who ACTUALLY
-                # contributed a figure, not everyone in the tier: a tier of 50
-                # where one person spent still averages one person's money.
-                if len(peer_amounts) >= MIN_PEER_COHORT:
-                    peer_average = sum(peer_amounts) / len(peer_amounts)
-                    # Mean of the two central values on an even count, so the
-                    # published median is not verbatim one identifiable
-                    # person's 30-day total.
-                    ordered = sorted(peer_amounts)
-                    mid = len(ordered) // 2
-                    peer_median = (
-                        ordered[mid]
-                        if len(ordered) % 2
-                        else (ordered[mid - 1] + ordered[mid]) / 2
-                    )
-
-                    # Calculate user's percentile
-                    below_user = sum(1 for amt in peer_amounts if amt < user_spending)
-                    percentile = (
-                        int((below_user / len(peer_amounts)) * 100)
-                        if peer_amounts
-                        else 50
-                    )
-
-                    # Determine comparison
-                    if user_spending < peer_median * 0.9:
-                        comparison = "well_below_average"
-                    elif user_spending < peer_median:
-                        comparison = "below_average"
-                    elif user_spending <= peer_median * 1.1:
-                        comparison = "average"
-                    elif user_spending <= peer_median * 1.3:
-                        comparison = "above_average"
-                    else:
-                        comparison = "well_above_average"
-
-                    # Calculate potential savings
-                    if user_spending > peer_median:
-                        savings_potential = user_spending - peer_median
-                    else:
-                        savings_potential = 0
-
-                    return success_response(
-                        {
-                            "your_spending": round(user_spending, 2),
-                            "peer_average": round(peer_average, 2),
-                            "peer_median": round(peer_median, 2),
-                            "percentile": percentile,
-                            "comparison": comparison,
-                            "savings_potential": round(savings_potential, 2),
-                            # Coarsened on purpose. An exact count turns this
-                            # endpoint into a census: poll it, and the day one
-                            # person joins the tier, their spend falls out of
-                            # (n+1)·avg_new − n·avg_old. Rounded down to a
-                            # multiple of the threshold it is still honest
-                            # about the order of magnitude and still satisfies
-                            # the clients' `peer_count > 0` gate.
-                            "peer_count": (len(peer_amounts) // MIN_PEER_COHORT)
-                            * MIN_PEER_COHORT,
-                            "income_bracket": _tier_bracket_label(
-                                lower_bound, upper_bound
-                            ),
-                            "analysis_period_days": 30,
-                        }
-                    )
+    # The region is PINNED (PEER_COHORT_REGION). Income ladders are per-region,
+    # so reading user.region (client-settable, users_service.py) would make the
+    # brackets overlap again and reopen the differencing attack.
+    tier = _peer_tier(user_data.monthly_income if user_data else None)
+    if tier is not None:
+        peer_totals = list(
+            _peer_spending_by_user(
+                db, user.id, user_data.monthly_income, thirty_days_ago
+            ).values()
+        )
+        payload = _peer_comparison_payload(
+            user_spending, peer_totals, _tier_bracket_label(*tier)
+        )
+        if payload is not None:
+            return success_response(payload)
 
     # Fallback if no peers or no income data
     return success_response(

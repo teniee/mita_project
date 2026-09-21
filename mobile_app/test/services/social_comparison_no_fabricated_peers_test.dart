@@ -66,11 +66,17 @@ const _insufficientPeers = <String, dynamic>{
   'peer_count': 0,
 };
 
+/// The backend's real-cohort shape: a rounded median, no mean, no percentile,
+/// and `peer_count` as the floor 10. `peer_savings_rate` and `cohort_size` are
+/// not sent by /cohort/peer_comparison today; they stand for a server that
+/// does, to prove those insights still work when the data is real.
 const _realPeers = <String, dynamic>{
   'your_spending': 3000.0,
-  'peer_average': 2000.0,
+  'peer_average': null,
+  'peer_median': 2000.0,
+  'percentile': null,
   'peer_savings_rate': 0.20,
-  'peer_count': 42,
+  'peer_count': 10,
   'cohort_size': 42,
 };
 
@@ -106,11 +112,26 @@ void main() {
       expect(insights, isEmpty);
     });
 
-    test('a success payload with no peer_average yields nothing', () async {
+    test('a success payload with no peer_median yields nothing', () async {
       when(() => api.getPeerComparison()).thenAnswer((_) async => {
             'your_spending': 3000.0,
-            'peer_average': null,
-            'peer_count': 25,
+            'peer_median': null,
+            'peer_count': 10,
+          });
+
+      final insights =
+          await service.generateSocialInsights('u1', _profile(), _metrics);
+
+      expect(insights, isEmpty);
+    });
+
+    test('a mean without a median yields nothing', () async {
+      // The endpoint never publishes a mean; one must not be compared against.
+      when(() => api.getPeerComparison()).thenAnswer((_) async => {
+            'your_spending': 3000.0,
+            'peer_average': 2000.0,
+            'peer_median': null,
+            'peer_count': 10,
           });
 
       final insights =
@@ -190,7 +211,8 @@ void main() {
         insights.map((i) => i.insightType),
         containsAll(<String>['spending_comparison', 'savings_comparison']),
       );
-      // The comparison is against the value the server actually sent.
+      // The comparison is against the value the server actually sent — the
+      // published median (the insight's field is still named peerAverage).
       expect(insights.first.peerAverage, 2000.0);
     });
 
@@ -198,8 +220,8 @@ void main() {
         () async {
       when(() => api.getPeerComparison()).thenAnswer((_) async => {
             'your_spending': 3000.0,
-            'peer_average': 2000.0,
-            'peer_count': 42,
+            'peer_median': 2000.0,
+            'peer_count': 10,
             // no peer_savings_rate — must NOT be invented as 0.15
           });
 
@@ -217,15 +239,18 @@ void main() {
     test('sample size is never invented as 1000', () async {
       when(() => api.getPeerComparison()).thenAnswer((_) async => {
             'your_spending': 3000.0,
-            'peer_average': 2000.0,
-            'peer_count': 42,
+            'peer_median': 2000.0,
+            'peer_count': 10,
           });
 
       final insights =
           await service.generateSocialInsights('u1', _profile(), _metrics);
 
+      expect(insights, isNotEmpty);
       for (final insight in insights) {
         expect(insight.metadata['sampleSize'], isNot(1000.0));
+        // peer_count is the published floor ("at least 10"), not a size.
+        expect(insight.metadata['sampleSize'], isNull);
       }
     });
   });

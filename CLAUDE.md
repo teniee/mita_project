@@ -388,8 +388,9 @@ Two separate faults, one exposed and one pre-existing:
 `as List<String>?` on a JSON-decoded `List<dynamic>` returns null, so real peer
 insights could silently vanish. The accessors read every element as a string.
 
-In the service itself, two claims outran the data. The API sends a **mean, not
-a distribution**, so nothing there can establish a ranking:
+In the service itself, two claims outran the data. The API sends **one
+statistic, not a distribution** (a mean at the time; since #282 a rounded
+median and never a mean), so nothing there can establish a ranking:
 "You're ahead of most peers in your tier" became "well above the average for
 your income tier", and "increase your savings rate by 2-3%" — a figure nothing
 computed — now points at the average instead.
@@ -579,15 +580,16 @@ them.
 ## A real cohort does not imply a per-category comparison
 
 `hasSufficientPeerData()` gates the peer widgets on the endpoint reporting a
-cohort and an overall `peer_average`. That closed the no-peers case. It did not
-close the layer beneath it.
+cohort and an overall peer figure (`peer_average` at the time; `peer_median`
+since #282, which stopped publishing a mean). That closed the no-peers case. It
+did not close the layer beneath it.
 
 `SpendingTrendsComparisonWidget` draws one row per spending category, and each
 row read `peerData['categories'][c]['peer_average']` — a key
-`/api/cohort/peer_comparison` **never sends**. Its success branch returns nine
+`/api/cohort/peer_comparison` **never sends**. Its success branch returns ten
 keys (`your_spending`, `peer_average`, `peer_median`, `percentile`,
 `comparison`, `savings_potential`, `peer_count`, `income_bracket`,
-`analysis_period_days`) and no `categories` map at all. Every row therefore
+`analysis_period_days`, `note`) and no `categories` map at all. Every row therefore
 fell through to:
 
     ?? userAmount * 1.15
@@ -663,49 +665,94 @@ $111.11 and $222.22 made the endpoint answer another account with
 
     peer_average = 333.33, peer_median = 333.33, peer_count = 1
 
-— that victim's exact 30-day spending, relabelled as a cohort statistic. Two
-peers were no better: the median is the larger and `2 × average − median` the
-smaller, so both totals come straight back out.
-
-The bracket moved with the caller, and `monthly_income` is writable
-(`PATCH /api/users/me`), so the caller could steer it. Sweeping income and
-reading `peer_count` located another user's income to within a rounding error
-(probes 25252/25253/37878/37879 → counts 0/1/1/0, pinning $30,303). README.md
+— that victim's exact 30-day spending, relabelled as a cohort statistic.
+Sweeping the caller's own (writable, `PATCH /api/users/me`) income and reading
+`peer_count` located another user's income to within a rounding error. README.md
 calls this feature "anonymized peer comparison" and PRIVACY_POLICY.md says peer
 data is "aggregated and anonymized".
 
-Rules:
+### A minimum cohort size is not enough on its own
 
-- **A mean is not anonymisation.** Publishing an aggregate over k people
-  publishes an individual when k is small; at k = 1 the "average" *is* the
-  person. `MIN_PEER_COHORT` (app/api/cohort/routes.py) is the floor, and it
-  counts the peers who actually **contributed a figure** — a tier of 50 where
-  one person spent is still a cohort of one.
-- **Never let the caller choose the cohort.** A window centred on a
-  caller-settable field is a query the caller can walk one person at a time,
-  and two overlapping windows differencing by one member give that member's
-  exact value at *any* k. The cohort is the server-defined income tier:
-  disjoint, identical for everyone in it, and unchanged when the caller edits
-  their income inside it. The region is pinned; passing `user.region` would
-  make the tiers overlap again.
-- **An exact count is a census.** Poll an exact `peer_count` and the day one
-  person joins, their spending falls out of `(n+1)·avg_new − n·avg_old`. The
-  published count is rounded down to a multiple of the threshold.
-- **Suppress honestly.** Below the threshold the endpoint returns its existing
-  `insufficient_peer_data` envelope (null average/median/percentile,
-  `peer_count` 0) — never a substituted or synthetic number. Every client
-  already renders that state (`hasSufficientPeerData`, peer_data.dart).
+The first fix (fixed tiers, k = 10, `peer_count` rounded down to a multiple of
+10) was broken by adversarial review. All of the following were reproduced
+against it, not argued:
 
-Residual, accepted and not closed by this change: an attacker who can register
-many accounts can pad a tier and solve for a victim; the median on an odd count
-is still one member's real number; and sustained polling across the rolling
-30-day window can difference a cohort whose membership changes. Registration
-throttling and monitoring are the answers to those, not a larger k.
+- **The caller's own spending was a search probe.** `percentile` ranked the
+  caller against the *raw* totals. Stepping one's own spending and watching the
+  rank move recovered **every** member's exact 30-day total (200/200 simulated
+  cohorts of 10–30, ~640 queries each). `comparison` and `savings_potential`
+  were computed against the raw median, so the flip point (or `your_spending −
+  savings_potential`) gave the median to the cent.
+- **The odd-n median was one member's exact total.**
+- **A rounded count still moves.** `19 → 20` is visible, and then
+  `20·avg' − 19·avg` is the joiner's exact spending (500/500).
+- **Rounding a mean does not hide it.** With ONE extra account in the tier, the
+  attacker steps that account's spending a cent at a time, finds two rounding
+  edges of the published mean, and gets the cohort's exact size and exact sum —
+  at every increment tried, $10 through $250. A mean is linear in every member;
+  deterministic rounding of a linear statistic is invertible by anyone who
+  controls one input.
 
-Regression: `app/tests/test_cohort_peer_anonymity.py`. Restoring the old
-`if peer_amounts:` gate fails three of them, restoring the ±20 % caller window
-fails the probing test, and publishing an exact `peer_count` fails the
-coarsening test.
+### The contract (`_peer_comparison_payload`, app/api/cohort/routes.py)
+
+- **Nothing below 10 contributing peers** (`MIN_PEER_COHORT`). The count is of
+  peers who actually spent in the window — a tier of 50 where one person spent
+  is a cohort of one. Suppressed answers use the existing
+  `insufficient_peer_data` envelope and are identical whether the tier has 0 or
+  9 contributors.
+- **One statistic: `peer_median`** = `median_low` of the contributors' totals,
+  rounded half-up to `PEER_MEDIAN_INCREMENT` ($100). `median_low` is always a
+  single member's figure, never the mean of two: against a caller who controls
+  one input it behaves as a clamp, so the most it gives away is the neighbouring
+  member's $100 bucket. An interpolated median is linear in that input and
+  gives it away exactly. Do not make the increment finer to "improve accuracy" —
+  it is the only thing between the median and a real member's total. At $100
+  the published median is within 0.2–1.8 % of the true one across the tiers.
+- **`peer_average` and `percentile` are always null.** Neither can be published
+  from a deterministic system without re-opening the attacks above.
+- **`comparison` and `savings_potential` use the PUBLISHED median** and the
+  caller's own spending only. They are arithmetic on what the response already
+  says, so sweeping one's own spending reveals nothing more.
+- **`peer_count` is the constant 10** ("at least 10") whenever anything is
+  published. It is a floor, not a size — clients must not display or reuse it
+  as a sample size (`SocialComparisonService` no longer does).
+- **The cohort is a fixed income tier**, monthly `(0, 3000]`, `(3000, 4800]`,
+  `(4800, 7200]`, `(7200, 12000]`, `(12000, ∞)` from the pinned `US` ladder. An
+  income of 0, negative or NULL is in no tier. `_peer_tier()` and the SQL filter
+  read the same Decimal bounds with the same `>` / `<=`, so an exact edge
+  (3000.00) belongs to exactly one tier. The caller **can** choose which of the
+  five tiers to look at by editing income — that is five fixed cohorts, each
+  showing what every member of it sees — but cannot slide a window past one
+  person. The region is pinned; `user.region` is client-settable.
+
+Mobile: `hasSufficientPeerData()` keys on `peer_median`, and
+`PeerComparisonCard` shows "Peer Median" plus the server's `note` and no
+percentile. Requiring `percentile != null` there would tell a user with a real
+cohort that not enough people have joined.
+
+### Residual — not closed, do not claim otherwise
+
+- **Multiple accounts.** Registration is open. m extra accounts in a tier can
+  shift which member is the median and read other members' $100 buckets; with
+  9 of them, a lone real member's bucket is published. With one extra account,
+  the attacker can also see when a tier holds exactly 9 real contributors.
+  Registration throttling/verification is the answer, not a larger k.
+- **The median is still an order statistic.** Every response says, in effect,
+  "one member of this tier spent roughly $X". It is unlinked to an identity and
+  coarse, but it is about a real person.
+- **Bucket-level temporal change.** A member joining, leaving or spending can
+  move the published median by one member or one bucket; a poller sees that
+  some change happened, not whose or how much.
+- `/api/cohort/insights` is a separate endpoint that reads no peer data.
+
+Regression: `app/tests/test_cohort_peer_anonymity.py` — exact cohorts of
+0/1/9/10/11/19/20 against the real route and the shipped constant (the DB tests
+run in a rolled-back transaction that hides every other suite's users), every
+tier edge against a hand-written table, and the oracle/differencing properties.
+27 production mutations (threshold, tier filter and edges, count, mean,
+median, percentile, raw-median comparison, sliding window, contributor
+counting) each fail it. Mobile: `peer_comparison_no_peers_test.dart` and
+`social_comparison_no_fabricated_peers_test.dart`.
 
 ## Swept and found clean (do not re-derive)
 

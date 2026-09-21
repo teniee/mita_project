@@ -43,15 +43,16 @@ class SocialComparisonService {
     }
 
     final peerData = _extractPeerData(peerComparisonData);
-    final peerAverage = peerData['averageSpending'];
-    if (peerAverage == null || peerAverage <= 0) {
+    final peerMedian = peerData['medianSpending'];
+    if (peerMedian == null || peerMedian <= 0) {
       return const <SocialComparisonInsight>[];
     }
 
-    // Spending comparison
+    // Spending comparison. SocialComparisonInsight.peerAverage carries the
+    // peer MEDIAN: the endpoint publishes no mean.
     final userSpending =
         (userMetrics['monthlySpending'] as num?)?.toDouble() ?? 0.0;
-    final peerAverageSpending = peerAverage;
+    final peerAverageSpending = peerMedian;
     final spendingPercentile =
         _calculatePercentile(userSpending, peerAverageSpending);
 
@@ -113,20 +114,24 @@ class SocialComparisonService {
   /// response that carried no such fields still produced confident
   /// comparisons and a "sampleSize: 1000" badge. A field the server did not
   /// send is absent here, and the caller skips the insight that needs it.
+  ///
+  /// `/cohort/peer_comparison` publishes `peer_median` (rounded to $100) and
+  /// never `peer_average`. Its `peer_count` is a floor ("at least 10"), so it
+  /// is not a sample size and is not read as one.
   Map<String, double?> _extractPeerData(Map<String, dynamic> apiResponse) {
     return {
-      'averageSpending': (apiResponse['peer_average'] as num?)?.toDouble(),
+      'medianSpending': (apiResponse['peer_median'] as num?)?.toDouble(),
       'averageSavingsRate':
           (apiResponse['peer_savings_rate'] as num?)?.toDouble(),
-      'sampleSize': (apiResponse['cohort_size'] as num?)?.toDouble() ??
-          (apiResponse['peer_count'] as num?)?.toDouble(),
+      'sampleSize': (apiResponse['cohort_size'] as num?)?.toDouble(),
     };
   }
 
-  /// Where this user sits relative to the peer *average*, as a 0-1 band.
+  /// Where this user sits relative to a peer figure, as a 0-1 band.
   ///
-  /// This is NOT a distribution percentile: the API sends a mean, not a
-  /// distribution, so nothing here can say how many peers a user is ahead of.
+  /// This is NOT a distribution percentile: the API sends one rounded median,
+  /// not a distribution, so nothing here can say how many peers a user is
+  /// ahead of.
   /// It is only used to pick which sentence to show. Do not surface this
   /// number to the user as "your percentile" — that would claim a ranking the
   /// data cannot support. `SocialComparisonInsight.percentile` is currently
