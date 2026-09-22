@@ -188,8 +188,10 @@ def test_published_median_is_always_on_the_grid():
         totals = [Decimal(rng.randint(1, 900_000)) / 100 for _ in range(n)]
         median = payload(0.0, totals, "t")["peer_median"]
         assert median % 100 == 0, median
-        off_grid = {t for t in totals if t % 100 != 0}
-        assert Decimal(str(median)) not in off_grid
+        # Within half an increment of the lower central member, restated
+        # independently of the production helpers.
+        central = sorted(totals)[(n - 1) // 2]
+        assert abs(Decimal(str(median)) - central) <= 50, (median, central)
 
 
 # ---------------------------------------------------------------------------
@@ -386,6 +388,8 @@ def _assert_suppressed(data):
 # ---------------------------------------------------------------------------
 # 6. Tier membership, asserted against a hand-written table
 # ---------------------------------------------------------------------------
+MIDDLE_INCOMES = ("4800.01", "5500.00", "6000.00", "7200.00")
+
 # (monthly income, tier index) — independent of the production ladder code.
 TIER_OF = [
     ("0.01", 0), ("1500.00", 0), ("3000.00", 0),
@@ -444,10 +448,62 @@ def test_only_contributors_are_counted_and_the_caller_is_never_one(iso_db):
     assert seen == {contributor.id: Decimal("333.33")}
 
 
+def test_the_spending_query_runs_whether_or_not_the_tier_has_members(iso_db):
+    """No short-cut for an empty tier: the work must not depend on membership.
+
+    Skipping the spending query when a tier had no members made the empty
+    tier measurably faster (X-Response-Time-MS is on every response), which
+    told one caller that somebody else had an income in a tier where nobody
+    had contributed — information below the threshold.
+    """
+    from sqlalchemy import event
+
+    since = NOW - timedelta(days=30)
+    caller = _user(iso_db, "9000.00")
+    connection = iso_db.connection()
+    statements = []
+
+    def count(*_args, **_kwargs):
+        statements.append(1)
+
+    event.listen(connection, "before_cursor_execute", count)
+    try:
+        issued = []
+        for setup in ("empty", "one member, no spending", "nine contributors"):
+            if setup == "one member, no spending":
+                _user(iso_db, "9000.00")
+            elif setup == "nine contributors":
+                for amount in TOTALS[:9]:
+                    _user(iso_db, "9000.00", [amount])
+            statements.clear()
+            cohort_routes._peer_spending_by_user(
+                iso_db, caller.id, caller.monthly_income, since
+            )
+            issued.append(len(statements))
+    finally:
+        event.remove(connection, "before_cursor_execute", count)
+
+    assert issued == [1, 1, 1], issued
+
+
+def test_a_non_finite_peer_total_is_not_a_figure(client, iso_db):
+    """numeric allows NaN; one such row must not 500 the tier or count."""
+    subject = _user(iso_db, "6000.00", ["1500.00"])
+    for i, amount in enumerate(TOTALS[:9]):
+        _user(iso_db, MIDDLE_INCOMES[i % 4], [amount])
+    _user(iso_db, "6000.00", [Decimal("NaN")])
+
+    # Nine real contributors plus a NaN: still below the threshold.
+    _assert_suppressed(_get(client, iso_db, subject))
+
+    _user(iso_db, "5500.00", [TOTALS[9]])
+    data = _get(client, iso_db, subject)
+    assert data["peer_median"] == PUBLISHED_MEDIAN[10]
+
+
 # ---------------------------------------------------------------------------
 # 7. The real route, real threshold, exact cohorts
 # ---------------------------------------------------------------------------
-MIDDLE_INCOMES = ("4800.01", "5500.00", "6000.00", "7200.00")
 
 
 @pytest.mark.parametrize("n", SUPPRESSED_SIZES + DISCLOSED_SIZES)
@@ -476,6 +532,50 @@ def test_route_publishes_from_the_tenth_contributor(client, iso_db, n):
     assert data["income_bracket"] == "$4,800 - $7,200/month"
     for amount in TOTALS[:n]:
         assert float(amount) not in _numbers_in(data)
+
+
+# One income well inside each tier, and its label. Hand-written.
+EVERY_TIER = [
+    ("1500.00", "Up to $3,000/month"),
+    ("4000.00", "$3,000 - $4,800/month"),
+    ("6000.00", "$4,800 - $7,200/month"),
+    ("9000.00", "$7,200 - $12,000/month"),
+    ("20000.00", "Above $12,000/month"),
+]
+
+
+@pytest.mark.parametrize("income,label", EVERY_TIER)
+@pytest.mark.parametrize("n", (1, 9, 10))
+def test_the_threshold_holds_in_every_tier(client, iso_db, income, label, n):
+    subject = _user(iso_db, income, ["1500.00"])
+    for amount in TOTALS[:n]:
+        _user(iso_db, income, [amount])
+
+    data = _get(client, iso_db, subject)
+    if n < 10:
+        _assert_suppressed(data)
+    else:
+        assert data["peer_median"] == PUBLISHED_MEDIAN[10]
+        assert data["income_bracket"] == label
+
+
+def test_the_tiers_ignore_the_client_settable_region(client, iso_db):
+    """user.region is writable; per-region ladders would re-open steering.
+
+    Under the US-CA ladder $3,500 is in the bottom tier and $3,900 is not, so
+    a region-aware cohort would put this caller and these peers apart. The
+    pinned US ladder puts both in (3000, 4800].
+    """
+    subject = _user(iso_db, "3500.00", ["1500.00"])
+    subject.region = "US-CA"
+    for amount in TOTALS[:10]:
+        peer = _user(iso_db, "3900.00", [amount])
+        peer.region = "US-CA"
+    iso_db.flush()
+
+    data = _get(client, iso_db, subject)
+    assert data["peer_median"] == PUBLISHED_MEDIAN[10]
+    assert data["income_bracket"] == "$3,000 - $4,800/month"
 
 
 @pytest.mark.parametrize("contributors,published", [(1, False), (9, False), (10, True)])

@@ -1,3 +1,4 @@
+import math
 from decimal import ROUND_HALF_UP, Decimal
 from statistics import median_low
 from typing import Optional, Tuple
@@ -101,6 +102,11 @@ def _peer_spending_by_user(db: Session, caller_id, caller_income, since) -> dict
     Only peers who actually CONTRIBUTED — at least one non-deleted transaction
     since `since` — appear. A tier member with no spending contributes no
     figure and does not count towards MIN_PEER_COHORT.
+
+    One query, always run. Looking the tier's members up first and skipping
+    the spending query when there were none made an empty tier answer
+    measurably faster (X-Response-Time-MS), which told a single caller that
+    somebody had an income in a tier where nobody had contributed yet.
     """
     from sqlalchemy import func
 
@@ -119,23 +125,24 @@ def _peer_spending_by_user(db: Session, caller_id, caller_income, since) -> dict
     if upper is not None:
         bracket_filters.append(UserModel.monthly_income <= upper)
 
-    peer_user_ids = [
-        p.id for p in db.query(UserModel.id).filter(*bracket_filters).all()
-    ]
-    if not peer_user_ids:
-        return {}
-
     rows = (
         db.query(Transaction.user_id, func.sum(Transaction.amount))
+        .join(UserModel, UserModel.id == Transaction.user_id)
         .filter(
-            Transaction.user_id.in_(peer_user_ids),
+            *bracket_filters,
             Transaction.deleted_at.is_(None),
             Transaction.spent_at >= since,
         )
         .group_by(Transaction.user_id)
         .all()
     )
-    return {user_id: total for user_id, total in rows if total is not None}
+    # A NaN or infinite total (numeric allows both) is not a figure: counting
+    # it would let one bad row 500 the whole tier's comparison.
+    return {
+        user_id: total
+        for user_id, total in rows
+        if total is not None and math.isfinite(total)
+    }
 
 
 def _round_to_increment(value) -> Decimal:

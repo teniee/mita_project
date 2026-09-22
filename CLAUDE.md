@@ -732,26 +732,60 @@ cohort that not enough people have joined.
 
 ### Residual — not closed, do not claim otherwise
 
-- **Multiple accounts.** Registration is open. m extra accounts in a tier can
-  shift which member is the median and read other members' $100 buckets; with
-  9 of them, a lone real member's bucket is published. With one extra account,
-  the attacker can also see when a tier holds exactly 9 real contributors.
-  Registration throttling/verification is the answer, not a larger k.
-- **The median is still an order statistic.** Every response says, in effect,
+What a single account can learn is proven to be a function of the tier's
+$100-rounded contributor totals and of whether there are at least 10 of them
+(rounding half-up is monotone, so it commutes with taking an order
+statistic). One account never observes a cohort that contains itself. What is
+left:
+
+- **Multiple accounts — the main residual.** Registration is open (5 per hour
+  per client, no email-verification gate on authenticated routes). Accounts
+  placed in a tier can:
+  - learn the exact number of real contributors while it is below 10 (the
+    number of extra accounts it takes to make the tier publish);
+  - move which member `median_low` lands on, and so read every real member's
+    $100 bucket;
+  - with 9 accounts beside a lone real member, publish that member's 30-day
+    spending to ±$50 — and then watch that bucket, and the member's
+    arrival/departure, over time.
+
+  Nothing finer than the $100 bucket is recoverable however many accounts
+  are used. Closing this needs contributor eligibility (verified email,
+  account age, spending on several distinct days) or registration controls.
+  That is a product decision and is not in this change. Do not describe the
+  feature as anonymous against a multi-account attacker.
+- **The median is an order statistic.** Every response says, in effect,
   "one member of this tier spent roughly $X". It is unlinked to an identity and
   coarse, but it is about a real person.
-- **Bucket-level temporal change.** A member joining, leaving or spending can
-  move the published median by one member or one bucket; a poller sees that
-  some change happened, not whose or how much.
-- `/api/cohort/insights` is a separate endpoint that reads no peer data.
+- **Temporal, single account.** One account sees the rounded median and the
+  publish/suppress flag change over time: that something changed, not whose
+  or by how much. (With extra accounts, see above.)
+- **Timing.** `_peer_spending_by_user` is one query that always runs — the old
+  "look up members, skip if none" path made an empty tier measurably faster,
+  and `X-Response-Time-MS` is on every response, so one caller could tell
+  that somebody had an income in a tier with no contributors. Response time
+  still grows with a tier's transaction volume; that reveals activity, not a
+  member's amount. Do not reintroduce a short-circuit.
+- NaN/Infinity: `PATCH /users/me` accepts both (500, but the value is
+  committed); such a caller gets no comparison, and PostgreSQL counts such a
+  peer in the top tier. A NaN/infinite spending total is skipped rather than
+  counted. Input validation on `UserUpdateIn` is the real fix, elsewhere.
+- `/api/cohort/insights` reads no peer data. `UserPreference.peer_comparison`
+  (default False, settable via `/behavior/preferences`) is not consulted
+  here; if it was meant as data-sharing consent, that is a separate decision.
 
 Regression: `app/tests/test_cohort_peer_anonymity.py` — exact cohorts of
-0/1/9/10/11/19/20 against the real route and the shipped constant (the DB tests
-run in a rolled-back transaction that hides every other suite's users), every
-tier edge against a hand-written table, and the oracle/differencing properties.
-27 production mutations (threshold, tier filter and edges, count, mean,
-median, percentile, raw-median comparison, sliding window, contributor
-counting) each fail it. Mobile: `peer_comparison_no_peers_test.dart` and
+0/1/9/10/11/19/20 against the real route and the shipped constant, the
+threshold in every one of the five tiers, every tier edge against a
+hand-written table, the region pin, one-query-always, and the
+oracle/differencing properties. The DB tests run in a rolled-back transaction
+that hides every other suite's users, so cohorts are exact — do not replace
+that with a threshold monkeypatched relative to whatever the shared database
+holds (that version passed against the vulnerable endpoint). 32 distinct
+production mutations (threshold and k in any tier, tier filter and edges,
+region, count, mean, median, percentile, raw-median comparison, sliding
+window, contributor counting, the empty-tier short-circuit, non-finite totals)
+each fail it. Mobile: `peer_comparison_no_peers_test.dart` and
 `social_comparison_no_fabricated_peers_test.dart`.
 
 ## Swept and found clean (do not re-derive)
