@@ -486,6 +486,75 @@ def test_the_spending_query_runs_whether_or_not_the_tier_has_members(iso_db):
     assert issued == [1, 1, 1], issued
 
 
+# Differ on every response by design; everything else must not.
+PER_REQUEST_HEADERS = {"x-request-id", "x-response-time-ms"}
+PER_REQUEST_BODY_KEYS = {"timestamp", "request_id"}
+
+
+def test_route_work_and_headers_do_not_depend_on_sub_threshold_membership(
+    client, iso_db
+):
+    """Below the threshold, nothing the route does or sends may vary.
+
+    The helper test above cannot see a membership check added one level up
+    in get_peer_comparison, nor a header carrying the count. Through the
+    real route: the same SQL statements, the same headers and the same body
+    whether the tier is empty, has a member who spent nothing, or has nine
+    contributors.
+
+    This pins the route's WORK, not its timing: the planner still picks the
+    join from its estimate of how many users hold an income in the tier (see
+    the Timing residual in CLAUDE.md).
+    """
+    from sqlalchemy import event
+
+    from app.api.dependencies import get_current_user
+    from app.core.session import get_db
+    from app.main import app
+
+    subject = _user(iso_db, "9000.00")
+    connection = iso_db.connection()
+    statements = []
+
+    def record(_conn, _cursor, statement, *_args):
+        statements.append(statement)
+
+    app.dependency_overrides[get_current_user] = lambda: subject
+    app.dependency_overrides[get_db] = lambda: iso_db
+    event.listen(connection, "before_cursor_execute", record)
+    try:
+        seen = []
+        for setup in ("empty", "one member, no spending", "nine contributors"):
+            if setup == "one member, no spending":
+                _user(iso_db, "9000.00")
+            elif setup == "nine contributors":
+                for amount in TOTALS[:9]:
+                    _user(iso_db, "9000.00", [amount])
+            statements.clear()
+            resp = client.get("/api/cohort/peer_comparison")
+            assert resp.status_code == 200, resp.text
+            headers = {
+                k: v
+                for k, v in resp.headers.items()
+                if k.lower() not in PER_REQUEST_HEADERS
+            }
+            body = {
+                k: v for k, v in resp.json().items() if k not in PER_REQUEST_BODY_KEYS
+            }
+            seen.append((setup, list(statements), headers, body))
+    finally:
+        event.remove(connection, "before_cursor_execute", record)
+        app.dependency_overrides.pop(get_current_user, None)
+        app.dependency_overrides.pop(get_db, None)
+
+    _assert_suppressed(seen[0][3]["data"])
+    empty = seen[0][1:]
+    for setup, *observed in seen[1:]:
+        assert observed[0] == empty[0], f"SQL differs: {setup}"
+        assert observed[1] == empty[1], f"headers differ: {setup}"
+        assert observed[2] == empty[2], f"body differs: {setup}"
+
+
 def test_a_non_finite_peer_total_is_not_a_figure(client, iso_db):
     """numeric allows NaN; one such row must not 500 the tier or count."""
     subject = _user(iso_db, "6000.00", ["1500.00"])

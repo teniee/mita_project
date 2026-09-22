@@ -107,6 +107,14 @@ def _peer_spending_by_user(db: Session, caller_id, caller_income, since) -> dict
     the spending query when there were none made an empty tier answer
     measurably faster (X-Response-Time-MS), which told a single caller that
     somebody had an income in a tier where nobody had contributed yet.
+
+    That removes the short-cut, not the timing channel: PostgreSQL chooses
+    this query's join from its statistics estimate of how many users hold an
+    income in the tier, so a tier with a handful of income holders (around
+    eight on a 750-user table; the point moves with table size) answers
+    measurably slower than an empty one even when none of them spent. That
+    is a coarse head-count of the tier, never a member's amount — see the
+    Timing residual in CLAUDE.md before assuming timing is tier-independent.
     """
     from sqlalchemy import func
 

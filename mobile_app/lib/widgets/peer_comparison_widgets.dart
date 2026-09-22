@@ -34,8 +34,9 @@ class PeerSpendingInsightsWidget extends StatelessWidget {
     final tier = incomeService.classifyIncome(monthlyIncome);
     final primaryColor = incomeService.getIncomeTierPrimaryColor(tier);
 
-    // No per-category fallback. /cohort/peer_comparison sends an overall
-    // peer_average and no `categories` map at all, so `userAmount * 1.2` was
+    // No per-category fallback. /cohort/peer_comparison sends one overall
+    // peer figure (a rounded peer_median since #282; it publishes no mean)
+    // and no `categories` map at all, so `userAmount * 1.2` was
     // never a stand-in for a missing figure — it was the only figure, and
     // getPeerComparisonMessage turned it into "You spend 17% less on
     // $category than other ${tierName}s" for every category and every user,
@@ -546,8 +547,9 @@ class SpendingTrendsComparisonWidget extends StatelessWidget {
     if (!hasSufficientPeerData(peerData)) return const SizedBox.shrink();
 
     // A cohort exists, but that does not mean a PER-CATEGORY comparison does.
-    // The endpoint sends one overall peer_average and no `categories` map, so
-    // this fell through to `userAmount * 1.15` for every row: the "Peers"
+    // The endpoint sends one overall peer figure (a rounded peer_median since
+    // #282) and no `categories` map, so this fell through to
+    // `userAmount * 1.15` for every row: the "Peers"
     // figure beside each category was the user's own spending plus 15%, and
     // `isUserBetter` (userAmount < peerAmount) was therefore true for every
     // category, always — a green thumbs-up on every line, derived from
