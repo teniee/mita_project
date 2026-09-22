@@ -15,6 +15,7 @@ import '../services/cohort_service.dart';
 import '../widgets/income_tier_widgets.dart';
 import '../widgets/peer_comparison_widgets.dart';
 import '../widgets/insights_empty_state_widgets.dart';
+import '../utils/health_score_data.dart';
 import '../utils/string_extensions.dart';
 import '../services/logging_service.dart';
 
@@ -831,10 +832,11 @@ class _InsightsScreenState extends State<InsightsScreen>
 
   Widget _buildFinancialHealthCard() {
     // A missing score or grade is "we don't know yet", not 75/B+. Defaulting
-    // them stated a financial assessment the server never made.
-    final rawScore = financialHealthScore?['score'];
-    final rawGrade = financialHealthScore?['grade'];
-    if (financialHealthScore == null || rawScore == null || rawGrade == null) {
+    // them stated a financial assessment the server never made. The server
+    // now also says `status: "insufficient_data"` for an account with no
+    // spending to score, where it used to send the income tier's expectation
+    // threshold (73 / "C" for $9,000 a month) as if it were this person's.
+    if (!hasFinancialHealthScore(financialHealthScore)) {
       return InsightsEmptyStateWidgets.buildSectionEmptyCard(
         title: 'Financial Health Score',
         icon: Icons.health_and_safety,
@@ -844,8 +846,8 @@ class _InsightsScreenState extends State<InsightsScreen>
       );
     }
 
-    final score = rawScore;
-    final grade = rawGrade;
+    final score = financialHealthScore!['score'];
+    final grade = financialHealthScore!['grade'];
     final improvements = asStringList(financialHealthScore!['improvements']);
 
     return Container(

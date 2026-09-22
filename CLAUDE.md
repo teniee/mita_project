@@ -817,6 +817,71 @@ peers from the top tier, which leaks nothing. The route test pins the work,
 not the timing (see Timing above). Mobile: `peer_comparison_no_peers_test.dart`
 and `social_comparison_no_fabricated_peers_test.dart`.
 
+## An income tier is not a health score
+
+`GET /api/ai/financial-health-score` answered an account with **no
+transactions at all** with the income tier's *expectation* threshold,
+presented as that person's own score. `_get_budgeting_threshold` returns
+`70 + {low -5, lower_middle -2, middle 0, upper_middle +3, high +5}` — what
+someone in that tier is expected to achieve — and the no-data branch of
+`AIFinancialAnalyzer.calculate_financial_health_score()` published it as
+`score`, ran it through `_score_to_grade`, copied it into four components and
+added `trend: "stable"`.
+
+Reproduced on `562a3a8` through the real route, on accounts whose ledger was
+empty:
+
+    monthly income  2500 -> score 68, grade "C+"
+    monthly income  5000 -> score 73, grade "C"
+    monthly income  9000 -> score 73, grade "C"
+    monthly income 20000 -> score 75, grade "C"
+
+    components: {budgeting, saving, debt_management, spending_efficiency}
+                all equal to that one number
+
+The component names are the tell: the real calculation below it produces
+`budgeting` / `spending_efficiency` / `saving_potential` / `consistency`, and
+never `saving` or `debt_management`. The number moved only with income — the
+same user, with the same (empty) ledger, was a "C" on $5,000 and a "C" on
+$20,000 because the tier bonus differed.
+
+`insights_screen._buildFinancialHealthCard` renders "Add more transactions to
+calculate your financial health score" only when score/grade are null. This
+branch is why that guard never fired: the server always filled them in.
+
+### The contract
+
+- **No usable ledger data -> no assessment.** `score`, `grade` and `trend` are
+  null, `components` is `{}`, and `status: "insufficient_data"` says why.
+  "No usable data" is what `_load_spending_data` returns nothing for: no
+  transactions, only soft-deleted ones, or only ones older than its 6-month
+  window. Guidance (`improvements`) is still offered — advice is not a verdict.
+- **Do not substitute a replacement figure.** Not the tier threshold, not a
+  "neutral" 50, not the last known score. Every other no-data path in this
+  analyzer already answers empty / `confidence: 0.0`; this one now matches.
+- **Sparse is not insufficient.** One real transaction is measured, not
+  suppressed. The fix removes fabrication, it does not add a minimum-activity
+  gate — adding one would be a product decision, not a correction.
+- **The failure envelope is unchanged**: a raised analyzer still answers 200
+  with nulls and an `error` key, so the screen degrades rather than 500s.
+- Mobile keys on `hasFinancialHealthScore()` (`utils/health_score_data.dart`),
+  which requires a non-null score AND grade and rejects
+  `status: "insufficient_data"` outright. It lives beside the rule it mirrors,
+  `hasSufficientPeerData()`, so a later `?? 75` cannot put a grade back on the
+  card — a `75` / `"B+"` default is what #278 already had to remove once.
+
+Not touched here, and deliberately: `_calculate_health_trend` returns
+`"stable"` for any ledger under 60 transactions (a separate finding);
+`PredictiveAnalyticsWidget` defaults this endpoint's absent `risk_level` to
+`"moderate"`, but the widget has no callers in `lib/` and renders nowhere.
+
+Regression: `app/tests/test_health_score_insufficient_data.py` (16 cases,
+real route and real DB in a rolled-back transaction) and
+`mobile_app/test/utils/health_score_data_test.dart`. Restoring the tier
+baseline fails 10 of the backend cases; a fixed 50/"C" fails 9; dropping
+`status` alone fails 8. On the client, ignoring `status` fails 1 and treating
+any envelope as an assessment fails 5.
+
 ## Swept and found clean (do not re-derive)
 
 Recorded so a later audit does not spend the effort again. Each was checked to
