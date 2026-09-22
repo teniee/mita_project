@@ -388,8 +388,9 @@ Two separate faults, one exposed and one pre-existing:
 `as List<String>?` on a JSON-decoded `List<dynamic>` returns null, so real peer
 insights could silently vanish. The accessors read every element as a string.
 
-In the service itself, two claims outran the data. The API sends a **mean, not
-a distribution**, so nothing there can establish a ranking:
+In the service itself, two claims outran the data. The API sends **one
+statistic, not a distribution** (a mean at the time; since #282 a rounded
+median and never a mean), so nothing there can establish a ranking:
 "You're ahead of most peers in your tier" became "well above the average for
 your income tier", and "increase your savings rate by 2-3%" — a figure nothing
 computed — now points at the average instead.
@@ -579,15 +580,16 @@ them.
 ## A real cohort does not imply a per-category comparison
 
 `hasSufficientPeerData()` gates the peer widgets on the endpoint reporting a
-cohort and an overall `peer_average`. That closed the no-peers case. It did not
-close the layer beneath it.
+cohort and an overall peer figure (`peer_average` at the time; `peer_median`
+since #282, which stopped publishing a mean). That closed the no-peers case. It
+did not close the layer beneath it.
 
 `SpendingTrendsComparisonWidget` draws one row per spending category, and each
 row read `peerData['categories'][c]['peer_average']` — a key
-`/api/cohort/peer_comparison` **never sends**. Its success branch returns nine
+`/api/cohort/peer_comparison` **never sends**. Its success branch returns ten
 keys (`your_spending`, `peer_average`, `peer_median`, `percentile`,
 `comparison`, `savings_potential`, `peer_count`, `income_bracket`,
-`analysis_period_days`) and no `categories` map at all. Every row therefore
+`analysis_period_days`, `note`) and no `categories` map at all. Every row therefore
 fell through to:
 
     ?? userAmount * 1.15
@@ -650,6 +652,170 @@ the user's own money off the device in release builds:
 All five predate `d23f621`. Fixing them means touching four files unrelated to
 this PR's purpose, so it belongs in its own change — the same treatment as the
 NOT NULL migration above.
+
+## An aggregate over one person is that person's data
+
+`/api/cohort/peer_comparison` compared the caller against everyone within
+±20 % of the caller's **own** income and published `peer_average`,
+`peer_median`, `percentile`, `comparison` and `savings_potential` as soon as
+**one** of them had spent anything.
+
+Reproduced against the real route: a victim on $7,777/month with expenses of
+$111.11 and $222.22 made the endpoint answer another account with
+
+    peer_average = 333.33, peer_median = 333.33, peer_count = 1
+
+— that victim's exact 30-day spending, relabelled as a cohort statistic.
+Sweeping the caller's own (writable, `PATCH /api/users/me`) income and reading
+`peer_count` located another user's income to within a rounding error. README.md
+calls this feature "anonymized peer comparison" and PRIVACY_POLICY.md says peer
+data is "aggregated and anonymized".
+
+### A minimum cohort size is not enough on its own
+
+The first fix (fixed tiers, k = 10, `peer_count` rounded down to a multiple of
+10) was broken by adversarial review. All of the following were reproduced
+against it, not argued:
+
+- **The caller's own spending was a search probe.** `percentile` ranked the
+  caller against the *raw* totals. Stepping one's own spending and watching the
+  rank move recovered **every** member's exact 30-day total (200/200 simulated
+  cohorts of 10–30, ~640 queries each). `comparison` and `savings_potential`
+  were computed against the raw median, so the flip point (or `your_spending −
+  savings_potential`) gave the median to the cent.
+- **The odd-n median was one member's exact total.**
+- **A rounded count still moves.** `19 → 20` is visible, and then
+  `20·avg' − 19·avg` is the joiner's exact spending (500/500).
+- **Rounding a mean does not hide it.** With ONE extra account in the tier, the
+  attacker steps that account's spending a cent at a time, finds two rounding
+  edges of the published mean, and gets the cohort's exact size and exact sum —
+  at every increment tried, $10 through $250. A mean is linear in every member;
+  deterministic rounding of a linear statistic is invertible by anyone who
+  controls one input.
+
+### The contract (`_peer_comparison_payload`, app/api/cohort/routes.py)
+
+- **Nothing below 10 contributing peers** (`MIN_PEER_COHORT`). The count is of
+  peers who actually spent in the window — a tier of 50 where one person spent
+  is a cohort of one. Suppressed answers use the existing
+  `insufficient_peer_data` envelope and are identical whether the tier has 0 or
+  9 contributors.
+- **One statistic: `peer_median`** = `median_low` of the contributors' totals,
+  rounded half-up to `PEER_MEDIAN_INCREMENT` ($100). `median_low` is always a
+  single member's figure, never the mean of two: against a caller who controls
+  one input it behaves as a clamp, so the most it gives away is the neighbouring
+  member's $100 bucket. An interpolated median is linear in that input and
+  gives it away exactly. Do not make the increment finer to "improve accuracy" —
+  it is the only thing between the median and a real member's total. At $100
+  the published median is within 0.2–1.8 % of the true one across the tiers.
+- **`peer_average` and `percentile` are always null.** Neither can be published
+  from a deterministic system without re-opening the attacks above.
+- **`comparison` and `savings_potential` use the PUBLISHED median** and the
+  caller's own spending only. They are arithmetic on what the response already
+  says, so sweeping one's own spending reveals nothing more.
+- **`peer_count` is the constant 10** ("at least 10") whenever anything is
+  published. It is a floor, not a size — clients must not display or reuse it
+  as a sample size (`SocialComparisonService` no longer does).
+- **The cohort is a fixed income tier**, monthly `(0, 3000]`, `(3000, 4800]`,
+  `(4800, 7200]`, `(7200, 12000]`, `(12000, ∞)` from the pinned `US` ladder. An
+  income of 0, negative or NULL is in no tier. `_peer_tier()` and the SQL filter
+  read the same Decimal bounds with the same `>` / `<=`, so an exact edge
+  (3000.00) belongs to exactly one tier. The caller **can** choose which of the
+  five tiers to look at by editing income — that is five fixed cohorts, each
+  showing what every member of it sees — but cannot slide a window past one
+  person. The region is pinned; `user.region` is client-settable.
+
+Mobile: `hasSufficientPeerData()` keys on `peer_median`, and
+`PeerComparisonCard` shows "Peer Median" plus the server's `note` and no
+percentile. Requiring `percentile != null` there would tell a user with a real
+cohort that not enough people have joined.
+
+### Residual — not closed, do not claim otherwise
+
+What a single account can learn FROM THE RESPONSE is proven to be a function
+of the tier's $100-rounded contributor totals and of whether there are at
+least 10 of them (rounding half-up is monotone, so it commutes with taking an
+order statistic). One account never observes a cohort that contains itself.
+Response TIMING adds a coarse head-count of the tier (see Timing below). What
+is left:
+
+- **Multiple accounts — the main residual.** Registration is open (5 per hour
+  per client, no email-verification gate on authenticated routes). Accounts
+  placed in a tier can:
+  - learn the exact number of real contributors at ANY size: below 10 as the
+    number of extra contributing accounts it takes to make the tier publish,
+    and at 10 or more by adding accounts with a huge total until `median_low`
+    lands on one of them (n + 1 such accounts; reproduced for every n from 10
+    to 60);
+  - move which member `median_low` lands on, and so read every real member's
+    $100 bucket;
+  - with 9 contributing accounts beside a lone real member, plus a 10th
+    account to ask (the caller is never in its own cohort), publish that
+    member's 30-day spending to ±$50 — and then watch that bucket, and the
+    member's arrival/departure, over time.
+
+  Nothing finer than the $100 bucket is recoverable from any one response,
+  however many accounts are used. Over time, the moment a watched member's
+  bucket changes, combined with outside knowledge of one of their
+  transactions, could narrow it further (plausible, not reproduced).
+  Closing this needs contributor eligibility (verified email, account age,
+  spending on several distinct days) or registration controls. That is a
+  product decision and is not in this change. Do not describe the feature as
+  anonymous against a multi-account attacker.
+- **The median is an order statistic.** Every response says, in effect,
+  "one member of this tier spent roughly $X". It is unlinked to an identity and
+  coarse, but it is about a real person.
+- **Temporal, single account.** One account sees the rounded median and the
+  publish/suppress flag change over time: that something changed, not whose
+  or by how much. (With extra accounts, see above; for timing, see below.)
+- **Timing — a tier head-count, not amounts.** `_peer_spending_by_user` is
+  one query that always runs. The old "look up members, skip if none" path
+  made an empty tier measurably faster, and `X-Response-Time-MS` is on every
+  response, so one caller could tell that a single person had an income in a
+  tier with no contributors; that single person is no longer distinguishable.
+  But the timing is NOT tier-independent. PostgreSQL picks this query's join
+  from its statistics estimate of how many users hold an income in the tier:
+  nested loop for an empty or near-empty tier, hash join with a scan of
+  `transactions` once there are around eight income holders (on a 750-user,
+  9k-transaction table; the point moves with table size and follows the next
+  ANALYZE, which autovacuum runs by itself). Locally that is ~4 ms against
+  ~7 ms with zero contributors and a byte-identical body — reproduced
+  through the real PATCH and GET routes by one account. So one account can
+  learn, per tier, whether it holds more than a handful of income holders;
+  extra accounts can move the count across the flip point and read it
+  exactly. It is a head-count of the tier, never a member's amount or who
+  they are. Response time also grows with a tier's transaction volume.
+  Removing the channel needs a tier-independent query (aggregate every tier
+  on each request, or cache it, and pick the caller's tier in Python — a
+  cost that grows with all users' 30-day transactions) or dropping the
+  response-time headers (global middleware; network timing remains). Neither
+  is in this change. Do not reintroduce a short-circuit.
+- NaN/Infinity: `PATCH /users/me` accepts both (500, but the value is
+  committed); such a caller gets no comparison, and PostgreSQL counts such a
+  peer in the top tier. A NaN/infinite spending total is skipped rather than
+  counted. Input validation on `UserUpdateIn` is the real fix, elsewhere.
+- `/api/cohort/insights` reads no peer data. `UserPreference.peer_comparison`
+  (default False, settable via `/behavior/preferences`) is not consulted
+  here; if it was meant as data-sharing consent, that is a separate decision.
+
+Regression: `app/tests/test_cohort_peer_anonymity.py` — exact cohorts of
+0/1/9/10/11/19/20 against the real route and the shipped constant, the
+threshold in every one of the five tiers, every tier edge against a
+hand-written table, the region pin, one-query-always (in the helper, and
+through the route: the same SQL, headers and body for an empty tier, a
+non-contributing member and nine contributors), and the oracle/differencing
+properties. The DB tests run in a rolled-back transaction that hides every
+other suite's users, so cohorts are exact — do not replace that with a
+threshold monkeypatched relative to whatever the shared database holds (that
+version passed against the vulnerable endpoint). 32 distinct production
+mutations (threshold and k in any tier, tier filter and edges, region, count,
+mean, median, percentile, raw-median comparison, sliding window, contributor
+counting, the empty-tier short-circuit, non-finite totals) each fail it, and
+so do 14 of the final reviewer's 15 (a route-level membership pre-check and
+a count leaked in a header included). The survivor drops NaN/Infinity-income
+peers from the top tier, which leaks nothing. The route test pins the work,
+not the timing (see Timing above). Mobile: `peer_comparison_no_peers_test.dart`
+and `social_comparison_no_fabricated_peers_test.dart`.
 
 ## Swept and found clean (do not re-derive)
 

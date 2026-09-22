@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/income_service.dart';
 import '../theme/app_typography.dart';
 import '../utils/json_utils.dart';
+import '../utils/peer_data.dart';
 
 /// Income tier display card with Material 3 styling
 class IncomeTierCard extends StatelessWidget {
@@ -411,31 +412,31 @@ class PeerComparisonCard extends StatelessWidget {
       final primaryColor = incomeService.getIncomeTierPrimaryColor(tier);
 
       final yourSpending = comparisonData['your_spending'] as double? ?? 0.0;
-      final peerAverageOrNull = comparisonData['peer_average'] as double?;
-      final percentileOrNull = comparisonData['percentile'] as int?;
-      final peerCount = comparisonData['peer_count'] as int?;
       final insights = asStringList(comparisonData['insights']);
+      final note = comparisonData['note'];
 
       // No peers, no comparison. The API is explicit about this — it returns
-      // peer_average/percentile as null with comparison
-      // "insufficient_peer_data" and peer_count 0 — but this card used to
-      // default them to \$0 and "50th percentile", so a day-one user was told
-      // they ranked mid-pack against a cohort of nobody, and simultaneously
-      // that they were "#0 (0th percentile)" further down the same screen.
-      final hasPeers = peerAverageOrNull != null &&
-          percentileOrNull != null &&
-          (peerCount == null || peerCount > 0) &&
-          comparisonData['comparison'] != 'insufficient_peer_data';
-
-      if (!hasPeers) {
+      // null statistics with comparison "insufficient_peer_data" and
+      // peer_count 0 — but this card used to default them to \$0 and "50th
+      // percentile", so a day-one user was told they ranked mid-pack against a
+      // cohort of nobody, and simultaneously that they were "#0 (0th
+      // percentile)" further down the same screen.
+      //
+      // A real cohort is a published peer_median. The endpoint never sends a
+      // peer_average or a percentile (both let a caller recover individual
+      // members' spending), so neither may be required here — requiring the
+      // percentile would tell a user with a real cohort that not enough
+      // people have joined.
+      if (!hasSufficientPeerData(comparisonData)) {
         return _buildNoPeerDataCard(context, tierName, primaryColor);
       }
 
-      final peerAverage = peerAverageOrNull;
-      final percentile = percentileOrNull;
-      final isAboveAverage = yourSpending > peerAverage;
-      final difference = peerAverage > 0
-          ? ((yourSpending - peerAverage) / peerAverage * 100).abs()
+      final peerMedian = asDouble(comparisonData['peer_median']);
+      final isAbovePeers = yourSpending > peerMedian;
+      // A median that rounds to \$0 supports no percentage.
+      final showDifference = peerMedian > 0;
+      final difference = showDifference
+          ? ((yourSpending - peerMedian) / peerMedian * 100).abs()
           : 0.0;
 
       return Card(
@@ -469,14 +470,20 @@ class PeerComparisonCard extends StatelessWidget {
                                     fontFamily: AppTypography.fontHeading,
                                   ),
                         ),
-                        Text(
-                          'You\'re in the ${percentile}th percentile',
-                          style:
-                              Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: primaryColor,
-                                    fontFamily: AppTypography.fontBody,
-                                  ),
-                        ),
+                        // The server's own qualifier ("Median of at least
+                        // 10 people in your income tier, rounded to the
+                        // nearest \$100"), so the figure is not read as exact.
+                        if (note is String && note.isNotEmpty)
+                          Text(
+                            note,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium
+                                ?.copyWith(
+                                  color: primaryColor,
+                                  fontFamily: AppTypography.fontBody,
+                                ),
+                          ),
                       ],
                     ),
                   ),
@@ -518,34 +525,35 @@ class PeerComparisonCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: isAboveAverage
-                            ? Colors.red.shade100
-                            : Colors.green.shade100,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        '${isAboveAverage ? '+' : '-'}${difference.toStringAsFixed(0)}%',
-                        style: TextStyle(
-                          color: isAboveAverage
-                              ? Colors.red.shade700
-                              : Colors.green.shade700,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                          fontFamily: AppTypography.fontHeading,
+                    if (showDifference)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isAbovePeers
+                              ? Colors.red.shade100
+                              : Colors.green.shade100,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          '${isAbovePeers ? '+' : '-'}${difference.toStringAsFixed(0)}%',
+                          style: TextStyle(
+                            color: isAbovePeers
+                                ? Colors.red.shade700
+                                : Colors.green.shade700,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                            fontFamily: AppTypography.fontHeading,
+                          ),
                         ),
                       ),
-                    ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            'Peer Average',
+                            'Peer Median',
                             style:
                                 Theme.of(context).textTheme.bodySmall?.copyWith(
                                       color: Colors.grey.shade600,
@@ -553,7 +561,7 @@ class PeerComparisonCard extends StatelessWidget {
                                     ),
                           ),
                           Text(
-                            '\$${peerAverage.toStringAsFixed(0)}',
+                            '\$${peerMedian.toStringAsFixed(0)}',
                             style: Theme.of(context)
                                 .textTheme
                                 .titleLarge

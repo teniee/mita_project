@@ -36,18 +36,26 @@ const Map<String, dynamic> _noPeers = {
   'note': 'Need more users in database for peer comparison',
 };
 
+/// Exactly what the API returns for a real cohort (app/api/cohort/routes.py
+/// `_peer_comparison_payload`): one statistic, the median rounded to \$100.
+/// No mean and no percentile — both let a caller work out individual members'
+/// spending — and `peer_count` is the floor 10 ("at least 10"), not a size.
 const Map<String, dynamic> _withPeers = {
   'your_spending': 200.0,
-  'peer_average': 320.0,
+  'peer_average': null,
   'peer_median': 300.0,
-  'percentile': 30,
-  'comparison': 'below_average',
-  'savings_potential': 0,
-  'peer_count': 12,
+  'percentile': null,
+  'comparison': 'well_below_average',
+  'savings_potential': 0.0,
+  'peer_count': 10,
+  'income_bracket': '\$4,800 - \$7,200/month',
+  'analysis_period_days': 30,
+  'note': 'Median of at least 10 people in your income tier, rounded to the '
+      'nearest \$100',
 };
 
 /// The same envelope plus a per-category map. The endpoint does NOT send this
-/// today (app/api/cohort/routes.py returns nine keys and no `categories`), so
+/// today (app/api/cohort/routes.py returns ten keys and no `categories`), so
 /// it stands for the only payload that may legitimately drive a per-category
 /// peer bar — and proves the widget still works if the server starts sending
 /// one.
@@ -64,17 +72,35 @@ void main() {
       expect(hasSufficientPeerData(_noPeers), isFalse);
     });
 
-    test('false when the cohort is empty even if an average slipped through',
-        () {
+    test('the explicit verdict wins over any figure beside it', () {
       expect(
-        hasSufficientPeerData(const {'peer_count': 0, 'peer_average': 100.0}),
+        hasSufficientPeerData(const {
+          'comparison': 'insufficient_peer_data',
+          'peer_count': 10,
+          'peer_median': 1200.0,
+        }),
         isFalse,
       );
     });
 
-    test('false when there is no average to compare against', () {
+    test('false when the cohort is empty even if a median slipped through', () {
       expect(
-        hasSufficientPeerData(const {'peer_count': 5, 'peer_average': null}),
+        hasSufficientPeerData(const {'peer_count': 0, 'peer_median': 100.0}),
+        isFalse,
+      );
+    });
+
+    test('false when there is no median to compare against', () {
+      expect(
+        hasSufficientPeerData(const {'peer_count': 10, 'peer_median': null}),
+        isFalse,
+      );
+    });
+
+    test('a mean alone is not the contract — the endpoint publishes none', () {
+      expect(
+        hasSufficientPeerData(
+            const {'peer_count': 10, 'peer_average': 1405.29}),
         isFalse,
       );
     });
@@ -83,8 +109,55 @@ void main() {
       expect(hasSufficientPeerData(null), isFalse);
     });
 
-    test('true only with a real cohort and a real average', () {
+    test('true with a real cohort, even though percentile and mean are null',
+        () {
       expect(hasSufficientPeerData(_withPeers), isTrue);
+    });
+  });
+
+  group('PeerComparisonCard with a real cohort', () {
+    testWidgets('renders the published median, not "not enough people"',
+        (tester) async {
+      await tester.pumpWidget(_host(
+        const PeerComparisonCard(
+            comparisonData: _withPeers, monthlyIncome: 6000),
+      ));
+      await tester.pump();
+
+      // A null percentile must not be read as "no cohort".
+      expect(find.textContaining('Not enough people'), findsNothing);
+      expect(find.text('Peer Median'), findsOneWidget);
+      expect(find.text('\$300'), findsOneWidget);
+      // (200 - 300) / 300 = -33%
+      expect(find.text('-33%'), findsOneWidget);
+      // The server's qualifier, so the figure is not read as exact.
+      expect(find.textContaining('rounded to the nearest'), findsOneWidget);
+    });
+
+    testWidgets('invents no percentile and no average', (tester) async {
+      await tester.pumpWidget(_host(
+        const PeerComparisonCard(
+            comparisonData: _withPeers, monthlyIncome: 6000),
+      ));
+      await tester.pump();
+
+      expect(find.textContaining('percentile'), findsNothing);
+      expect(find.text('Peer Average'), findsNothing);
+      expect(find.textContaining('50th'), findsNothing);
+    });
+
+    testWidgets('a median that rounds to \$0 gets no percentage badge',
+        (tester) async {
+      final zeroMedian = Map<String, dynamic>.of(_withPeers)
+        ..['peer_median'] = 0.0
+        ..['comparison'] = 'well_above_average';
+      await tester.pumpWidget(_host(
+        PeerComparisonCard(comparisonData: zeroMedian, monthlyIncome: 6000),
+      ));
+      await tester.pump();
+
+      expect(find.text('\$0'), findsOneWidget);
+      expect(find.textContaining('%'), findsNothing);
     });
   });
 
