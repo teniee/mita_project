@@ -592,28 +592,35 @@ class AIFinancialAnalyzer:
         spending_data = self._load_spending_data()
 
         if not spending_data:
-            # Use income-appropriate baseline for no data case
-            user_context = self._get_user_context()
-            classify_income(user_context.monthly_income, user_context.region)
-            thresholds = self._get_dynamic_thresholds()["health_scoring"]
-
-            baseline_score = thresholds["component_expectations"][
-                "budgeting_excellence"
-            ]
-
+            # No ledger, no assessment.
+            #
+            # This branch used to publish the tier's EXPECTATION threshold as
+            # the user's score: `component_expectations["budgeting_excellence"]`
+            # is 70 + a tier bonus (-5 low .. +5 high), i.e. what someone in
+            # that income tier is expected to achieve — not anything measured
+            # about this person. A brand-new account with no transactions was
+            # answered `score 73, grade "C"` with that one number copied into
+            # four component scores and a "stable" trend, which is a verdict on
+            # a real person's finances that nothing computed. (The component
+            # names gave it away: this branch reported "saving" and
+            # "debt_management", which the real calculation below never
+            # produces.)
+            #
+            # insights_screen renders "Add more transactions to calculate your
+            # financial health score" when score/grade are null — this branch
+            # was the reason that guard never fired. Every other no-data path
+            # in this analyzer already answers empty/0.0 confidence; this one
+            # now matches them.
             return {
-                "score": int(baseline_score),
-                "grade": self._score_to_grade(baseline_score),
-                "components": {
-                    "budgeting": int(baseline_score),
-                    "saving": int(baseline_score),
-                    "debt_management": int(baseline_score),
-                    "spending_efficiency": int(baseline_score),
-                },
+                "score": None,
+                "grade": None,
+                "components": {},
                 "improvements": [
                     "Start tracking expenses to get accurate health score"
                 ],
-                "trend": "stable",
+                "trend": None,
+                "status": "insufficient_data",
+                "data_points": 0,
             }
 
         # Calculate component scores
