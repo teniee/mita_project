@@ -631,27 +631,57 @@ Regression: the `with a real cohort but no per-category peer data` and
 `mobile_app/test/widgets/peer_comparison_no_peers_test.dart`. Reinstating
 either multiplier fails two of them.
 
-## Confirmed but NOT fixed here: financial values in log `extra`
+## Crashlytics receives failure structure, never the user's data
 
-Tracked as a separate open issue, deliberately not fixed here — pre-existing,
-in five call sites across four files unrelated to peer comparison — but
-confirmed reachable and recorded so it is not lost.
+`LoggingService` forwards error/critical entries to Crashlytics in non-debug
+builds, and Crashlytics is on whenever Firebase is configured — which the
+release build is, because Firebase is what enables push (`main.dart` calls
+`setCrashlyticsCollectionEnabled(true)` unconditionally once it initialises).
+`_sendToCrashlytics` used to copy every `extra` value into a custom key with
+`toString()`, and `_maskPIIInMap` only rewrites **String** values, so numbers
+and nested Maps went out unchanged. Reproduced on efbde78 through the real
+AddExpenseScreen: saving an expense offline sent `extra_amount = 42.17` and
+`extra_category = Food & Dining`. `expense_state_service` sent the whole
+expense Map; the Dio interceptor sent every error response body as
+`extra_errorData` (the 422 for an amount over the cap echoes
+`provided_amount`).
 
-`LoggingService._sendToCrashlytics` writes every `extra` entry as a Crashlytics
-custom key (`setCustomKey('extra_$key', value.toString())`), and
-`_maskPIIInMap` applies `_maskPII` only to **String** values — a `double` falls
-to the `else` branch and is stored unchanged. These call sites therefore ship
-the user's own money off the device in release builds:
+The contract (`lib/utils/crash_report_sanitizer.dart`):
 
-    add_expense_screen.dart:524        'amount': _amount
-    expense_state_service.dart:150,254 'amount': amount
-    expense_integration_helper.dart:28 'amount': result['amount']
-    bottom_navigation.dart:115         'expenseAmount': expenseData['amount']
-    api_service.dart:144               'errorData': e.response?.data
+- `_sendToCrashlytics` takes a `CrashReport`, never the `LogEntry`, so it
+  cannot reach raw `extra` even by accident. `crashReportFor(entry)` builds it.
+- `extra` is **allow-listed** (`kCrashSafeExtraKeys`: status code, operation,
+  error type, severity, retry flag, attempt counts, endpoint path, stack
+  trace...). Allowed values pass only as `bool`, `int` or scrubbed `String`;
+  a `double`, Map, List or any other object is dropped even under an allowed
+  key. Dropped keys are counted (`extra_redacted_count`), not named. `url` /
+  `endpoint` are reduced to the path. Adding a key to the allow-list is a
+  privacy decision.
+- Free text (the message, the error string, allowed String values) goes
+  through `scrubCrashText`: sensitive key/value pairs in JSON or Dart
+  `Map.toString()` dumps, e-mail addresses (including the local mask's
+  `da***@domain`), Bearer headers, JWTs and long random tokens, URL query
+  strings, currency amounts, decimals, grouped thousands and integers of 4+
+  digits are removed; HTTP status codes, small counts and stack-trace
+  structure survive. Bounded to 1000 chars.
+- No user identifier is attached: the `setUserIdentifier(extra['user_id'])`
+  path is gone.
+- The call sites still pass `amount` etc. in `extra`; that stays in local
+  history and debug console only. Do not "fix" them one by one instead of at
+  the sink — `financial_error_service` spreads caller-supplied context maps
+  into `extra`, so no call-site list is complete.
 
-All five predate `d23f621`. Fixing them means touching four files unrelated to
-this PR's purpose, so it belongs in its own change — the same treatment as the
-NOT NULL migration above.
+Residual, deliberately not closed: uncaught errors (`FlutterError.onError`,
+`PlatformDispatcher.onError` in `main.dart`) go to Crashlytics directly as
+crash reports, not through LoggingService. A bare integer of 1-3 digits with
+no currency symbol inside free text is kept (it is indistinguishable from a
+status code or count).
+
+Regression: `test/utils/crash_report_sanitizer_test.dart` (every value type,
+nested structures, exception strings, the backend's real 422 bodies, query
+strings, tokens, the removed identifier, and the diagnostics that must
+survive) and `test/services/crashlytics_no_financial_values_test.dart` (the
+three leaking call-site shapes through the real LoggingService).
 
 ## An aggregate over one person is that person's data
 
