@@ -11,6 +11,8 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
+import '../utils/crash_report_sanitizer.dart';
+
 /// Log levels for different types of messages
 enum LogLevel {
   debug, // Detailed debug information
@@ -460,7 +462,9 @@ class LoggingService {
       // Don't report to Crashlytics in debug mode
       if (kDebugMode) return;
 
-      _sendToCrashlytics(entry);
+      // The sink gets the sanitized report, never the entry: it cannot reach
+      // the raw `extra` even by accident.
+      _sendToCrashlytics(crashReportFor(entry), entry.level, entry.stackTrace);
     } catch (e) {
       developer.log(
         'Failed to report to Crashlytics: $e',
@@ -470,55 +474,53 @@ class LoggingService {
     }
   }
 
+  /// What [entry] may tell Crashlytics — see crash_report_sanitizer.dart.
+  ///
+  /// Everything `_sendToCrashlytics` sends comes from here: an allow-list of
+  /// failure-describing `extra` keys, scrubbed text, and never a user
+  /// identifier. The raw entry (amounts included) stays in local history.
+  @visibleForTesting
+  CrashReport crashReportFor(LogEntry entry) => buildCrashReport(
+        tag: entry.tag,
+        level: entry.level.name,
+        message: entry.message,
+        extra: entry.extra,
+        error: entry.error,
+        timestamp: entry.timestamp,
+      );
+
   /// Send error report to Firebase Crashlytics
-  Future<void> _sendToCrashlytics(LogEntry entry) async {
+  Future<void> _sendToCrashlytics(
+    CrashReport report,
+    LogLevel level,
+    StackTrace? stackTrace,
+  ) async {
     try {
       final crashlytics = FirebaseCrashlytics.instance;
 
-      // Set user context for correlation
-      if (entry.extra != null && entry.extra!['user_id'] != null) {
-        await crashlytics.setUserIdentifier(entry.extra!['user_id'].toString());
-      }
-
-      // Add custom keys for context
-      await crashlytics.setCustomKey('log_tag', entry.tag ?? 'UNKNOWN');
-      await crashlytics.setCustomKey(
-          'log_level', entry.level.name.toUpperCase());
-      await crashlytics.setCustomKey(
-          'timestamp', DateTime.now().toIso8601String());
-
-      // Add extra context data
-      if (entry.extra != null) {
-        for (final key in entry.extra!.keys) {
-          if (key != 'user_id') {
-            // user_id already set above
-            final value = entry.extra![key];
-            if (value != null) {
-              await crashlytics.setCustomKey('extra_$key', value.toString());
-            }
-          }
-        }
+      for (final key in report.customKeys.entries) {
+        await crashlytics.setCustomKey(key.key, key.value);
       }
 
       // Report the error
-      if (entry.error != null) {
+      if (report.exception != null) {
         // Report with exception and stack trace
         await crashlytics.recordError(
-          entry.error,
-          entry.stackTrace,
-          reason: '${entry.tag ?? 'UNKNOWN'}: ${entry.message}',
+          report.exception,
+          stackTrace,
+          reason: report.reason,
           printDetails: false, // Don't print to console in production
         );
       } else {
         // Report as a non-fatal message
-        await crashlytics.log('${entry.tag ?? 'UNKNOWN'}: ${entry.message}');
+        await crashlytics.log(report.reason);
 
         // For CRITICAL level without exception, create a custom error
-        if (entry.level == LogLevel.critical) {
+        if (level == LogLevel.critical) {
           await crashlytics.recordError(
-            Exception('Critical Error: ${entry.message}'),
+            Exception('Critical Error: ${report.reason}'),
             null, // No stack trace available
-            reason: '${entry.tag ?? 'UNKNOWN'}: Critical Error',
+            reason: '${report.customKeys['log_tag']}: Critical Error',
             printDetails: false,
           );
         }
