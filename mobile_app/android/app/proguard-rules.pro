@@ -60,3 +60,12 @@
     public static *** v(...);
     public static *** i(...);
 }
+
+# Flutter's deferred-components embedding references Play Core, which this app
+# does not ship. Only FlutterPlayStoreSplitApplication constructs
+# PlayStoreDeferredComponentManager, and nothing constructs
+# FlutterPlayStoreSplitApplication unless the manifest names it as the
+# Application class — MITA uses android.app.Application and no deferred
+# components. The -keep io.flutter.** rules above retain those classes anyway,
+# so without this R8 fails the release build on 11 missing Play Core classes.
+-dontwarn com.google.android.play.core.**
