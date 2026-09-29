@@ -936,6 +936,28 @@ guard still refuses to build an unsigned or debug-signed release); a
 Firebase-enabled release APK cold-starts on an API 36 emulator through the FCM
 permission prompt to the login screen with no fatal or Play Core errors.
 
+## Budget Optimization is not scored against invented weights
+
+Insights -> Recommendations rendered a "Budget Optimization" card for any user
+with income and one expense this month. `CohortService.getCohortBudgetOptimization`
+compared month-to-date `TransactionProvider.spendingByCategory` against
+`IncomeService.getDefaultBudgetWeights(tier)` — hard-coded tier fractions, not
+the user's saved plan. Those weights are keyed `housing` and `savings`, which no
+recordable expense category produces (the app records `rent` / `mortgage`), so
+both always read $0. Reproduced on 3aa52b7 with income $5,000, rent $1,500 and
+food $300: score **50%**, "You have room to increase housing spending by
+$1750", and rent ignored entirely.
+
+The card, its state and its computation were removed from `insights_screen.dart`
+for the initial release. `getCohortBudgetOptimization` is left in
+`cohort_service.dart` with no production caller. **Rebuild the card from the
+persisted `daily_plan` allocation, never from tier weights**, and do not bring
+back a placeholder, fixed or tier-derived score.
+
+Regression: `mobile_app/test/screens/insights_no_budget_optimization_test.dart`
+(income + a real rent expense, every network call failing; fails if the card,
+its score, or its category advice renders).
+
 ## Swept and found clean (do not re-derive)
 
 Recorded so a later audit does not spend the effort again. Each was checked to

@@ -59,7 +59,6 @@ class _InsightsScreenState extends State<InsightsScreen>
   // Income-based insights
   Map<String, dynamic>? _peerComparison;
   List<String> _incomeBasedTips = [];
-  Map<String, dynamic>? _budgetOptimization;
 
   @override
   void initState() {
@@ -174,14 +173,6 @@ class _InsightsScreenState extends State<InsightsScreen>
 
       _peerComparison = asStringKeyedMap(futures[0]);
       _incomeBasedTips = asStringList(futures[2]);
-
-      // Generate budget optimization insights using provider data
-      final transactionProvider = context.read<TransactionProvider>();
-      final categoryTotals = transactionProvider.spendingByCategory;
-      if (categoryTotals.isNotEmpty) {
-        _budgetOptimization = _cohortService.getCohortBudgetOptimization(
-            _monthlyIncome, categoryTotals);
-      }
     } catch (e) {
       logError('Error fetching income-based insights: $e');
       _incomeBasedTips =
@@ -785,8 +776,7 @@ class _InsightsScreenState extends State<InsightsScreen>
 
   Widget _buildRecommendationsTab() {
     // Check if we have any recommendations to show
-    final hasRecommendations = _budgetOptimization != null ||
-        _incomeTier != null ||
+    final hasRecommendations = _incomeTier != null ||
         personalizedFeedback != null ||
         savingsOptimization != null;
 
@@ -805,10 +795,10 @@ class _InsightsScreenState extends State<InsightsScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Income-based budget optimization
-          if (_budgetOptimization != null) _buildBudgetOptimizationCard(),
-
-          if (_budgetOptimization != null) const SizedBox(height: 20),
+          // No Budget Optimization card: it scored spending against
+          // hard-coded income-tier weights keyed "housing"/"savings", which no
+          // recorded category matches, so it told users with real rent to
+          // "increase housing". Rebuild it from the saved plan, not weights.
 
           // Cohort-based habit recommendations
           if (_incomeTier != null) _buildCohortHabitRecommendationsCard(),
@@ -1638,137 +1628,6 @@ class _InsightsScreenState extends State<InsightsScreen>
         .join(' ');
   }
 
-  Widget _buildBudgetOptimizationCard() {
-    // A missing overall_score is "not scored yet", not a perfect 100%. The
-    // old `fallback: 100.0` painted a green "100%" badge over a budget the
-    // server had never actually scored.
-    if (_budgetOptimization == null ||
-        _budgetOptimization!['overall_score'] == null) {
-      return InsightsEmptyStateWidgets.buildSectionEmptyCard(
-        title: 'Budget Optimization',
-        icon: Icons.tune_rounded,
-        message: 'Optimization suggestions will appear after tracking expenses',
-        color: _incomeTier != null
-            ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
-            : AppColors.textPrimary,
-      );
-    }
-
-    final suggestions = asStringList(_budgetOptimization!['suggestions']);
-    final overallScore = asDouble(_budgetOptimization!['overall_score']);
-    final primaryColor = _incomeTier != null
-        ? _incomeService.getIncomeTierPrimaryColor(_incomeTier!)
-        : AppColors.textPrimary;
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: primaryColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Icon(
-                  Icons.tune_rounded,
-                  color: primaryColor,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                'Budget Optimization',
-                style: TextStyle(
-                  fontFamily: AppTypography.fontHeading,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  color: primaryColor,
-                ),
-              ),
-              const Spacer(),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: _getScoreColor(overallScore.toInt())
-                      .withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
-                  '${overallScore.toStringAsFixed(0)}%',
-                  style: TextStyle(
-                    fontFamily: AppTypography.fontHeading,
-                    fontWeight: FontWeight.bold,
-                    color: _getScoreColor(overallScore.toInt()),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          if (suggestions.isNotEmpty) ...[
-            Text(
-              'Optimization Suggestions:',
-              style: TextStyle(
-                fontFamily: AppTypography.fontHeading,
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-                color: primaryColor,
-              ),
-            ),
-            const SizedBox(height: 12),
-            ...suggestions.take(3).map(
-                  (suggestion) => Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: primaryColor.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                          color: primaryColor.withValues(alpha: 0.2)),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.auto_fix_high_rounded,
-                          color: primaryColor,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            suggestion,
-                            style: const TextStyle(
-                              fontFamily: AppTypography.fontBody,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-          ],
-        ],
-      ),
-    );
-  }
-
   Widget _buildCohortHabitRecommendationsCard() {
     final habits = _cohortService.getCohortHabitRecommendations(_monthlyIncome);
     final primaryColor = _incomeService.getIncomeTierPrimaryColor(_incomeTier!);
@@ -2094,12 +1953,6 @@ class _InsightsScreenState extends State<InsightsScreen>
         ],
       ),
     );
-  }
-
-  Color _getScoreColor(int score) {
-    if (score >= 80) return Colors.green;
-    if (score >= 60) return Colors.orange;
-    return Colors.red;
   }
 
   /// Build AI Monthly Report Card
