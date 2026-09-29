@@ -912,6 +912,30 @@ baseline fails 10 of the backend cases; a fixed 50/"C" fails 9; dropping
 `status` alone fails 8. On the client, ignoring `status` fails 1 and treating
 any envelope as an assessment fails 5.
 
+## Android release build: R8 and Play Core
+
+CI builds only a debug APK, so nothing gated the minified release build. On
+960d146 `flutter build appbundle --release` (Flutter 3.35.4, the CI pin)
+failed in `:app:minifyReleaseWithR8` on 11 missing
+`com.google.android.play.core.*` classes. Every reference comes from Flutter's
+deferred-components embedding: `PlayStoreDeferredComponentManager` is built
+only by `FlutterPlayStoreSplitApplication`, which nothing constructs unless the
+manifest names it as the Application class. MITA's merged release manifest
+uses `android.app.Application` and the app has no deferred components; a scan
+of every release class input found no other Play Core reference (Firebase and
+plugins included). The blanket `-keep class io.flutter.** { *; }` rules in
+`proguard-rules.pro` keep those unused classes, which is what makes R8 resolve
+their references.
+
+`proguard-rules.pro` therefore ends with `-dontwarn com.google.android.play.core.**`.
+Do not remove it while the `io.flutter.**` keep rules stay, and do not add the
+Play Core dependency to satisfy R8 — it is not needed at runtime. If deferred
+components are ever adopted, add the real dependency and drop the rule.
+Verified: release AAB builds and is signed by the configured key (the Gradle
+guard still refuses to build an unsigned or debug-signed release); a
+Firebase-enabled release APK cold-starts on an API 36 emulator through the FCM
+permission prompt to the login screen with no fatal or Play Core errors.
+
 ## Swept and found clean (do not re-derive)
 
 Recorded so a later audit does not spend the effort again. Each was checked to
