@@ -1021,3 +1021,7 @@ secrets, legal). Rules:
   in `app/services/credential_verification.py`; the mobile login and the
   ChatGPT consent page both call it, so they share one lockout counter. Patch
   `app.services.credential_verification.verify_password_async` in tests.
+- **OAuth tables (migration 0037)** `mcp_oauth_clients`,
+  `mcp_oauth_authorization_codes`, `mcp_oauth_refresh_tokens`: additive,
+  codes/refresh tokens stored as SHA-256 digests, rows cascade with the user.
+  Applied by mita-production's `start.sh`; the MCP service never migrates.
