@@ -1,0 +1,36 @@
+# =====================================================================
+# MITA ChatGPT app (MCP service) — runtime dependencies
+#
+# Installed ONLY by the MCP image (deploy/mcp/Dockerfile) and the mcp-ci job.
+# Separate from requirements.txt because mcp 2.x needs pydantic>=2.12 while
+# the API pins 2.9.2 (ADR-chatgpt-mcp-app §2). The domain packages the MCP
+# service imports from app/ are pinned to the same versions as the API.
+# =====================================================================
+
+# MCP SDK (official, stable v2) and its HTTP stack
+mcp==2.2.0
+mcp-types==2.2.0
+pydantic==2.13.5
+pydantic-settings==2.15.0
+starlette==1.7.0
+uvicorn[standard]==0.54.0
+anyio==4.15.1
+httpx2==2.13.1
+python-multipart==0.0.32
+
+# Database — same versions as the API
+SQLAlchemy==2.0.36
+asyncpg==0.30.0
+psycopg2-binary==2.9.9
+greenlet==3.5.3
+
+# Auth / crypto — same versions as the API
+PyJWT[crypto]==2.10.1
+cryptography==44.0.1
+passlib[bcrypt]==1.7.4
+bcrypt==4.2.0
+
+# Imported transitively by app.core / app.services modules the MCP reuses
+redis==5.2.0
+python-dotenv==1.0.1
+email-validator==2.2.0

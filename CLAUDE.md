@@ -1029,3 +1029,9 @@ secrets, legal). Rules:
   every payload names its currency; mixed recorded currencies are disclosed in
   `notes`, never converted. Goals without a target date get `on_track: null`
   (the forecast engine says `False`, which is a verdict nothing supports).
+- **MCP logging takes over the tree.** `app.core.logging_config` (imported by
+  the domain layer) gives `app` its own handlers with `propagate=False`;
+  `app.mcp.observability.configure_logging` undoes that, emits one JSON line
+  per record to stdout, keeps `app.*` at WARNING (domain code logs amounts at
+  INFO, e.g. `compute_forecast`) and withholds message text from non-MCP
+  loggers. Never log tokens, amounts, merchants, e-mails or tool arguments.
