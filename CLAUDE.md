@@ -997,3 +997,23 @@ churning.
 because the Flutter model reads them there. The rebalance banner and the
 redistribution-history refresh both work. Do not "fix" this by adding the
 fields to `TxnOut`.
+
+## ChatGPT app (MCP service) — branch feat/chatgpt-plugin
+
+A read-only ChatGPT app is being built as a **separate service in this repo**
+(`app/mcp/`, `python -m app.mcp`). Design: `docs/adr/ADR-chatgpt-mcp-app.md`.
+Audits: `docs/chatgpt-app/` (repository, OpenAI requirements, data trust,
+secrets, legal). Rules:
+
+- **No tool takes a user id.** Identity comes from the verified access token
+  only; `tests_mcp/test_tool_contract.py` enforces it on every input schema.
+- **Read-only by construction.** Tools run inside `SET TRANSACTION READ ONLY`;
+  never call `ensure_month_plan*` from MCP (it writes). An unmaterialized month
+  is `plan_status: "not_generated"`, not a preview.
+- **Spend is the ledger.** Every MCP spend figure is `transactions` with
+  `deleted_at IS NULL`, keyed by `local_day_of(spent_at, user.timezone)`;
+  allocations are `daily_plan.planned_amount`. Do not read
+  `daily_plan.spent_amount` (a cache that can lag).
+- **Only TRUSTED sources** from `docs/chatgpt-app/data-trust-audit.md`. No AI
+  endpoint, recommendation engine or cohort data is reachable from MCP.
+- `mita.finance` is **not registered**; the MCP host is `MCP_PUBLIC_URL`.
