@@ -1035,3 +1035,8 @@ secrets, legal). Rules:
   per record to stdout, keeps `app.*` at WARNING (domain code logs amounts at
   INFO, e.g. `compute_forecast`) and withholds message text from non-MCP
   loggers. Never log tokens, amounts, merchants, e-mails or tool arguments.
+- **MCP tests live in `tests_mcp/`** (own env: `pip install -r requirements-mcp-dev.txt`;
+  run `PYTHONPATH=. pytest -c tests_mcp/pytest.ini tests_mcp`). Real PostgreSQL,
+  one rolled-back transaction per test, tools driven through the SDK client
+  over ASGI. Assert exact figures, not status codes. The session manager runs
+  once per service and inside the test task — use the `mcp` harness.
