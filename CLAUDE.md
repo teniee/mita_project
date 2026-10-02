@@ -1025,3 +1025,7 @@ secrets, legal). Rules:
   `mcp_oauth_authorization_codes`, `mcp_oauth_refresh_tokens`: additive,
   codes/refresh tokens stored as SHA-256 digests, rows cascade with the user.
   Applied by mita-production's `start.sh`; the MCP service never migrates.
+- **Money leaves MCP as strings** (`"1234.50"`, `Decimal` quantized half-up);
+  every payload names its currency; mixed recorded currencies are disclosed in
+  `notes`, never converted. Goals without a target date get `on_track: null`
+  (the forecast engine says `False`, which is a verdict nothing supports).
