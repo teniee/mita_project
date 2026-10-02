@@ -20,6 +20,9 @@ from app.services.core.engine.expense_tracker import local_day_of
 
 MARKED_LOOKBACK_DAYS = 180
 UPCOMING_ONE_TIME_DAYS = 60
+# ScheduledExpenseIn accepts recurrence in {"once", "weekly", "monthly"} or
+# null; "once" is a one-time expense, not a recurring one.
+REPEATING = {"weekly", "monthly"}
 
 
 @dataclass(frozen=True)
@@ -70,11 +73,11 @@ def recurring_expenses(db: Session, ctx: UserContext) -> RecurringView:
             recurrence=row.recurrence,
         )
 
-    scheduled_recurring = [item(r) for r in pending if r.recurrence]
+    scheduled_recurring = [item(r) for r in pending if r.recurrence in REPEATING]
     upcoming_one_time = [
         item(r)
         for r in pending
-        if not r.recurrence and ctx.today <= r.scheduled_date <= horizon
+        if r.recurrence not in REPEATING and ctx.today <= r.scheduled_date <= horizon
     ]
 
     lookback_start = ctx.today - timedelta(days=MARKED_LOOKBACK_DAYS - 1)

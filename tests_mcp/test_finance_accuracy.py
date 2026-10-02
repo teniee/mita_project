@@ -399,6 +399,13 @@ async def test_recurring_only_confirmed_items(m, seed):
         recurrence=None,
         scheduled_date=date(2026, 8, 1),
     )  # beyond 60 days
+    await seed.scheduled(
+        user,
+        category="gifts",
+        amount=50,
+        recurrence="once",
+        scheduled_date=date(2026, 4, 2),
+    )
     await seed.scheduled(user, category="gym", amount=40, status="cancelled")
     await seed.txn(
         user, "15.99", "subscriptions", at(5), merchant="Netflix", recurring=True
@@ -418,8 +425,10 @@ async def test_recurring_only_confirmed_items(m, seed):
         (i["category"], i["amount"], i["recurrence"], i["due_date"])
         for i in data["scheduled_recurring"]
     ] == [("rent", "1200.00", "monthly", "2026-04-01")]
+    # "once" is a one-time expense (ScheduledExpenseIn), never a recurring one.
     assert [(i["category"], i["due_date"]) for i in data["upcoming_one_time"]] == [
-        ("insurance", "2026-04-10")
+        ("gifts", "2026-04-02"),
+        ("insurance", "2026-04-10"),
     ]
     assert [
         (i["label"], i["last_amount"], i["last_date"], i["occurrences_in_lookback"])

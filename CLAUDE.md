@@ -1040,3 +1040,5 @@ secrets, legal). Rules:
   one rolled-back transaction per test, tools driven through the SDK client
   over ASGI. Assert exact figures, not status codes. The session manager runs
   once per service and inside the test task — use the `mcp` harness.
+- **`scheduled_expenses.recurrence` is `once | weekly | monthly | null`.**
+  `"once"` is one-time; only weekly/monthly are recurring.
