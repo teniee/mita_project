@@ -1017,3 +1017,7 @@ secrets, legal). Rules:
 - **Only TRUSTED sources** from `docs/chatgpt-app/data-trust-audit.md`. No AI
   endpoint, recommendation engine or cohort data is reachable from MCP.
 - `mita.finance` is **not registered**; the MCP host is `MCP_PUBLIC_URL`.
+- **One credential check.** Email/password + lockout (5 failures → 30 min) lives
+  in `app/services/credential_verification.py`; the mobile login and the
+  ChatGPT consent page both call it, so they share one lockout counter. Patch
+  `app.services.credential_verification.verify_password_async` in tests.

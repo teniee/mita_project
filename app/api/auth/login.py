@@ -19,7 +19,6 @@ from app.api.auth.schemas import LoginIn, TokenOut
 from app.core.async_session import get_async_db
 from app.core.audit_logging import log_security_event_async
 from app.core.error_decorators import handle_auth_errors
-from app.core.password_security import verify_password_async
 from app.core.simple_rate_limiter import check_login_rate_limit
 from app.core.standardized_error_handler import (
     AuthenticationError,
@@ -27,8 +26,11 @@ from app.core.standardized_error_handler import (
     validate_email,
     validate_required_fields,
 )
-from app.db.models import User
 from app.services.auth_jwt_service import create_token_pair
+from app.services.credential_verification import (
+    CredentialOutcome,
+    verify_login_credentials,
+)
 from app.utils.response_wrapper import AuthResponseHelper
 
 logger = logging.getLogger(__name__)
@@ -63,14 +65,11 @@ async def login_user_standardized(
     # Validate email format
     validated_email = validate_email(login_data.email)
 
-    # Find user
-    from sqlalchemy import select
+    # Credential check + lockout counters (shared with the ChatGPT consent page)
+    check = await verify_login_credentials(db, validated_email, login_data.password)
+    user = check.user
 
-    user_query = select(User).where(User.email == validated_email)
-    result = await db.execute(user_query)
-    user = result.scalar_one_or_none()
-
-    if not user:
+    if check.outcome is CredentialOutcome.UNKNOWN_USER:
         # Log failed login attempt
         await log_security_event_async(
             event_type="login_attempt_user_not_found",
@@ -83,9 +82,7 @@ async def login_user_standardized(
         )
 
     # Check if account is locked (migration 0017_add_account_security_fields)
-    if user.account_locked_until and user.account_locked_until > datetime.now(
-        timezone.utc
-    ):
+    if check.outcome is CredentialOutcome.LOCKED:
         await log_security_event_async(
             event_type="login_attempt_account_locked",
             user_id=str(user.id),
@@ -100,21 +97,8 @@ async def login_user_standardized(
             ErrorCode.AUTH_ACCOUNT_LOCKED,
         )
 
-    # Verify password
-    password_valid = await verify_password_async(
-        login_data.password, user.password_hash
-    )
-    if not password_valid:
-        # Increment failed login attempts (migration 0017_add_account_security_fields)
-        user.failed_login_attempts += 1
-
-        # Lock account after 5 failed attempts
-        if user.failed_login_attempts >= 5:
-            from datetime import timedelta
-
-            user.account_locked_until = datetime.now(timezone.utc) + timedelta(
-                minutes=30
-            )
+    if check.outcome is CredentialOutcome.INVALID_PASSWORD:
+        if check.just_locked:
             await log_security_event_async(
                 event_type="account_locked_too_many_attempts",
                 user_id=str(user.id),
@@ -124,8 +108,6 @@ async def login_user_standardized(
                     "failed_attempts": user.failed_login_attempts,
                 },
             )
-
-        await db.commit()
 
         # Log failed login attempt
         await log_security_event_async(
@@ -142,7 +124,7 @@ async def login_user_standardized(
         )
 
     # Check if account is active (add account status checks here if needed)
-    if hasattr(user, "is_active") and not user.is_active:
+    if check.outcome is CredentialOutcome.INACTIVE:
         await log_security_event_async(
             event_type="login_attempt_inactive_account",
             user_id=str(user.id),
@@ -161,12 +143,6 @@ async def login_user_standardized(
     }
 
     tokens = create_token_pair(user_data, user_role=user_role)
-
-    # Reset failed login attempts on successful login (migration 0017_add_account_security_fields)
-    if user.failed_login_attempts > 0:
-        user.failed_login_attempts = 0
-        user.account_locked_until = None
-        await db.commit()
 
     # Log successful login
     await log_security_event_async(
