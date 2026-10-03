@@ -28,6 +28,21 @@ from app.db.models import User
 MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_DURATION = timedelta(minutes=30)
 
+_dummy_hash: Optional[str] = None
+
+
+async def _burn_password_check(password: str) -> None:
+    """Spend one real bcrypt verification so an unknown or locked account
+    answers in the same time as a wrong password (no timing enumeration)."""
+    global _dummy_hash
+    if _dummy_hash is None:
+        import secrets
+
+        from app.core.password_security import hash_password_async
+
+        _dummy_hash = await hash_password_async(secrets.token_urlsafe(24))
+    await verify_password_async(password, _dummy_hash)
+
 
 class CredentialOutcome(str, Enum):
     OK = "ok"
@@ -64,9 +79,11 @@ async def verify_login_credentials(
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
     if user is None:
+        await _burn_password_check(password)
         return CredentialCheck(CredentialOutcome.UNKNOWN_USER)
 
     if user.account_locked_until and user.account_locked_until > now:
+        await _burn_password_check(password)
         return CredentialCheck(CredentialOutcome.LOCKED, user)
 
     if not await verify_password_async(password, user.password_hash):

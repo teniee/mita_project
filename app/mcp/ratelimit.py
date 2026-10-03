@@ -44,3 +44,63 @@ class SlidingWindowLimiter:
     def reset(self) -> None:
         with self._lock:
             self._hits.clear()
+
+
+def client_ip_from_headers(
+    forwarded_for: str, peer: Optional[str], trusted_hops: int
+) -> str:
+    """Client address behind ``trusted_hops`` proxies (Railway adds one).
+
+    Only the entry the trusted proxy appended is used: everything to its left
+    is client-supplied and can be forged.
+    """
+    hops = [p.strip() for p in (forwarded_for or "").split(",") if p.strip()]
+    if trusted_hops > 0 and len(hops) >= trusted_hops:
+        return hops[-trusted_hops]
+    return peer or "unknown"
+
+
+class OAuthEndpointRateLimit:
+    """Per-IP limit on the unauthenticated OAuth endpoints (/register, /token,
+    /authorize, /revoke). Dynamic client registration in particular is open
+    to the internet; without this, anyone could fill mcp_oauth_clients."""
+
+    PATHS = ("/register", "/token", "/authorize", "/revoke")
+
+    def __init__(self, app, *, per_minute: int, trusted_hops: int) -> None:
+        self.app = app
+        self.trusted_hops = trusted_hops
+        self.limiters = {path: SlidingWindowLimiter(per_minute) for path in self.PATHS}
+
+    async def __call__(self, scope, receive, send) -> None:
+        limiter = (
+            self.limiters.get(scope.get("path", ""))
+            if scope["type"] == "http"
+            else None
+        )
+        if limiter is not None:
+            headers = dict(scope.get("headers") or [])
+            ip = client_ip_from_headers(
+                headers.get(b"x-forwarded-for", b"").decode("latin-1"),
+                (scope.get("client") or (None,))[0],
+                self.trusted_hops,
+            )
+            if not limiter.allow(ip):
+                body = (
+                    b'{"error":"rate_limited","error_description":"Too many requests"}'
+                )
+                await send(
+                    {
+                        "type": "http.response.start",
+                        "status": 429,
+                        "headers": [
+                            (b"content-type", b"application/json"),
+                            (b"retry-after", b"60"),
+                            (b"cache-control", b"no-store"),
+                            (b"content-length", str(len(body)).encode()),
+                        ],
+                    }
+                )
+                await send({"type": "http.response.body", "body": body})
+                return
+        await self.app(scope, receive, send)

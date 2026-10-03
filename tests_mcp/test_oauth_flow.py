@@ -322,10 +322,11 @@ async def test_wrong_password_and_shared_lockout(mcp, seed, connection):
         for attempt in range(5):
             _, response = await consent(http, login_url, user.email, "wrong-password")
             assert response.status_code == 400 and "location" not in response.headers
-        assert "temporarily locked" in response.text
-        # Locked now even with the right password — the same counter the mobile login uses.
+        # Locked now even with the right password — the same counter the
+        # mobile login uses. The message is the generic one (no enumeration).
         _, response = await consent(http, login_url, user.email, PASSWORD)
-        assert response.status_code == 400 and "temporarily locked" in response.text
+        assert response.status_code == 400 and "location" not in response.headers
+        assert "Sign-in failed" in response.text
     row = (
         await connection.execute(
             text(
@@ -345,8 +346,7 @@ async def test_unknown_email_and_wrong_password_look_the_same(mcp, seed):
         login_url = (await authorize(http, client_id, challenge)).headers["location"]
         _, unknown = await consent(http, login_url, "nobody@example.test", PASSWORD)
         _, wrong = await consent(http, login_url, user.email, "nope-nope-nope")
-    assert "The e-mail or password is incorrect." in unknown.text
-    assert "The e-mail or password is incorrect." in wrong.text
+    assert "Sign-in failed" in unknown.text and "Sign-in failed" in wrong.text
 
 
 async def test_refresh_rotation_and_reuse_detection(mcp, seed):

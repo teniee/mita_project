@@ -54,6 +54,9 @@ class McpOAuthAuthorizationCode(Base):
     redirect_uri_provided_explicitly = Column(Boolean, nullable=False)
     resource = Column(Text, nullable=False)
     token_version = Column(Integer, nullable=False)
+    # HMAC of the user's password hash at grant time: any password change, by
+    # any code path, invalidates the grant (app/mcp/auth/fingerprint.py).
+    credential_fingerprint = Column(String(64), nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=_now)
 
@@ -82,6 +85,7 @@ class McpOAuthRefreshToken(Base):
     scopes = Column(Text, nullable=False)
     resource = Column(Text, nullable=False)
     token_version = Column(Integer, nullable=False)
+    credential_fingerprint = Column(String(64), nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=_now)
     rotated_at = Column(DateTime(timezone=True), nullable=True)

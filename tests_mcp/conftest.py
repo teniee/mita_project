@@ -49,6 +49,10 @@ from app.db.models import (  # noqa: E402
     Transaction,
     User,
 )
+from app.mcp.auth.fingerprint import (  # noqa: E402
+    credential_fingerprint,
+    fingerprint_key,
+)
 from app.mcp.auth.keys import generate_private_key_pem  # noqa: E402
 from app.mcp.auth.scopes import SUPPORTED_SCOPES  # noqa: E402
 from app.mcp.auth.tokens import issue_access_token  # noqa: E402
@@ -216,6 +220,7 @@ class Harness:
         service = self._build()
         async with started(service):
             async with http_client(service, token) as client:
+                client.mita_service = service  # tests reach the provider clock
                 yield client
 
 
@@ -393,14 +398,18 @@ def mint_token(
     now: Optional[int] = None,
     settings: Optional[McpSettings] = None,
 ) -> str:
+    effective = settings or service.runtime.settings
     token, _ = issue_access_token(
         service.keys,
-        settings or service.runtime.settings,
+        effective,
         user_id=user.id,
         client_id="test-client",
         scopes=scopes,
         token_version=(
             token_version if token_version is not None else int(user.token_version or 1)
+        ),
+        credential_fingerprint=credential_fingerprint(
+            fingerprint_key(effective.login_csrf_secret), user.password_hash
         ),
         now=now,
     )

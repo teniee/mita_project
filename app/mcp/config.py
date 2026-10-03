@@ -16,6 +16,9 @@ from urllib.parse import urlparse
 AuthMode = Literal["builtin", "external"]
 
 # Redirect URIs ChatGPT uses (developers.openai.com/apps-sdk/build/auth).
+# An entry ending in "/" admits exactly one [A-Za-z0-9_-] path segment after
+# it (ChatGPT's per-connection callback id); other entries match exactly.
+# See app/mcp/auth/redirects.py.
 DEFAULT_ALLOWED_REDIRECT_PREFIXES: Tuple[str, ...] = (
     "https://chatgpt.com/connector/oauth/",
     "https://chatgpt.com/connector_platform_oauth_redirect",
@@ -78,6 +81,7 @@ class McpSettings:
     # Abuse controls
     tool_calls_per_minute: int = 60
     login_attempts_per_minute: int = 10
+    oauth_requests_per_minute: int = 30
     trusted_proxy_hops: int = 1
 
     @property
@@ -161,6 +165,7 @@ def load_settings() -> McpSettings:
         metrics_token=_env("MCP_METRICS_TOKEN"),
         tool_calls_per_minute=_int_env("MCP_TOOL_CALLS_PER_MINUTE", 60),
         login_attempts_per_minute=_int_env("MCP_LOGIN_ATTEMPTS_PER_MINUTE", 10),
+        oauth_requests_per_minute=_int_env("MCP_OAUTH_REQUESTS_PER_MINUTE", 30),
         trusted_proxy_hops=_int_env("MCP_TRUSTED_PROXY_HOPS", 1),
     )
     validate_settings(settings)

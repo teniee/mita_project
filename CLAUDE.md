@@ -1052,3 +1052,13 @@ secrets, legal). Rules:
   table in `docs/chatgpt-app/review/submission-checklist.md`; pre-existing API
   defects found along the way in `docs/chatgpt-app/backend-findings.md`
   (second goal → 500, plan vs transaction category names).
+- **ChatGPT grants are bound to the password.** Codes, refresh tokens and
+  access tokens carry `tv` (token_version) and `cfp` (HMAC of
+  `users.password_hash`); any password change, by any path, ends the
+  connection on the next call/refresh. `/reset-password` bumps token_version
+  only best-effort, which is why `cfp` exists. There is no user-facing
+  "sign out of all devices" endpoint in MITA.
+- **Redirect URIs match exactly** (`app/mcp/auth/redirects.py`); DCR accepts
+  only code/refresh grants, `response_types=["code"]`, no jwks, <= 4 KiB
+  metadata; /register, /token, /authorize, /revoke are rate limited per IP.
+  Adversarial regressions: `tests_mcp/test_oauth_adversarial.py`.

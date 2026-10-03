@@ -30,21 +30,19 @@ from app.mcp.auth.provider import MitaAuthorizationProvider
 from app.mcp.auth.scopes import SCOPE_DESCRIPTIONS
 from app.mcp.config import McpSettings
 from app.mcp.observability import subject_hash
-from app.mcp.ratelimit import SlidingWindowLimiter
-from app.services.credential_verification import (
-    CredentialOutcome,
-    verify_login_credentials,
-)
+from app.mcp.ratelimit import SlidingWindowLimiter, client_ip_from_headers
+from app.services.credential_verification import verify_login_credentials
 
 logger = logging.getLogger("app.mcp.oauth")
 
 CSRF_COOKIE = "__Host-mita_oauth_csrf"
 MAX_FIELD = 320
 
-GENERIC_FAILURE = "The e-mail or password is incorrect."
-LOCKED_FAILURE = (
-    "This account is temporarily locked after too many failed sign-in attempts. "
-    "Try again in 30 minutes."
+# One message for every failure: it must not reveal whether an account exists
+# or is locked (a lock happens only for real accounts).
+GENERIC_FAILURE = (
+    "Sign-in failed. Check your e-mail and password. After several failed "
+    "attempts sign-in is paused for 30 minutes."
 )
 RATE_LIMITED = (
     "Too many sign-in attempts from this network. Wait a minute and try again."
@@ -53,15 +51,11 @@ EXPIRED = "This sign-in link has expired. Return to ChatGPT and connect MITA aga
 
 
 def client_ip(request: Request, trusted_hops: int) -> str:
-    """Client address behind ``trusted_hops`` proxies (Railway adds one)."""
-    forwarded = [
-        p.strip()
-        for p in request.headers.get("x-forwarded-for", "").split(",")
-        if p.strip()
-    ]
-    if trusted_hops > 0 and len(forwarded) >= trusted_hops:
-        return forwarded[-trusted_hops]
-    return request.client.host if request.client else "unknown"
+    return client_ip_from_headers(
+        request.headers.get("x-forwarded-for", ""),
+        request.client.host if request.client else None,
+        trusted_hops,
+    )
 
 
 class ConsentPage:
@@ -266,8 +260,7 @@ input{{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8
                     "subject_hash": subject_hash(user.id) if user else None,
                 },
             )
-            locked = check.outcome is CredentialOutcome.LOCKED or check.just_locked
-            return fail(LOCKED_FAILURE if locked else GENERIC_FAILURE, 400)
+            return fail(GENERIC_FAILURE, 400)
 
         code = await self.provider.create_authorization_code(pending, user)
         response = RedirectResponse(

@@ -23,6 +23,13 @@ from sqlalchemy.exc import DBAPIError, OperationalError
 from sqlalchemy.exc import TimeoutError as PoolTimeoutError
 from sqlalchemy.orm import Session
 
+from app.db.models import User
+from app.mcp.auth.fingerprint import (
+    CREDENTIAL_CLAIM,
+    credential_fingerprint,
+    fingerprint_key,
+    same_fingerprint,
+)
 from app.mcp.auth.tokens import TOKEN_VERSION_CLAIM
 from app.mcp.config import McpSettings
 from app.mcp.db import SessionScope
@@ -56,6 +63,9 @@ class McpRuntime:
     session_scope: SessionScope
     tool_limiter: SlidingWindowLimiter
     clock: Callable[[], datetime] = field(default=_utcnow)
+
+    def __post_init__(self) -> None:
+        self._fingerprint_key = fingerprint_key(self.settings.login_csrf_secret)
 
     def _www_authenticate(
         self, error: str, description: str, scope: Optional[str] = None
@@ -103,11 +113,18 @@ class McpRuntime:
     ) -> BaseModel:
         ctx = load_user_context(session, user_id, now=self.clock())
         if self.settings.auth_mode == "builtin":
-            # users.token_version is bumped by logout-all and password reset;
-            # that must end ChatGPT access too. Fails closed.
-            claimed = (token.claims or {}).get(TOKEN_VERSION_CLAIM)
-            if claimed != ctx.token_version:
-                metrics.auth_failure("token_version")
+            # Fail closed on any change to the account's credentials since the
+            # grant: token_version (admin revoke, /change-password, reset
+            # confirm) and the password itself (any path, see fingerprint.py).
+            claims = token.claims or {}
+            user = session.get(User, user_id)  # identity map: no extra query
+            current = credential_fingerprint(self._fingerprint_key, user.password_hash)
+            if claims.get(
+                TOKEN_VERSION_CLAIM
+            ) != ctx.token_version or not same_fingerprint(
+                claims.get(CREDENTIAL_CLAIM), current
+            ):
+                metrics.auth_failure("revoked_grant")
                 raise AuthError(
                     "Your MITA session has ended. Reconnect MITA to continue."
                 )

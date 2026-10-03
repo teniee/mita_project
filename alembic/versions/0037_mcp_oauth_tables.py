@@ -8,7 +8,9 @@ Additive only: three new tables, no change to any existing table. Written by
 the MCP service's OAuth endpoints (app/mcp/auth); the MCP service never runs
 migrations itself — mita-production's start.sh applies this on deploy.
 
-Codes and refresh tokens are stored as SHA-256 digests. Rows cascade with the
+Codes and refresh tokens are stored as SHA-256 digests. Every grant records
+the user's token_version and an HMAC fingerprint of the password hash, so a
+password change by any path ends the ChatGPT connection. Rows cascade with the
 user, so deleting an account also ends its ChatGPT connection.
 """
 
@@ -58,6 +60,7 @@ def upgrade():
         sa.Column("redirect_uri_provided_explicitly", sa.Boolean(), nullable=False),
         sa.Column("resource", sa.Text(), nullable=False),
         sa.Column("token_version", sa.Integer(), nullable=False),
+        sa.Column("credential_fingerprint", sa.String(64), nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column(
             "created_at",
@@ -101,6 +104,7 @@ def upgrade():
         sa.Column("scopes", sa.Text(), nullable=False),
         sa.Column("resource", sa.Text(), nullable=False),
         sa.Column("token_version", sa.Integer(), nullable=False),
+        sa.Column("credential_fingerprint", sa.String(64), nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column(
             "created_at",

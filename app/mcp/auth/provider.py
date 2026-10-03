@@ -8,8 +8,9 @@ provider owns storage, policy and identity:
 * every authorization is bound to this server's resource (RFC 8707);
 * codes are single use (atomic delete-on-exchange), stored as SHA-256 digests;
 * refresh tokens rotate; presenting a rotated token revokes its whole family;
-* tokens are bound to ``users.token_version`` — MITA's logout-all and password
-  reset end ChatGPT access as well.
+* every grant is bound to ``users.token_version`` AND to an HMAC fingerprint
+  of the password hash: a password change by any path, a token-version bump
+  (admin revoke, /change-password) or account deletion ends ChatGPT access.
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ import hashlib
 import hmac
 import json
 import logging
+import re
 import secrets
 import time
 import uuid
@@ -46,7 +48,13 @@ from app.db.models import (
     McpOAuthRefreshToken,
     User,
 )
+from app.mcp.auth.fingerprint import (
+    credential_fingerprint,
+    fingerprint_key,
+    same_fingerprint,
+)
 from app.mcp.auth.keys import SigningKeys
+from app.mcp.auth.redirects import redirect_uri_allowed
 from app.mcp.auth.scopes import SUPPORTED_SCOPES
 from app.mcp.auth.tokens import JwtTokenVerifier, issue_access_token
 from app.mcp.config import McpSettings
@@ -57,6 +65,11 @@ logger = logging.getLogger("app.mcp.oauth")
 
 MAX_REDIRECT_URIS = 5
 MAX_CLIENT_NAME = 100
+MAX_CLIENT_METADATA_BYTES = 4096
+ALLOWED_GRANT_TYPES = {"authorization_code", "refresh_token"}
+ALLOWED_AUTH_METHODS = {"none", "client_secret_post", "client_secret_basic"}
+# RFC 7636: S256 challenge = BASE64URL(SHA256(verifier)) = 43 characters.
+PKCE_S256_CHALLENGE = re.compile(r"[A-Za-z0-9_-]{43}")
 LOGIN_PATH = "/oauth/login"
 
 
@@ -68,7 +81,7 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _same_resource(a: str, b: str) -> bool:
+def same_resource(a: str, b: str) -> bool:
     pa, pb = urlparse(a), urlparse(b)
     return (
         pa.scheme.lower() == pb.scheme.lower()
@@ -82,12 +95,14 @@ def _same_resource(a: str, b: str) -> bool:
 class MitaAuthorizationCode(AuthorizationCode):
     user_id: UUID
     token_version: int
+    credential_fingerprint: str
 
 
 class MitaRefreshToken(RefreshToken):
     family_id: UUID
     user_id: UUID
     token_version: int
+    credential_fingerprint: str
 
 
 # ---------------------------------------------------------------------------
@@ -156,13 +171,47 @@ class MitaAuthorizationProvider(
         self.write_scope = write_scope
         self.pending = pending
         self.clock = clock
+        self._fingerprint_key = fingerprint_key(settings.login_csrf_secret)
+
+    def fingerprint(self, user: User) -> str:
+        return credential_fingerprint(self._fingerprint_key, user.password_hash)
+
+    def _grant_still_valid(
+        self, user: Optional[User], token_version: int, fingerprint: str
+    ) -> bool:
+        return (
+            user is not None
+            and int(user.token_version or 1) == token_version
+            and same_fingerprint(self.fingerprint(user), fingerprint)
+        )
 
     # --- clients (RFC 7591) ---------------------------------------------
 
     def redirect_uri_allowed(self, uri: str) -> bool:
-        return any(
-            uri.startswith(prefix) for prefix in self.settings.allowed_redirect_prefixes
-        )
+        return redirect_uri_allowed(uri, self.settings.allowed_redirect_prefixes)
+
+    @staticmethod
+    def _enforce_minimal_client(client_info: OAuthClientInformationFull) -> None:
+        """Accept only what ChatGPT needs: code + refresh grants, the code
+        response type, no client-supplied keys, bounded metadata."""
+        problems = []
+        if set(client_info.grant_types) - ALLOWED_GRANT_TYPES:
+            problems.append(
+                "grant_types may only be authorization_code and refresh_token"
+            )
+        if list(client_info.response_types) != ["code"]:
+            problems.append("response_types must be exactly ['code']")
+        if client_info.token_endpoint_auth_method not in ALLOWED_AUTH_METHODS:
+            problems.append("unsupported token_endpoint_auth_method")
+        if client_info.jwks is not None or client_info.jwks_uri is not None:
+            problems.append("jwks/jwks_uri are not accepted")
+        if client_info.client_name and len(client_info.client_name) > MAX_CLIENT_NAME:
+            problems.append("client_name is too long")
+        size = len(client_info.model_dump_json(exclude_none=True))
+        if size > MAX_CLIENT_METADATA_BYTES:
+            problems.append("client metadata is too large")
+        if problems:
+            raise RegistrationError("invalid_client_metadata", "; ".join(problems))
 
     async def get_client(self, client_id: str) -> Optional[OAuthClientInformationFull]:
         async with self.write_scope() as session:
@@ -188,10 +237,7 @@ class MitaAuthorizationProvider(
                 "invalid_redirect_uri",
                 "This authorization server only accepts ChatGPT connector redirect URIs.",
             )
-        if client_info.client_name and len(client_info.client_name) > MAX_CLIENT_NAME:
-            raise RegistrationError(
-                "invalid_client_metadata", "client_name is too long."
-            )
+        self._enforce_minimal_client(client_info)
         async with self.write_scope() as session:
             session.add(
                 McpOAuthClient(
@@ -210,12 +256,16 @@ class MitaAuthorizationProvider(
         self, client: OAuthClientInformationFull, params: AuthorizationParams
     ) -> str:
         resource = params.resource or self.settings.resource_url
-        if not _same_resource(resource, self.settings.resource_url):
+        if not same_resource(resource, self.settings.resource_url):
             raise AuthorizeError(
                 "invalid_target", "Unknown resource for this authorization server."
             )
         if not self.redirect_uri_allowed(str(params.redirect_uri)):
             raise AuthorizeError("invalid_request", "Redirect URI is not allowed.")
+        if not PKCE_S256_CHALLENGE.fullmatch(params.code_challenge or ""):
+            raise AuthorizeError(
+                "invalid_request", "code_challenge must be an S256 PKCE challenge."
+            )
         requested = params.scopes or (
             client.scope.split() if client.scope else list(SUPPORTED_SCOPES)
         )
@@ -250,6 +300,7 @@ class MitaAuthorizationProvider(
                     redirect_uri_provided_explicitly=bool(pending["explicit"]),
                     resource=pending["resource"],
                     token_version=int(user.token_version or 1),
+                    credential_fingerprint=self.fingerprint(user),
                     expires_at=self.clock()
                     + timedelta(seconds=self.settings.authorization_code_ttl_seconds),
                 )
@@ -285,6 +336,7 @@ class MitaAuthorizationProvider(
                 subject=str(row.user_id),
                 user_id=row.user_id,
                 token_version=row.token_version,
+                credential_fingerprint=row.credential_fingerprint,
             )
 
     async def exchange_authorization_code(
@@ -309,16 +361,17 @@ class MitaAuthorizationProvider(
                 failure = TokenError(
                     "invalid_grant", "authorization code was already used"
                 )
-            elif not _same_resource(
+            elif not same_resource(
                 authorization_code.resource or "", self.settings.resource_url
             ):
                 failure = TokenError(
                     "invalid_target",
                     "authorization code was issued for another resource",
                 )
-            elif (
-                user is None
-                or int(user.token_version or 1) != authorization_code.token_version
+            elif not self._grant_still_valid(
+                user,
+                authorization_code.token_version,
+                authorization_code.credential_fingerprint,
             ):
                 failure = TokenError(
                     "invalid_grant", "the MITA session behind this code has ended"
@@ -330,6 +383,7 @@ class MitaAuthorizationProvider(
                     user_id=user.id,
                     scopes=authorization_code.scopes,
                     token_version=authorization_code.token_version,
+                    credential_fingerprint=authorization_code.credential_fingerprint,
                     family_id=uuid.uuid4(),
                 )
         raise failure
@@ -344,6 +398,7 @@ class MitaAuthorizationProvider(
         user_id: UUID,
         scopes: List[str],
         token_version: int,
+        credential_fingerprint: str,
         family_id: UUID,
     ) -> OAuthToken:
         now = self.clock()
@@ -354,6 +409,7 @@ class MitaAuthorizationProvider(
             client_id=client_id,
             scopes=scopes,
             token_version=token_version,
+            credential_fingerprint=credential_fingerprint,
             now=int(now.timestamp()),
         )
         refresh = secrets.token_urlsafe(48)
@@ -366,6 +422,7 @@ class MitaAuthorizationProvider(
                 scopes=" ".join(scopes),
                 resource=self.settings.resource_url,
                 token_version=token_version,
+                credential_fingerprint=credential_fingerprint,
                 expires_at=now
                 + timedelta(seconds=self.settings.refresh_token_ttl_seconds),
             )
@@ -426,6 +483,7 @@ class MitaAuthorizationProvider(
                 family_id=row.family_id,
                 user_id=row.user_id,
                 token_version=row.token_version,
+                credential_fingerprint=row.credential_fingerprint,
             )
 
     async def exchange_refresh_token(
@@ -454,9 +512,8 @@ class MitaAuthorizationProvider(
                 failure = TokenError(
                     "invalid_grant", "refresh token is no longer valid"
                 )
-            elif (
-                user is None
-                or int(user.token_version or 1) != refresh_token.token_version
+            elif not self._grant_still_valid(
+                user, refresh_token.token_version, refresh_token.credential_fingerprint
             ):
                 await self._revoke_family(session, refresh_token.family_id)
                 failure = TokenError(
@@ -469,6 +526,7 @@ class MitaAuthorizationProvider(
                     user_id=user.id,
                     scopes=[s for s in scopes if s in SUPPORTED_SCOPES],
                     token_version=refresh_token.token_version,
+                    credential_fingerprint=refresh_token.credential_fingerprint,
                     family_id=refresh_token.family_id,
                 )
         # The revocation above is committed before the refusal is returned.

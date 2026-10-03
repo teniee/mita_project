@@ -13,6 +13,9 @@ from dataclasses import dataclass
 from typing import Optional
 from urllib.parse import urlparse
 
+from mcp.server.auth.handlers.token import TokenHandler
+from mcp.server.auth.middleware.client_auth import ClientAuthenticator
+from mcp.server.auth.routes import cors_middleware
 from mcp.server.auth.settings import (
     AuthSettings,
     ClientRegistrationOptions,
@@ -29,13 +32,17 @@ from starlette.types import ASGIApp
 from app.mcp import MCP_SERVER_NAME, MCP_SERVER_VERSION
 from app.mcp.auth.keys import SigningKeys, load_signing_keys
 from app.mcp.auth.login import ConsentPage
-from app.mcp.auth.provider import MitaAuthorizationProvider, PendingRequestCodec
+from app.mcp.auth.provider import (
+    MitaAuthorizationProvider,
+    PendingRequestCodec,
+    same_resource,
+)
 from app.mcp.auth.scopes import SUPPORTED_SCOPES
 from app.mcp.auth.tokens import JwtTokenVerifier
 from app.mcp.config import McpSettings
 from app.mcp.db import SessionScope, read_only_session, write_session
 from app.mcp.observability import RequestLogMiddleware, metrics
-from app.mcp.ratelimit import SlidingWindowLimiter
+from app.mcp.ratelimit import OAuthEndpointRateLimit, SlidingWindowLimiter
 from app.mcp.runtime import McpRuntime
 from app.mcp.tools import register_tools
 
@@ -196,6 +203,43 @@ def build_service(
         host=urlparse(settings.public_url).hostname or "0.0.0.0",  # nosec B104
     )
 
+    if provider is not None:
+        # RFC 8707 at the token endpoint: the SDK passes `resource` on to no
+        # one, so a token request naming another resource would silently get
+        # a token for this one. Refuse it instead (the token is always bound
+        # to settings.resource_url regardless).
+        sdk_token = TokenHandler(
+            provider=provider, client_authenticator=ClientAuthenticator(provider)
+        )
+
+        async def strict_token(request: Request) -> Response:
+            form = await request.form()  # cached on the Request; the SDK re-reads it
+            requested = form.get("resource")
+            if (
+                isinstance(requested, str)
+                and requested
+                and not same_resource(requested, settings.resource_url)
+            ):
+                return JSONResponse(
+                    {
+                        "error": "invalid_target",
+                        "error_description": "This authorization server only issues tokens for its MCP resource.",
+                    },
+                    status_code=400,
+                    headers={"Cache-Control": "no-store", "Pragma": "no-cache"},
+                )
+            return await sdk_token.handle(request)
+
+        app.router.routes.insert(
+            0,
+            Route(
+                "/token",
+                endpoint=cors_middleware(strict_token, ["POST", "OPTIONS"]),
+                methods=["POST", "OPTIONS"],
+                include_in_schema=False,
+            ),
+        )
+
     # RFC 9728 metadata listing both scopes (the SDK lists only required_scopes).
     async def protected_resource_metadata(request: Request) -> Response:
         return JSONResponse(
@@ -239,8 +283,15 @@ def build_service(
             )
         )
 
+    wrapped: ASGIApp = app
+    if provider is not None:
+        wrapped = OAuthEndpointRateLimit(
+            wrapped,
+            per_minute=settings.oauth_requests_per_minute,
+            trusted_hops=settings.trusted_proxy_hops,
+        )
     return McpService(
-        app=RequestLogMiddleware(app),
+        app=RequestLogMiddleware(wrapped),
         server=server,
         runtime=runtime,
         provider=provider,

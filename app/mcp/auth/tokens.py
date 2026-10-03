@@ -16,6 +16,7 @@ from uuid import UUID
 import jwt
 from mcp.server.auth.provider import AccessToken, TokenVerifier
 
+from app.mcp.auth.fingerprint import CREDENTIAL_CLAIM
 from app.mcp.auth.keys import SigningKeys
 from app.mcp.auth.scopes import SUPPORTED_SCOPES
 from app.mcp.config import McpSettings
@@ -36,6 +37,7 @@ def issue_access_token(
     client_id: str,
     scopes: Iterable[str],
     token_version: int,
+    credential_fingerprint: str,
     now: Optional[int] = None,
 ) -> tuple[str, int]:
     issued_at = int(now if now is not None else time.time())
@@ -51,6 +53,7 @@ def issue_access_token(
         "client_id": client_id,
         "scope": " ".join(s for s in scopes if s in SUPPORTED_SCOPES),
         TOKEN_VERSION_CLAIM: token_version,
+        CREDENTIAL_CLAIM: credential_fingerprint,
     }
     token = jwt.encode(
         claims,
@@ -166,6 +169,11 @@ class JwtTokenVerifier(TokenVerifier):
                 "iss": claims["iss"],
                 TOKEN_VERSION_CLAIM: (
                     token_version if isinstance(token_version, int) else None
+                ),
+                CREDENTIAL_CLAIM: (
+                    claims.get(CREDENTIAL_CLAIM)
+                    if isinstance(claims.get(CREDENTIAL_CLAIM), str)
+                    else None
                 ),
             },
         )

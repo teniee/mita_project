@@ -89,3 +89,38 @@ async def test_forged_subject_without_signature_is_rejected(mcp, two_users):
             headers={"Accept": "application/json, text/event-stream"},
         )
     assert response.status_code == 401
+
+
+async def test_a_sees_exactly_its_own_figures_on_every_tool(mcp, two_users, seed):
+    a, _ = two_users
+    await seed.goal(a, title="A goal", target_amount=400, saved_amount=100)
+    await seed.scheduled(
+        a, merchant="A-RENT", amount=321, scheduled_date=date(2026, 3, 20)
+    )
+    m = mcp.at(NOW)
+    token = mcp.token(a)
+
+    async def data(tool, args=None):
+        return structured(await m.call(token, tool, args or {}))
+
+    assert (await data("get_profile"))["name"] == "Alice"
+    summary = await data("get_financial_summary")
+    assert (summary["planned_total"], summary["spent_total"]) == ("100.00", "10.00")
+    txns = await data(
+        "list_transactions", {"start_date": "2026-03-01", "end_date": "2026-03-31"}
+    )
+    assert [(t["amount"], t["merchant"]) for t in txns["transactions"]] == [
+        ("10.00", "A-shop")
+    ]
+    breakdown = await data(
+        "get_spending_breakdown", {"start_date": "2026-03-01", "end_date": "2026-03-31"}
+    )
+    assert breakdown["total_spent"] == "10.00"
+    status = await data("get_budget_status")
+    assert (status["total_planned"], status["total_spent"]) == ("100.00", "10.00")
+    forecast = await data("get_budget_forecast")
+    assert (forecast["total_planned"], forecast["total_spent"]) == ("100.00", "10.00")
+    recurring = await data("get_recurring_expenses")
+    assert [i["merchant"] for i in recurring["scheduled_recurring"]] == ["A-RENT"]
+    goals = await data("get_goals")
+    assert [g["title"] for g in goals["goals"]] == ["A goal"]
