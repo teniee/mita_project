@@ -3,6 +3,51 @@
 Everything here needs your accounts, money, legal judgement or DNS. Ordered
 by dependency. Code side is done on `feat/chatgpt-plugin`.
 
+## Staging: connect the deployed staging MCP to real ChatGPT
+
+Staging is deployed and verified by scripts (docs/chatgpt-app/staging.md,
+staging-acceptance.md). Only the real-ChatGPT check remains, and it needs
+your ChatGPT account and a password typed by you.
+
+**S-1 Get the staging test password (never put it in git or chat).**
+Generated during this session and stored only on your Mac, mode 0600:
+`/private/tmp/claude-501/-Users-mikhail/aff3608f-4880-4623-b7dd-6e9729585132/scratchpad/railway-staging/staging-test-password.txt`
+(`cat` it in your terminal). If that file is gone (it is a temp
+directory), set a new one:
+1. On your Mac: `cd ~/mita_project && .venv/bin/python -c "import getpass; from app.core.password_security import hash_password_sync as h; print(h(getpass.getpass('New staging password: ')))"` — type a new password; it prints a bcrypt hash (starts with `$2b$`).
+2. Railway → project **mita-mcp-staging** → service **Postgres** → its database/**Data** tab (the SQL query view; label may differ in the current dashboard) → run:
+   `UPDATE users SET password_hash = '<the $2b$… hash>', failed_login_attempts = 0, account_locked_until = NULL WHERE email = 'staging-review@example.test';`
+   Expect "1 row updated". (Changing it revokes any existing ChatGPT grant — intended.)
+   If the dashboard has no SQL view: in a terminal linked to the staging
+   project, `railway connect Postgres` opens psql (Railway may require enabling
+   a public TCP proxy for this; remove it afterwards in Postgres → Settings →
+   Networking).
+
+**S-2 Enable developer mode.** chatgpt.com → profile menu → **Settings** →
+**Security and login** → **Developer mode** → On. (Availability depends on
+plan/workspace policy; if the toggle is missing, your plan or workspace does
+not allow it.)
+
+**S-3 Add the staging app.** chatgpt.com/plugins → **+** →
+* Name: `MITA Finance (staging)`
+* Description: `Read-only access to a fake MITA staging account`
+* MCP server URL: `https://mita-mcp-staging-staging.up.railway.app/mcp`
+* Connection: public HTTPS endpoint (not Tunnel); authentication OAuth (ChatGPT discovers it)
+* Create → ChatGPT opens the **MITA consent page** (staging host). Check the page shows "read-only" and "If someone sent you this link, press Cancel".
+  Sign in with `staging-review@example.test` and the S-1 password → **Allow read-only access**.
+Expected: the app shows as connected and lists exactly 8 tools:
+get_profile, get_financial_summary, list_transactions, get_spending_breakdown,
+get_budget_status, get_budget_forecast, get_recurring_expenses, get_goals.
+
+**S-4 Run the acceptance prompts.** New conversation → tools menu → add
+**MITA Finance (staging)** → ask the 12 prompts in staging-acceptance.md §5
+and compare with §3. Send me the observed answers (no screenshots of tokens
+needed) and I will record them; or fill the table yourself.
+
+If ChatGPT rejects the connection, copy the exact error text; the server side
+logs every step as `http_request`/`oauth_*` events (Railway → mita-mcp-staging
+→ Logs).
+
 ## Security (do first — independent of ChatGPT)
 
 **O-1 Rotate the leaked Supabase secret key.** Supabase dashboard → project
@@ -32,10 +77,9 @@ Rotating `JWT_SECRET` signs every mobile user out (expected).
 `mitafinance.com` (owned, IONOS) — recommended — or buy `mita.finance`. All docs
 assume `mcp.mitafinance.com`.
 
-**O-6 Create the MCP service on Railway.** Railway → project "Mita Finance" →
+**O-6 Create the PRODUCTION MCP service on Railway** (staging already exists as a separate project). Railway → project "Mita Finance" →
 environment production → New → GitHub Repo `teniee/mita_project`, branch
-`main` (after merge) → name `mita-mcp` → Settings → Config-as-code / "Railway
-config file" = `deploy/mcp/railway.json`. Variables: run
+`main` (after merge) → name `mita-mcp` → Settings: Dockerfile path `deploy/mcp/Dockerfile`, healthcheck `/health`, 1 replica (config-as-code `railway.json` is deprecated by Railway; set these directly, as done for staging). Variables: run
 `python scripts/mcp/generate_keys.py` locally and paste each line; add
 `ENVIRONMENT=production`, `DATABASE_URL` (reference `mita-production`'s, or the
 least-privilege role in deployment.md), `MCP_PUBLIC_URL=https://mcp.mitafinance.com`,

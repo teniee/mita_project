@@ -1074,3 +1074,8 @@ secrets, legal). Rules:
   trailing slash — issuer comparison is exact). Staging: separate Railway
   project `mita-mcp-staging` (docs/chatgpt-app/staging.md), pinned commits,
   one replica.
+- **Staging** runs in its own Railway project `mita-mcp-staging` (private
+  Postgres, fresh secrets, one replica, source pinned to a commit). Verified
+  over public HTTPS with `scripts/mcp/e2e_http.py` and
+  `scripts/mcp/staging_failure_modes.py`; results in
+  `docs/chatgpt-app/staging-acceptance.md`. Real-ChatGPT acceptance is owner-run.

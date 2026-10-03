@@ -7,7 +7,7 @@ replace or change the API service.
 | | `mita-production` (API, unchanged) | `mita-mcp` (new) |
 |---|---|---|
 | Build | Nixpacks + `start.sh` | Dockerfile `deploy/mcp/Dockerfile` |
-| Config file | — | `deploy/mcp/railway.json` |
+| Service settings | — | set on the service: Dockerfile `deploy/mcp/Dockerfile`, healthcheck `/health`, 1 replica (Railway deprecated config-as-code; `deploy/mcp/railway.json` is kept only as a record) |
 | Start | `bash start.sh` (runs `alembic upgrade head`) | `python -m app.mcp` (never migrates) |
 | Health | `GET /health` | `GET /health` → 200 only when the DB and the `mcp_oauth_*` tables are reachable |
 | Public host | `mita-production-production.up.railway.app` | `MCP_PUBLIC_URL`, recommended `https://mcp.mitafinance.com` |

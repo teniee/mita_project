@@ -1,24 +1,26 @@
-# Submission readiness (2026-10-03)
+# Readiness (2026-10-03)
 
-| Requirement | Status | Evidence | Remaining action |
+Status categories: **CODE READY** (implemented) · **CI VERIFIED** (GitHub CI)
+· **STAGING VERIFIED** (observed on the public staging endpoint) ·
+**CHATGPT VERIFIED** (observed in real ChatGPT) · **OWNER REQUIRED** ·
+**PRODUCTION NOT DONE**.
+
+| Requirement | Status | Evidence | Remaining |
 |---|---|---|---|
-| Public HTTPS MCP endpoint `/mcp` (streamable HTTP) | Code done; not deployed | `app/mcp/server.py`; container smoke in `mcp-ci` | O-6, O-7, O-11 |
-| Tool hints explicit on every tool | Done | `tests_mcp/test_tool_contract.py` | — |
-| Descriptions accurate, read-only stated | Done | same | — |
-| No identity inputs; per-user isolation | Done | `tests_mcp/test_isolation.py` (48 cases) | — |
-| Minimal outputs (no ids, notes, receipts, e-mails) | Done | `test_finance_accuracy.py::test_private_fields_never_returned` | — |
-| OAuth 2.1: PRM, AS metadata, DCR, PKCE S256, resource-bound tokens | Done (DCR; CIMD not in SDK) | `tests_mcp/test_oauth_flow.py` (23) | — |
-| `get_profile` with `openai/profile` | Done | `test_tool_contract.py` | — |
-| Financial accuracy, soft deletes, empty state, timezone | Done | `test_finance_accuracy.py`, `test_empty_state.py`, `test_timezone.py`; REST parity check (local) | — |
-| No digital-goods commerce / checkout | Done | `commerce: false`; no purchase text | — |
-| 5 positive + 3 negative test cases | Done | `plugin.template.json`, validated by `build_plugin.py` | — |
-| Plugin ZIP (Agent Plugins schema) | Done (template) | `build_plugin.py --check` in CI | O-15 (real values) |
-| Icons | Brand-spec SVG placeholders | `plugin/mita/assets` | Replace with official artwork if desired |
-| Domain verification endpoint | Done | `test_openai_domain_challenge_returns_only_the_token` | O-13 |
-| Website / support / privacy / terms over HTTPS | **Blocked** | TLS fails; no real pages | O-8, O-9 |
-| Working support contact | **Blocked** | `@mita.finance` undeliverable | O-8, O-9 |
-| Age suitability (13–17) | **Blocked** | ToS §2.1 requires 18+ | O-9(c) |
-| Review account with sample data, no MFA | Not created | dataset + local rehearsal script | O-10 |
-| Demo video | Not recorded | `demo-script.md` | O-14 |
-| Verified org / individual | Unknown | — | O-12 |
-| Leaked credentials rotated | **Not done** | security-findings S-1..S-4 | O-1..O-4 |
+| Streamable HTTP MCP at `/mcp`, public HTTPS | STAGING VERIFIED | `https://mita-mcp-staging-staging.up.railway.app/mcp`; staging-acceptance.md §1 | production: PRODUCTION NOT DONE |
+| 8 read-only tools, explicit hints, no identity inputs | CI VERIFIED, STAGING VERIFIED | `test_tool_contract.py`; staging failure-modes "exactly 8 tools", smuggled `user_id` | CHATGPT: NOT YET |
+| OAuth 2.1 (PRM, AS metadata, DCR, PKCE S256, resource binding, rotation, revocation) | CI VERIFIED, STAGING VERIFIED | adversarial suite; staging e2e + failure modes (restart, replay, scope, password change) | CHATGPT: NOT YET |
+| AS metadata advertises public clients; exact issuer | STAGING VERIFIED | fixed in `842d365` after first staging deploy | — |
+| Grant fingerprint secret separate from CSRF secret | CI VERIFIED, STAGING VERIFIED (deployed) | `b630d10`, `test_secret_separation.py` | — |
+| Cross-user isolation | CI VERIFIED | `test_isolation.py` (51) | — |
+| Exact figures; soft deletes; timezone | CI VERIFIED, STAGING VERIFIED | staging ground truth (§3), deleted 999.99 absent | CHATGPT: compare answers |
+| Logs free of tokens/codes/passwords/amounts/e-mails | CI VERIFIED (container), STAGING VERIFIED (Railway logs) | staging-acceptance.md §4 | — |
+| Connected in real ChatGPT developer mode | **NOT YET — OWNER REQUIRED** | — | OWNER_ACTIONS S-1…S-4 |
+| Plugin ZIP (Agent Plugins) | CODE READY, CI VERIFIED (`--check`) | `build_plugin.py` | final ZIP: OWNER REQUIRED (real URLs, video) |
+| Domain verification endpoint | CODE READY, CI VERIFIED | returns 404 on staging until a token is set | O-13 |
+| Website / support / privacy / terms over HTTPS | **OWNER REQUIRED** | `https://mitafinance.com` TLS failure | O-8, O-9 |
+| Age policy (13–17 suitability) | **OWNER REQUIRED** | ToS §2.1 = 18+ | O-9(c) |
+| Review account (production) | **OWNER REQUIRED** | staging fake account exists; production one does not | O-10 |
+| Demo video | **OWNER REQUIRED** | demo-script.md | O-14 |
+| Leaked credentials rotated | **OWNER REQUIRED** | security-findings S-1…S-4 | O-1…O-4 |
+| Production MCP service, domain, migration 0037 on production | **PRODUCTION NOT DONE** | production API is at 0036 (`/health`) | O-5…O-7, O-11 (merge) |
