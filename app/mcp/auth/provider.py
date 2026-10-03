@@ -171,7 +171,7 @@ class MitaAuthorizationProvider(
         self.write_scope = write_scope
         self.pending = pending
         self.clock = clock
-        self._fingerprint_key = fingerprint_key(settings.login_csrf_secret)
+        self._fingerprint_key = fingerprint_key(settings.grant_fingerprint_secret)
 
     def fingerprint(self, user: User) -> str:
         return credential_fingerprint(self._fingerprint_key, user.password_hash)

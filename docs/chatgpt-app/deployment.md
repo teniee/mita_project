@@ -30,7 +30,8 @@ replace or change the API service.
 | `MCP_PUBLIC_URL` | `https://mcp.mitafinance.com` (origin only, no path) | |
 | `MCP_AUTH_MODE` | `builtin` | |
 | `MCP_OAUTH_PRIVATE_KEY` | from `scripts/mcp/generate_keys.py` | yes |
-| `MCP_LOGIN_CSRF_SECRET` | from `generate_keys.py` | yes |
+| `MCP_LOGIN_CSRF_SECRET` | from `generate_keys.py` (consent-page CSRF only) | yes |
+| `MCP_GRANT_FINGERPRINT_SECRET` | from `generate_keys.py`, independent of the CSRF secret; binds grants to the password hash — rotating it revokes every ChatGPT grant | yes |
 | `JWT_SECRET`, `SECRET_KEY` | from `generate_keys.py` — **new random values, never the API's**; required only because `app.core.config` refuses to import in production without them; the MCP service never uses them | yes |
 | `MCP_METRICS_TOKEN` | from `generate_keys.py` (enables `/metrics`) | yes |
 | `OPENAI_APPS_CHALLENGE_TOKEN` | token shown in the OpenAI dashboard for domain verification | |

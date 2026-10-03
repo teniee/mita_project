@@ -1054,7 +1054,8 @@ secrets, legal). Rules:
   (second goal → 500, plan vs transaction category names).
 - **ChatGPT grants are bound to the password.** Codes, refresh tokens and
   access tokens carry `tv` (token_version) and `cfp` (HMAC of
-  `users.password_hash`); any password change, by any path, ends the
+  `users.password_hash`, keyed ONLY by `MCP_GRANT_FINGERPRINT_SECRET` — never
+  the CSRF secret); any password change, by any path, ends the
   connection on the next call/refresh. `/reset-password` bumps token_version
   only best-effort, which is why `cfp` exists. There is no user-facing
   "sign out of all devices" endpoint in MITA.

@@ -164,8 +164,10 @@ do not prevent this from distributed sources.
    only through that proxy, and `MCP_TRUSTED_PROXY_HOPS=1` matches Railway's
    single `X-Forwarded-For` hop (otherwise per-IP limits could be spoofed).
 4. **Secrets** (`MCP_OAUTH_PRIVATE_KEY`, `MCP_LOGIN_CSRF_SECRET`) stay only in
-   Railway variables. Rotating the CSRF secret also invalidates every `cfp`, i.e.
-   all ChatGPT grants (users reconnect) — use it as the emergency kill switch.
+   Railway variables. Since the follow-up hardening, the fingerprint uses its own
+   `MCP_GRANT_FINGERPRINT_SECRET`: rotating it revokes every ChatGPT grant
+   (emergency kill switch); rotating `MCP_LOGIN_CSRF_SECRET` does not
+   (`tests_mcp/test_secret_separation.py`).
 5. **Database access = full compromise.** DCR client secrets are stored as
    issued (SDK constraint); codes and refresh tokens are hashed.
 6. **Per-replica rate limits** (in memory). Use one replica, or move limits to

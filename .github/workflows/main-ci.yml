@@ -309,6 +309,7 @@ jobs:
         run: |
           KEY="$(/tmp/mcp-venv/bin/python -c 'from app.mcp.auth.keys import generate_private_key_pem as g; print(g(2048))')"
           CSRF="$(openssl rand -hex 32)"
+          GRANT="$(openssl rand -hex 32)"
           start_mcp() {
             docker run -d --name mita-mcp --network host \
               -e ENVIRONMENT=test -e PORT=8080 \
@@ -316,6 +317,7 @@ jobs:
               -e SECRET_KEY="$SECRET_KEY" -e JWT_SECRET="$JWT_SECRET" \
               -e MCP_PUBLIC_URL=http://localhost:8080 \
               -e MCP_OAUTH_PRIVATE_KEY="$KEY" -e MCP_LOGIN_CSRF_SECRET="$CSRF" \
+              -e MCP_GRANT_FINGERPRINT_SECRET="$GRANT" \
               -e OPENAI_APPS_CHALLENGE_TOKEN=ci-challenge \
               mita-mcp:ci
             for i in $(seq 1 30); do curl -sf http://localhost:8080/health && return 0; sleep 1; done

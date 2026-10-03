@@ -84,6 +84,7 @@ def make_settings(**overrides: Any) -> McpSettings:
         auth_mode="builtin",
         private_key_pem=_PRIVATE_KEY,
         login_csrf_secret="c" * 48,
+        grant_fingerprint_secret="g" * 48,
         apps_challenge_token="challenge-token-123",
         support_url="https://support.example.test",
         tool_calls_per_minute=1000,
@@ -409,7 +410,7 @@ def mint_token(
             token_version if token_version is not None else int(user.token_version or 1)
         ),
         credential_fingerprint=credential_fingerprint(
-            fingerprint_key(effective.login_csrf_secret), user.password_hash
+            fingerprint_key(effective.grant_fingerprint_secret), user.password_hash
         ),
         now=now,
     )

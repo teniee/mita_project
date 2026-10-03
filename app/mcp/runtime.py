@@ -65,7 +65,7 @@ class McpRuntime:
     clock: Callable[[], datetime] = field(default=_utcnow)
 
     def __post_init__(self) -> None:
-        self._fingerprint_key = fingerprint_key(self.settings.login_csrf_secret)
+        self._fingerprint_key = fingerprint_key(self.settings.grant_fingerprint_secret)
 
     def _www_authenticate(
         self, error: str, description: str, scope: Optional[str] = None

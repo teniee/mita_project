@@ -65,6 +65,9 @@ class McpSettings:
     private_key_pem: str = ""
     previous_public_key_pem: str = ""
     login_csrf_secret: str = ""
+    # HMAC key binding OAuth grants to users.password_hash (auth/fingerprint.py).
+    # Independent of the CSRF secret: rotating it revokes every ChatGPT grant.
+    grant_fingerprint_secret: str = ""
     access_token_ttl_seconds: int = 900
     refresh_token_ttl_seconds: int = 30 * 24 * 3600
     authorization_code_ttl_seconds: int = 300
@@ -150,6 +153,7 @@ def load_settings() -> McpSettings:
         private_key_pem=_multiline_env("MCP_OAUTH_PRIVATE_KEY"),
         previous_public_key_pem=_multiline_env("MCP_OAUTH_PREVIOUS_PUBLIC_KEY"),
         login_csrf_secret=_env("MCP_LOGIN_CSRF_SECRET"),
+        grant_fingerprint_secret=_env("MCP_GRANT_FINGERPRINT_SECRET"),
         access_token_ttl_seconds=_int_env("MCP_ACCESS_TOKEN_TTL_SECONDS", 900),
         refresh_token_ttl_seconds=_int_env(
             "MCP_REFRESH_TOKEN_TTL_SECONDS", 30 * 24 * 3600
@@ -183,6 +187,15 @@ def validate_settings(settings: McpSettings) -> None:
             )
         if len(settings.login_csrf_secret) < 32:
             raise McpConfigError("MCP_LOGIN_CSRF_SECRET must be at least 32 characters")
+        if len(settings.grant_fingerprint_secret) < 32:
+            raise McpConfigError(
+                "MCP_GRANT_FINGERPRINT_SECRET must be at least 32 characters"
+            )
+        if settings.grant_fingerprint_secret == settings.login_csrf_secret:
+            raise McpConfigError(
+                "MCP_GRANT_FINGERPRINT_SECRET and MCP_LOGIN_CSRF_SECRET must be "
+                "independently generated (they are equal)"
+            )
     else:
         if not settings.external_issuer or not settings.external_jwks_url:
             raise McpConfigError(
