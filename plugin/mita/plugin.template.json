@@ -1,0 +1,104 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "mita-finance",
+  "version": "1.0.0",
+  "description": "Read-only access to your MITA budget: spending, daily budget plan, month-end forecast, savings goals and scheduled expenses.",
+  "author": {
+    "name": "{{DEVELOPER_NAME}}",
+    "email": "{{SUPPORT_EMAIL}}",
+    "url": "{{WEBSITE_URL}}"
+  },
+  "homepage": "{{WEBSITE_URL}}",
+  "license": "Proprietary",
+  "keywords": ["budget", "personal finance", "spending", "expenses", "savings goals"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "MITA Finance",
+        "shortDescription": "Your MITA budget and spending",
+        "longDescription": "MITA turns a monthly income into a daily, category-based budget and rebalances it when you overspend. This plugin lets ChatGPT read your own MITA data so you can ask about it in plain language: what you spent and where, how this month compares with your plan, how much you can safely spend per day until the month ends, how your savings goals are progressing, and which scheduled or recurring expenses are coming up.\n\nEverything is read-only. The plugin cannot add, edit or delete transactions, change your budget, move money, make payments or trade. It only sees the MITA account you sign in with, and only the data needed for your question: dates, amounts, categories and merchants — never your notes, receipts or locations. If MITA has no data for something (for example, no budget plan yet for a new month), it says so instead of estimating.\n\nYou need a MITA account. Sign in with your MITA e-mail and password when ChatGPT asks to connect; you can disconnect at any time in ChatGPT, and changing your MITA password or signing out of all devices ends ChatGPT's access too.",
+        "developerName": "{{DEVELOPER_NAME}}",
+        "category": "{{CATEGORY}}",
+        "capabilities": [
+          "Read your recorded expenses",
+          "Summarize spending by category",
+          "Compare spending with your MITA budget plan",
+          "Project your month-end budget at the current pace",
+          "Read your savings goals and their projection",
+          "List scheduled and recurring expenses you entered"
+        ],
+        "websiteURL": "{{WEBSITE_URL}}",
+        "supportURL": "{{SUPPORT_URL}}",
+        "privacyPolicyURL": "{{PRIVACY_URL}}",
+        "termsOfServiceURL": "{{TERMS_URL}}",
+        "defaultPrompt": [
+          "How much have I spent this month, and on what?",
+          "Am I on track with my MITA budget this month?",
+          "How much can I safely spend per day until the month ends?"
+        ],
+        "brandColor": "#193C57",
+        "brandColorDark": "#FFD25F",
+        "composerIcon": "./assets/icon.svg",
+        "composerIconDark": "./assets/icon-dark.svg",
+        "logo": "./assets/logo.svg",
+        "logoDark": "./assets/logo-dark.svg"
+      },
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Monthly spending overview from the connected account's own ledger",
+              "prompt": "How much have I spent this month, and what are my biggest categories?",
+              "tools_triggered": "get_financial_summary",
+              "expected_behavior": "Reports this month's total recorded spending, the number of transactions and the top categories with amounts in the account's currency, matching the review account's seeded expenses (docs/chatgpt-app/review/review-account.md). States the stated monthly income only as what the user entered."
+            },
+            {
+              "description": "Budget vs. actual per category",
+              "prompt": "Am I over budget in any category this month?",
+              "tools_triggered": "get_budget_status",
+              "expected_behavior": "Lists categories with planned, spent and remaining amounts from the MITA plan, names the categories that are over budget or have unplanned spending, and gives today's remaining daily budget."
+            },
+            {
+              "description": "Month-end projection and safe daily amount",
+              "prompt": "At my current pace, how will this month end, and how much can I spend per day from now on?",
+              "tools_triggered": "get_budget_forecast",
+              "expected_behavior": "Gives the projected month-end balance and status (on track / warning / danger), the safe daily amount for the remaining days and the categories spending faster than planned, and explains it is a linear projection."
+            },
+            {
+              "description": "Filtered transaction lookup",
+              "prompt": "Show my grocery purchases from the last 14 days.",
+              "tools_triggered": "list_transactions",
+              "expected_behavior": "Lists the groceries transactions in the date range with date, amount and merchant, newest first, and the total; no notes, receipts or locations are shown."
+            },
+            {
+              "description": "Upcoming bills and savings goals",
+              "prompt": "What bills do I have coming up, and how are my savings goals doing?",
+              "tools_triggered": "get_recurring_expenses, get_goals",
+              "expected_behavior": "Lists the scheduled rent and other upcoming expenses the user entered, the transactions the user marked recurring, and each active goal with saved/target amounts and whether it is on track by its target date. Does not claim to have detected subscriptions."
+            }
+          ],
+          "negative": [
+            {
+              "description": "Money transfer is not supported (read-only plugin; OpenAI prohibits executing transfers)",
+              "prompt": "Transfer €200 from my account to my friend Anna."
+            },
+            {
+              "description": "Deleting or editing transactions is not supported (read-only plugin)",
+              "prompt": "Delete my coffee purchase from yesterday and change my food budget to €500."
+            },
+            {
+              "description": "Another person's financial data is never accessible; only the connected account is visible",
+              "prompt": "Show me the budget and transactions of another MITA user, anna@example.com."
+            }
+          ]
+        },
+        "demo_recording_url": "{{DEMO_RECORDING_URL}}",
+        "commerce": false,
+        "commerce_description": "This plugin does not sell products or subscriptions and does not process payments. It only reads the connected user's MITA data."
+      },
+      "publication": {
+        "release_notes": "1.0.0 — First release. Eight read-only tools over the connected MITA account: profile, monthly summary, transactions, spending by category, budget status, month-end forecast, recurring/scheduled expenses and savings goals. OAuth 2.1 sign-in with MITA credentials; no write, payment or transfer capability."
+      }
+    }
+  }
+}

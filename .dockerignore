@@ -9,6 +9,7 @@ docs/
 *.txt
 !requirements.txt
 !requirements-dev.txt
+!requirements-mcp.txt
 
 # CI/CD
 .github/
@@ -43,6 +44,7 @@ venv/
 env/
 ENV/
 .venv
+.venv-mcp
 
 # Mobile app (not needed for backend Docker image)
 mobile_app/
@@ -55,6 +57,7 @@ terraform/
 # Testing
 tests/
 app/tests/
+tests_mcp/
 *.test
 coverage/
 

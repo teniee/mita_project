@@ -4,7 +4,7 @@ on:
   push:
     # claude/** feature branches run the full pipeline so readiness work
     # gets real CI evidence before any merge to main.
-    branches: [ main, 'claude/**' ]
+    branches: [ main, 'claude/**', 'feat/**' ]
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -221,6 +221,102 @@ jobs:
           path: mobile_app/build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 7
 
+  # ChatGPT app (MCP service). Own environment: mcp 2.x needs pydantic>=2.12
+  # while the API pins 2.9.2, so migrations run from the API's dependency set
+  # and the MCP suite from requirements-mcp-dev.txt.
+  mcp-ci:
+    name: MCP CI
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test_mita
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/test_mita?sslmode=disable
+      SECRET_KEY: ci_test_secret_key_minimum_32_chars_long_xx
+      JWT_SECRET: ci_test_jwt_secret_minimum_32_chars_long_xx
+      ENVIRONMENT: test
+      FIREBASE_JSON: "{}"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Apply database migrations (API dependency set)
+        run: |
+          python -m venv /tmp/api-venv
+          /tmp/api-venv/bin/pip install -q -r requirements.txt
+          PYTHONPATH=. /tmp/api-venv/bin/python -m alembic upgrade head
+
+      - name: Install MCP dependencies
+        run: |
+          python -m venv /tmp/mcp-venv
+          /tmp/mcp-venv/bin/pip install -q --upgrade pip
+          /tmp/mcp-venv/bin/pip install -q -r requirements-mcp-dev.txt pip-audit jsonschema
+
+      - name: Lint (MCP sources)
+        run: |
+          /tmp/mcp-venv/bin/black --check app/mcp tests_mcp scripts/mcp
+          /tmp/mcp-venv/bin/isort --check app/mcp tests_mcp scripts/mcp
+          /tmp/mcp-venv/bin/ruff check app/mcp tests_mcp scripts/mcp
+
+      - name: Security scan (Bandit, MCP)
+        run: /tmp/mcp-venv/bin/bandit -r app/mcp -ll
+
+      - name: Dependency audit (MCP requirements)
+        run: /tmp/mcp-venv/bin/pip-audit -r requirements-mcp.txt --progress-spinner off
+
+      - name: Plugin package validation
+        run: /tmp/mcp-venv/bin/python scripts/mcp/build_plugin.py --check
+
+      - name: MCP tests (auth, isolation, accuracy, OAuth, annotations)
+        run: PYTHONPATH=. /tmp/mcp-venv/bin/pytest -c tests_mcp/pytest.ini tests_mcp -q
+
+      - name: Build MCP image
+        run: docker build -f deploy/mcp/Dockerfile -t mita-mcp:ci .
+
+      - name: Container smoke test
+        run: |
+          KEY="$(/tmp/mcp-venv/bin/python -c 'from app.mcp.auth.keys import generate_private_key_pem as g; print(g(2048))')"
+          docker run -d --name mita-mcp --network host \
+            -e ENVIRONMENT=test -e PORT=8080 \
+            -e DATABASE_URL="$DATABASE_URL" \
+            -e SECRET_KEY="$SECRET_KEY" -e JWT_SECRET="$JWT_SECRET" \
+            -e MCP_PUBLIC_URL=http://localhost:8080 \
+            -e MCP_OAUTH_PRIVATE_KEY="$KEY" \
+            -e MCP_LOGIN_CSRF_SECRET="$(openssl rand -hex 32)" \
+            -e OPENAI_APPS_CHALLENGE_TOKEN=ci-challenge \
+            mita-mcp:ci
+          for i in $(seq 1 30); do curl -sf http://localhost:8080/health && break; sleep 1; done
+          curl -sf http://localhost:8080/health | grep -q '"status":"ok"'
+          test "$(curl -s http://localhost:8080/.well-known/openai-apps-challenge)" = "ci-challenge"
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:8080/mcp \
+            -H 'content-type: application/json' -H 'accept: application/json, text/event-stream' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}')
+          test "$code" = "401"
+          curl -sf http://localhost:8080/.well-known/oauth-authorization-server | grep -q S256
+
+      - name: Container log on failure
+        if: failure()
+        run: docker logs mita-mcp || true
+
   # Build check
   build-check:
     name: Build Verification
@@ -248,18 +344,19 @@ jobs:
   ci-status:
     name: CI Status
     runs-on: ubuntu-latest
-    needs: [backend-ci, mobile-ci]
+    needs: [backend-ci, mobile-ci, mcp-ci]
     if: always()
 
     steps:
       - name: Check CI Status
         run: |
-          if [[ "${{ needs.backend-ci.result }}" == "success" ]] && [[ "${{ needs.mobile-ci.result }}" == "success" ]]; then
+          if [[ "${{ needs.backend-ci.result }}" == "success" ]] && [[ "${{ needs.mobile-ci.result }}" == "success" ]] && [[ "${{ needs.mcp-ci.result }}" == "success" ]]; then
             echo "✅ All CI checks passed"
             exit 0
           else
             echo "❌ Some CI checks failed"
             echo "Backend: ${{ needs.backend-ci.result }}"
             echo "Mobile: ${{ needs.mobile-ci.result }}"
+            echo "MCP: ${{ needs.mcp-ci.result }}"
             exit 1
           fi

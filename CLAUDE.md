@@ -1042,3 +1042,9 @@ secrets, legal). Rules:
   once per service and inside the test task — use the `mcp` harness.
 - **`scheduled_expenses.recurrence` is `once | weekly | monthly | null`.**
   `"once"` is one-time; only weekly/monthly are recurring.
+- **Deploy/package.** MCP image `deploy/mcp/Dockerfile`, Railway config
+  `deploy/mcp/railway.json` (set as the `mita-mcp` service's config file).
+  Plugin ZIP: `scripts/mcp/build_plugin.py --check` (CI) / `--release`
+  (refuses placeholders, example hosts and `mita.finance`). The review
+  seeder `scripts/mcp/seed_review_account.py` goes through `_target_guard`
+  and never writes to production. CI job `mcp-ci` runs all of it.

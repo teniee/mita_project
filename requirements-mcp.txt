@@ -24,13 +24,16 @@ asyncpg==0.30.0
 psycopg2-binary==2.9.9
 greenlet==3.5.3
 
-# Auth / crypto — same versions as the API
-PyJWT[crypto]==2.10.1
-cryptography==44.0.1
+# Auth / crypto. PyJWT and cryptography are NEWER than the API's pins: the
+# API's PyJWT 2.10.1 / cryptography 44.0.1 carry published advisories
+# (pip-audit, 2026-10-02) including an algorithm allow-list bypass and
+# PyJWKClient issues that matter for this service's token verification.
+PyJWT[crypto]==2.15.1
+cryptography==50.0.2
 passlib[bcrypt]==1.7.4
 bcrypt==4.2.0
 
 # Imported transitively by app.core / app.services modules the MCP reuses
 redis==5.2.0
-python-dotenv==1.0.1
+python-dotenv==1.2.4
 email-validator==2.2.0
