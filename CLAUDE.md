@@ -1068,3 +1068,9 @@ secrets, legal). Rules:
   built image in `mcp-ci`, across a container restart, with a log scan). The
   image installs `requirements-mcp.lock` (full lock; regenerate with
   `scripts/mcp/lock_deps.sh`).
+- **AS metadata is MITA's own route** (server.py): it advertises
+  `token_endpoint_auth_methods_supported` incl. `none` (ChatGPT registers as a
+  public PKCE client) and pins `issuer` to the exact configured origin (no
+  trailing slash — issuer comparison is exact). Staging: separate Railway
+  project `mita-mcp-staging` (docs/chatgpt-app/staging.md), pinned commits,
+  one replica.

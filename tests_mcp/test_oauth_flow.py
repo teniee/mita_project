@@ -132,6 +132,13 @@ async def test_metadata_documents(mcp):
         assert asm["registration_endpoint"] == f"{PUBLIC_URL}/register"
         assert set(asm["scopes_supported"]) == {"profile:read", "finance:read"}
         assert "authorization_code" in asm["grant_types_supported"]
+        # Public PKCE clients (how ChatGPT registers) must be advertised.
+        assert set(asm["token_endpoint_auth_methods_supported"]) == {
+            "none",
+            "client_secret_post",
+            "client_secret_basic",
+        }
+        assert asm["revocation_endpoint"] == f"{PUBLIC_URL}/revoke"
         jwks = (await http.get("/.well-known/jwks.json")).json()
         assert jwks["keys"][0]["alg"] == "RS256" and "d" not in jwks["keys"][0]
 

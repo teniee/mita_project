@@ -15,7 +15,7 @@ from urllib.parse import urlparse
 
 from mcp.server.auth.handlers.token import TokenHandler
 from mcp.server.auth.middleware.client_auth import ClientAuthenticator
-from mcp.server.auth.routes import cors_middleware
+from mcp.server.auth.routes import build_metadata, cors_middleware
 from mcp.server.auth.settings import (
     AuthSettings,
     ClientRegistrationOptions,
@@ -23,6 +23,7 @@ from mcp.server.auth.settings import (
 )
 from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
+from pydantic import AnyHttpUrl
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse, Response
@@ -33,6 +34,7 @@ from app.mcp import MCP_SERVER_NAME, MCP_SERVER_VERSION
 from app.mcp.auth.keys import SigningKeys, load_signing_keys
 from app.mcp.auth.login import ConsentPage
 from app.mcp.auth.provider import (
+    ALLOWED_AUTH_METHODS,
     MitaAuthorizationProvider,
     PendingRequestCodec,
     same_resource,
@@ -236,6 +238,42 @@ def build_service(
                 "/token",
                 endpoint=cors_middleware(strict_token, ["POST", "OPTIONS"]),
                 methods=["POST", "OPTIONS"],
+                include_in_schema=False,
+            ),
+        )
+
+    if provider is not None:
+        # RFC 8414 metadata. The SDK hard-codes token_endpoint_auth_methods to
+        # the two secret-based methods, yet registration accepts public PKCE
+        # clients ("none") — which is what ChatGPT registers as. Advertise the
+        # methods the provider actually accepts.
+        as_metadata = build_metadata(
+            AnyHttpUrl(settings.issuer_url),
+            None,
+            ClientRegistrationOptions(
+                enabled=True,
+                valid_scopes=list(SUPPORTED_SCOPES),
+                default_scopes=list(SUPPORTED_SCOPES),
+            ),
+            RevocationOptions(enabled=True),
+        )
+        as_metadata.token_endpoint_auth_methods_supported = sorted(ALLOWED_AUTH_METHODS)
+        as_metadata_json = as_metadata.model_dump(mode="json", exclude_none=True)
+        # Issuer comparison is exact string comparison (RFC 8414 §3.3); the URL
+        # type would append "/" to a path-less origin.
+        as_metadata_json["issuer"] = settings.issuer_url
+
+        async def authorization_server_metadata(request: Request) -> Response:
+            return JSONResponse(
+                as_metadata_json, headers={"Cache-Control": "public, max-age=300"}
+            )
+
+        app.router.routes.insert(
+            0,
+            Route(
+                "/.well-known/oauth-authorization-server",
+                authorization_server_metadata,
+                methods=["GET"],
                 include_in_schema=False,
             ),
         )

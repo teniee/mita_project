@@ -299,6 +299,39 @@ async def second_phase(args, base: str) -> None:
         # Persist the complete list so a later scan (e.g. `docker logs`) checks
         # the rotated tokens too.
         Path(args.state).write_text(json.dumps(state))
+
+        # Revocation: a password change (by any path) must end MCP access.
+        with pg(args.database_url) as conn, conn.cursor() as cur:
+            cur.execute(
+                "UPDATE users SET password_hash = %s WHERE id = %s",
+                (
+                    hash_password_sync("Rotated-" + secrets.token_urlsafe(12)),
+                    state["user_id"],
+                ),
+            )
+        async with httpx2.AsyncClient(
+            headers={"Authorization": f"Bearer {rotated['access_token']}"}, timeout=30
+        ) as http:
+            async with Client(
+                streamable_http_client(f"{base}/mcp", http_client=http)
+            ) as client:
+                result = await client.call_tool("get_profile", {})
+        check(
+            "password change revokes the live access token",
+            result.is_error
+            and (result.structured_content or {}).get("error", {}).get("category")
+            == "auth",
+        )
+        async with httpx2.AsyncClient(base_url=base, timeout=30) as http:
+            after = await http.post(
+                "/token",
+                data={
+                    "grant_type": "refresh_token",
+                    "refresh_token": rotated["refresh_token"],
+                    "client_id": state["client_id"],
+                },
+            )
+        check("password change revokes the refresh token", after.status_code == 400)
         if args.log_file:
             logs = Path(args.log_file).read_text(errors="replace")
             leaked = [i for i, s in enumerate(state["secrets"]) if s and s in logs]
