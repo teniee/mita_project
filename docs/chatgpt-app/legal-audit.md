@@ -45,8 +45,8 @@ Proposed new Privacy Policy section — **draft, to be reviewed**:
 > locations. The connection is read-only: ChatGPT cannot change your data,
 > move money or make payments through MITA. Data you receive in ChatGPT is
 > processed by OpenAI under OpenAI's terms and privacy policy. You can
-> disconnect in ChatGPT at any time; changing your MITA password or signing
-> out of all devices also ends the connection. MITA keeps a hashed record of
+> disconnect in ChatGPT at any time; changing your MITA password also ends
+> the connection. MITA keeps a hashed record of
 > the connection (no tokens in plain text) until it expires or is revoked, and
 > deletes it with your account.
 

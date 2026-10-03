@@ -109,7 +109,8 @@ ChatGPT ──(1) GET /mcp → 401 WWW-Authenticate: resource_metadata=…/.well
         ──(7) POST /token (code + code_verifier) → SDK verifies PKCE → provider issues
                  access JWT (RS256, 15 min, aud=resource, scope) + refresh token (30 days, rotating)
         ──(8) POST /mcp with Bearer → verifier: sig, iss, aud, exp, nbf, scope, then per call
-                 users.token_version == token claim (password change / logout-all revokes ChatGPT too)
+                 users.token_version == claim `tv` AND HMAC(password_hash) == claim `cfp`
+                 (any password change, admin token revoke or account deletion ends access)
 ```
 
 Decisions inside it:
@@ -165,7 +166,7 @@ Decisions inside it:
 |---|---|
 | Read another user's data via tool args | no identity args (schema test); principal from token only; cross-user tests |
 | Token for another resource replayed here | `aud` must equal `MCP_RESOURCE_URL` |
-| Stolen access token | 15 min lifetime; `token_version` revocation checked per call |
+| Stolen access token | 15 min lifetime; `token_version` + password-fingerprint (`cfp`) checked per call |
 | Stolen refresh token | rotation + family revocation on reuse; revocation endpoint |
 | Malicious DCR client | redirect allow-list; consent page shows client name and redirect host |
 | Credential stuffing on consent page | per-IP rate limit + shared account lockout |

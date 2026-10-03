@@ -261,6 +261,8 @@ async def test_consent_page_is_hardened(mcp):
     assert cookie.startswith("__Host-") and "Secure" in cookie and "HttpOnly" in cookie
     assert "samesite=strict" in cookie.lower()
     assert "read-only" in page.text.lower() and "chatgpt.com" in page.text
+    # Authorization-request forgery: warn against approving a link someone sent.
+    assert "If someone sent you this link, press Cancel" in page.text
 
 
 async def test_post_without_csrf_cookie_is_refused(mcp, seed):

@@ -145,12 +145,14 @@ h1{{font-size:1.3rem;margin:0 0 8px}}ul{{padding-left:20px}}label{{display:block
 input{{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font:inherit}}
 .row{{display:flex;gap:10px;margin-top:20px}}button{{flex:1;padding:11px;border-radius:8px;font:inherit;font-weight:600;border:1px solid var(--navy);cursor:pointer}}
 .allow{{background:var(--navy);color:#FFD25F}}.deny{{background:#fff;color:var(--navy)}}
+.warn{{background:#fff4d6;padding:10px 12px;border-radius:8px;font-size:.9rem}}
 .err{{background:#fdecea;color:#8a1c12;padding:10px 12px;border-radius:8px}}.fine{{font-size:.85rem;opacity:.8}}
 </style></head><body><main><div class="card">
 <h1>Connect MITA to {e(client_name)}</h1>
 <p><strong>{e(client_name)}</strong> is asking for read-only access to your MITA account. It will be able to:</p>
 <ul>{scope_items}</ul>
 <p class="fine">It cannot add, change or delete anything, move money or make payments. You can disconnect at any time in ChatGPT. After you continue you will be returned to <strong>{e(redirect_host)}</strong>.</p>
+<p class="warn"><strong>Only continue if you just chose to connect MITA in your own ChatGPT account.</strong> If someone sent you this link, press Cancel — approving it could give their ChatGPT access to your MITA data.</p>
 {error_html}
 <form method="post" action="/oauth/login" autocomplete="on">
 <input type="hidden" name="req" value="{e(req)}">

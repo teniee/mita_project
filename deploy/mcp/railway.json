@@ -6,6 +6,7 @@
     "watchPatterns": [
       "app/**",
       "requirements-mcp.txt",
+      "requirements-mcp.lock",
       "deploy/mcp/**"
     ]
   },

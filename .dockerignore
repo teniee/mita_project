@@ -10,6 +10,7 @@ docs/
 !requirements.txt
 !requirements-dev.txt
 !requirements-mcp.txt
+!requirements-mcp.lock
 
 # CI/CD
 .github/

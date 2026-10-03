@@ -11,4 +11,4 @@ Source of truth: `plugin/mita/plugin.template.json` →
 
 Other refusals covered by tests but not submitted as review cases: no token /
 expired / wrong-audience token (`test_auth.py`), missing `finance:read` scope,
-revoked session after MITA logout-all, buying crypto or stocks (no such tool).
+revoked grant after a MITA password change or token-version bump, buying crypto or stocks (no such tool).

@@ -4,10 +4,12 @@
 
 FROM python:3.12-slim AS builder
 WORKDIR /install
-COPY requirements-mcp.txt .
+COPY requirements-mcp.lock .
+# Exact versions of every package, transitive ones included (no resolution
+# at build time).
 RUN pip install --upgrade pip \
  && pip install --prefix=/install/deps --no-cache-dir --disable-pip-version-check \
-      -r requirements-mcp.txt
+      --no-deps -r requirements-mcp.lock
 
 FROM python:3.12-slim
 RUN apt-get update \

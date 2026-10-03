@@ -1062,3 +1062,8 @@ secrets, legal). Rules:
   only code/refresh grants, `response_types=["code"]`, no jwks, <= 4 KiB
   metadata; /register, /token, /authorize, /revoke are rate limited per IP.
   Adversarial regressions: `tests_mcp/test_oauth_adversarial.py`.
+- **OAuth audit:** `docs/chatgpt-app/oauth-security-audit.md` (threat → evidence
+  table). Pre-deploy HTTP e2e: `scripts/mcp/e2e_http.py` (also run against the
+  built image in `mcp-ci`, across a container restart, with a log scan). The
+  image installs `requirements-mcp.lock` (full lock; regenerate with
+  `scripts/mcp/lock_deps.sh`).

@@ -58,5 +58,18 @@ On macOS / Python 3.11.9, two full local runs of `app/tests` ended in
 `Fatal Python error: Segmentation fault` inside sentry_sdk's SQL-tracing
 thread, at different tests (`test_migration_0036_user_fks.py`,
 `test_concurrent_auth_operations.py`); both files pass in isolation on the
-branch and on `main`. Treated as environmental until CI (Linux, Python 3.12)
-shows otherwise.
+branch and on `main`. Confirmed environmental: a full run on a clean `main`
+worktree also ended with exit 139, and GitHub CI (Linux, Python 3.12) ran the
+same suite green on 85cdc55.
+
+## F-6 (security) API audit fallback logs contain bearer tokens
+
+A redacted gitleaks scan of the local, git-ignored `logs/audit/audit_fallback_*.jsonl`
+written by the API found 965 secret-shaped values: 49 complete JWTs and
+fields named `token` (255) and `token_jti` (127). The API's audit fallback
+therefore persists bearer tokens to disk (in production: the container's
+filesystem). Not touched in this branch. The MCP service closes these file
+handlers at startup (`configure_logging`) and its own logs are proven
+token-free (`tests_mcp/test_oauth_adversarial.py::test_oauth_flow_logs_no_secrets`,
+container log scan in `mcp-ci`). Recommend: stop logging token material in
+`app/core/audit_logging.py` and delete existing fallback logs.
