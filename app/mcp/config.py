@@ -24,7 +24,10 @@ DEFAULT_ALLOWED_REDIRECT_PREFIXES: Tuple[str, ...] = (
     "https://chatgpt.com/connector_platform_oauth_redirect",
 )
 
-PRODUCTION_ENVIRONMENTS = {"production", "prod"}
+# Deployed environments get identical strictness: HTTPS-only public URL and
+# redirect allow-list, and no localhost/test Host allowances. Staging is a
+# rehearsal of production, not a relaxed mode.
+PRODUCTION_ENVIRONMENTS = {"production", "prod", "staging"}
 
 
 class McpConfigError(ValueError):

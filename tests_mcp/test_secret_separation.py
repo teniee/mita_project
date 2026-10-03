@@ -76,3 +76,22 @@ async def test_password_change_still_revokes_with_separate_secret(mcp, seed):
 def test_config_requires_two_independent_strong_secrets(overrides, message):
     with pytest.raises(McpConfigError, match=message):
         validate_settings(make_settings(**overrides))
+
+
+def test_staging_is_as_strict_as_production(monkeypatch):
+    from app.mcp.config import load_settings
+
+    monkeypatch.setenv("ENVIRONMENT", "staging")
+    monkeypatch.setenv("MCP_PUBLIC_URL", "http://mcp-staging.example.test")
+    monkeypatch.setenv("MCP_OAUTH_PRIVATE_KEY", make_settings().private_key_pem)
+    monkeypatch.setenv("MCP_LOGIN_CSRF_SECRET", "c" * 48)
+    monkeypatch.setenv("MCP_GRANT_FINGERPRINT_SECRET", "g" * 48)
+    with pytest.raises(McpConfigError, match="https"):
+        load_settings()
+    monkeypatch.setenv("MCP_PUBLIC_URL", "https://mcp-staging.example.test")
+    settings = load_settings()
+    assert settings.is_production
+    from app.mcp.server import _transport_security
+
+    hosts = _transport_security(settings).allowed_hosts
+    assert hosts == ["mcp-staging.example.test"]
