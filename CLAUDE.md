@@ -1048,3 +1048,7 @@ secrets, legal). Rules:
   (refuses placeholders, example hosts and `mita.finance`). The review
   seeder `scripts/mcp/seed_review_account.py` goes through `_target_guard`
   and never writes to production. CI job `mcp-ci` runs all of it.
+- **Owner-gated items** live in `docs/chatgpt-app/OWNER_ACTIONS.md`; readiness
+  table in `docs/chatgpt-app/review/submission-checklist.md`; pre-existing API
+  defects found along the way in `docs/chatgpt-app/backend-findings.md`
+  (second goal → 500, plan vs transaction category names).

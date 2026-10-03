@@ -65,7 +65,7 @@ Python modules and opens its own pool to the same database.
 | Goals | `goals` table + `_compute_goal_forecast` via `compute_forecast` | direct call | |
 | Premium | `users.is_premium` / `premium_until`, maintained by `iap/entitlements.apply_subscription_state` | not used in v1 | v1 exposes no paid-only data |
 | Recurring | `scheduled_expenses` (user-declared, `recurrence`), `transactions.is_recurring` (user-flagged) | read only | no inference engine exists; `recurring_expense_handler.inject_recurring_expenses` imports a `RecurringExpense` model that does not exist (dead code) |
-| Credential check | `app/api/auth/login.py` (lockout after 5 failures / 30 min) | extracted to `app/services/credential_verification.py` and used by both | no duplicated lockout logic |
+| Credential check | `app/api/auth/login.py` (lockout after 5 failures / 30 min) | mirrored in `app/services/credential_verification.py` for the consent page; the mobile route is untouched | same `users` lockout columns, so one counter |
 
 ### Business logic that lives in routes (not reused as-is)
 
