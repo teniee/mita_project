@@ -1,9 +1,11 @@
-"""Email/password verification with account lockout — one implementation.
+"""Email/password verification with account lockout for the ChatGPT consent page.
 
-Used by the mobile login (``app/api/auth/login.py``) and by the ChatGPT
-OAuth consent page (``app/mcp/auth/login.py``), so both share the same
-lockout counter: five consecutive failures lock the account for 30 minutes,
-a success resets the counter (migration 0017_add_account_security_fields).
+Used by the ChatGPT OAuth consent page (``app/mcp/auth/login.py``). It
+mirrors the mobile login's rules in ``app/api/auth/login.py`` exactly and
+updates the SAME columns, so both paths share one lockout counter: five
+consecutive failures lock the account for 30 minutes, a success resets it
+(migration 0017_add_account_security_fields). The mobile route is left
+untouched on purpose (ADR §7); keep the two in step if either changes.
 
 Callers own security-event logging (they hold the request context) and the
 user-facing message, which must not distinguish "no such user" from "wrong

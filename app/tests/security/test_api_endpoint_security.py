@@ -398,11 +398,8 @@ class TestAuthEndpointSecurity:
         Critical for preventing information disclosure in financial applications.
         """
         # Test 1: Database errors should not be exposed
-        # (patch the password check where the shared credential service
-        # looks it up — the login route delegates to it)
-        with patch(
-            "app.services.credential_verification.verify_password_async"
-        ) as mock_verify:
+        # (patch the credential check the login route actually awaits)
+        with patch("app.api.auth.login.verify_password_async") as mock_verify:
             # Simulate database error
             mock_verify.side_effect = Exception(
                 "Database connection failed on table 'users' at line 42"
