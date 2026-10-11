@@ -14,6 +14,13 @@ replace or change the API service.
 
 ## Order of operations (first release)
 
+Full plan with owner steps: `production-readiness.md` (Steps 6–7) and
+OWNER_ACTIONS O-6, O-7, O-11.
+
+0. **Give `mita-production` a Railway healthcheck (`/health`) first.** As of
+   2026-10-11 it has none, so Railway marks a new deployment Active as soon as
+   the container starts and stops the old one — a failed boot migration would
+   leave no serving deployment. `/health` answers 200 even when degraded.
 1. **Migration 0037 must reach production first.** It ships with the API
    (`start.sh` applies it on deploy). Until it has, `mita-mcp` reports 503 on
    `/health`, which is intended.
@@ -26,7 +33,7 @@ replace or change the API service.
 | Variable | Value | Secret |
 |---|---|---|
 | `ENVIRONMENT` | `production` | |
-| `DATABASE_URL` | same database as the API (Railway reference to `mita-production`'s variable, or a dedicated least-privilege role — see below) | yes |
+| `DATABASE_URL` | same database as the API: Railway Postgres 17 `mita-production-db` on the private host `mita-production-db.railway.internal` (docs/owner-dependencies-checklist.md). Railway listed no `DATABASE_URL` variable on that service on 2026-10-11 (only `PG*`/`POSTGRES_*`), so build it the way `mita-production`'s is built — or use the least-privilege role below | yes |
 | `MCP_PUBLIC_URL` | `https://mcp.mitafinance.com` (origin only, no path) | |
 | `MCP_AUTH_MODE` | `builtin` | |
 | `MCP_OAUTH_PRIVATE_KEY` | from `scripts/mcp/generate_keys.py` | yes |
@@ -46,7 +53,8 @@ use them.
 
 The MCP tools run in `READ ONLY` transactions regardless, but a dedicated role
 limits what a compromised MCP process could do. Run as the database owner in
-Supabase (SQL editor), then use the role in `mita-mcp`'s `DATABASE_URL`:
+`mita-production-db` (Railway → Data tab, or `railway connect`), then use the
+role in `mita-mcp`'s `DATABASE_URL`:
 
 ```sql
 CREATE ROLE mita_mcp LOGIN PASSWORD '<generate>';
@@ -59,8 +67,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
 GRANT SELECT ON alembic_version TO mita_mcp;
 ```
 
-(Verify against Supabase's pooler role setup before applying; the pooler
-username format is `<role>.<project_ref>`.)
+(Production moved from Supabase to Railway Postgres; there is no pooler, so
+the role name is used as-is.)
 
 ## Verification after deploy
 
@@ -90,7 +98,13 @@ five positive cases in `review/positive-test-cases.md`.
   Access tokens expire within 15 minutes. To cut them immediately, rotate
   `MCP_OAUTH_PRIVATE_KEY` (all outstanding access tokens fail signature checks).
 * **Migration 0037** is additive; it never needs rolling back to roll back the
-  service. `alembic downgrade 0036` drops only the three `mcp_oauth_*` tables.
+  MCP service. `alembic downgrade 0036` drops only the three `mcp_oauth_*` tables.
+* **Rolling back the API is different.** Once production is at 0037, a
+  pre-merge API deployment cannot boot: its `start.sh` runs
+  `alembic upgrade head` with code that does not know 0037 (`Can't locate
+  revision identified by '0037'`, reproduced 2026-10-11), and production
+  aborts on a failed migration. Fix forward, or run `alembic downgrade 0036`
+  from the merged code before rolling the API back.
 
 ## Key rotation
 

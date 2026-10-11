@@ -24,6 +24,10 @@ Routers app/api/*/routes.py  ──►  services / engines (mostly SYNC SQLAlche
 PostgreSQL (Supabase, session pooler) + Redis (Upstash: rate limit, token blacklist)
 ```
 
+Correction (2026-10-11): production PostgreSQL is Railway Postgres 17
+`mita-production-db` on the private network, not Supabase (Railway service
+config; docs/owner-dependencies-checklist.md).
+
 ## 2. Target architecture (ChatGPT path)
 
 ```

@@ -1092,3 +1092,17 @@ secrets, legal). Rules:
   unlisted category as "Other expenses" conflates it with real data; the
   description and the `CategorySpendOut.category` schema text say so. Do not
   "fix" this by adding a synthetic `other` bucket to the payload.
+- **Production rollout facts (read-only check, 2026-10-11).** Plan:
+  `docs/chatgpt-app/production-readiness.md`.
+  - `mita-production` has **no Railway healthcheck**, so a new deployment goes
+    Active when its container starts and the old one stops. A failed boot
+    migration therefore leaves nothing serving. Enable `/health` (200 even
+    when degraded) before the 0037 merge (O-11a).
+  - Production DB is Railway **Postgres 17 `mita-production-db`** (private
+    host), not Supabase, and has a public TCP proxy (O-4b).
+  - Once production is at 0037, rolling the API back to a pre-merge
+    deployment cannot boot (`Can't locate revision identified by '0037'`).
+    Fix forward, or `alembic downgrade 0036` from merged code first.
+  - `scripts/mcp/check_leaked_secrets.py` compares live variables with all 33
+    committed secret fingerprints and prints names only. It is owner-run,
+    because reading production variables is owner-only.

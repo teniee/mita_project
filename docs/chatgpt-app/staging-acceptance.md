@@ -1,8 +1,11 @@
 # Staging acceptance — observed results
 
-Target: `https://mita-mcp-staging-staging.up.railway.app` (commit `842d365`),
-fake account `staging-review@example.test`. No credentials or tokens are
-recorded here.
+Target: `https://mita-mcp-staging-staging.up.railway.app`, fake account
+`staging-review@example.test`. Scripted checks (§1–4) ran against commit
+`842d365` on 2026-10-03. Real-ChatGPT acceptance (§5) ran against the same
+deployment and was reported by the owner on 2026-10-11. Staging was then
+redeployed to `fcd7ae3`, which changes tool metadata only (§6). No
+credentials or tokens are recorded here.
 
 Status legend: **STAGING VERIFIED** = observed against the public staging
 endpoint by scripted HTTP/MCP clients. **CHATGPT VERIFIED** = observed inside
@@ -77,26 +80,102 @@ change, `forbidden` for profile-only token), `oauth_login_failed`
 `oauth_code_issued`, `oauth_refresh_reuse`. HTTP log statuses included 401,
 400 and 429 as expected.
 
-## 5. Real ChatGPT — NOT YET VERIFIED
+## 5. Real ChatGPT (CHATGPT VERIFIED, reported 2026-10-11)
 
-Not performed: the Claude-in-Chrome extension was not connected, and typing a
-staging password into a non-local sign-in page is left to the owner. Steps:
-OWNER_ACTIONS.md → "S-1 … S-4". Record the observations below when done.
+Run by the owner in real ChatGPT against staging `842d365` with the fake
+account. Observations as reported; the third column compares them with the
+ground truth in §3.
 
-| Check | Result |
+### 5.1 Connection and positive acceptance
+
+| Check | Observed in ChatGPT | Ground truth (§3) | Status |
+|---|---|---|---|
+| OAuth / DCR | connection completed; staging account authenticated | — | CHATGPT VERIFIED |
+| `get_profile` | Staging Review, EUR, Europe/Sofia | same | CHATGPT VERIFIED |
+| `get_financial_summary` | 7 transactions; €246.94 spent; €2,358.00 monthly budget; €2,111.06 remaining; 10.5 % used | 7; 246.94; 2358.00; 2111.06 (246.94 / 2358.00 = 10.47 %) | CHATGPT VERIFIED |
+| `list_transactions` | exactly 7 transactions, total €246.94 | 7, 246.94 | CHATGPT VERIFIED |
+| Soft-deleted €999.99 | never appeared | absent from every tool | CHATGPT VERIFIED |
+| `get_spending_breakdown` | Groceries €114.40, Dining €78.55, Transportation €38.00, Subscriptions €15.99 | same | CHATGPT VERIFIED |
+| `get_budget_status` | correct for the actual current date | figures move daily (§3 note) | CHATGPT VERIFIED |
+| `get_budget_forecast` | correct for the actual current date | figures move daily | CHATGPT VERIFIED |
+| `get_recurring_expenses` | Staging Maple Apartments €1,100 monthly; Staging StreamFlix €15.99 marked recurring; Staging SafeCar Insurance €240 one-time | rent 1100.00 monthly; StreamFlix marked recurring; insurance once | CHATGPT VERIFIED |
+| `get_goals` | Emergency Fund, €900 / €3,000, 30 %, on track | "Staging emergency fund", 900 / 3000, 30.0 %, on track | CHATGPT VERIFIED (amounts; title see §6.3) |
+
+All eight tools were exercised. The number of tools ChatGPT listed was not
+reported; at protocol level it is exactly 8 (§2).
+
+### 5.2 Negative acceptance
+
+| Prompt | Observed | Status |
+|---|---|---|
+| "Delete my most recent transaction" | refused: MITA is read-only | CHATGPT VERIFIED |
+| "Change my food budget to €500" | refused: MITA is read-only | CHATGPT VERIFIED |
+| "Transfer €200 to Anna" | no transfer executed; ChatGPT said MITA cannot send money, then offered to help prepare the transfer through a bank or payment service of the user's choice (§6.2) | CHATGPT VERIFIED (no MITA capability; wording see §6.2) |
+| Transactions of `staging-other@example.test` | no other user's data exposed | CHATGPT VERIFIED — staging holds one account, so this shows nothing is fabricated or exposed by prompt; real cross-user isolation is `test_isolation.py` (CI) and the smuggled-`user_id` check (§2) |
+| Control read after all negative prompts | 7 transactions; €246.94 spent; €2,358.00 budget; €2,111.06 remaining | CHATGPT VERIFIED: unchanged, so no prompt wrote anything |
+
+## 6. UX observations and the follow-up change (`fcd7ae3`)
+
+Neither observation was a data error or a security failure. The fix is tool
+metadata only; structured output is unchanged.
+
+**6.1 "Other expenses €15.99" in a summary answer.** `get_financial_summary`
+returns `top_categories` = the three largest categories by design
+(`app/mcp/serializers.py`, `totals[:3]`). With four categories the €15.99
+`subscriptions` spend is not in that payload, so ChatGPT labelled the
+remainder (246.94 − 230.95) itself; `get_spending_breakdown` named it
+correctly. The MCP output is correct. The relabel matters because `other` is a
+real MITA category (`app/config/category_config.py`): "Other expenses" can be
+mistaken for it. Now stated in the summary description, the `top_categories`
+schema text ("Not a full breakdown … get_spending_breakdown lists every
+category"), `CategorySpendOut.category` ("MITA's category name … do not rename
+it or merge it") and the server instructions.
+
+**6.2 Transfer prompt.** MITA has no transfer tool and executed nothing; the
+offer to prepare a transfer elsewhere was ChatGPT's own help. Every tool
+description, the server instructions and the plugin listing now say "MITA
+cannot initiate, execute or facilitate payments or money transfers" and that
+MITA is not connected to any bank or payment account (verified: no bank or
+payment integration in `app/`). This is stated as a fact about MITA only:
+OpenAI's guidelines forbid metadata that steers the model about other
+plugins or services, so ChatGPT may still offer general help outside MITA.
+No money-transfer tool was added.
+
+**6.3 Goal title.** Reported as "Emergency Fund"; the stored title is
+"Staging emergency fund". Amounts are exact. Either ChatGPT shortened the
+title or the report abbreviates it; titles are user text and were not
+changed.
+
+Evidence for `fcd7ae3`: MCP suite 252 passed locally (247 before); 4 new
+contract tests fail on the old metadata; CI run `38138961278` success on
+every job — Backend, Mobile, and MCP (lint, Bandit, pip-audit, plugin check,
+full suite, image build, container e2e across a restart, log scan); staging
+redeploy recorded in §7.
+
+## 7. Staging redeploy to `fcd7ae3` (STAGING VERIFIED, 2026-10-11)
+
+Service source re-pinned from `842d365` to `fcd7ae3` (staging project only;
+production untouched). Deployment `e060f0b8` → SUCCESS at 12:29 UTC; deploy
+log shows a clean start (Uvicorn on 8080, session manager started, no
+errors). Variables, database and secrets unchanged, so existing ChatGPT
+grants stay valid.
+
+| Endpoint | Observed after redeploy |
 |---|---|
-| Developer-mode app created with `…/mcp` URL | |
-| ChatGPT discovered OAuth and opened the MITA consent page | |
-| Tools listed by ChatGPT (expect exactly the 8, no write tools) | |
-| "What is my current MITA profile and currency?" | |
-| "How much have I spent this month?" (expect 246.94 EUR on 2026-10-03 data) | |
-| "Show my recent transactions." | |
-| "Break down my spending by category." | |
-| "How am I doing against my budget?" | |
-| "What does MITA project for the end of this month?" | |
-| "What recurring or scheduled expenses do I have?" | |
-| "How are my savings goals progressing?" | |
-| "Delete my last transaction." (expect: cannot, read-only) | |
-| "Change my food budget to €500." (expect: cannot) | |
-| "Transfer €200 to Anna." (expect: cannot) | |
-| "Show me another MITA user's transactions." (expect: cannot) | |
+| `GET /health` | 200 `{"status":"ok","service":"mita-mcp","version":"1.0.0"}` |
+| Protected-resource metadata (`/mcp` and root) | 200; `resource` = `…/mcp`; scopes `profile:read finance:read` |
+| AS metadata | issuer exactly the origin; S256 only; `client_secret_basic, client_secret_post, none` |
+| JWKS | one RS256 key, no private parameters |
+| `POST /mcp` without token | 401 with `resource_metadata` = `…/.well-known/oauth-protected-resource/mcp` |
+| `/authorize` (no params) · `/token` (no client) · `/metrics` · challenge | 400 · 401 · 401 · 404 |
+
+Identical to §1. `tools/list` over public HTTPS needs a token and was not
+re-run here; an image built from the same commit passed the container e2e
+in CI run `38138961278` (all 8 tools, across a restart).
+
+Re-check in ChatGPT (optional, NOT YET): ChatGPT caches tool metadata, so
+refresh the staging app in developer mode first, then ask "Summarize my
+spending this month by category" and "Transfer €200 to Anna". Expected: every
+category under its MITA name (or a pointer to the breakdown) and no "Other
+expenses" line for `subscriptions`; the transfer refusal states MITA cannot
+initiate, execute or facilitate transfers.

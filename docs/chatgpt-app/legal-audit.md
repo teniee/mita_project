@@ -29,6 +29,11 @@ PostgreSQL; account deletion endpoint exists.
 |---|---|---|
 | §2.1 "You must be at least 18" | OpenAI: plugins must be suitable for users 13–17; "Age 18+ experiences require verification systems." MITA has no age verification. | Decide: allow 13+ (with any jurisdictional limits) or implement age verification — *owner/legal* (blocker) |
 | Contact addresses on `mita.finance` | not deliverable | replace — *owner* |
+| §8.1 / §8.3 Plaid, Yodlee, "Bank Account Connections"; Supabase and Cloudflare as hosting (added 2026-10-11) | no bank integration in the code; production database is Railway Postgres | delete / correct — *owner/legal* |
+
+Replacement texts for every row in this document, the ChatGPT section and
+both age variants: `legal/policy-redline.md`. Support page draft:
+`legal/support-page.md`. Order of work: production-readiness.md Steps 4–5.
 
 ## Additions needed for the ChatGPT data flow (draft text for counsel)
 

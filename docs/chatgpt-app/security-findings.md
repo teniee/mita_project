@@ -21,7 +21,19 @@ anything in history must be treated as disclosed.
 | S-1 | Supabase **secret key** (`sb_secret_…`) for project `atdcxppfflmiwjwjuqyl` | `.mcp.json` @ `f83ad16` (2025-12-16), still in `3f0bb68`; untracked in `95193a3` (DEF-003) | `825ad855969b` | The untracked local `.mcp.json` today holds a value with the **same fingerprint** → not rotated as of this audit | Rotate in Supabase (OWNER_ACTIONS O-1) |
 | S-2 | Upstash Redis password (`integral-jaybird-23463.upstash.io`) | same file/commits | `9b824f818673` | Same fingerprint in the local `.mcp.json` today → not rotated | Rotate in Upstash; update every Railway variable that embeds it (O-2) |
 | S-3 | OpenAI project key (`sk-proj…`, 164 chars) | `agent_finance_advisor.py` @ `2f2c1f11` (2025-06-11) | `86d0921d9661` | Not checked (validating it would mean using it) | Revoke in OpenAI dashboard if it still exists (O-3) |
-| S-4 | `.env.production` committed with `JWT_SECRET` (`7d2122790a81`), `JWT_PREVIOUS_SECRET` (`4533279340f8`), `SECRET_KEY` (`9663211c9f9f`), `REDIS_PASSWORD` (`bca91625a628`), `REDIS_URL` (`cb2190673a19`), `DATABASE_URL` (`1b5a12cfe5c9`), `OPENAI_API_KEY` (`4c84d7d9e712`) | `0881bf7e` (2025-09-06), also `.env.production.test` | as listed | Not checked — comparing against production variables was blocked by this session's permission policy | Owner compares fingerprints; rotate any match (O-4). A matching `JWT_SECRET` means anyone can mint MITA access tokens for any user. |
+| S-4 | `.env.production` committed with `JWT_SECRET` (`7d2122790a81`), `JWT_PREVIOUS_SECRET` (`4533279340f8`), `SECRET_KEY` (`9663211c9f9f`), `REDIS_PASSWORD` (`bca91625a628`), `REDIS_URL` (`cb2190673a19`), `DATABASE_URL` (`1b5a12cfe5c9`; its password = `POSTGRES_PASSWORD`, `4a844b1f918f`), `OPENAI_API_KEY` (`4c84d7d9e712`, placeholder-shaped) | `0881bf7e` (2025-09-06), also `.env.production.test` | as listed | Not checked by Claude — reading production variables is owner-only | Owner runs `scripts/mcp/check_leaked_secrets.py` (O-4); rotate any match. A matching `JWT_SECRET` means anyone can mint MITA access tokens for any user. |
+| S-5 | Production database `mita-production-db` (Railway Postgres 17) has a public TCP proxy `shinkansen.proxy.rlwy.net:12880` → 5432 | Railway config, seen 2026-10-11; not documented in the repo | — | Live | Remove unless needed (O-4b). The API's `DATABASE_URL` is recorded as the private host `mita-production-db.railway.internal` (docs/owner-dependencies-checklist.md); confirm before removing |
+
+Full historical inventory (2026-10-11): every secret-like value in every
+revision of `.env.production` / `.env.production.test` (`bf69fae`,
+`7d3af83`, `0881bf7`), `.mcp.json` (`f83ad16`, `3f0bb68`) and
+`agent_finance_advisor.py` (`2f2c1f1`) — 33 fingerprints. The two older
+`.env.production` generations hold placeholders only; `APNS_KEY`
+(`c2283908c30d`) is 24 characters and may be a file path. All 33 are embedded
+in `scripts/mcp/check_leaked_secrets.py`, which compares live variables by
+whole value, URL password and bearer token and prints names only
+(`tests_mcp/test_leaked_secret_check.py` keeps this table and the script in
+step).
 
 Notes:
 
