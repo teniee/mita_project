@@ -34,6 +34,15 @@ def test_package_is_valid():
     assert build_plugin.main(["--check"]) == 0
 
 
+def test_listing_states_mita_cannot_move_money():
+    plugin, _ = _docs()
+    listing = plugin["extensions"]["com.openai"]["interface"]["longDescription"]
+    assert (
+        "MITA cannot initiate, execute or facilitate payments, money transfers or trades"
+        in listing
+    )
+
+
 def test_test_cases_reference_only_published_tools():
     from app.mcp.tools import PUBLISHED_TOOLS
 

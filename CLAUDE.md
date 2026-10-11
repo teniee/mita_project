@@ -1079,3 +1079,16 @@ secrets, legal). Rules:
   over public HTTPS with `scripts/mcp/e2e_http.py` and
   `scripts/mcp/staging_failure_modes.py`; results in
   `docs/chatgpt-app/staging-acceptance.md`. Real-ChatGPT acceptance is owner-run.
+- **Tool metadata states limits as facts, never steers the model elsewhere.**
+  OpenAI forbids metadata that influences how the model treats other
+  plugins/services, so every description carries `READ_ONLY_DISCLAIMER`
+  ("MITA cannot initiate, execute or facilitate payments or money transfers")
+  and nothing tells ChatGPT what to do outside MITA. Real ChatGPT still offered
+  to "prepare" a transfer through the user's bank after refusing — that is
+  ChatGPT's own help, not a MITA capability; never answer it with a transfer tool.
+- **`get_financial_summary.top_categories` is the top three only.** The rest
+  of `spent_total` is named only by `get_spending_breakdown`. `other` is a real
+  MITA category (`app/config/category_config.py`), so ChatGPT relabelling an
+  unlisted category as "Other expenses" conflates it with real data; the
+  description and the `CategorySpendOut.category` schema text say so. Do not
+  "fix" this by adding a synthetic `other` bucket to the payload.

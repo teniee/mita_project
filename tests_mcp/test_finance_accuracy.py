@@ -82,6 +82,45 @@ async def test_financial_summary_exact(m, ledger_user):
     ]
 
 
+async def test_summary_names_three_categories_and_breakdown_names_the_rest(m, seed):
+    """The staging ledger real ChatGPT summarized as "Other expenses 15.99".
+
+    The summary stops at three categories by design; the fourth is named only
+    by get_spending_breakdown, under MITA's own name, and nothing invents an
+    "other" entry for it.
+    """
+    user = await seed.user(currency="EUR")
+    for amount, category in (
+        ("114.40", "groceries"),
+        ("78.55", "dining"),
+        ("38.00", "transportation"),
+        ("15.99", "subscriptions"),
+    ):
+        await seed.txn(user, amount, category, at(3))
+    token = m.token(user)
+    summary = structured(await m.call(token, "get_financial_summary"))
+    assert (summary["spent_total"], summary["transaction_count"]) == ("246.94", 4)
+    assert [(c["category"], c["total"]) for c in summary["top_categories"]] == [
+        ("groceries", "114.40"),
+        ("dining", "78.55"),
+        ("transportation", "38.00"),
+    ]
+    breakdown = structured(
+        await m.call(
+            token,
+            "get_spending_breakdown",
+            {"start_date": "2026-03-01", "end_date": "2026-03-31"},
+        )
+    )
+    assert breakdown["total_spent"] == summary["spent_total"]
+    assert [(c["category"], c["total"]) for c in breakdown["categories"]] == [
+        ("groceries", "114.40"),
+        ("dining", "78.55"),
+        ("transportation", "38.00"),
+        ("subscriptions", "15.99"),
+    ]
+
+
 async def test_budget_status_exact_and_ignores_stale_plan_cache(m, ledger_user):
     data = structured(await m.call(m.token(ledger_user), "get_budget_status"))
     assert data["plan_status"] == "generated"

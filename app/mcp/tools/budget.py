@@ -39,9 +39,14 @@ PLAN_NOTE = (
 SUMMARY_DESCRIPTION = (
     "One-month overview of the user's MITA finances: the monthly income the user "
     "entered (self-reported, may be null), the month's total budget plan, total "
-    "recorded spending, what remains of the plan, the transaction count and the top "
-    "three spending categories. Months follow the user's timezone; default is the "
-    "current month. " + PLAN_NOTE + " " + READ_ONLY_DISCLAIMER
+    "recorded spending, what remains of the plan, the transaction count and the three "
+    "largest spending categories. top_categories is not a full breakdown: spending "
+    "outside those three is in other MITA categories, which get_spending_breakdown "
+    "lists by name — do not report that remainder as a category of its own. Months "
+    "follow the user's timezone; default is the current month. "
+    + PLAN_NOTE
+    + " "
+    + READ_ONLY_DISCLAIMER
 )
 
 STATUS_DESCRIPTION = (

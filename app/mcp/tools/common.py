@@ -7,7 +7,8 @@ from typing import Any, Dict
 from mcp_types import ToolAnnotations
 
 READ_ONLY_DISCLAIMER = (
-    "Read-only: this tool cannot create, change, delete, move or pay anything."
+    "Read-only: this tool cannot create, change or delete anything, and MITA cannot "
+    "initiate, execute or facilitate payments or money transfers."
 )
 
 

@@ -80,6 +80,48 @@ async def test_descriptions_are_specific_and_state_read_only(tools):
         assert tool.title, tool.name
 
 
+MONEY_MOVEMENT_LIMIT = (
+    "MITA cannot initiate, execute or facilitate payments or money transfers"
+)
+
+
+async def test_every_description_says_mita_cannot_move_money(tools):
+    # Real ChatGPT refused "Transfer €200 to Anna" but went on to offer to
+    # prepare the transfer elsewhere. The limit is stated as a fact on every
+    # tool (OpenAI forbids metadata that steers the model about other services).
+    for tool in tools:
+        assert MONEY_MOVEMENT_LIMIT in tool.description, tool.name
+
+
+async def test_server_instructions_state_limits_and_category_names(mcp, seed):
+    user = await seed.user()
+    instructions = await mcp.instructions(mcp.token(user))
+    assert (
+        "MITA cannot initiate, execute or facilitate payments, money transfers or trades"
+        in instructions
+    )
+    assert "not connected to any bank or payment account" in instructions
+    assert "Category names are MITA's own" in instructions
+
+
+async def test_summary_metadata_says_top_categories_is_not_a_full_breakdown(tools):
+    # Real ChatGPT reported the summary's unlisted 15.99 as "Other expenses"
+    # while get_spending_breakdown named it "subscriptions". "other" is itself a
+    # MITA category, so a renamed remainder can be mistaken for real data.
+    by_name = {t.name: t for t in tools}
+    summary = by_name["get_financial_summary"]
+    assert "top_categories is not a full breakdown" in summary.description
+    assert "get_spending_breakdown lists by name" in summary.description
+    top = summary.output_schema["properties"]["top_categories"]["description"]
+    assert "Not a full breakdown" in top and "get_spending_breakdown" in top
+    for name in ("get_financial_summary", "get_spending_breakdown"):
+        category = by_name[name].output_schema["$defs"]["CategorySpendOut"][
+            "properties"
+        ]["category"]["description"]
+        assert "MITA's category name" in category, name
+        assert "do not rename it or merge it" in category, name
+
+
 async def test_every_tool_publishes_an_output_schema(tools):
     for tool in tools:
         assert (

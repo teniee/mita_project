@@ -85,7 +85,12 @@ class TransactionsOut(_Out):
 
 
 class CategorySpendOut(_Out):
-    category: str
+    category: str = Field(
+        description=(
+            "MITA's category name, as recorded (for example 'subscriptions'). Report "
+            "it under this name; do not rename it or merge it with other categories."
+        )
+    )
     total: Money = money_field("Total spent in this category in the range.")
     transaction_count: int
     share_percent: str = Field(
@@ -131,7 +136,11 @@ class FinancialSummaryOut(_Out):
     )
     transaction_count: int
     top_categories: List[CategorySpendOut] = Field(
-        description="Up to three largest spending categories."
+        description=(
+            "Up to three largest spending categories, by MITA category name. Not a "
+            "full breakdown: spending in any other category is not itemized here "
+            "(get_spending_breakdown lists every category)."
+        )
     )
     days_in_month: int
     days_elapsed: int = Field(

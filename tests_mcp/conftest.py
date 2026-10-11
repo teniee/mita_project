@@ -216,6 +216,13 @@ class Harness:
             async with mcp_client(service, token) as client:
                 return (await client.list_tools()).tools
 
+    async def instructions(self, token: str) -> Optional[str]:
+        """Server instructions as the client receives them in ``initialize``."""
+        service = self._build()
+        async with started(service):
+            async with mcp_client(service, token) as client:
+                return client.instructions
+
     @asynccontextmanager
     async def http(self, token: Optional[str] = None):
         service = self._build()
