@@ -20,6 +20,7 @@ from .installment import (
     RiskLevel,
     UserFinancialProfile,
 )
+from .mcp_app import McpIdempotencyKey, McpUserProfile
 from .mcp_oauth import McpOAuthAuthorizationCode, McpOAuthClient, McpOAuthRefreshToken
 from .mood import Mood
 from .notification import (
@@ -44,6 +45,8 @@ from .waitlist import WaitlistEntry
 __all__ = [
     "Base",
     "McpOAuthClient",
+    "McpIdempotencyKey",
+    "McpUserProfile",
     "McpOAuthAuthorizationCode",
     "McpOAuthRefreshToken",
     "User",

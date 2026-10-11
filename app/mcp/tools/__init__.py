@@ -1,14 +1,15 @@
-"""MCP tool registration. One module per area; every tool is read-only."""
+"""MCP tool registration. One module per area."""
 
 from __future__ import annotations
 
 from mcp.server.mcpserver import MCPServer
 
 from app.mcp.runtime import McpRuntime
-from app.mcp.tools import budget, goals, profile, recurring, transactions
+from app.mcp.tools import budget, goals, profile, recurring, setup, transactions
 
-PUBLISHED_TOOLS = (
+READ_TOOLS = (
     "get_profile",
+    "get_setup_status",
     "get_financial_summary",
     "list_transactions",
     "get_spending_breakdown",
@@ -18,9 +19,14 @@ PUBLISHED_TOOLS = (
     "get_goals",
 )
 
+WRITE_TOOLS = ("update_financial_profile",)
+
+PUBLISHED_TOOLS = READ_TOOLS + WRITE_TOOLS
+
 
 def register_tools(server: MCPServer, runtime: McpRuntime) -> None:
     profile.register(server, runtime)
+    setup.register(server, runtime)
     transactions.register(server, runtime)
     budget.register(server, runtime)
     recurring.register(server, runtime)

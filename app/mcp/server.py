@@ -22,8 +22,9 @@ from mcp.server.auth.settings import (
     RevocationOptions,
 )
 from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError, UnexpectedToolError
 from mcp.server.transport_security import TransportSecuritySettings
-from pydantic import AnyHttpUrl
+from pydantic import AnyHttpUrl, ConfigDict
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse, PlainTextResponse, Response
@@ -31,6 +32,7 @@ from starlette.routing import Route
 from starlette.types import ASGIApp
 
 from app.mcp import MCP_SERVER_NAME, MCP_SERVER_VERSION
+from app.mcp.analytics import TOOL_FEATURES, Analytics, AnalyticsSink, CallTelemetry
 from app.mcp.auth.keys import SigningKeys, load_signing_keys
 from app.mcp.auth.login import ConsentPage
 from app.mcp.auth.provider import (
@@ -42,7 +44,12 @@ from app.mcp.auth.provider import (
 from app.mcp.auth.scopes import SUPPORTED_SCOPES
 from app.mcp.auth.tokens import JwtTokenVerifier
 from app.mcp.config import McpSettings
-from app.mcp.db import SessionScope, read_only_session, write_session
+from app.mcp.db import (
+    SessionScope,
+    read_only_session,
+    tool_write_session,
+    write_session,
+)
 from app.mcp.observability import RequestLogMiddleware, metrics
 from app.mcp.ratelimit import OAuthEndpointRateLimit, SlidingWindowLimiter
 from app.mcp.runtime import McpRuntime
@@ -51,20 +58,66 @@ from app.mcp.tools import register_tools
 logger = logging.getLogger("app.mcp")
 
 INSTRUCTIONS = (
-    "MITA is a personal budgeting app. These tools read the signed-in user's own MITA "
-    "data: recorded expenses, the monthly budget plan MITA generated, a month-end "
-    "projection, savings goals and scheduled expenses. All tools are read-only: they "
-    "cannot add, edit or delete transactions or change budgets. MITA cannot initiate, "
-    "execute or facilitate payments, money transfers or trades. Amounts are decimal "
-    "strings in the user's MITA currency. Category names are MITA's own (for example "
-    "'subscriptions'); keep them as returned rather than renaming or merging them. "
-    "When a field is null or plan_status is 'not_generated', MITA has no such data — "
-    "say so rather than estimating. MITA records expenses only; it is not connected to "
-    "any bank or payment account, has no balances or income transactions, and "
-    "stated_monthly_income is what the user typed in."
+    "MITA is a personal budgeting app. These tools work only on the signed-in user's "
+    "own MITA account, and what they save persists in MITA (not in this conversation), "
+    "so it is available in every future chat. Facts: amounts are decimal strings in "
+    "the user's MITA currency; dates and 'today' follow the timezone MITA returns. "
+    "Category names are MITA's own (for example 'subscriptions'); keep them as "
+    "returned rather than renaming or merging them, and keep merchant names and goal "
+    "titles exactly as the user wrote them. When a field is null, a list is empty or "
+    "plan_status is 'not_generated', MITA has no such data — say so rather than "
+    "estimating. A budget is saved only from a preview the user reviewed "
+    "(preview_monthly_budget, then save_monthly_budget with its draft_token). "
+    "MITA records expenses; it is not connected to any bank or payment account, has "
+    "no verified balances, and stated income is what the user typed in. MITA cannot "
+    "initiate, execute or facilitate payments, money transfers or trades."
 )
 
 OPENAI_CHALLENGE_PATH = "/.well-known/openai-apps-challenge"
+
+
+class MitaMCPServer(MCPServer):
+    """The SDK server, plus one analytics row for calls the SDK rejects before
+    a tool runs (undeclared or invalid arguments). Those never reach
+    ``McpRuntime``; without this the reliability dashboard would miss them.
+    Recorded with no user key: who sent a malformed call is not looked up."""
+
+    analytics: Optional[Analytics] = None
+
+    async def call_tool(self, name, arguments, context=None):
+        try:
+            return await super().call_tool(name, arguments, context)
+        except ToolError as exc:
+            if self.analytics is not None and not isinstance(exc, UnexpectedToolError):
+                self.analytics.tool_call(
+                    CallTelemetry(tool=name if name in TOOL_FEATURES else "unknown"),
+                    outcome="invalid_arguments",
+                    latency_ms=0,
+                    user_id=None,
+                    consent=False,
+                    meta=None,
+                )
+            raise
+
+
+def forbid_unknown_arguments(server: MCPServer) -> None:
+    """Reject any argument a tool does not declare (``additionalProperties:
+    false``), instead of the SDK default of silently dropping it.
+
+    A smuggled ``user_id``/``email``/``owner`` then fails validation before the
+    tool runs — identity never comes from arguments anyway, but a refusal is
+    explicit where a silent drop is not. The SDK documents FuncMetadata fields
+    as read live, so replacing the argument model takes effect immediately.
+    """
+    for tool in server._tool_manager.list_tools():
+        base = tool.fn_metadata.arg_model
+        strict = type(
+            base.__name__,
+            (base,),
+            {"model_config": ConfigDict(arbitrary_types_allowed=True, extra="forbid")},
+        )
+        tool.fn_metadata.arg_model = strict
+        tool.parameters = strict.model_json_schema(by_alias=True)
 
 
 @dataclass
@@ -95,9 +148,12 @@ def build_service(
     *,
     session_scope: SessionScope = read_only_session,
     write_scope: SessionScope = write_session,
+    tool_write_scope: SessionScope = tool_write_session,
+    analytics_sink: Optional[AnalyticsSink] = None,
     readiness_check=None,
     clock=None,
 ) -> McpService:
+    analytics = Analytics(settings.analytics_secret, analytics_sink)
     keys: Optional[SigningKeys] = None
     provider: Optional[MitaAuthorizationProvider] = None
     if settings.auth_mode == "builtin":
@@ -125,7 +181,7 @@ def build_service(
             ),
             revocation_options=RevocationOptions(enabled=True),
         )
-        server = MCPServer(
+        server = MitaMCPServer(
             MCP_SERVER_NAME,
             title="MITA Finance",
             instructions=INSTRUCTIONS,
@@ -135,7 +191,7 @@ def build_service(
         )
     else:
         verifier = JwtTokenVerifier(settings)
-        server = MCPServer(
+        server = MitaMCPServer(
             MCP_SERVER_NAME,
             title="MITA Finance",
             instructions=INSTRUCTIONS,
@@ -148,14 +204,18 @@ def build_service(
             ),
         )
 
+    server.analytics = analytics
     runtime = McpRuntime(
         settings=settings,
         session_scope=session_scope,
         tool_limiter=SlidingWindowLimiter(settings.tool_calls_per_minute),
+        write_scope=tool_write_scope,
+        analytics=analytics,
     )
     if clock is not None:
         runtime.clock = clock
     register_tools(server, runtime)
+    forbid_unknown_arguments(server)
 
     # --- public endpoints (no auth) ------------------------------------------
 
@@ -192,6 +252,7 @@ def build_service(
             provider,
             SlidingWindowLimiter(settings.login_attempts_per_minute),
             write_scope,
+            analytics=analytics,
         )
         server.custom_route("/oauth/login", methods=["GET"], include_in_schema=False)(
             consent.get

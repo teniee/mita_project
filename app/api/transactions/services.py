@@ -14,7 +14,6 @@ from app.services.core.engine.expense_tracker import (
     rebuild_month_plan,
 )
 from app.services.core.engine.realtime_rebalancer import RebalancePlan
-from app.services.notification_integration import get_notification_integration
 from app.utils.timezone_utils import from_user_timezone, to_user_timezone
 
 
@@ -96,6 +95,13 @@ def add_transaction(user: User, data, db: Session) -> TransactionCreationResult:
     LARGE_TRANSACTION_THRESHOLD = Decimal("200.00")
     if amount > LARGE_TRANSACTION_THRESHOLD:
         try:
+            # Imported here, not at module top: it pulls in firebase_admin,
+            # which the MCP service (a user of update/delete below) does not
+            # install.
+            from app.services.notification_integration import (
+                get_notification_integration,
+            )
+
             notifier = get_notification_integration(db)
             notifier.notify_large_transaction(
                 user_id=user.id,

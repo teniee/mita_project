@@ -1000,16 +1000,38 @@ fields to `TxnOut`.
 
 ## ChatGPT app (MCP service) — branch feat/chatgpt-plugin
 
-A read-only ChatGPT app is being built as a **separate service in this repo**
-(`app/mcp/`, `python -m app.mcp`). Design: `docs/adr/ADR-chatgpt-mcp-app.md`.
-Audits: `docs/chatgpt-app/` (repository, OpenAI requirements, data trust,
-secrets, legal). Rules:
+A read/write ChatGPT app (free v1) is being built as a **separate service in
+this repo** (`app/mcp/`, `python -m app.mcp`). Design:
+`docs/adr/ADR-chatgpt-mcp-app.md`; v1 plan of record:
+`docs/chatgpt-app/product-v1-master-plan.md`. Audits: `docs/chatgpt-app/`.
+Rules:
 
 - **No tool takes a user id.** Identity comes from the verified access token
   only; `tests_mcp/test_tool_contract.py` enforces it on every input schema.
-- **Read-only by construction.** Tools run inside `SET TRANSACTION READ ONLY`;
-  never call `ensure_month_plan*` from MCP (it writes). An unmaterialized month
-  is `plan_status: "not_generated"`, not a preview.
+  Every tool also rejects undeclared arguments (`additionalProperties: false`,
+  `server.forbid_unknown_arguments`): a smuggled `user_id`/`email` is an error.
+- **Read tools are read-only by construction.** They run inside
+  `SET TRANSACTION READ ONLY`; never call `ensure_month_plan*` from a read
+  tool (it writes). An unmaterialized month is `plan_status: "not_generated"`.
+- **Write tools** (`McpRuntime.execute_write`) get a session from
+  `tool_write_session`: the body commits its own unit of work, the scope rolls
+  back anything uncommitted (`update_transaction` mutates `spent_at` after its
+  commit — that must never be flushed). Reuse the domain writers; a batch uses
+  `expense_tracker.add_transactions_to_ledger` (no commit) + one commit.
+- **Annotations are facts.** `test_tool_contract.EXPECTED` lists every tool's
+  read/destructive/idempotent semantics; overwrite or delete ⇒ destructive.
+  Create tools take an `idempotency_key` (scoped by user, operation and the
+  hashed `openai/session`), which is what makes `idempotentHint` true.
+- **One account system, one policy.** The ChatGPT sign-up page and mobile
+  `/register` share `app/core/email_policy.py`, `app/core/password_policy.py`,
+  `app/core/financial_constants.py` and `app/services/user_registration.py`
+  (all dependency-free: the MCP image has no fastapi/firebase/bleach/sentry).
+  Change a rule there, never by copying it. ChatGPT-created accounts get
+  `country = "ZZ"` (not stated) and the API defaults (USD/UTC/0); what the user
+  actually stated is tracked in `mcp_user_profiles.*_confirmed_at`.
+- **Analytics is allow-listed, consented and out of band** (`app/mcp/analytics.py`):
+  no amounts, merchants, titles, free text or raw ids; keys only for users who
+  ticked the consent box; written after the call, never able to fail it.
 - **Spend is the ledger.** Every MCP spend figure is `transactions` with
   `deleted_at IS NULL`, keyed by `local_day_of(spent_at, user.timezone)`;
   allocations are `daily_plan.planned_amount`. Do not read

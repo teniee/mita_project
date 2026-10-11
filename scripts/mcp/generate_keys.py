@@ -8,6 +8,11 @@ Generates, independently:
   MCP_OAUTH_PRIVATE_KEY         RSA-3072 PKCS#8 PEM (newlines escaped as \\n)
   MCP_LOGIN_CSRF_SECRET         consent-page CSRF / pending-request HMAC key
   MCP_GRANT_FINGERPRINT_SECRET  HMAC key binding grants to the password hash
+  MCP_DATA_SECRET               keys for transaction references, budget drafts
+                                and list cursors (rotating it only invalidates
+                                outstanding ones)
+  MCP_ANALYTICS_SECRET          HMAC key for pseudonymous analytics ids — keep
+                                it stable, rotating it splits every history
   JWT_SECRET / SECRET_KEY       required by app.core.config at import in
                                 production; unused by the MCP service; never
                                 the API's values
@@ -36,11 +41,22 @@ def generate() -> dict:
         .replace("\n", "\\n"),
         "MCP_LOGIN_CSRF_SECRET": secrets.token_hex(32),
         "MCP_GRANT_FINGERPRINT_SECRET": secrets.token_hex(32),
+        "MCP_DATA_SECRET": secrets.token_hex(32),
+        "MCP_ANALYTICS_SECRET": secrets.token_hex(32),
         "JWT_SECRET": secrets.token_urlsafe(48),
         "SECRET_KEY": secrets.token_urlsafe(48),
         "MCP_METRICS_TOKEN": secrets.token_urlsafe(32),
     }
-    assert values["MCP_LOGIN_CSRF_SECRET"] != values["MCP_GRANT_FINGERPRINT_SECRET"]
+    independent = [
+        values[name]
+        for name in (
+            "MCP_LOGIN_CSRF_SECRET",
+            "MCP_GRANT_FINGERPRINT_SECRET",
+            "MCP_DATA_SECRET",
+            "MCP_ANALYTICS_SECRET",
+        )
+    ]
+    assert len(set(independent)) == len(independent)
     return values
 
 

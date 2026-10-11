@@ -52,14 +52,19 @@ async def test_a_never_sees_b(mcp, two_users, tool, args):
 
 @pytest.mark.parametrize("tool,args", ALL_CALLS)
 @pytest.mark.parametrize("field", ["user_id", "userId", "account_id", "email", "owner"])
-async def test_smuggled_identity_argument_gives_nothing(
+async def test_smuggled_identity_argument_is_rejected(
     mcp, two_users, tool, args, field
 ):
+    """An undeclared argument is refused before the tool runs
+    (additionalProperties: false) — and nothing of B's data appears. The error
+    may quote the value the caller itself sent, nothing else."""
     a, b = two_users
     value = b.email if field == "email" else str(b.id)
     result = await mcp.at(NOW).call(mcp.token(a), tool, {**args, field: value})
+    assert result.is_error, (tool, field)
     text = result.content[0].text
-    for marker in B_MARKERS + (str(b.id), "Bob-the-other-user"):
+    assert "Extra inputs are not permitted" in text, (tool, field)
+    for marker in B_MARKERS + ("Bob-the-other-user",):
         assert marker not in text, (tool, field, marker)
 
 

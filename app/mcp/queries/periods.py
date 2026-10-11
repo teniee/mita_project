@@ -11,7 +11,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.db.models import User
+from app.db.models import McpUserProfile, User
 from app.mcp.errors import AuthError, ValidationError
 from app.services.core.engine.expense_tracker import local_day_of, local_day_utc_window
 
@@ -32,6 +32,15 @@ class UserContext:
     has_onboarded: bool
     stated_monthly_income: Optional[Decimal]
     token_version: int
+    # Setup state (app/mcp/queries/setup.py); defaults describe "nothing known".
+    monthly_savings_target: Optional[Decimal] = None
+    household_size: Optional[int] = None
+    region: Optional[str] = None
+    income_confirmed: bool = False
+    currency_confirmed: bool = False
+    timezone_confirmed: bool = False
+    savings_confirmed: bool = False
+    usage_analytics_enabled: bool = False
 
 
 def load_user_context(
@@ -49,6 +58,8 @@ def load_user_context(
         if income is not None and Decimal(str(income)) > 0
         else None
     )
+    savings = user.savings_goal
+    profile = db.get(McpUserProfile, user_id)
     return UserContext(
         user_id=user.id,
         timezone=tz,
@@ -59,6 +70,14 @@ def load_user_context(
         has_onboarded=bool(user.has_onboarded),
         stated_monthly_income=stated_income,
         token_version=int(user.token_version or 1),
+        monthly_savings_target=(Decimal(str(savings)) if savings is not None else None),
+        household_size=profile.household_size if profile else None,
+        region=(user.region or user.country or None),
+        income_confirmed=bool(profile and profile.income_confirmed_at),
+        currency_confirmed=bool(profile and profile.currency_confirmed_at),
+        timezone_confirmed=bool(profile and profile.timezone_confirmed_at),
+        savings_confirmed=bool(profile and profile.savings_confirmed_at),
+        usage_analytics_enabled=bool(profile and profile.usage_analytics_enabled),
     )
 
 

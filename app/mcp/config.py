@@ -71,6 +71,13 @@ class McpSettings:
     # HMAC key binding OAuth grants to users.password_hash (auth/fingerprint.py).
     # Independent of the CSRF secret: rotating it revokes every ChatGPT grant.
     grant_fingerprint_secret: str = ""
+    # Keys for opaque transaction references, signed budget drafts and list
+    # cursors (app/mcp/crypto.py). Rotating it only invalidates outstanding
+    # references/drafts, which are short-lived.
+    data_secret: str = ""
+    # HMAC key for pseudonymous analytics identifiers (app/mcp/analytics).
+    # Must stay stable: rotating it splits every user's history in two.
+    analytics_secret: str = ""
     access_token_ttl_seconds: int = 900
     refresh_token_ttl_seconds: int = 30 * 24 * 3600
     authorization_code_ttl_seconds: int = 300
@@ -87,6 +94,7 @@ class McpSettings:
     # Abuse controls
     tool_calls_per_minute: int = 60
     login_attempts_per_minute: int = 10
+    registrations_per_hour: int = 5
     oauth_requests_per_minute: int = 30
     trusted_proxy_hops: int = 1
 
@@ -157,6 +165,8 @@ def load_settings() -> McpSettings:
         previous_public_key_pem=_multiline_env("MCP_OAUTH_PREVIOUS_PUBLIC_KEY"),
         login_csrf_secret=_env("MCP_LOGIN_CSRF_SECRET"),
         grant_fingerprint_secret=_env("MCP_GRANT_FINGERPRINT_SECRET"),
+        data_secret=_env("MCP_DATA_SECRET"),
+        analytics_secret=_env("MCP_ANALYTICS_SECRET"),
         access_token_ttl_seconds=_int_env("MCP_ACCESS_TOKEN_TTL_SECONDS", 900),
         refresh_token_ttl_seconds=_int_env(
             "MCP_REFRESH_TOKEN_TTL_SECONDS", 30 * 24 * 3600
@@ -172,6 +182,7 @@ def load_settings() -> McpSettings:
         metrics_token=_env("MCP_METRICS_TOKEN"),
         tool_calls_per_minute=_int_env("MCP_TOOL_CALLS_PER_MINUTE", 60),
         login_attempts_per_minute=_int_env("MCP_LOGIN_ATTEMPTS_PER_MINUTE", 10),
+        registrations_per_hour=_int_env("MCP_REGISTRATIONS_PER_HOUR", 5),
         oauth_requests_per_minute=_int_env("MCP_OAUTH_REQUESTS_PER_MINUTE", 30),
         trusted_proxy_hops=_int_env("MCP_TRUSTED_PROXY_HOPS", 1),
     )
@@ -182,6 +193,25 @@ def load_settings() -> McpSettings:
 def validate_settings(settings: McpSettings) -> None:
     if settings.access_token_ttl_seconds > 3600:
         raise McpConfigError("MCP_ACCESS_TOKEN_TTL_SECONDS must be at most 3600")
+    for name, value in (
+        ("MCP_DATA_SECRET", settings.data_secret),
+        ("MCP_ANALYTICS_SECRET", settings.analytics_secret),
+    ):
+        if len(value) < 32:
+            raise McpConfigError(f"{name} must be at least 32 characters")
+    secrets_in_use = [
+        settings.data_secret,
+        settings.analytics_secret,
+        settings.login_csrf_secret,
+        settings.grant_fingerprint_secret,
+    ]
+    present = [value for value in secrets_in_use if value]
+    if len(set(present)) != len(present):
+        raise McpConfigError(
+            "MCP_DATA_SECRET, MCP_ANALYTICS_SECRET, MCP_LOGIN_CSRF_SECRET and "
+            "MCP_GRANT_FINGERPRINT_SECRET must be independently generated "
+            "(two of them are equal)"
+        )
     if settings.auth_mode == "builtin":
         if not settings.private_key_pem:
             raise McpConfigError(

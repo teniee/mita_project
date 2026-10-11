@@ -1,9 +1,12 @@
-"""Database access for MCP tools: one READ ONLY transaction per tool call.
+"""Database access for MCP tools.
+
+Read tools: one READ ONLY transaction per call, opened read-only on
+PostgreSQL before any query and always rolled back, so a read tool cannot
+write, even by accident (ADR §3). Write tools: a read-write session whose
+body commits its own unit of work; anything uncommitted is rolled back.
 
 Tools reuse the canonical synchronous domain code through
-``AsyncSession.run_sync`` — the same bridge the REST routes use. The
-transaction is opened read-only on PostgreSQL before any query and always
-rolled back, so no tool can write, even by accident (ADR §3).
+``AsyncSession.run_sync`` — the same bridge the REST routes use.
 """
 
 from __future__ import annotations
@@ -49,9 +52,29 @@ async def read_only_session() -> AsyncIterator[AsyncSession]:
 
 
 @asynccontextmanager
+async def tool_write_session() -> AsyncIterator[AsyncSession]:
+    """Read-write scope for write tools.
+
+    The tool body commits its own unit of work (the domain functions it reuses
+    commit, and a batch must commit once). Whatever was not committed when the
+    scope closes is rolled back — including ORM objects a domain function
+    mutated after its commit (``update_transaction`` rewrites ``spent_at`` to
+    local time for its caller), which must never be flushed.
+    """
+    from app.core.async_session import get_async_session_factory
+
+    factory = get_async_session_factory()
+    async with factory() as session:
+        try:
+            yield session
+        finally:
+            await session.rollback()
+
+
+@asynccontextmanager
 async def write_session() -> AsyncIterator[AsyncSession]:
     """Read-write scope for the OAuth endpoints only (``mcp_oauth_*`` tables
-    and the shared login lockout counters). Never handed to a tool."""
+    and the shared login lockout counters). Commits on success."""
     from app.core.async_session import get_async_session_factory
 
     factory = get_async_session_factory()

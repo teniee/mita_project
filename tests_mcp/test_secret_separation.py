@@ -71,9 +71,16 @@ async def test_password_change_still_revokes_with_separate_secret(mcp, seed):
             {"grant_fingerprint_secret": "s" * 40, "login_csrf_secret": "s" * 40},
             "independently generated",
         ),
+        ({"data_secret": ""}, "MCP_DATA_SECRET"),
+        ({"analytics_secret": "short"}, "MCP_ANALYTICS_SECRET"),
+        (
+            {"data_secret": "s" * 40, "analytics_secret": "s" * 40},
+            "independently generated",
+        ),
+        ({"data_secret": "g" * 48}, "independently generated"),
     ],
 )
-def test_config_requires_two_independent_strong_secrets(overrides, message):
+def test_config_requires_independent_strong_secrets(overrides, message):
     with pytest.raises(McpConfigError, match=message):
         validate_settings(make_settings(**overrides))
 
@@ -86,6 +93,8 @@ def test_staging_is_as_strict_as_production(monkeypatch):
     monkeypatch.setenv("MCP_OAUTH_PRIVATE_KEY", make_settings().private_key_pem)
     monkeypatch.setenv("MCP_LOGIN_CSRF_SECRET", "c" * 48)
     monkeypatch.setenv("MCP_GRANT_FINGERPRINT_SECRET", "g" * 48)
+    monkeypatch.setenv("MCP_DATA_SECRET", "d" * 48)
+    monkeypatch.setenv("MCP_ANALYTICS_SECRET", "a" * 48)
     with pytest.raises(McpConfigError, match="https"):
         load_settings()
     monkeypatch.setenv("MCP_PUBLIC_URL", "https://mcp-staging.example.test")

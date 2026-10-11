@@ -49,6 +49,7 @@ from app.db.models import (  # noqa: E402
     Transaction,
     User,
 )
+from app.mcp.analytics import MemorySink  # noqa: E402
 from app.mcp.auth.fingerprint import (  # noqa: E402
     credential_fingerprint,
     fingerprint_key,
@@ -85,6 +86,8 @@ def make_settings(**overrides: Any) -> McpSettings:
         private_key_pem=_PRIVATE_KEY,
         login_csrf_secret="c" * 48,
         grant_fingerprint_secret="g" * 48,
+        data_secret="d" * 48,
+        analytics_secret="a" * 48,
         apps_challenge_token="challenge-token-123",
         support_url="https://support.example.test",
         tool_calls_per_minute=1000,
@@ -116,7 +119,9 @@ async def connection():
 
 @pytest.fixture
 def scopes(connection):
-    """(read_only_scope, write_scope) bound to the test transaction."""
+    """(read_only_scope, oauth_write_scope, tool_write_scope) bound to the test
+    transaction. The tool scope mirrors production: the body commits, the
+    scope rolls back whatever it did not commit."""
 
     @asynccontextmanager
     async def read_scope():
@@ -149,18 +154,38 @@ def scopes(connection):
         finally:
             await session.close()
 
-    return read_scope, write_scope
+    @asynccontextmanager
+    async def tool_write_scope():
+        session = AsyncSession(
+            bind=connection,
+            join_transaction_mode="create_savepoint",
+            expire_on_commit=False,
+        )
+        try:
+            yield session
+        finally:
+            await session.rollback()
+            await session.close()
+
+    return read_scope, write_scope, tool_write_scope
 
 
 @pytest.fixture
-def make_service(scopes):
-    read_scope, write_scope = scopes
+def analytics_sink() -> MemorySink:
+    return MemorySink()
+
+
+@pytest.fixture
+def make_service(scopes, analytics_sink):
+    read_scope, write_scope, tool_write_scope = scopes
 
     def factory(settings: Optional[McpSettings] = None, clock=None) -> McpService:
         return build_service(
             settings or make_settings(),
             session_scope=read_scope,
             write_scope=write_scope,
+            tool_write_scope=tool_write_scope,
+            analytics_sink=analytics_sink,
             clock=clock,
         )
 

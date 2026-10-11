@@ -36,13 +36,15 @@ From `app/mcp/config.py`, `app/mcp/__main__.py` and `app/core/config.py`.
 | `MCP_OAUTH_PREVIOUS_PUBLIC_KEY` | no | verify-only key during rotation | public half of the old key | no |
 | `MCP_LOGIN_CSRF_SECRET` | yes | consent-page CSRF + pending-request HMAC only | `generate_keys.py` | yes |
 | `MCP_GRANT_FINGERPRINT_SECRET` | yes | HMAC binding grants to the password hash; must differ from the CSRF secret; rotating it revokes all ChatGPT grants | `generate_keys.py` | yes |
+| `MCP_DATA_SECRET` | yes | keys for opaque transaction references, signed budget drafts and list cursors (HKDF per purpose); rotating it only invalidates outstanding ones | `generate_keys.py` | yes |
+| `MCP_ANALYTICS_SECRET` | yes | HMAC key for pseudonymous analytics ids; must stay stable (rotation splits every user's history) | `generate_keys.py` | yes |
 | `JWT_SECRET`, `SECRET_KEY` | production: yes; staging: recommended | required by `app.core.config` at import in production; unused by MCP; never the API's values | `generate_keys.py` | yes |
 | `MCP_METRICS_TOKEN` | no | enables `/metrics` (bearer) | `generate_keys.py` | yes |
 | `MCP_AUTH_MODE` | no (`builtin`) | `builtin` or `external` | literal | no |
 | `MCP_EXTERNAL_ISSUER`, `MCP_EXTERNAL_JWKS_URL`, `MCP_EXTERNAL_USER_CLAIM` | external mode only | external IdP | from the IdP | no |
 | `MCP_OAUTH_ALLOWED_REDIRECT_PREFIXES` | no | redirect policy (default: ChatGPT's two forms) | literal | no |
 | `MCP_ACCESS_TOKEN_TTL_SECONDS` / `MCP_REFRESH_TOKEN_TTL_SECONDS` | no (900 / 2592000) | token lifetimes | literal | no |
-| `MCP_TOOL_CALLS_PER_MINUTE` / `MCP_LOGIN_ATTEMPTS_PER_MINUTE` / `MCP_OAUTH_REQUESTS_PER_MINUTE` | no (60 / 10 / 30) | per-replica rate limits | literal | no |
+| `MCP_TOOL_CALLS_PER_MINUTE` / `MCP_LOGIN_ATTEMPTS_PER_MINUTE` / `MCP_OAUTH_REQUESTS_PER_MINUTE` / `MCP_REGISTRATIONS_PER_HOUR` | no (60 / 10 / 30 / 5) | per-replica rate limits (sign-ups per IP per hour) | literal | no |
 | `MCP_TRUSTED_PROXY_HOPS` | no (1) | `X-Forwarded-For` hops (Railway = 1) | literal | no |
 | `MCP_SUPPORT_URL` | no | link on the consent page | literal | no |
 | `OPENAI_APPS_CHALLENGE_TOKEN` | for OpenAI domain verification only | body of `/.well-known/openai-apps-challenge` | OpenAI dashboard | no |

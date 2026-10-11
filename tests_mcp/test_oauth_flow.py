@@ -9,6 +9,7 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 from sqlalchemy import text
 
+from app.mcp.auth.scopes import SUPPORTED_SCOPES
 from tests_mcp.conftest import PASSWORD, PUBLIC_URL, structured
 
 REDIRECT = "https://chatgpt.com/connector_platform_oauth_redirect"
@@ -125,12 +126,12 @@ async def test_metadata_documents(mcp):
         prm = (await http.get("/.well-known/oauth-protected-resource/mcp")).json()
         assert prm["resource"] == RESOURCE
         assert prm["authorization_servers"] == [PUBLIC_URL]
-        assert prm["scopes_supported"] == ["profile:read", "finance:read"]
+        assert prm["scopes_supported"] == list(SUPPORTED_SCOPES)
         asm = (await http.get("/.well-known/oauth-authorization-server")).json()
         assert asm["issuer"] == PUBLIC_URL
         assert asm["code_challenge_methods_supported"] == ["S256"]
         assert asm["registration_endpoint"] == f"{PUBLIC_URL}/register"
-        assert set(asm["scopes_supported"]) == {"profile:read", "finance:read"}
+        assert set(asm["scopes_supported"]) == set(SUPPORTED_SCOPES)
         assert "authorization_code" in asm["grant_types_supported"]
         # Public PKCE clients (how ChatGPT registers) must be advertised.
         assert set(asm["token_endpoint_auth_methods_supported"]) == {
@@ -267,7 +268,9 @@ async def test_consent_page_is_hardened(mcp):
     cookie = page.headers["set-cookie"]
     assert cookie.startswith("__Host-") and "Secure" in cookie and "HttpOnly" in cookie
     assert "samesite=strict" in cookie.lower()
-    assert "read-only" in page.text.lower() and "chatgpt.com" in page.text
+    # States what the grant allows and what MITA can never do.
+    assert "cannot move money, make payments or connect to your bank" in page.text
+    assert "chatgpt.com" in page.text
     # Authorization-request forgery: warn against approving a link someone sent.
     assert "If someone sent you this link, press Cancel" in page.text
 

@@ -17,7 +17,7 @@ from tests_mcp.conftest import make_settings, structured
 
 async def test_tool_session_refuses_writes(scopes, seed):
     """The scope every tool runs in cannot write, whatever the tool does."""
-    read_scope, _ = scopes
+    read_scope, _, _ = scopes
     user = await seed.user()
     async with read_scope() as session:
         session.add(

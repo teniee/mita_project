@@ -82,12 +82,30 @@ class PluginError(Exception):
 
 
 def published_tools() -> List[str]:
+    """``PUBLISHED_TOOLS`` from app/mcp/tools/__init__.py, read without importing
+    the service: a literal tuple, or a sum of literal tuples defined above it."""
     tree = ast.parse(TOOLS_MODULE.read_text())
+    literals: Dict[str, List[str]] = {}
+
+    def evaluate(node: ast.AST) -> List[str]:
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+            return evaluate(node.left) + evaluate(node.right)
+        if isinstance(node, ast.Name) and node.id in literals:
+            return list(literals[node.id])
+        return list(ast.literal_eval(node))
+
     for node in tree.body:
-        if isinstance(node, ast.Assign) and any(
-            isinstance(t, ast.Name) and t.id == "PUBLISHED_TOOLS" for t in node.targets
-        ):
-            return list(ast.literal_eval(node.value))
+        if not isinstance(node, ast.Assign):
+            continue
+        names = [t.id for t in node.targets if isinstance(t, ast.Name)]
+        if "PUBLISHED_TOOLS" in names:
+            return evaluate(node.value)
+        try:
+            value = evaluate(node.value)
+        except ValueError:
+            continue
+        for name in names:
+            literals[name] = value
     raise PluginError("PUBLISHED_TOOLS not found in app/mcp/tools/__init__.py")
 
 

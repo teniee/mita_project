@@ -328,3 +328,76 @@ class ErrorOut(_Out):
         "auth", "forbidden", "validation", "rate_limited", "unavailable", "internal"
     ]
     message: str
+
+
+# --- get_setup_status / update_financial_profile ---------------------------
+
+ProfileField = Literal[
+    "monthly_net_income",
+    "currency",
+    "timezone",
+    "household_size",
+    "monthly_savings_target",
+]
+
+
+class KnownProfileOut(_Out):
+    monthly_net_income: Optional[Money] = Field(
+        description="Monthly net income the user stated. Null when not stated.",
+        pattern=MONEY_PATTERN,
+    )
+    currency: Optional[str] = Field(
+        description="ISO 4217 code of the user's MITA currency. Null when not stated."
+    )
+    timezone: Optional[str] = Field(
+        description="IANA timezone MITA uses for 'today'. Null when not stated."
+    )
+    household_size: Optional[int] = Field(
+        description="People whose spending this budget covers. Null when not stated."
+    )
+    monthly_savings_target: Optional[Money] = Field(
+        description="Amount the user wants to save each month. Null when not stated.",
+        pattern=MONEY_PATTERN,
+    )
+
+
+class SetupStatusOut(_Out):
+    profile_complete: bool = Field(
+        description="True when income, currency and timezone are known — enough to build a budget."
+    )
+    income_set: bool
+    currency_set: bool
+    timezone_set: bool
+    household_size_set: bool
+    savings_preference_set: bool
+    monthly_plan_exists: bool = Field(
+        description="True when MITA has a saved budget plan for the current month."
+    )
+    current_month: str = Field(
+        description="The user's current month, YYYY-MM.", pattern=r"^\d{4}-\d{2}$"
+    )
+    transaction_count: int = Field(description="Recorded expenses, all time.")
+    recurring_expense_count: int
+    savings_goal_count: int = Field(description="Active savings goals.")
+    months_of_history: int = Field(
+        description="Calendar months that contain at least one recorded expense."
+    )
+    missing_fields: List[ProfileField] = Field(
+        description="Profile fields MITA does not know yet. Ask only for these."
+    )
+    suggested_next_step: Literal[
+        "complete_profile", "build_budget", "record_expenses", "ready"
+    ]
+    known: KnownProfileOut = Field(
+        description="Values MITA already has. Do not ask the user for these again."
+    )
+    notes: List[str]
+
+
+class ProfileUpdateOut(_Out):
+    status: Literal["updated", "unchanged"]
+    updated_fields: List[ProfileField]
+    profile: KnownProfileOut
+    profile_complete: bool
+    missing_fields: List[ProfileField]
+    notes: List[str]

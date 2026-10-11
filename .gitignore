@@ -83,3 +83,4 @@ dump.rdb
 .mcp.json
 data/
 .venv-mcp/
+.venv-api/
