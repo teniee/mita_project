@@ -1,10 +1,11 @@
-"""Per-user state of the ChatGPT app (MCP service) — migration 0038.
+"""Per-user state of the ChatGPT app (MCP service) — migrations 0038 and 0039.
 
 Written only by MCP tools and the ChatGPT consent page. Income, currency,
 timezone and monthly savings remain canonical on ``users``; these tables hold
 only what ``users`` cannot express.
 """
 
+import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import (
@@ -15,6 +16,7 @@ from sqlalchemy import (
     ForeignKey,
     SmallInteger,
     String,
+    Text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
@@ -79,4 +81,42 @@ class McpIdempotencyKey(Base):
     operation = Column(String(40), nullable=False)
     request_hash = Column(String(64), nullable=False)
     resource_ids = Column(JSONB, nullable=False, default=list)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_now)
+
+
+class ProductFeedback(Base):
+    """Feedback a user explicitly chose to send to the MITA team (0039).
+
+    Keyed by user id so it is deleted with the account. ``status``, ``theme``
+    and ``internal_notes`` are the team's triage fields, never shown to users.
+    """
+
+    __tablename__ = "product_feedback"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_now)
+    type = Column(String(20), nullable=False)
+    feature_area = Column(String(20), nullable=False)
+    message = Column(Text, nullable=False)
+    rating = Column(SmallInteger, nullable=True)
+    status = Column(String(16), nullable=False, default="new")
+    source = Column(String(16), nullable=False, default="chatgpt")
+    theme = Column(String(64), nullable=True)
+    internal_notes = Column(Text, nullable=True)
+
+
+class AnalyticsIdentity(Base):
+    """User id -> pseudonymous analytics key. Deleting the row (account
+    deletion, or the user turning usage statistics off) cascades to every
+    event linked to the key (0039)."""
+
+    __tablename__ = "analytics_identities"
+
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    user_key = Column(String(32), nullable=False, unique=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=_now)

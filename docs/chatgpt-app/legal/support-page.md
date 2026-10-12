@@ -32,35 +32,35 @@ its data, including any ChatGPT connection. You can also e-mail
 
 ### MITA in ChatGPT
 
-**What it does.** ChatGPT can read your own MITA data to answer questions:
-spending and transactions, spending by category, your budget plan and how
-you are tracking against it, a month-end projection, savings goals, and
-scheduled or recurring expenses you entered.
+**What it does.** ChatGPT works with your own MITA account: it can record and
+correct expenses (also from a receipt photo you attach — ChatGPT reads it,
+MITA never receives the image), save your income, currency, household size
+and savings target, preview a monthly budget and save it after you review it,
+add recurring expenses and savings goals, show your budget status, forecast
+and spending history, and send feedback to the MITA team. Everything stays in
+your MITA account for future conversations and the app.
+<!-- app/mcp/tools: 22 tools; writes need the finance:write / feedback:write / profile:write scopes -->
 
-**What it cannot do.** The connection is read-only. It cannot add, edit or
-delete transactions or change your budget, and MITA cannot initiate, execute
-or facilitate payments or money transfers. MITA is not connected to your
-bank. <!-- app/mcp/tools: 8 tools, readOnlyHint true; no bank/payment integration in app/ -->
+**What it cannot do.** MITA cannot initiate, execute or facilitate payments,
+money transfers or trades. MITA is not connected to your bank and does not
+hold money. <!-- no bank/payment integration in app/ -->
 
-**What ChatGPT sees.** Only what your question needs: transaction dates,
-amounts, currencies, categories and merchant names; budget totals; goal
-titles and amounts; scheduled expenses; your display name, a masked e-mail
-address, currency and time zone. Never your password, full e-mail address,
-notes, receipt images or locations. <!-- app/mcp/serializers.py whitelist -->
+**Connecting.** In ChatGPT, add **MITA Finance**, then sign in on the MITA page
+— or choose **Create an account** — and approve. Accounts created with **Sign
+in with Google** have no MITA password and cannot connect yet.
+<!-- consent page: sign-in or sign-up; OWNER_ACTIONS O-16 -->
 
-**Connecting.** In ChatGPT, add **MITA Finance** and sign in on the MITA page
-with your MITA e-mail and password, then choose **Allow read-only access**.
-Accounts created with **Sign in with Google** have no MITA password and
-cannot connect yet. <!-- consent page accepts e-mail/password only; OWNER_ACTIONS O-16 -->
+**Usage statistics.** Optional: which MITA features you use, never your
+conversations or amounts. Say "stop sharing my usage statistics" in ChatGPT
+to turn it off and delete what was linked to you.
 
 **Disconnecting.** In ChatGPT: **Settings → Apps** (or Connectors) → **MITA
 Finance** → Disconnect. Changing your MITA password also ends ChatGPT's
 access immediately. <!-- credential_fingerprint + token_version checked on every call/refresh -->
 
-**If an answer looks wrong.** Check the figure in the MITA app — it is the
-source of truth. If MITA has no budget plan for a month yet, open the app
-once that month; ChatGPT will say there is no plan rather than estimate one.
-<!-- plan_status "not_generated"; the MCP service never writes -->
+**If something looks wrong.** Ask ChatGPT to list the expenses behind a figure;
+you can correct or delete any expense there. MITA says so when it has no data
+instead of estimating.
 
 ### Privacy and terms
 

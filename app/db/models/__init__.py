@@ -20,7 +20,12 @@ from .installment import (
     RiskLevel,
     UserFinancialProfile,
 )
-from .mcp_app import McpIdempotencyKey, McpUserProfile
+from .mcp_app import (
+    AnalyticsIdentity,
+    McpIdempotencyKey,
+    McpUserProfile,
+    ProductFeedback,
+)
 from .mcp_oauth import McpOAuthAuthorizationCode, McpOAuthClient, McpOAuthRefreshToken
 from .mood import Mood
 from .notification import (
@@ -47,6 +52,8 @@ __all__ = [
     "McpOAuthClient",
     "McpIdempotencyKey",
     "McpUserProfile",
+    "ProductFeedback",
+    "AnalyticsIdentity",
     "McpOAuthAuthorizationCode",
     "McpOAuthRefreshToken",
     "User",

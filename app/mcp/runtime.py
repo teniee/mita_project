@@ -288,7 +288,11 @@ class McpRuntime:
                 outcome=outcome,
                 latency_ms=duration_ms,
                 user_id=user_id,
-                consent=consent["enabled"],
+                consent=(
+                    telemetry.consent_override
+                    if telemetry.consent_override is not None
+                    else consent["enabled"]
+                ),
                 meta=meta,
             )
 

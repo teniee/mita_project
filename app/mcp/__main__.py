@@ -25,6 +25,8 @@ REQUIRED_TABLES = (
     "mcp_oauth_refresh_tokens",
     "mcp_user_profiles",  # 0038
     "mcp_idempotency_keys",  # 0038
+    "product_feedback",  # 0039
+    "analytics_identities",  # 0039
 )
 
 
@@ -71,7 +73,14 @@ def main() -> None:
     from app.mcp.server import build_service  # imports the domain layer
 
     configure_logging(os.environ.get("LOG_LEVEL", "INFO").upper())
-    service = build_service(settings, readiness_check=database_ready)
+    from app.mcp.analytics import DatabaseSink
+    from app.mcp.db import write_session
+
+    service = build_service(
+        settings,
+        readiness_check=database_ready,
+        analytics_sink=DatabaseSink(write_session),
+    )
     uvicorn.run(
         service.app,
         host="0.0.0.0",  # nosec B104 - container entrypoint behind Railway's proxy

@@ -1079,6 +1079,16 @@ Rules:
   reviewer-authored, never from real users) must cover every published tool;
   its `description_mentions` pin trigger phrases in tool descriptions.
   Conversation rules: `docs/chatgpt-app/dialogue-contract.md`.
+- **Feedback and usage statistics** (migration 0039): `submit_feedback` stores
+  the user's own words in `product_feedback` (user id, cascades) and emits only
+  type/area/rating. `analytics_identities` maps user id -> HMAC key and
+  cascades to `analytics.events`, so account deletion and
+  `set_usage_analytics(false)` delete every linked event (the opt-out call
+  itself is recorded unlinked via `override_consent`). Production writes
+  events through ONE background task (`DatabaseSink`); tests on the shared
+  connection use `background=False`. Metabase/report read `analytics.*` only
+  with `mita_analytics_reader` (`scripts/mcp/analytics_reader_role.sql`).
+  Segment thresholds are rows in `analytics.segment_thresholds`.
 - **Naive datetimes mean UTC only in a UTC process.** asyncpg encodes a naive
   value bound to a timestamptz parameter with `astimezone()`, i.e. in the
   process's local zone. The image sets `TZ=UTC`, `python -m app.mcp` pins it

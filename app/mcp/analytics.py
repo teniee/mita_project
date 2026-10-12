@@ -33,6 +33,9 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional, Protocol
 from uuid import UUID
 
+from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table
+from sqlalchemy.dialects.postgresql import JSONB
+
 from app.mcp import MCP_SERVER_VERSION
 
 logger = logging.getLogger("app.mcp.analytics")
@@ -195,6 +198,9 @@ class CallTelemetry:
     intent: Optional[str] = None
     lifecycle: List[tuple] = field(default_factory=list)  # (event_name, props)
     replayed: bool = False
+    # Set by set_usage_analytics: this call is recorded under the NEW choice
+    # (opting out must not re-link the very call that opted out).
+    consent_override: Optional[bool] = None
 
 
 _current_call: contextvars.ContextVar[Optional[CallTelemetry]] = contextvars.ContextVar(
@@ -212,6 +218,12 @@ def emit(event_name: str, **properties: Any) -> None:
     call = _current_call.get()
     if call is not None and event_name in EVENT_NAMES:
         call.lifecycle.append((event_name, properties))
+
+
+def override_consent(enabled: bool) -> None:
+    call = _current_call.get()
+    if call is not None:
+        call.consent_override = enabled
 
 
 def mark_replayed() -> None:
@@ -261,6 +273,134 @@ class MemorySink:
 
     def names(self) -> List[str]:
         return [e.event_name for e in self.events]
+
+
+EVENTS_TABLE = Table(
+    "events",
+    MetaData(schema="analytics"),
+    Column("occurred_at", DateTime(timezone=True)),
+    Column("user_key", String(32)),
+    Column("session_key", String(32)),
+    Column("event_name", String(48)),
+    Column("feature", String(32)),
+    Column("tool_name", String(48)),
+    Column("intent_code", String(48)),
+    Column("status", String(16)),
+    Column("error_code", String(32)),
+    Column("latency_ms", Integer),
+    Column("surface", String(16)),
+    Column("locale", String(16)),
+    Column("server_version", String(16)),
+    Column("tool_contract_version", String(16)),
+    Column("properties", JSONB),
+)
+
+
+class DatabaseSink:
+    """Writes events to ``analytics.events`` from ONE background task.
+
+    ``record`` only enqueues (never blocks, never raises); the writer drains
+    the queue in batches through its own session, so analytics uses at most
+    one pooled connection and never runs inside a tool's transaction. A full
+    queue or a failed write drops events (counted in ``dropped`` and logged by
+    type) — the financial operation they describe is already committed. The
+    identity link is written first in the same transaction, so a user's
+    events always cascade with their account.
+    """
+
+    def __init__(
+        self,
+        scope,
+        *,
+        max_queue: int = 10_000,
+        batch_size: int = 200,
+        background: bool = True,
+    ):
+        self._scope = scope
+        self._max_queue = max_queue
+        self._batch_size = batch_size
+        # background=False buffers until flush(): for tests that share ONE
+        # connection with the tool calls (asyncpg allows one operation at a time).
+        self._background = background
+        self._pending: List[EventRecord] = []
+        self._queue: Optional[asyncio.Queue] = None
+        self._task: Optional[asyncio.Task] = None
+        self.dropped = 0
+
+    def _ensure_writer(self) -> asyncio.Queue:
+        loop = asyncio.get_running_loop()
+        if self._queue is None or self._task is None or self._task.done():
+            self._queue = asyncio.Queue(maxsize=self._max_queue)
+            self._task = loop.create_task(self._run())
+        return self._queue
+
+    def record(self, events: Iterable[EventRecord]) -> None:
+        if not self._background:
+            self._pending.extend(events)
+            return
+        try:
+            queue = self._ensure_writer()
+        except RuntimeError:  # no running loop (should not happen in the service)
+            self.dropped += len(list(events))
+            return
+        for event in events:
+            try:
+                queue.put_nowait(event)
+            except asyncio.QueueFull:
+                self.dropped += 1
+
+    async def _run(self) -> None:
+        queue = self._queue
+        while True:
+            batch = [await queue.get()]
+            while len(batch) < self._batch_size:
+                try:
+                    batch.append(queue.get_nowait())
+                except asyncio.QueueEmpty:
+                    break
+            try:
+                await self._write(batch)
+            finally:
+                for _ in batch:
+                    queue.task_done()
+
+    async def _write(self, batch: List[EventRecord]) -> None:
+        from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+        from app.db.models import AnalyticsIdentity
+
+        identities = {
+            (e.user_id, e.user_key) for e in batch if e.user_id and e.user_key
+        }
+        try:
+            async with self._scope() as session:
+                if identities:
+                    await session.execute(
+                        pg_insert(AnalyticsIdentity.__table__)
+                        .values(
+                            [
+                                {"user_id": u, "user_key": k}
+                                for u, k in sorted(identities, key=str)
+                            ]
+                        )
+                        .on_conflict_do_nothing(index_elements=["user_id"])
+                    )
+                await session.execute(EVENTS_TABLE.insert(), [e.row() for e in batch])
+        except Exception as exc:  # noqa: BLE001 - analytics never fails a call
+            self.dropped += len(batch)
+            logger.warning(
+                "analytics batch dropped",
+                extra={"event": "analytics_dropped", "reason": type(exc).__name__},
+            )
+
+    async def flush(self) -> None:
+        if not self._background:
+            batch, self._pending = self._pending, []
+            for start in range(0, len(batch), self._batch_size):
+                await self._write(batch[start : start + self._batch_size])
+            return
+        if self._queue is not None and self._task is not None and not self._task.done():
+            await self._queue.join()
 
 
 class Analytics:

@@ -7,6 +7,7 @@ from mcp.server.mcpserver import MCPServer
 from app.mcp.runtime import McpRuntime
 from app.mcp.tools import (
     budget,
+    feedback,
     goals,
     history,
     profile,
@@ -39,6 +40,8 @@ WRITE_TOOLS = (
     "add_recurring_expense",
     "create_savings_goal",
     "save_monthly_budget",
+    "submit_feedback",
+    "set_usage_analytics",
 )
 
 PUBLISHED_TOOLS = READ_TOOLS + WRITE_TOOLS
@@ -52,3 +55,4 @@ def register_tools(server: MCPServer, runtime: McpRuntime) -> None:
     recurring.register(server, runtime)
     goals.register(server, runtime)
     history.register(server, runtime)
+    feedback.register(server, runtime)

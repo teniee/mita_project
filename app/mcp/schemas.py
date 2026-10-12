@@ -740,3 +740,24 @@ class FinancialClimateOut(_Out):
     savings_goals: ClimateGoalsOut
     data_completeness: CompletenessOut
     notes: List[str]
+
+
+# --- submit_feedback / set_usage_analytics ----------------------------------
+
+
+class FeedbackSentOut(_Out):
+    status: Literal["sent", "already_sent"]
+    type: Literal["feature_request", "bug_report", "confusing", "praise", "other"]
+    feature_area: Literal[
+        "transactions", "budget", "history", "goals", "recurring", "setup", "other"
+    ]
+    rating: Optional[int]
+    notes: List[str]
+
+
+class UsageAnalyticsOut(_Out):
+    usage_analytics_enabled: bool
+    linked_data_deleted: bool = Field(
+        description="True when turning it off deleted the usage records already linked to the user."
+    )
+    what_is_recorded: str

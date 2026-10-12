@@ -92,7 +92,7 @@ both ≥ 32 chars, distinct from each other and from the CSRF / grant secrets.
 | 4 | Preview → signed draft → save | done — reviewed == saved per category and per day; MCP 430 passed |
 | 5 | History, climate, pagination | done — exact six-month figures, explicit completeness, survives new sessions; MCP 438 passed |
 | 6 | Setup skill, starter prompts, dialogue contract, golden prompts | done — skill packaged and validated, 51 golden prompts (en/ru/bg); MCP 451 passed |
-| 7 | Analytics schema/sink/views, feedback, Metabase prep | — |
+| 7 | Analytics schema/sink/views, feedback, Metabase prep | done — 0039 rehearsed up→down→up; reader role verified; report script; MCP 466 passed |
 | 8 | 600k benchmark, EXPLAIN, indexes | — |
 | 9 | Full CI | — |
 | 10 | Staging deploy + public E2E; real ChatGPT acceptance (owner) | — |
