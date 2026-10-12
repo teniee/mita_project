@@ -200,3 +200,14 @@ def _other_currencies(query, ctx: UserContext) -> Tuple[str, ...]:
         .all()
     )
     return tuple(sorted(c for (c,) in rows if c))
+
+
+def first_expense_day(db: Session, ctx: UserContext) -> Optional[date]:
+    """Local day of the user's earliest recorded (non-deleted) expense — where
+    their MITA history starts. None when nothing is recorded."""
+    earliest = (
+        db.query(func.min(Transaction.spent_at))
+        .filter(Transaction.user_id == ctx.user_id, Transaction.deleted_at.is_(None))
+        .scalar()
+    )
+    return local_day_of(earliest, ctx.timezone) if earliest is not None else None

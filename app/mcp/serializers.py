@@ -46,9 +46,9 @@ NOTE_NO_CONVERSION = (
     "transactions recorded in {others} are added at face value."
 )
 NOTE_PLAN_NOT_GENERATED = (
-    "MITA has not generated a budget plan for this month yet. Plans are created "
-    "in the MITA app (during onboarding, and for later months when the user "
-    "opens the app). No budget figures are estimated here."
+    "MITA has no saved budget plan for this month yet. One is created when the "
+    "user reviews and saves a budget (preview_monthly_budget, then "
+    "save_monthly_budget) or in the MITA app. No budget figures are estimated here."
 )
 NOTE_NOT_ONBOARDED = (
     "This account has not completed MITA onboarding, so it has no budget plan."

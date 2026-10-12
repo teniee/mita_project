@@ -1053,6 +1053,17 @@ Rules:
   the tool refuses so ChatGPT asks. Goals have no Premium gate in ChatGPT (v1 is
   free); the plan reservation runs in a SAVEPOINT and never fails the goal
   (F-1: a second dated goal cannot reserve; the result says so).
+- **Reviewed budget == saved budget.** `preview_monthly_budget` is read-only:
+  it computes a draft (`app/mcp/queries/budget_draft.py`) from stated facts
+  only — income, savings target, saved obligations — through
+  `monthly_plan_service.allocations_from_profile` (the engine onboarding uses)
+  and `month_calendar`, and returns a signed token holding the month and the
+  draft's digest (never the numbers). `save_monthly_budget` rebuilds the draft
+  under the ledger lock and saves it only if the digest is unchanged, via
+  `replace_month_plan` (goal reservations kept, transaction-generated rows
+  re-derived). History only adds warnings. After a save the visible
+  `planned_amount` can differ from the preview by MITA's in-month
+  redistribution; the BASE plan (adjustment backed out) is the reviewed one.
 - **Naive datetimes mean UTC only in a UTC process.** asyncpg encodes a naive
   value bound to a timestamptz parameter with `astimezone()`, i.e. in the
   process's local zone. The image sets `TZ=UTC`, `python -m app.mcp` pins it

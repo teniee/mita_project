@@ -17,6 +17,7 @@ READ_TOOLS = (
     "get_budget_forecast",
     "get_recurring_expenses",
     "get_goals",
+    "preview_monthly_budget",
 )
 
 WRITE_TOOLS = (
@@ -27,6 +28,7 @@ WRITE_TOOLS = (
     "delete_transaction",
     "add_recurring_expense",
     "create_savings_goal",
+    "save_monthly_budget",
 )
 
 PUBLISHED_TOOLS = READ_TOOLS + WRITE_TOOLS

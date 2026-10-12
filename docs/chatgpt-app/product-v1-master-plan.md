@@ -89,7 +89,7 @@ both ≥ 32 chars, distinct from each other and from the CSRF / grant secrets.
 | 1 | Inspection, this plan, baseline | done |
 | 2 | OAuth registration, scopes, `get_setup_status`, `update_financial_profile` | done — 0038 rehearsed up→down→up; MCP 299 passed; backend auth/ledger subsets 438 passed |
 | 3 | Transaction writes + corrections, idempotency, recurring, goals | done — `22e32af` (transactions), Gate 3 completion commit; MCP 413 passed |
-| 4 | Preview → signed draft → save | — |
+| 4 | Preview → signed draft → save | done — reviewed == saved per category and per day; MCP 430 passed |
 | 5 | History, climate, pagination | — |
 | 6 | Setup skill, starter prompts, dialogue contract, golden prompts | — |
 | 7 | Analytics schema/sink/views, feedback, Metabase prep | — |

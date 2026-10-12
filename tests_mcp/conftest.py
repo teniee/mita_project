@@ -301,6 +301,7 @@ class Seeder:
         name: Optional[str] = "Test User",
         onboarded: bool = True,
         password: str = PASSWORD,
+        country: Optional[str] = None,
     ) -> User:
         user = User(
             id=uuid.uuid4(),
@@ -316,6 +317,8 @@ class Seeder:
             token_version=1,
             failed_login_attempts=0,
         )
+        if country is not None:
+            user.country = country
         await self._add(user)
         self.users.append(user)
         return user

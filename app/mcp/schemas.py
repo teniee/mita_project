@@ -502,3 +502,99 @@ class GoalCreatedOut(_Out):
         )
     )
     notes: List[str]
+
+
+# --- preview_monthly_budget / save_monthly_budget -------------------------
+
+
+class ObligationOut(_Out):
+    name: Optional[str] = Field(description="Name the user gave the obligation.")
+    category: str
+    amount: Money = money_field("Amount counted in this month.")
+    basis: str = Field(
+        description="How it was counted, e.g. 'monthly', 'weekly × 4 Mondays', 'one-time on 2026-10-20'."
+    )
+
+
+class AllocationOut(_Out):
+    category: str = Field(description="MITA plan category, as the engine names it.")
+    amount: Money = money_field("Monthly allocation.")
+    layout: Literal["fixed", "spread", "clustered"] = Field(
+        description="How MITA spreads it over the days: on one day, across weekdays, or on a few days."
+    )
+
+
+class DataSourceOut(_Out):
+    input: str
+    source: str
+
+
+class HistoryUsedOut(_Out):
+    months_used: int = Field(
+        description="Complete months of recorded expenses compared (0-3)."
+    )
+    period_start: Optional[dt.date]
+    period_end: Optional[dt.date]
+    average_monthly_spending: Optional[Money] = Field(pattern=MONEY_PATTERN)
+
+
+class BudgetPreviewOut(_Out):
+    status: Literal["preview"] = Field(
+        description="Nothing is saved yet. Show the user this plan; save it only with save_monthly_budget after they confirm."
+    )
+    month: str = Field(pattern=r"^\d{4}-\d{2}$")
+    currency: str
+    existing_plan: bool = Field(
+        description="True when the month already has a saved plan; saving this one replaces it."
+    )
+    stated_monthly_income: Money = money_field("Monthly net income the user stated.")
+    fixed_obligations: List[ObligationOut]
+    fixed_obligations_total: Money = money_field("Sum of fixed_obligations.")
+    savings_allocation: Money = money_field(
+        "Set aside for savings this month (the user's target, reduced only if it does not fit)."
+    )
+    category_allocations: List[AllocationOut] = Field(
+        description="Flexible spending by category, largest first, from MITA's allocation rules."
+    )
+    unallocated: Money = money_field(
+        "Flexible money MITA's rules leave unassigned to any category (free to spend)."
+    )
+    flexible_total: Money = money_field(
+        "Income minus fixed obligations minus savings: categories plus unallocated."
+    )
+    plan_total: Money = money_field(
+        "Everything the saved plan lays out over the month's days."
+    )
+    daily_flexible_average: Money = money_field(
+        "flexible_total divided by the days in the month."
+    )
+    days_in_month: int
+    days_remaining: Optional[int] = Field(
+        description="For the current month: days left including today."
+    )
+    recurring_included: bool = Field(
+        description="True when saved repeating obligations are part of this plan."
+    )
+    history: HistoryUsedOut
+    assumptions: List[str]
+    warnings: List[str]
+    data_sources: List[DataSourceOut]
+    draft_token: str = Field(
+        description=(
+            "Pass exactly this to save_monthly_budget after the user confirms. It "
+            "only saves this exact plan, expires in 30 minutes, and stops working "
+            "if the user's income, savings target or obligations change."
+        )
+    )
+    expires_at: dt.datetime
+
+
+class BudgetSavedOut(_Out):
+    status: Literal["saved", "replaced", "already_saved"] = Field(
+        description="'replaced': an earlier plan for this month was replaced. 'already_saved': this exact plan was already in place."
+    )
+    month: str = Field(pattern=r"^\d{4}-\d{2}$")
+    currency: str
+    plan_total: Money = money_field("Total laid out over the month.")
+    category_count: int
+    notes: List[str]

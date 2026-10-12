@@ -84,7 +84,10 @@ async def test_onboarded_user_without_this_months_plan(mcp, seed):
     assert status["plan_status"] == "not_generated"
     assert status["total_planned"] == "0.00" and status["total_spent"] == "25.00"
     assert [c["state"] for c in status["categories"]] == ["unplanned_spending"]
-    assert any("has not generated a budget plan" in n for n in status["notes"])
+    assert any(
+        "has no saved budget plan" in n and "preview_monthly_budget" in n
+        for n in status["notes"]
+    )
     # The read did not materialize the month.
     from sqlalchemy import text
 
