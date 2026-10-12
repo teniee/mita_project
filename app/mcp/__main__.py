@@ -1,9 +1,9 @@
 """Entrypoint: ``python -m app.mcp``.
 
 Never runs migrations — mita-production's start.sh owns ``alembic upgrade``.
-Readiness (``/health``) requires the database and the ``mcp_oauth_*`` tables
-from migration 0037, so a deploy that lands before the migration reports 503
-instead of failing OAuth requests one by one.
+Readiness (``/health``) requires the database and the MCP tables (0037's
+``mcp_oauth_*``, 0038's profiles and idempotency records), so a deploy that
+lands before the migration reports 503 instead of failing requests one by one.
 """
 
 from __future__ import annotations
@@ -11,6 +11,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+import time
 
 import uvicorn
 from sqlalchemy import text
@@ -22,6 +23,8 @@ REQUIRED_TABLES = (
     "mcp_oauth_clients",
     "mcp_oauth_authorization_codes",
     "mcp_oauth_refresh_tokens",
+    "mcp_user_profiles",  # 0038
+    "mcp_idempotency_keys",  # 0038
 )
 
 
@@ -46,7 +49,18 @@ async def database_ready() -> bool:
         return False
 
 
+def pin_process_timezone() -> None:
+    """Naive datetimes mean UTC across the codebase, and asyncpg encodes a
+    naive value bound to a timestamptz parameter with ``astimezone()`` — i.e.
+    in the PROCESS's local zone. The image sets TZ=UTC; this makes any other
+    way of starting the service (a laptop in Sofia) behave the same instead
+    of shifting every date window by the host's UTC offset."""
+    os.environ["TZ"] = "UTC"
+    time.tzset()
+
+
 def main() -> None:
+    pin_process_timezone()
     try:
         settings = load_settings()
     except McpConfigError as exc:

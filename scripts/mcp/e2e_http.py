@@ -40,10 +40,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from _target_guard import ProductionTargetError, assert_writable_target  # noqa: E402
 
 from app.core.password_security import hash_password_sync  # noqa: E402
+from app.mcp.tools import PUBLISHED_TOOLS, READ_TOOLS  # noqa: E402
 
 REDIRECT = "https://chatgpt.com/connector_platform_oauth_redirect"
+# Read tools called with a read-only grant; every one must answer.
 TOOLS = [
     ("get_profile", {}),
+    ("get_setup_status", {}),
     ("get_financial_summary", {}),
     ("list_transactions", {}),
     ("get_spending_breakdown", {}),
@@ -77,9 +80,14 @@ async def call_tools(base: str, token: str) -> dict:
         ) as client:
             listed = sorted(t.name for t in (await client.list_tools()).tools)
             check(
-                "tools/list returns the 8 read-only tools",
-                listed == sorted(n for n, _ in TOOLS),
+                f"tools/list returns exactly the {len(PUBLISHED_TOOLS)} published tools",
+                listed == sorted(PUBLISHED_TOOLS),
                 str(listed),
+            )
+            check(
+                "every published read tool is exercised",
+                sorted(n for n, _ in TOOLS) == sorted(READ_TOOLS),
+                str(sorted(set(READ_TOOLS) - {n for n, _ in TOOLS})),
             )
             for name, args in TOOLS:
                 result = await client.call_tool(name, args)

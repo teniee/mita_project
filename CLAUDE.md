@@ -1046,6 +1046,12 @@ Rules:
   call `ZoneInfo(user.timezone)` after their commit). Push alerts (budget,
   velocity, large transaction) need Firebase and are NOT sent for expenses
   recorded in ChatGPT; the plan itself is updated identically.
+- **Naive datetimes mean UTC only in a UTC process.** asyncpg encodes a naive
+  value bound to a timestamptz parameter with `astimezone()`, i.e. in the
+  process's local zone. The image sets `TZ=UTC`, `python -m app.mcp` pins it
+  (`pin_process_timezone`), and `tests_mcp/conftest.py` does too — a laptop
+  in Sofia otherwise shifts every date window by 3 hours (found by running
+  `scripts/mcp/e2e_http.py` against a local server). Keep all three.
 - **Spend is the ledger.** Every MCP spend figure is `transactions` with
   `deleted_at IS NULL`, keyed by `local_day_of(spent_at, user.timezone)`;
   allocations are `daily_plan.planned_amount`. Do not read
