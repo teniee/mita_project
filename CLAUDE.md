@@ -1064,6 +1064,13 @@ Rules:
   re-derived). History only adds warnings. After a save the visible
   `planned_amount` can differ from the preview by MITA's in-month
   redistribution; the BASE plan (adjustment backed out) is the reviewed one.
+- **History is aggregated in SQL by LOCAL month** (`app/mcp/queries/history.py`,
+  `date_trunc('month', timezone(user_tz, spent_at))`), never returned as raw
+  rows. A month before the first recorded expense is `before_tracking` (no
+  data — not zero); a complete month with nothing recorded is `recorded` with
+  0; the current month is `in_progress` and never enters an average. Trends
+  and the late-month share need `MIN_MONTHS_FOR_TREND` (3) complete months,
+  else `insufficient_data`. Six months is an analysis window, not retention.
 - **Naive datetimes mean UTC only in a UTC process.** asyncpg encodes a naive
   value bound to a timestamptz parameter with `astimezone()`, i.e. in the
   process's local zone. The image sets `TZ=UTC`, `python -m app.mcp` pins it

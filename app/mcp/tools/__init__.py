@@ -5,7 +5,15 @@ from __future__ import annotations
 from mcp.server.mcpserver import MCPServer
 
 from app.mcp.runtime import McpRuntime
-from app.mcp.tools import budget, goals, profile, recurring, setup, transactions
+from app.mcp.tools import (
+    budget,
+    goals,
+    history,
+    profile,
+    recurring,
+    setup,
+    transactions,
+)
 
 READ_TOOLS = (
     "get_profile",
@@ -17,6 +25,8 @@ READ_TOOLS = (
     "get_budget_forecast",
     "get_recurring_expenses",
     "get_goals",
+    "get_spending_history",
+    "get_financial_climate",
     "preview_monthly_budget",
 )
 
@@ -41,3 +51,4 @@ def register_tools(server: MCPServer, runtime: McpRuntime) -> None:
     budget.register(server, runtime)
     recurring.register(server, runtime)
     goals.register(server, runtime)
+    history.register(server, runtime)

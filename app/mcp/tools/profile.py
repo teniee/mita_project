@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from mcp.server.mcpserver import MCPServer
+from mcp.server.mcpserver import Context, MCPServer
 from mcp_types import CallToolResult
 
 from app.mcp.auth.scopes import PROFILE_READ
@@ -33,7 +33,11 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
             **{"openai/profile": True},
         ),
     )
-    async def get_profile() -> Annotated[CallToolResult, ProfileOut]:
+    async def get_profile(ctx: Context) -> Annotated[CallToolResult, ProfileOut]:
         return await runtime.execute(
-            "get_profile", PROFILE_READ, lambda session, ctx: profile_out(ctx)
+            "get_profile",
+            PROFILE_READ,
+            lambda session, user_ctx: profile_out(user_ctx),
+            ctx=ctx,
+            intent="account",
         )

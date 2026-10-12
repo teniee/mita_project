@@ -598,3 +598,145 @@ class BudgetSavedOut(_Out):
     plan_total: Money = money_field("Total laid out over the month.")
     category_count: int
     notes: List[str]
+
+
+# --- get_spending_history / get_financial_climate ---------------------------
+
+MonthStatus = Literal["before_tracking", "recorded", "in_progress"]
+
+
+class CategoryAmountOut(_Out):
+    category: str = Field(description="MITA category name, as recorded.")
+    total: Money = money_field("Recorded spending in this category.")
+    transaction_count: int
+
+
+class HistoryMonthOut(_Out):
+    month: str = Field(pattern=r"^\d{4}-\d{2}$")
+    status: MonthStatus = Field(
+        description=(
+            "before_tracking: before the user's first recorded expense — MITA has "
+            "no data, which is NOT zero spending. recorded: a complete month "
+            "(0 transactions = nothing was recorded, not necessarily nothing spent). "
+            "in_progress: the current month so far."
+        )
+    )
+    transaction_count: int
+    total_spent: Money = money_field("Recorded spending in the month.")
+    categories: List[CategoryAmountOut] = Field(description="Largest first.")
+
+
+class TrendOut(_Out):
+    status: Literal["ok", "insufficient_data"] = Field(
+        description="insufficient_data when fewer than 3 complete months are recorded."
+    )
+    latest_month: Optional[str] = None
+    latest_total: Optional[Money] = Field(default=None, pattern=MONEY_PATTERN)
+    earlier_average: Optional[Money] = Field(
+        default=None,
+        pattern=MONEY_PATTERN,
+        description="Average of the earlier complete months in the window.",
+    )
+    change_percent: Optional[str] = Field(
+        default=None, description="(latest − earlier_average) ÷ earlier_average × 100."
+    )
+    direction: Optional[Literal["up", "down", "unchanged"]] = None
+
+
+class CategoryTrendOut(_Out):
+    category: str
+    trend: TrendOut
+
+
+class SpendingHistoryOut(_Out):
+    period_start: dt.date
+    period_end: dt.date
+    currency: str
+    timezone: str
+    category: Optional[str] = Field(description="The category filter, if any.")
+    months_requested: int
+    months_with_data: int = Field(
+        description="Months with at least one recorded expense."
+    )
+    complete_months: int = Field(
+        description="Complete months since tracking began (used for averages)."
+    )
+    months: List[HistoryMonthOut] = Field(description="Oldest first.")
+    average_monthly_spending: Optional[Money] = Field(
+        description="Mean over complete months. Null when there are none.",
+        pattern=MONEY_PATTERN,
+    )
+    median_monthly_spending: Optional[Money] = Field(pattern=MONEY_PATTERN)
+    current_month_to_date: Optional[Money] = Field(pattern=MONEY_PATTERN)
+    largest_category: Optional[CategoryAmountOut] = Field(
+        description="Largest category over the whole window."
+    )
+    trend: TrendOut = Field(
+        description="Latest complete month vs the average of the earlier complete months."
+    )
+    category_trends: List[CategoryTrendOut] = Field(
+        description="Same rule per category, for the largest categories (empty with a category filter)."
+    )
+    notes: List[str]
+
+
+class PaceOut(_Out):
+    day_of_month: int
+    spent_to_date: Money = money_field("Recorded this month up to today.")
+    prior_average_to_same_day: Optional[Money] = Field(
+        description="Average spent by the same day in the complete months of the window.",
+        pattern=MONEY_PATTERN,
+    )
+    months_compared: int
+
+
+class AdherenceOut(_Out):
+    months_with_plan: int = Field(
+        description="Complete months that had a saved budget plan."
+    )
+    months_within_plan: int = Field(
+        description="Recorded spending ≤ the month's plan total."
+    )
+    months_over_plan: int
+
+
+class ClimateGoalsOut(_Out):
+    active_count: int
+    total_target: Money = money_field("Sum of active goal targets.")
+    total_saved: Money = money_field("Sum saved towards them.")
+
+
+class ClimateObligationsOut(_Out):
+    count: int = Field(description="Saved obligations that fall in the current month.")
+    current_month_total: Money = money_field("What they add up to this month.")
+
+
+class CompletenessOut(_Out):
+    complete_months: int
+    months_before_tracking: int
+    in_progress_month: bool
+
+
+class FinancialClimateOut(_Out):
+    period_start: dt.date
+    period_end: dt.date
+    currency: str
+    months_with_data: int
+    total_transactions: int
+    average_monthly_spending: Optional[Money] = Field(pattern=MONEY_PATTERN)
+    median_monthly_spending: Optional[Money] = Field(pattern=MONEY_PATTERN)
+    category_averages: List[CategoryAmountOut] = Field(
+        description="Average per complete month for the largest categories (transaction_count = total in those months)."
+    )
+    current_month_pace: Optional[PaceOut]
+    plan_adherence: AdherenceOut
+    late_month_spending_share: Optional[str] = Field(
+        description=(
+            "Average share (%) of each complete month's spending recorded in its "
+            "last 7 days. Null with fewer than 3 complete months that have spending."
+        )
+    )
+    recurring_obligations: ClimateObligationsOut
+    savings_goals: ClimateGoalsOut
+    data_completeness: CompletenessOut
+    notes: List[str]
