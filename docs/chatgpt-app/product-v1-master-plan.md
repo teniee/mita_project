@@ -93,6 +93,6 @@ both ≥ 32 chars, distinct from each other and from the CSRF / grant secrets.
 | 5 | History, climate, pagination | done — exact six-month figures, explicit completeness, survives new sessions; MCP 438 passed |
 | 6 | Setup skill, starter prompts, dialogue contract, golden prompts | done — skill packaged and validated, 51 golden prompts (en/ru/bg); MCP 451 passed |
 | 7 | Analytics schema/sink/views, feedback, Metabase prep | done — 0039 rehearsed up→down→up; reader role verified; report script; MCP 466 passed |
-| 8 | 600k benchmark, EXPLAIN, indexes | — |
+| 8 | 600k benchmark, EXPLAIN, indexes | done — p95 ≤ 20 ms per tool query at 600k tx / 1.47M plan rows; indexes already sufficient (no 0040); capacity-plan.md |
 | 9 | Full CI | — |
 | 10 | Staging deploy + public E2E; real ChatGPT acceptance (owner) | — |

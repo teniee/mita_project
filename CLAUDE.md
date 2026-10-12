@@ -1089,6 +1089,14 @@ Rules:
   connection use `background=False`. Metabase/report read `analytics.*` only
   with `mita_analytics_reader` (`scripts/mcp/analytics_reader_role.sql`).
   Segment thresholds are rows in `analytics.segment_thresholds`.
+- **Capacity** (`docs/chatgpt-app/capacity-plan.md`): measured with
+  `scripts/mcp/benchmark_capacity.py` on a LOCAL `*capacity*` database
+  (600k transactions, 1.47M plan rows, 500k events): every tool query p95
+  ≤ 20 ms, 1–6 statements, index scans only — no index added (no 0040). Re-run
+  it after any query-layer change; never against staging/production.
+  `scripts/mcp/e2e_v2.py` is the public acceptance conversation (sign-up →
+  budget → writes → new connection → history → goal → feedback → negatives →
+  analytics audit → cleanup); it refuses production hosts.
 - **Naive datetimes mean UTC only in a UTC process.** asyncpg encodes a naive
   value bound to a timestamptz parameter with `astimezone()`, i.e. in the
   process's local zone. The image sets `TZ=UTC`, `python -m app.mcp` pins it

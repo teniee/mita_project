@@ -42,10 +42,26 @@ def m(scopes, db_sink):
     return Harness(factory, make_settings()).at(NOW)
 
 
+BASELINE = {"id": 0}
+
+
+@pytest.fixture(autouse=True)
+async def _only_this_tests_events(connection):
+    """A reused local database may hold unlinked events from earlier runs
+    (e.g. scripts/mcp/e2e_v2.py); look only at rows this test creates."""
+    BASELINE["id"] = (
+        await connection.execute(
+            text("SELECT coalesce(max(id), 0) FROM analytics.events")
+        )
+    ).scalar_one()
+
+
 async def events(connection, where="TRUE", params=None):
     result = await connection.execute(
-        text(f"SELECT * FROM analytics.events WHERE {where} ORDER BY id"),  # nosec B608
-        params or {},
+        text(  # nosec B608 - test-only filters written in this file
+            f"SELECT * FROM analytics.events WHERE id > :base AND ({where}) ORDER BY id"
+        ),
+        {"base": BASELINE["id"], **(params or {})},
     )
     return result.mappings().all()
 
@@ -376,7 +392,16 @@ async def _view(connection, sql, params=None):
     return (await connection.execute(text(sql), params or {})).mappings().all()
 
 
+async def _empty_analytics(connection):
+    """Views and the report aggregate the WHOLE table: start from a known empty
+    one (inside the test's rolled-back transaction)."""
+    await connection.execute(text("DELETE FROM analytics.events"))
+    await connection.execute(text("DELETE FROM analytics_identities"))
+    await connection.execute(text("DELETE FROM product_feedback"))
+
+
 async def test_dashboard_views_compute_the_core_metrics(seed, connection):
+    await _empty_analytics(connection)
     alice, bob, cara = [await seed.user() for _ in range(3)]
     keys = {"a": "a" * 32, "b": "b" * 32, "c": "c" * 32}
     for user, key in zip((alice, bob, cara), keys.values()):
@@ -502,6 +527,7 @@ async def test_the_report_answers_the_core_questions_without_identities(
     )
     report_module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(report_module)
+    await _empty_analytics(connection)
 
     alice, bob = [await seed.user() for _ in range(2)]
     ka, kb = "a" * 32, "b" * 32

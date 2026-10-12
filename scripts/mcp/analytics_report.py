@@ -17,8 +17,6 @@ from typing import Callable, Dict, List, Optional
 
 Fetch = Callable[[str], List[Dict]]
 
-TODAY = "(now() AT TIME ZONE 'UTC')::date"
-
 
 def _one(fetch: Fetch, sql: str) -> Dict:
     rows = fetch(sql)
@@ -31,27 +29,28 @@ def _ratio(part, whole) -> Optional[float]:
 
 def build_report(fetch: Fetch) -> Dict:
     activity = _one(
-        fetch, f"SELECT * FROM analytics.activity_daily WHERE day = {TODAY}"
+        fetch,
+        "SELECT * FROM analytics.activity_daily WHERE day = (now() AT TIME ZONE 'UTC')::date",
     )
     week = _one(
         fetch,
-        f"SELECT coalesce(sum(tool_calls), 0) AS calls, count(DISTINCT user_key) AS users "
-        f"FROM analytics.user_daily WHERE day > {TODAY} - 7",
+        "SELECT coalesce(sum(tool_calls), 0) AS calls, count(DISTINCT user_key) AS users "
+        "FROM analytics.user_daily WHERE day > (now() AT TIME ZONE 'UTC')::date - 7",
     )
     month = _one(
         fetch,
-        f"SELECT coalesce(sum(tool_calls), 0) AS calls, count(DISTINCT user_key) AS users, "
-        f"count(DISTINCT (user_key, day)) AS active_user_days "
-        f"FROM analytics.user_daily WHERE day > {TODAY} - 30",
+        "SELECT coalesce(sum(tool_calls), 0) AS calls, count(DISTINCT user_key) AS users, "
+        "count(DISTINCT (user_key, day)) AS active_user_days "
+        "FROM analytics.user_daily WHERE day > (now() AT TIME ZONE 'UTC')::date - 30",
     )
     adoption = fetch(
         "SELECT feature, users_used, adoption_percent, calls, calls_per_user, "
         "repeat_percent, d30_repeat_percent FROM analytics.feature_adoption ORDER BY calls DESC, feature"
     )
     failing = fetch(
-        f"SELECT tool_name, sum(failures) AS failures, sum(calls) AS calls "
-        f"FROM analytics.reliability_daily WHERE day > {TODAY} - 30 AND tool_name IS NOT NULL "
-        f"GROUP BY tool_name HAVING sum(failures) > 0 ORDER BY 2 DESC, 1 LIMIT 5"
+        "SELECT tool_name, sum(failures) AS failures, sum(calls) AS calls "
+        "FROM analytics.reliability_daily WHERE day > (now() AT TIME ZONE 'UTC')::date - 30 AND tool_name IS NOT NULL "
+        "GROUP BY tool_name HAVING sum(failures) > 0 ORDER BY 2 DESC, 1 LIMIT 5"
     )
     latency = _one(
         fetch,
@@ -88,9 +87,9 @@ def build_report(fetch: Fetch) -> Dict:
     )
     registrations = _one(
         fetch,
-        f"SELECT coalesce(sum(registrations), 0) AS total, "
-        f"coalesce(sum(registrations) FILTER (WHERE day = {TODAY}), 0) AS today "
-        f"FROM analytics.registrations_daily",
+        "SELECT coalesce(sum(registrations), 0) AS total, "
+        "coalesce(sum(registrations) FILTER (WHERE day = (now() AT TIME ZONE 'UTC')::date), 0) AS today "
+        "FROM analytics.registrations_daily",
     )
     segments = fetch(
         "SELECT segment, count(*) AS users FROM analytics.user_segments GROUP BY 1 ORDER BY 2 DESC, 1"
