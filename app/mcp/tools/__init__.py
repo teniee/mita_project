@@ -25,6 +25,8 @@ WRITE_TOOLS = (
     "add_transactions",
     "update_transaction",
     "delete_transaction",
+    "add_recurring_expense",
+    "create_savings_goal",
 )
 
 PUBLISHED_TOOLS = READ_TOOLS + WRITE_TOOLS

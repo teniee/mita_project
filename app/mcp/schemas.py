@@ -459,3 +459,46 @@ class TransactionChangeOut(_Out):
         "All recorded spending this month so far, after this change."
     )
     notes: List[str]
+
+
+# --- add_recurring_expense / create_savings_goal ---------------------------
+
+
+class RecurringCreatedOut(_Out):
+    status: Literal["created", "already_created"] = Field(
+        description="'already_created': this exact request (same idempotency_key) was saved before."
+    )
+    name: str = Field(description="The name exactly as the user gave it.")
+    category: str
+    amount: Money = money_field("Amount each time it is due.")
+    currency: str
+    recurrence: Literal["monthly", "weekly"]
+    next_due_date: dt.date = Field(
+        description="The next due date MITA computed from what the user said."
+    )
+    notes: List[str]
+
+
+class GoalCreatedOut(_Out):
+    status: Literal["created", "already_created"]
+    title: str = Field(description="The title exactly as the user gave it.")
+    category: str
+    currency: str
+    target_amount: Money = money_field("Goal target.")
+    saved_amount: Money = money_field("Already saved, as the user stated.")
+    progress_percent: str = Field(pattern=r"^\d+\.\d$")
+    target_date: Optional[dt.date]
+    required_monthly_contribution: Optional[Money] = Field(
+        description=(
+            "Arithmetic only: (target − saved) ÷ months until the target date "
+            "(30.44-day months, at least one). Null without a target date."
+        ),
+        pattern=MONEY_PATTERN,
+    )
+    reserved_in_budget_plan: bool = Field(
+        description=(
+            "True when MITA set aside the daily amounts for this goal in the "
+            "current month's plan."
+        )
+    )
+    notes: List[str]

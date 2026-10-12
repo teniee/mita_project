@@ -1046,6 +1046,13 @@ Rules:
   call `ZoneInfo(user.timezone)` after their commit). Push alerts (budget,
   velocity, large transaction) need Firebase and are NOT sent for expenses
   recorded in ChatGPT; the plan itself is updated identically.
+- **Recurring and goal writes** reuse `scheduled_expense_service.create_scheduled_expense`
+  and the API's goal construction (`Goal.update_progress`,
+  `goal_budget_sync.sync_goal_to_daily_plan`). A due date is computed only from
+  what the user said (day of month / weekday / first date) — with none of them
+  the tool refuses so ChatGPT asks. Goals have no Premium gate in ChatGPT (v1 is
+  free); the plan reservation runs in a SAVEPOINT and never fails the goal
+  (F-1: a second dated goal cannot reserve; the result says so).
 - **Naive datetimes mean UTC only in a UTC process.** asyncpg encodes a naive
   value bound to a timestamptz parameter with `astimezone()`, i.e. in the
   process's local zone. The image sets `TZ=UTC`, `python -m app.mcp` pins it
