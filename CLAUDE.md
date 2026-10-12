@@ -1071,6 +1071,14 @@ Rules:
   0; the current month is `in_progress` and never enters an average. Trends
   and the late-month share need `MIN_MONTHS_FOR_TREND` (3) complete months,
   else `insufficient_data`. Six months is an analysis window, not retention.
+- **Plugin package** (`plugin/mita`): `onboardingSkill: "./skills/setup/SKILL.md"`;
+  `build_plugin.py` packages `skills/` and validates SKILL.md front matter
+  (name = directory, description), the onboarding path and the starter prompts
+  (<= 3, <= 128 chars, unique, no @mention). The listing never mentions
+  pricing, trials or Premium. `tests_mcp/golden_prompts.json` (en/ru/bg,
+  reviewer-authored, never from real users) must cover every published tool;
+  its `description_mentions` pin trigger phrases in tool descriptions.
+  Conversation rules: `docs/chatgpt-app/dialogue-contract.md`.
 - **Naive datetimes mean UTC only in a UTC process.** asyncpg encodes a naive
   value bound to a timestamptz parameter with `astimezone()`, i.e. in the
   process's local zone. The image sets `TZ=UTC`, `python -m app.mcp` pins it

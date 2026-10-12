@@ -96,6 +96,30 @@ def test_test_cases_reference_only_published_tools():
             ),
             "streamable-http",
         ),
+        (
+            lambda p, m: p["extensions"]["com.openai"]["interface"].update(
+                defaultPrompt=["a", "b", "c", "d"]
+            ),
+            "at most 3 starter prompts",
+        ),
+        (
+            lambda p, m: p["extensions"]["com.openai"]["interface"].update(
+                defaultPrompt=["Record an expense.", "record an expense."]
+            ),
+            "unique",
+        ),
+        (
+            lambda p, m: p["extensions"]["com.openai"]["interface"].update(
+                defaultPrompt=["@MITA how am I doing?"]
+            ),
+            "@mention",
+        ),
+        (
+            lambda p, m: p["extensions"]["com.openai"].update(
+                onboardingSkill="./skills/missing/SKILL.md"
+            ),
+            "onboardingSkill",
+        ),
     ],
 )
 def test_validator_rejects(mutate, message):
@@ -114,3 +138,66 @@ def test_release_refuses_placeholders_and_unowned_domain(monkeypatch):
     monkeypatch.setenv("MCP_PUBLIC_URL", "https://mcp.mita.finance")
     with pytest.raises(build_plugin.PluginError, match="mita.finance"):
         build_plugin.release_values()
+
+
+def test_onboarding_skill_is_declared_valid_and_shipped(tmp_path, monkeypatch):
+    plugin, _ = _docs()
+    ext = plugin["extensions"]["com.openai"]
+    assert ext["onboardingSkill"] == "./skills/setup/SKILL.md"
+    meta = build_plugin.skill_frontmatter(
+        build_plugin.PLUGIN_DIR / "skills/setup/SKILL.md"
+    )
+    assert meta["name"] == "setup"
+    assert "get_setup_status" in meta["description"]
+    monkeypatch.setattr(build_plugin, "DIST", tmp_path)
+    target = build_plugin.build(build_plugin.CHECK_VALUES, write_zip=True)
+    import zipfile
+
+    names = zipfile.ZipFile(target).namelist()
+    assert "skills/setup/SKILL.md" in names and "plugin.json" in names
+
+
+def test_skill_names_only_published_tools():
+    import re
+
+    from app.mcp.tools import PUBLISHED_TOOLS
+
+    text = (build_plugin.PLUGIN_DIR / "skills/setup/SKILL.md").read_text()
+    named = set(re.findall(r"`([a-z_]+)`", text)) - {
+        "known",
+        "missing_fields",
+        "draft_token",
+        "insufficient_data",
+    }
+    assert named and named <= set(PUBLISHED_TOOLS), named - set(PUBLISHED_TOOLS)
+
+
+def test_starter_prompts_are_the_planned_three():
+    plugin, _ = _docs()
+    assert plugin["extensions"]["com.openai"]["interface"]["defaultPrompt"] == [
+        "Set up my monthly budget from scratch.",
+        "Record an expense I just made.",
+        "How am I doing financially this month?",
+    ]
+
+
+def test_listing_advertises_no_pricing_or_premium():
+    plugin, _ = _docs()
+    ui = plugin["extensions"]["com.openai"]["interface"]
+    listing = " ".join(
+        [ui["displayName"], ui["shortDescription"], ui["longDescription"]]
+        + ui["capabilities"]
+        + ui["defaultPrompt"]
+        + [plugin["description"]]
+    ).lower()
+    for word in (
+        "free",
+        "price",
+        "pricing",
+        "trial",
+        "premium",
+        "discount",
+        "upgrade",
+        "$",
+    ):
+        assert word not in listing, word

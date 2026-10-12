@@ -15,7 +15,9 @@
 Rules checked (developers.openai.com/plugins/deploy/submission, 2026-10-02):
 Agent Plugins schemas (vendored in plugin/schemas), display name and short
 description <= 30 chars, long description <= 4000, developer name <= 80,
-<= 20 capabilities of <= 120 chars, default prompts <= 128 chars, exactly 5
+<= 20 capabilities of <= 120 chars, <= 3 unique starter prompts of <= 128
+chars without @mentions, skills/<name>/SKILL.md with name + description and
+onboardingSkill pointing at one of them, exactly 5
 positive test cases with tools_triggered + expected_behavior and exactly 3
 negative ones, every triggered tool exists, icons square >= 48 px and <= 5
 MiB, no app references or hooks (not yet submittable), HTTPS URLs.
@@ -180,6 +182,54 @@ def check_image(path: Path, *, square: bool) -> None:
         raise PluginError(f"{path.name}: raster images must be at most 4096 px")
 
 
+SKILL_NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+
+
+def skill_frontmatter(path: Path) -> Dict[str, str]:
+    """The YAML front matter of a SKILL.md (simple ``key: value`` lines)."""
+    text = path.read_text(encoding="utf-8")
+    if not text.startswith("---\n"):
+        raise PluginError(f"{path.relative_to(PLUGIN_DIR)}: missing YAML front matter")
+    header, _, body = text[4:].partition("\n---\n")
+    if not body.strip():
+        raise PluginError(f"{path.relative_to(PLUGIN_DIR)}: empty instructions")
+    fields: Dict[str, str] = {}
+    for line in header.splitlines():
+        key, sep, value = line.partition(":")
+        if sep and key.strip():
+            fields[key.strip()] = value.strip().strip('"')
+    return fields
+
+
+def check_skills(ext: dict) -> List[Path]:
+    """Every skills/<name>/SKILL.md has a valid name (= its directory) and a
+    description; onboardingSkill, if set, points at one of them."""
+    skills_dir = PLUGIN_DIR / "skills"
+    found = sorted(skills_dir.glob("*/SKILL.md")) if skills_dir.is_dir() else []
+    names = set()
+    for path in found:
+        meta = skill_frontmatter(path)
+        name = meta.get("name", "")
+        if not SKILL_NAME.fullmatch(name) or len(name) > 64:
+            raise PluginError(f"skill name {name!r} must be kebab-case, <= 64 chars")
+        if name != path.parent.name:
+            raise PluginError(f"skill {name!r} must live in skills/{name}/")
+        description = meta.get("description", "")
+        if not description or len(description) > 1024:
+            raise PluginError(f"skill {name!r} needs a description of 1..1024 chars")
+        names.add(name)
+    onboarding = ext.get("onboardingSkill")
+    if onboarding is not None:
+        target = (PLUGIN_DIR / onboarding).resolve()
+        if not onboarding.startswith("./skills/") or target not in {
+            p.resolve() for p in found
+        }:
+            raise PluginError(
+                "onboardingSkill must point to an included skills/<name>/SKILL.md"
+            )
+    return found
+
+
 def validate(plugin: dict, mcp: dict, tools: List[str]) -> None:
     import jsonschema
 
@@ -206,8 +256,16 @@ def validate(plugin: dict, mcp: dict, tools: List[str]) -> None:
     caps = ui.get("capabilities", [])
     if len(caps) > 20 or any(len(c) > 120 for c in caps):
         raise PluginError("at most 20 capabilities of at most 120 characters")
-    if any(len(p) > 128 for p in ui.get("defaultPrompt", [])):
-        raise PluginError("default prompts must be at most 128 characters")
+    prompts = ui.get("defaultPrompt", [])
+    if len(prompts) > 3:
+        raise PluginError("at most 3 starter prompts (defaultPrompt)")
+    if any(not p or len(p) > 128 for p in prompts):
+        raise PluginError("default prompts must be 1..128 characters")
+    if len({p.strip().lower() for p in prompts}) != len(prompts):
+        raise PluginError("starter prompts must be unique")
+    if any("@" in p for p in prompts):
+        raise PluginError("starter prompts must not @mention an app")
+    check_skills(ext)
     for key in ("websiteURL", "supportURL", "privacyPolicyURL", "termsOfServiceURL"):
         if urlparse(ui.get(key, "")).scheme != "https":
             raise PluginError(f"interface.{key} must be https")
@@ -275,6 +333,10 @@ def build(values: Dict[str, str], *, write_zip: bool) -> Path | None:
         zf.writestr("mcp.json", json.dumps(mcp, indent=2) + "\n")
         for asset in sorted((PLUGIN_DIR / "assets").iterdir()):
             zf.write(asset, f"assets/{asset.name}")
+        for skill in check_skills(plugin["extensions"]["com.openai"]):
+            for item in sorted(skill.parent.rglob("*")):
+                if item.is_file():
+                    zf.write(item, item.relative_to(PLUGIN_DIR).as_posix())
     return target
 
 
