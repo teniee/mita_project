@@ -69,7 +69,7 @@ async def test_background_writer_commits_events_off_the_request_path(committed_u
                     "get_profile", {}, meta={"openai/locale": MARKER_LOCALE}
                 )
                 assert not result.is_error
-    await sink.flush()
+    await sink.close()  # flush, then stop the writer before the loop ends
     key = user_key(make_settings().analytics_secret, committed_user.id)
     async with write_session() as session:
         rows = (

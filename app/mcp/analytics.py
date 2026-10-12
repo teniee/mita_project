@@ -393,6 +393,17 @@ class DatabaseSink:
                 extra={"event": "analytics_dropped", "reason": type(exc).__name__},
             )
 
+    async def close(self) -> None:
+        """Write what is queued, then stop the writer (service shutdown, tests)."""
+        await self.flush()
+        if self._task is not None and not self._task.done():
+            self._task.cancel()
+            try:
+                await self._task
+            except asyncio.CancelledError:
+                pass
+        self._task = None
+
     async def flush(self) -> None:
         if not self._background:
             batch, self._pending = self._pending, []

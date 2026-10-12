@@ -54,6 +54,9 @@ TOOLS = [
     ("get_budget_forecast", {}),
     ("get_recurring_expenses", {}),
     ("get_goals", {"status": "all"}),
+    ("get_spending_history", {}),
+    ("get_financial_climate", {}),
+    ("preview_monthly_budget", {}),  # writes nothing; needs the seeded income/currency
 ]
 
 

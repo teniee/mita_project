@@ -33,6 +33,7 @@ from _target_guard import ProductionTargetError, assert_writable_target  # noqa:
 from e2e_http import REDIRECT, check, pg  # noqa: E402
 
 from app.core.password_security import hash_password_sync  # noqa: E402
+from app.mcp.tools import PUBLISHED_TOOLS, READ_TOOLS  # noqa: E402
 
 
 def pkce():
@@ -284,18 +285,34 @@ async def run(base: str, dsn: str) -> None:
                 bad_args = await client.call_tool(
                     "get_profile", {"user_id": str(uuid.uuid4())}
                 )
-                check(
-                    "smuggled user_id cannot change identity",
-                    bad_args.is_error
-                    or (bad_args.structured_content or {}).get("id")
-                    == ok.structured_content["id"],
-                )
+                check("smuggled user_id is rejected", bad_args.is_error)
                 malformed = await client.call_tool(
                     "get_goals", {"status": "everything"}
                 )
                 check("malformed tool argument -> error", malformed.is_error)
-                names = sorted(t.name for t in (await client.list_tools()).tools)
-                check("exactly 8 tools, all read-only", len(names) == 8)
+                listed = (await client.list_tools()).tools
+                names = sorted(t.name for t in listed)
+                check(
+                    f"exactly the {len(PUBLISHED_TOOLS)} published tools",
+                    names == sorted(PUBLISHED_TOOLS),
+                    str(names),
+                )
+                check(
+                    "read tools are read-only; writes are explicit",
+                    all(
+                        t.annotations.read_only_hint is (t.name in READ_TOOLS)
+                        and t.annotations.open_world_hint is False
+                        for t in listed
+                    ),
+                )
+                check(
+                    "no money-movement tool",
+                    not any(
+                        w in t.name
+                        for t in listed
+                        for w in ("transfer", "pay", "trade")
+                    ),
+                )
 
         async with httpx2.AsyncClient(base_url=base, timeout=30) as http:
             statuses = [(await http.get("/authorize")).status_code for _ in range(31)]
