@@ -33,6 +33,8 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Iterable, List, Optional, Protocol
 from uuid import UUID
 
+from app.mcp import MCP_SERVER_VERSION
+
 logger = logging.getLogger("app.mcp.analytics")
 
 TOOL_CONTRACT_VERSION = "2.0"
@@ -161,6 +163,28 @@ class EventRecord:
     latency_ms: Optional[int] = None
     locale: Optional[str] = None
     properties: Dict[str, Any] = field(default_factory=dict)
+
+    def row(self) -> Dict[str, Any]:
+        """The ``analytics.events`` columns. ``user_id`` is not one of them: the
+        sink uses it only to keep the identity link that deletes a user's
+        events with their account."""
+        return {
+            "occurred_at": self.occurred_at,
+            "user_key": self.user_key,
+            "session_key": self.session_key,
+            "event_name": self.event_name,
+            "feature": self.feature,
+            "tool_name": self.tool_name,
+            "intent_code": self.intent_code,
+            "status": self.status,
+            "error_code": self.error_code,
+            "latency_ms": self.latency_ms,
+            "surface": SURFACE,
+            "locale": self.locale,
+            "server_version": MCP_SERVER_VERSION,
+            "tool_contract_version": TOOL_CONTRACT_VERSION,
+            "properties": dict(self.properties),
+        }
 
 
 @dataclass

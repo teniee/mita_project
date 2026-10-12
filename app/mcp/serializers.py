@@ -10,6 +10,7 @@ import hashlib
 from decimal import ROUND_HALF_UP, Decimal
 from typing import List, Optional, Sequence
 
+from app.mcp.crypto import DataKeys
 from app.mcp.queries.goals import GoalView
 from app.mcp.queries.ledger import CategoryTotal, LedgerPage
 from app.mcp.queries.periods import UserContext, days_elapsed, month_days
@@ -105,13 +106,29 @@ def profile_out(ctx: UserContext) -> ProfileOut:
     )
 
 
-def transactions_out(ctx: UserContext, start, end, page: LedgerPage) -> TransactionsOut:
+def transaction_ref(keys: DataKeys, ctx: UserContext, transaction_id) -> str:
+    return keys.transaction_ref(ctx.user_id, transaction_id)
+
+
+def transactions_out(
+    ctx: UserContext,
+    start,
+    end,
+    page: LedgerPage,
+    *,
+    keys: DataKeys,
+    next_cursor: Optional[str] = None,
+) -> TransactionsOut:
+    notes = _currency_notes(ctx, page.other_currencies)
+    if page.matching_count == 0:
+        notes.append("No expenses are recorded in MITA for this range and filter.")
     return TransactionsOut(
         start_date=start,
         end_date=end,
         currency=ctx.currency,
         transactions=[
             TransactionOut(
+                ref=transaction_ref(keys, ctx, e.transaction_id),
                 date=e.day,
                 amount=money(e.amount),
                 currency=e.currency,
@@ -124,7 +141,9 @@ def transactions_out(ctx: UserContext, start, end, page: LedgerPage) -> Transact
         matching_count=page.matching_count,
         matching_total=money(page.matching_total),
         has_more=page.has_more,
-        notes=_currency_notes(ctx, page.other_currencies),
+        next_cursor=next_cursor if page.has_more else None,
+        timezone=ctx.timezone,
+        notes=notes,
     )
 
 

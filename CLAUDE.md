@@ -1032,6 +1032,20 @@ Rules:
 - **Analytics is allow-listed, consented and out of band** (`app/mcp/analytics.py`):
   no amounts, merchants, titles, free text or raw ids; keys only for users who
   ticked the consent box; written after the call, never able to fail it.
+  `EventRecord.row()` is exactly what may be stored; `user_id` never is.
+- **Idempotency** (`app/mcp/idempotency.py`): the key record is inserted BEFORE
+  the rows, in the same transaction, so a racing twin blocks on its primary key
+  and replays (`tests_mcp/test_idempotency_concurrency.py` forces the race).
+  Never deduplicate by content — two real €3.50 coffees are two expenses.
+- **Expenses are addressed by opaque refs** (`tx_…`, AES-SIV of the id with the
+  user id as associated data, `app/mcp/crypto.py`): another user's ref does
+  not decrypt, so it is "not found", never their expense. List cursors and
+  budget drafts are HMAC-bound to the user (and the cursor to its query).
+- **MCP writes reuse the API's update/delete** (`app/api/transactions/services.py`)
+  and pass `{id, timezone}` from `UserContext`, not the ORM user (those helpers
+  call `ZoneInfo(user.timezone)` after their commit). Push alerts (budget,
+  velocity, large transaction) need Firebase and are NOT sent for expenses
+  recorded in ChatGPT; the plan itself is updated identically.
 - **Spend is the ledger.** Every MCP spend figure is `transactions` with
   `deleted_at IS NULL`, keyed by `local_day_of(spent_at, user.timezone)`;
   allocations are `daily_plan.planned_amount`. Do not read

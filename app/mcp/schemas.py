@@ -51,7 +51,14 @@ class ProfileOut(_Out):
 # --- list_transactions -----------------------------------------------------
 
 
+REF_DESCRIPTION = (
+    "Opaque reference to this expense, only for update_transaction or "
+    "delete_transaction. Not meaningful to the user; do not show it."
+)
+
+
 class TransactionOut(_Out):
+    ref: str = Field(description=REF_DESCRIPTION)
     date: dt.date = Field(
         description="Local calendar day of the expense in the user's timezone."
     )
@@ -78,6 +85,13 @@ class TransactionsOut(_Out):
     has_more: bool = Field(
         description="True when more matching transactions exist than were returned."
     )
+    next_cursor: Optional[str] = Field(
+        description=(
+            "When has_more is true: pass this as `cursor` (with the same dates and "
+            "filters) to get the next page. Null on the last page."
+        )
+    )
+    timezone: str = Field(description="IANA timezone the dates are in.")
     notes: List[str]
 
 
@@ -400,4 +414,48 @@ class ProfileUpdateOut(_Out):
     profile: KnownProfileOut
     profile_complete: bool
     missing_fields: List[ProfileField]
+    notes: List[str]
+
+
+# --- add_transaction(s) / update_transaction / delete_transaction ----------
+
+
+class RecordedTransactionOut(_Out):
+    ref: str = Field(description=REF_DESCRIPTION)
+    date: dt.date = Field(description="Local calendar day of the expense.")
+    amount: Money = money_field("Amount recorded.")
+    currency: str
+    category: str
+    merchant: Optional[str] = Field(description="Merchant exactly as recorded.")
+
+
+class TransactionsRecordedOut(_Out):
+    status: Literal["recorded", "already_recorded"] = Field(
+        description=(
+            "'already_recorded': this exact request (same idempotency_key) was "
+            "recorded before; nothing new was written."
+        )
+    )
+    currency: str
+    transactions: List[RecordedTransactionOut]
+    count: int
+    total: Money = money_field("Sum of the expenses in this response.")
+    month_to_date_spent: Money = money_field(
+        "All recorded spending this month so far, after this write."
+    )
+    notes: List[str]
+
+
+TransactionField = Literal["amount", "category", "date", "merchant"]
+
+
+class TransactionChangeOut(_Out):
+    status: Literal["updated", "unchanged", "deleted", "already_deleted"]
+    changed_fields: List[TransactionField]
+    transaction: RecordedTransactionOut = Field(
+        description="The expense after the change (for a deletion: as it was)."
+    )
+    month_to_date_spent: Money = money_field(
+        "All recorded spending this month so far, after this change."
+    )
     notes: List[str]

@@ -225,7 +225,17 @@ async def test_list_transactions_fields_order_and_totals(m, ledger_user):
         ("2026-03-01", "1200.00", "rent", "Landlord LLC"),
     ]
     for item in data["transactions"]:
-        assert set(item) == {"date", "amount", "currency", "category", "merchant"}
+        assert set(item) == {
+            "ref",
+            "date",
+            "amount",
+            "currency",
+            "category",
+            "merchant",
+        }
+        assert item["ref"].startswith("tx_")  # opaque: no database id visible
+    assert len({item["ref"] for item in data["transactions"]}) == 5
+    assert data["next_cursor"] is None and data["timezone"]
 
 
 async def test_list_transactions_filters(m, ledger_user):

@@ -45,6 +45,7 @@ from app.core.password_security import hash_password_sync  # noqa: E402
 from app.db.models import (  # noqa: E402
     DailyPlan,
     Goal,
+    McpUserProfile,
     ScheduledExpense,
     Transaction,
     User,
@@ -228,12 +229,19 @@ class Harness:
         return mint_token(self.service, user, settings=self.settings, **kwargs)
 
     async def call(
-        self, token: Optional[str], tool: str, arguments: Optional[dict] = None
+        self,
+        token: Optional[str],
+        tool: str,
+        arguments: Optional[dict] = None,
+        *,
+        meta: Optional[dict] = None,
     ):
+        """One tool call; ``meta`` is the request ``_meta`` ChatGPT would send
+        (``openai/session``, ``openai/locale``…)."""
         service = self._build()
         async with started(service):
             async with mcp_client(service, token) as client:
-                return await client.call_tool(tool, arguments or {})
+                return await client.call_tool(tool, arguments or {}, meta=meta)
 
     async def list_tools(self, token: str):
         service = self._build()
@@ -399,6 +407,12 @@ class Seeder:
         item = ScheduledExpense(**values)
         await self._add(item)
         return item
+
+    async def profile(self, user: User, **values) -> McpUserProfile:
+        """The ChatGPT app's per-user setup row (``mcp_user_profiles``)."""
+        row = McpUserProfile(user_id=user.id, **values)
+        await self._add(row)
+        return row
 
     async def bump_token_version(self, user: User) -> None:
         await self.connection.execute(

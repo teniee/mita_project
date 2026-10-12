@@ -19,7 +19,13 @@ READ_TOOLS = (
     "get_goals",
 )
 
-WRITE_TOOLS = ("update_financial_profile",)
+WRITE_TOOLS = (
+    "update_financial_profile",
+    "add_transaction",
+    "add_transactions",
+    "update_transaction",
+    "delete_transaction",
+)
 
 PUBLISHED_TOOLS = READ_TOOLS + WRITE_TOOLS
 

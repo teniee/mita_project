@@ -235,3 +235,24 @@ async def test_status_text_fits_openai_limits(tools):
         meta = tool.meta or {}
         for key in ("openai/toolInvocation/invoking", "openai/toolInvocation/invoked"):
             assert meta.get(key) and len(meta[key]) <= 64, (tool.name, key)
+
+
+async def test_every_tool_rejects_undeclared_arguments(tools):
+    """additionalProperties: false on every input schema and every nested object,
+    so identity or anything else cannot be smuggled in alongside real fields."""
+
+    def objects(schema):
+        if isinstance(schema, dict):
+            if schema.get("type") == "object" or "properties" in schema:
+                yield schema
+            for value in schema.values():
+                yield from objects(value)
+        elif isinstance(schema, list):
+            for value in schema:
+                yield from objects(value)
+
+    for tool in tools:
+        found = list(objects(tool.input_schema or {}))
+        assert found, tool.name
+        for obj in found:
+            assert obj.get("additionalProperties") is False, (tool.name, obj)

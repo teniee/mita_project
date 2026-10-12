@@ -11,11 +11,12 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Dict, List, Optional, Tuple
+from uuid import UUID
 
-from sqlalchemy import func
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 
 from app.db.models import Transaction
@@ -32,6 +33,9 @@ class LedgerEntry:
     currency: str
     category: str
     merchant: Optional[str]
+    # For opaque references and keyset paging only; never serialized as-is.
+    transaction_id: Optional[UUID] = None
+    spent_at: Optional[datetime] = None
 
 
 @dataclass(frozen=True)
@@ -66,7 +70,11 @@ def list_entries(
     category: Optional[str] = None,
     merchant: Optional[str] = None,
     limit: int = 50,
+    after: Optional[Tuple[datetime, UUID]] = None,
 ) -> LedgerPage:
+    """Newest first, ordered by (spent_at, id) — a total order, so paging with
+    ``after`` (the last row of the previous page) never skips or repeats a
+    row. Count and total always cover ALL matching rows, not the page."""
     query = _base_query(db, ctx, start, end)
     if category:
         query = query.filter(func.lower(Transaction.category) == category.lower())
@@ -79,13 +87,23 @@ def list_entries(
         func.count(Transaction.id), func.coalesce(func.sum(Transaction.amount), 0)
     ).one()
 
+    page_query = query
+    if after is not None:
+        after_at, after_id = after
+        page_query = page_query.filter(
+            or_(
+                Transaction.spent_at < after_at,
+                and_(Transaction.spent_at == after_at, Transaction.id < after_id),
+            )
+        )
     rows = (
-        query.with_entities(
+        page_query.with_entities(
             Transaction.spent_at,
             Transaction.amount,
             Transaction.currency,
             Transaction.category,
             Transaction.merchant,
+            Transaction.id,
         )
         .order_by(Transaction.spent_at.desc(), Transaction.id.desc())
         .limit(limit + 1)
@@ -98,8 +116,12 @@ def list_entries(
             currency=(currency or ctx.currency).upper(),
             category=category_name,
             merchant=(merchant_name or "").strip() or None,
+            transaction_id=txn_id,
+            spent_at=spent_at,
         )
-        for spent_at, amount, currency, category_name, merchant_name in rows[:limit]
+        for spent_at, amount, currency, category_name, merchant_name, txn_id in rows[
+            :limit
+        ]
     ]
     return LedgerPage(
         entries=entries,
