@@ -361,6 +361,93 @@ def _find_template_month(
 # ---------------------------------------------------------------------------
 
 
+SAVINGS_GOAL_CATEGORY = "savings goal based"
+
+
+@dataclass(frozen=True)
+class ProfileAllocation:
+    """One month's allocation from stated facts, through the canonical engine.
+
+    ``allocations`` is what a month lays out: the fixed obligations, the
+    engine's discretionary breakdown and the savings bucket. ``unallocated``
+    is discretionary money the engine left free (it only ever scales DOWN), so
+    the laid-out total can be below income — that is the engine's own rule,
+    not a gap to fill.
+    """
+
+    allocations: Dict[str, Decimal]
+    fixed: Dict[str, Decimal]
+    discretionary: Dict[str, Decimal]
+    savings: Decimal
+    discretionary_total: Decimal
+    unallocated: Decimal
+    region: Optional[str]
+
+
+def allocations_from_profile(
+    *,
+    monthly_income: Decimal,
+    savings_goal: Decimal,
+    region: Optional[str],
+    fixed_expenses: Optional[Dict[str, Decimal]] = None,
+) -> ProfileAllocation:
+    """The smallest answers dict ``generate_budget_from_answers`` accepts — the
+    function onboarding calls — and its result as a month's allocation.
+
+    Raises ValueError when fixed expenses exceed income (the engine's rule).
+    Used by the rollover fallback (no fixed expenses, as before) and by the
+    ChatGPT app's reviewed budget (fixed = the user's recurring obligations).
+    """
+    from app.services.core.engine.budget_logic import generate_budget_from_answers
+
+    fixed = {
+        str(category): Decimal(str(amount))
+        for category, amount in (fixed_expenses or {}).items()
+        if Decimal(str(amount)) > ZERO
+    }
+    answers = {
+        "region": region,
+        "income": {
+            "monthly_income": float(monthly_income),
+            "additional_income": 0,
+        },
+        "fixed_expenses": {
+            category: float(amount) for category, amount in fixed.items()
+        },
+        "spending_habits": {},
+        "goals": {"savings_goal_amount_per_month": float(savings_goal)},
+    }
+
+    budget = generate_budget_from_answers(answers)
+    breakdown = budget.get("discretionary_breakdown") or {}
+    discretionary = {
+        str(category): Decimal(str(amount))
+        for category, amount in breakdown.items()
+        if Decimal(str(amount)) > ZERO
+    }
+    goal_amount = Decimal(str(budget.get("savings_goal") or 0))
+    discretionary_total = Decimal(str(budget.get("discretionary_total") or 0))
+
+    allocations: Dict[str, Decimal] = dict(fixed)
+    for category, amount in discretionary.items():
+        allocations[category] = allocations.get(category, ZERO) + amount
+    if goal_amount > ZERO:
+        # Same bucket name the planner and the priority registry use, so it is
+        # SACRED to the redistributor from the moment it is written.
+        allocations[SAVINGS_GOAL_CATEGORY] = (
+            allocations.get(SAVINGS_GOAL_CATEGORY, ZERO) + goal_amount
+        )
+    return ProfileAllocation(
+        allocations=allocations,
+        fixed=fixed,
+        discretionary=discretionary,
+        savings=goal_amount,
+        discretionary_total=discretionary_total,
+        unallocated=max(ZERO, discretionary_total - sum(discretionary.values(), ZERO)),
+        region=region,
+    )
+
+
 def _profile_allocations(user: User) -> Dict[str, Decimal]:
     """Monthly per-category totals from the user's persisted profile.
 
@@ -372,8 +459,6 @@ def _profile_allocations(user: User) -> Dict[str, Decimal]:
     at all still gets the same tier-and-region weighted split onboarding would
     have produced, rather than a second, divergent allocation invented here.
     """
-    from app.services.core.engine.budget_logic import generate_budget_from_answers
-
     income = Decimal(str(user.monthly_income or 0))
     if income <= ZERO:
         return {}
@@ -385,32 +470,11 @@ def _profile_allocations(user: User) -> Dict[str, Decimal]:
         # anyway. Clamp here so the intent stays visible.
         savings_goal = ZERO
 
-    answers = {
-        "region": user.region or user.country or "US",
-        "income": {
-            "monthly_income": float(income),
-            "additional_income": 0,
-        },
-        "fixed_expenses": {},
-        "spending_habits": {},
-        "goals": {"savings_goal_amount_per_month": float(savings_goal)},
-    }
-
-    budget = generate_budget_from_answers(answers)
-    breakdown = budget.get("discretionary_breakdown") or {}
-    allocations = {
-        str(category): Decimal(str(amount))
-        for category, amount in breakdown.items()
-        if Decimal(str(amount)) > ZERO
-    }
-
-    goal_amount = Decimal(str(budget.get("savings_goal") or 0))
-    if goal_amount > ZERO:
-        # Same bucket name the planner and the priority registry use, so it is
-        # SACRED to the redistributor from the moment it is written.
-        allocations["savings goal based"] = goal_amount
-
-    return allocations
+    return allocations_from_profile(
+        monthly_income=income,
+        savings_goal=savings_goal,
+        region=user.region or user.country or "US",
+    ).allocations
 
 
 # ---------------------------------------------------------------------------
@@ -454,6 +518,80 @@ def _build_month_calendar(
         if allocated:
             calendar_map[day.date.isoformat()] = allocated
     return calendar_map
+
+
+def month_calendar(
+    year: int, month: int, allocations: Dict[str, Decimal]
+) -> Dict[str, Dict[str, Decimal]]:
+    """Public layout of a month's allocations by the canonical distributor.
+
+    Refuses (ValueError) a layout that does not re-sum to the allocations to
+    the cent — the same conservation guarantee ``_materialize_month`` applies.
+    """
+    _validate_month(year, month)
+    calendar_map = _build_month_calendar(year, month, allocations, {})
+    intended = sum((a for a in allocations.values() if a > ZERO), ZERO)
+    laid_out = sum(
+        (
+            Decimal(str(amount))
+            for day in calendar_map.values()
+            for amount in day.values()
+        ),
+        ZERO,
+    )
+    if laid_out != intended:
+        raise ValueError(
+            f"month plan does not conserve money: allocated {laid_out} from {intended}"
+        )
+    return calendar_map
+
+
+def month_base_plan(
+    db: Session, user_id: UUID, year: int, month: int
+) -> Dict[Tuple[date, str], Decimal]:
+    """The month's persisted BASE plan: real budget rows only, with any
+    in-month rebalance backed out. ``{(local day, category): amount}``."""
+    plan: Dict[Tuple[date, str], Decimal] = {}
+    for row in _budget_rows(_month_rows(db, user_id, year, month)):
+        day = row.date.date() if hasattr(row.date, "date") else row.date
+        key = (day, row.category or "")
+        plan[key] = plan.get(key, ZERO) + _base_planned_amount(row)
+    return plan
+
+
+def replace_month_plan(
+    db: Session,
+    user_id: UUID,
+    year: int,
+    month: int,
+    calendar_map: Dict[str, Dict[str, Decimal]],
+) -> None:
+    """Make ``calendar_map`` the month's base plan. Does not commit.
+
+    For a plan the USER chose (the ChatGPT app's reviewed budget), never for a
+    read path: reads only ever call ``ensure_month_plan`` and never overwrite
+    an existing month. Under the per-user ledger lock it deletes the month's
+    rows except goal reservations (``GoalBudgetSyncService`` owns those) —
+    budget rows and transaction-generated ones alike, because an upsert onto a
+    transaction-generated row would keep its marker and hide a real
+    allocation — writes the new rows with ``save_calendar_for_user`` and
+    re-derives spend and redistribution with ``rebuild_month_plan``. The caller
+    commits, or rolls back to keep the old month intact.
+    """
+    _validate_month(year, month)
+    lock_user_ledger(db, user_id)
+    for row in _month_rows(db, user_id, year, month):
+        if row.goal_id is None:
+            db.delete(row)
+    db.flush()  # deletes must land before inserts on the same (day, category)
+    save_calendar_for_user(db, user_id, calendar_map, commit=False)
+    rebuild_month_plan(
+        db,
+        user_id,
+        date(year, month, 1),
+        tz=user_timezone_of(db, user_id),
+        commit=False,
+    )
 
 
 def _summarize(rows) -> Tuple[int, Decimal, Dict[str, Decimal]]:

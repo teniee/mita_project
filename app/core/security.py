@@ -27,6 +27,7 @@ from app.core.error_handler import (
     RateLimitException,
     ValidationException,
 )
+from app.core.password_policy import password_policy_violation
 
 logger = logging.getLogger(__name__)
 
@@ -235,7 +236,7 @@ class SecurityConfig:
     """Security configuration constants"""
 
     # Password security
-    MIN_PASSWORD_LENGTH = 8
+    MIN_PASSWORD_LENGTH = 8  # mirrors app.core.password_policy
     MAX_PASSWORD_LENGTH = 128
     PASSWORD_HASH_ROUNDS = 12
 
@@ -341,30 +342,9 @@ class SecurityUtils:
         credentials (e.g. random OAuth placeholder passwords) must NOT go
         through this method — they use the mechanical hashing path directly.
         """
-        if not password or len(password) < SecurityConfig.MIN_PASSWORD_LENGTH:
-            raise ValidationException(
-                f"Password must be at least {SecurityConfig.MIN_PASSWORD_LENGTH} characters long",
-                field="password",
-            )
-        if len(password) > SecurityConfig.MAX_PASSWORD_LENGTH:
-            raise ValidationException(
-                f"Password cannot exceed {SecurityConfig.MAX_PASSWORD_LENGTH} characters",
-                field="password",
-            )
-        if not any(c.islower() for c in password):
-            raise ValidationException(
-                "Password must contain lowercase letters", field="password"
-            )
-        if not any(c.isupper() for c in password):
-            raise ValidationException(
-                "Password must contain uppercase letters", field="password"
-            )
-        if not any(c.isdigit() for c in password):
-            raise ValidationException("Password must contain numbers", field="password")
-        if not any(not c.isalnum() for c in password):
-            raise ValidationException(
-                "Password must contain special characters", field="password"
-            )
+        message = password_policy_violation(password)
+        if message:
+            raise ValidationException(message, field="password")
 
     @staticmethod
     def hash_password(password: str) -> str:

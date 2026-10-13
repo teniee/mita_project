@@ -997,3 +997,218 @@ churning.
 because the Flutter model reads them there. The rebalance banner and the
 redistribution-history refresh both work. Do not "fix" this by adding the
 fields to `TxnOut`.
+
+## ChatGPT app (MCP service) — branch feat/chatgpt-plugin
+
+A read/write ChatGPT app (free v1) is being built as a **separate service in
+this repo** (`app/mcp/`, `python -m app.mcp`). Design:
+`docs/adr/ADR-chatgpt-mcp-app.md`; v1 plan of record:
+`docs/chatgpt-app/product-v1-master-plan.md`. Audits: `docs/chatgpt-app/`.
+Rules:
+
+- **No tool takes a user id.** Identity comes from the verified access token
+  only; `tests_mcp/test_tool_contract.py` enforces it on every input schema.
+  Every tool also rejects undeclared arguments (`additionalProperties: false`,
+  `server.forbid_unknown_arguments`): a smuggled `user_id`/`email` is an error.
+- **Read tools are read-only by construction.** They run inside
+  `SET TRANSACTION READ ONLY`; never call `ensure_month_plan*` from a read
+  tool (it writes). An unmaterialized month is `plan_status: "not_generated"`.
+- **Write tools** (`McpRuntime.execute_write`) get a session from
+  `tool_write_session`: the body commits its own unit of work, the scope rolls
+  back anything uncommitted (`update_transaction` mutates `spent_at` after its
+  commit — that must never be flushed). Reuse the domain writers; a batch uses
+  `expense_tracker.add_transactions_to_ledger` (no commit) + one commit.
+- **Annotations are facts.** `test_tool_contract.EXPECTED` lists every tool's
+  read/destructive/idempotent semantics; overwrite or delete ⇒ destructive.
+  Create tools take an `idempotency_key` (scoped by user, operation and the
+  hashed `openai/session`), which is what makes `idempotentHint` true.
+- **One account system, one policy.** The ChatGPT sign-up page and mobile
+  `/register` share `app/core/email_policy.py`, `app/core/password_policy.py`,
+  `app/core/financial_constants.py` and `app/services/user_registration.py`
+  (all dependency-free: the MCP image has no fastapi/firebase/bleach/sentry).
+  Change a rule there, never by copying it. ChatGPT-created accounts get
+  `country = "ZZ"` (not stated) and the API defaults (USD/UTC/0); what the user
+  actually stated is tracked in `mcp_user_profiles.*_confirmed_at`.
+- **Analytics is allow-listed, consented and out of band** (`app/mcp/analytics.py`):
+  no amounts, merchants, titles, free text or raw ids; keys only for users who
+  ticked the consent box; written after the call, never able to fail it.
+  `EventRecord.row()` is exactly what may be stored; `user_id` never is.
+- **Idempotency** (`app/mcp/idempotency.py`): the key record is inserted BEFORE
+  the rows, in the same transaction, so a racing twin blocks on its primary key
+  and replays (`tests_mcp/test_idempotency_concurrency.py` forces the race).
+  Never deduplicate by content — two real €3.50 coffees are two expenses.
+- **Expenses are addressed by opaque refs** (`tx_…`, AES-SIV of the id with the
+  user id as associated data, `app/mcp/crypto.py`): another user's ref does
+  not decrypt, so it is "not found", never their expense. List cursors and
+  budget drafts are HMAC-bound to the user (and the cursor to its query).
+- **MCP writes reuse the API's update/delete** (`app/api/transactions/services.py`)
+  and pass `{id, timezone}` from `UserContext`, not the ORM user (those helpers
+  call `ZoneInfo(user.timezone)` after their commit). Push alerts (budget,
+  velocity, large transaction) need Firebase and are NOT sent for expenses
+  recorded in ChatGPT; the plan itself is updated identically.
+- **Recurring and goal writes** reuse `scheduled_expense_service.create_scheduled_expense`
+  and the API's goal construction (`Goal.update_progress`,
+  `goal_budget_sync.sync_goal_to_daily_plan`). A due date is computed only from
+  what the user said (day of month / weekday / first date) — with none of them
+  the tool refuses so ChatGPT asks. Goals have no Premium gate in ChatGPT (v1 is
+  free); the plan reservation runs in a SAVEPOINT and never fails the goal
+  (F-1: a second dated goal cannot reserve; the result says so).
+- **Reviewed budget == saved budget.** `preview_monthly_budget` is read-only:
+  it computes a draft (`app/mcp/queries/budget_draft.py`) from stated facts
+  only — income, savings target, saved obligations — through
+  `monthly_plan_service.allocations_from_profile` (the engine onboarding uses)
+  and `month_calendar`, and returns a signed token holding the month and the
+  draft's digest (never the numbers). `save_monthly_budget` rebuilds the draft
+  under the ledger lock and saves it only if the digest is unchanged, via
+  `replace_month_plan` (goal reservations kept, transaction-generated rows
+  re-derived). History only adds warnings. After a save the visible
+  `planned_amount` can differ from the preview by MITA's in-month
+  redistribution; the BASE plan (adjustment backed out) is the reviewed one.
+- **History is aggregated in SQL by LOCAL month** (`app/mcp/queries/history.py`,
+  `date_trunc('month', timezone(user_tz, spent_at))`), never returned as raw
+  rows. A month before the first recorded expense is `before_tracking` (no
+  data — not zero); a complete month with nothing recorded is `recorded` with
+  0; the current month is `in_progress` and never enters an average. Trends
+  and the late-month share need `MIN_MONTHS_FOR_TREND` (3) complete months,
+  else `insufficient_data`. Six months is an analysis window, not retention.
+- **Plugin package** (`plugin/mita`): `onboardingSkill: "./skills/setup/SKILL.md"`;
+  `build_plugin.py` packages `skills/` and validates SKILL.md front matter
+  (name = directory, description), the onboarding path and the starter prompts
+  (<= 3, <= 128 chars, unique, no @mention). The listing never mentions
+  pricing, trials or Premium. `tests_mcp/golden_prompts.json` (en/ru/bg,
+  reviewer-authored, never from real users) must cover every published tool;
+  its `description_mentions` pin trigger phrases in tool descriptions.
+  Conversation rules: `docs/chatgpt-app/dialogue-contract.md`.
+- **Feedback and usage statistics** (migration 0039): `submit_feedback` stores
+  the user's own words in `product_feedback` (user id, cascades) and emits only
+  type/area/rating. `analytics_identities` maps user id -> HMAC key and
+  cascades to `analytics.events`, so account deletion and
+  `set_usage_analytics(false)` delete every linked event (the opt-out call
+  itself is recorded unlinked via `override_consent`). Production writes
+  events through ONE background task (`DatabaseSink`); tests on the shared
+  connection use `background=False`. Metabase/report read `analytics.*` only
+  with `mita_analytics_reader` (`scripts/mcp/analytics_reader_role.sql`).
+  Segment thresholds are rows in `analytics.segment_thresholds`.
+- **Capacity** (`docs/chatgpt-app/capacity-plan.md`): measured with
+  `scripts/mcp/benchmark_capacity.py` on a LOCAL `*capacity*` database
+  (600k transactions, 1.47M plan rows, 500k events): every tool query p95
+  ≤ 20 ms, 1–6 statements, index scans only — no index added (no 0040). Re-run
+  it after any query-layer change; never against staging/production.
+  `scripts/mcp/e2e_v2.py` is the public acceptance conversation (sign-up →
+  budget → writes → new connection → history → goal → feedback → negatives →
+  analytics audit → cleanup); it refuses production hosts.
+- **The MCP database role is least-privilege** (`scripts/mcp/mcp_service_role.sql`,
+  owner-run after the migrations): exactly the tables and `users` columns the
+  domain writers touch, no DDL. A new write path needs its grant there — an
+  ORM insert with `RETURNING` needs `SELECT` as well as `INSERT`. Verify by
+  running `e2e_v2.py` against a local server connected as `mita_mcp`: the
+  redistribution audit is non-blocking, so a missing grant there surfaces
+  only as a logged warning, never as a failed call.
+- **Naive datetimes mean UTC only in a UTC process.** asyncpg encodes a naive
+  value bound to a timestamptz parameter with `astimezone()`, i.e. in the
+  process's local zone. The image sets `TZ=UTC`, `python -m app.mcp` pins it
+  (`pin_process_timezone`), and `tests_mcp/conftest.py` does too — a laptop
+  in Sofia otherwise shifts every date window by 3 hours (found by running
+  `scripts/mcp/e2e_http.py` against a local server). Keep all three.
+- **Spend is the ledger.** Every MCP spend figure is `transactions` with
+  `deleted_at IS NULL`, keyed by `local_day_of(spent_at, user.timezone)`;
+  allocations are `daily_plan.planned_amount`. Do not read
+  `daily_plan.spent_amount` (a cache that can lag).
+- **Only TRUSTED sources** from `docs/chatgpt-app/data-trust-audit.md`. No AI
+  endpoint, recommendation engine or cohort data is reachable from MCP.
+- `mita.finance` is **not registered**; the MCP host is `MCP_PUBLIC_URL`.
+- **Two credential checks, one lockout counter.** The mobile login
+  (`app/api/auth/login.py`, intentionally untouched by the MCP work) and the
+  ChatGPT consent page (`app/services/credential_verification.py`) apply the
+  same rule (5 failures → 30 min) to the same `users` columns. Change both together.
+- **OAuth tables (migration 0037)** `mcp_oauth_clients`,
+  `mcp_oauth_authorization_codes`, `mcp_oauth_refresh_tokens`: additive,
+  codes/refresh tokens stored as SHA-256 digests, rows cascade with the user.
+  Applied by mita-production's `start.sh`; the MCP service never migrates.
+- **Money leaves MCP as strings** (`"1234.50"`, `Decimal` quantized half-up);
+  every payload names its currency; mixed recorded currencies are disclosed in
+  `notes`, never converted. Goals without a target date get `on_track: null`
+  (the forecast engine says `False`, which is a verdict nothing supports).
+- **MCP logging takes over the tree.** `app.core.logging_config` (imported by
+  the domain layer) gives `app` its own handlers with `propagate=False`;
+  `app.mcp.observability.configure_logging` undoes that, emits one JSON line
+  per record to stdout, keeps `app.*` at WARNING (domain code logs amounts at
+  INFO, e.g. `compute_forecast`) and withholds message text from non-MCP
+  loggers. Never log tokens, amounts, merchants, e-mails or tool arguments.
+- **MCP tests live in `tests_mcp/`** (own env: `pip install -r requirements-mcp-dev.txt`;
+  run `PYTHONPATH=. pytest -c tests_mcp/pytest.ini tests_mcp`). Real PostgreSQL,
+  one rolled-back transaction per test, tools driven through the SDK client
+  over ASGI. Assert exact figures, not status codes. The session manager runs
+  once per service and inside the test task — use the `mcp` harness.
+- **`scheduled_expenses.recurrence` is `once | weekly | monthly | null`.**
+  `"once"` is one-time; only weekly/monthly are recurring.
+- **Deploy/package.** MCP image `deploy/mcp/Dockerfile`, Railway config
+  `deploy/mcp/railway.json` (set as the `mita-mcp` service's config file).
+  Plugin ZIP: `scripts/mcp/build_plugin.py --check` (CI) / `--release`
+  (refuses placeholders, example hosts and `mita.finance`). The review
+  seeder `scripts/mcp/seed_review_account.py` goes through `_target_guard`
+  and never writes to production. CI job `mcp-ci` runs all of it.
+- **Owner-gated items** live in `docs/chatgpt-app/OWNER_ACTIONS.md`; readiness
+  table in `docs/chatgpt-app/review/submission-checklist.md`; pre-existing API
+  defects found along the way in `docs/chatgpt-app/backend-findings.md`
+  (second goal → 500, plan vs transaction category names).
+- **ChatGPT grants are bound to the password.** Codes, refresh tokens and
+  access tokens carry `tv` (token_version) and `cfp` (HMAC of
+  `users.password_hash`, keyed ONLY by `MCP_GRANT_FINGERPRINT_SECRET` — never
+  the CSRF secret); any password change, by any path, ends the
+  connection on the next call/refresh. `/reset-password` bumps token_version
+  only best-effort, which is why `cfp` exists. There is no user-facing
+  "sign out of all devices" endpoint in MITA.
+- **Redirect URIs match exactly** (`app/mcp/auth/redirects.py`); DCR accepts
+  only code/refresh grants, `response_types=["code"]`, no jwks, <= 4 KiB
+  metadata; /register, /token, /authorize, /revoke are rate limited per IP.
+  Adversarial regressions: `tests_mcp/test_oauth_adversarial.py`.
+- **OAuth audit:** `docs/chatgpt-app/oauth-security-audit.md` (threat → evidence
+  table). Pre-deploy HTTP e2e: `scripts/mcp/e2e_http.py` (also run against the
+  built image in `mcp-ci`, across a container restart, with a log scan). The
+  image installs `requirements-mcp.lock` (full lock; regenerate with
+  `scripts/mcp/lock_deps.sh`).
+- **AS metadata is MITA's own route** (server.py): it advertises
+  `token_endpoint_auth_methods_supported` incl. `none` (ChatGPT registers as a
+  public PKCE client) and pins `issuer` to the exact configured origin (no
+  trailing slash — issuer comparison is exact). Staging: separate Railway
+  project `mita-mcp-staging` (docs/chatgpt-app/staging.md), pinned commits,
+  one replica.
+- **Staging** runs in its own Railway project `mita-mcp-staging` (private
+  Postgres, fresh secrets, one replica, source pinned to a commit). Verified
+  over public HTTPS with `scripts/mcp/e2e_http.py` and
+  `scripts/mcp/staging_failure_modes.py`; results in
+  `docs/chatgpt-app/staging-acceptance.md`. Real-ChatGPT acceptance is owner-run.
+  Since 2026-10-13 it runs v2 (`461abcf`, alembic 0039) connected as
+  `mita_mcp`, so a missing grant shows up there before production;
+  `scripts/mcp/e2e_v2.py` results are in `staging-acceptance-v2.md`, whose §6
+  is the owner's real-ChatGPT script. Migrations reach staging only from the
+  operator machine through a temporary TCP proxy — remove it afterwards and
+  verify the connection is refused.
+- **Tool metadata states limits as facts, never steers the model elsewhere.**
+  OpenAI forbids metadata that influences how the model treats other
+  plugins/services, so every description carries `READ_ONLY_DISCLAIMER`
+  ("MITA cannot initiate, execute or facilitate payments or money transfers")
+  and nothing tells ChatGPT what to do outside MITA. Real ChatGPT still offered
+  to "prepare" a transfer through the user's bank after refusing — that is
+  ChatGPT's own help, not a MITA capability; never answer it with a transfer tool.
+- **`get_financial_summary.top_categories` is the top three only.** The rest
+  of `spent_total` is named only by `get_spending_breakdown`. `other` is a real
+  MITA category (`app/config/category_config.py`), so ChatGPT relabelling an
+  unlisted category as "Other expenses" conflates it with real data; the
+  description and the `CategorySpendOut.category` schema text say so. Do not
+  "fix" this by adding a synthetic `other` bucket to the payload.
+- **Production rollout facts (read-only check, 2026-10-11).** Plan:
+  `docs/chatgpt-app/production-readiness.md`.
+  - `mita-production` has **no Railway healthcheck**, so a new deployment goes
+    Active when its container starts and the old one stops. A failed boot
+    migration therefore leaves nothing serving. Enable `/health` (200 even
+    when degraded) before the 0037 merge (O-11a).
+  - Production DB is Railway **Postgres 17 `mita-production-db`** (private
+    host), not Supabase, and has a public TCP proxy (O-4b).
+  - Once production is at 0037, rolling the API back to a pre-merge
+    deployment cannot boot (`Can't locate revision identified by '0037'`).
+    Fix forward, or `alembic downgrade 0036` from merged code first.
+  - `scripts/mcp/check_leaked_secrets.py` compares live variables with all 33
+    committed secret fingerprints and prints names only. It is owner-run,
+    because reading production variables is owner-only.

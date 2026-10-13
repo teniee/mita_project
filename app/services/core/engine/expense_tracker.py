@@ -3,7 +3,7 @@ import logging
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
@@ -489,16 +489,8 @@ def commit_transaction_to_ledger(
     list but never reaches the daily plan, so the dashboard, the calendar and
     every alert disagree with the ledger.
     """
-    lock_user_ledger(db, txn.user_id)
-    db.add(txn)
     try:
-        db.flush()
-        rebalance_result = apply_transaction_to_plan(
-            db,
-            txn,
-            commit=False,
-            run_side_effects=False,
-        )
+        (rebalance_result,) = add_transactions_to_ledger(db, [txn])
         db.commit()
         db.refresh(txn)
     except Exception:
@@ -509,6 +501,35 @@ def commit_transaction_to_ledger(
         run_transaction_plan_side_effects(db, txn, rebalance_result)
 
     return rebalance_result
+
+
+def add_transactions_to_ledger(
+    db: Session, txns: Sequence[Transaction]
+) -> List[Optional[RebalancePlan]]:
+    """Insert transactions into the ledger as ONE unit of work, without committing.
+
+    The body of ``commit_transaction_to_ledger`` for callers that must commit
+    something else atomically with the rows (a batch that is all-or-nothing,
+    an idempotency record). Each transaction is inserted and applied to the
+    plan in order, exactly as that many sequential single writes would be, all
+    under the same per-user advisory lock. The caller commits — or rolls back,
+    which undoes every row and every plan change — and only then runs
+    ``run_transaction_plan_side_effects`` for each result.
+    """
+    results: List[Optional[RebalancePlan]] = []
+    for txn in txns:
+        lock_user_ledger(db, txn.user_id)
+        db.add(txn)
+        db.flush()
+        results.append(
+            apply_transaction_to_plan(
+                db,
+                txn,
+                commit=False,
+                run_side_effects=False,
+            )
+        )
+    return results
 
 
 def record_expense(
