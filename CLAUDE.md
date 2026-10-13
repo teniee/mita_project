@@ -1097,6 +1097,13 @@ Rules:
   `scripts/mcp/e2e_v2.py` is the public acceptance conversation (sign-up →
   budget → writes → new connection → history → goal → feedback → negatives →
   analytics audit → cleanup); it refuses production hosts.
+- **The MCP database role is least-privilege** (`scripts/mcp/mcp_service_role.sql`,
+  owner-run after the migrations): exactly the tables and `users` columns the
+  domain writers touch, no DDL. A new write path needs its grant there — an
+  ORM insert with `RETURNING` needs `SELECT` as well as `INSERT`. Verify by
+  running `e2e_v2.py` against a local server connected as `mita_mcp`: the
+  redistribution audit is non-blocking, so a missing grant there surfaces
+  only as a logged warning, never as a failed call.
 - **Naive datetimes mean UTC only in a UTC process.** asyncpg encodes a naive
   value bound to a timestamptz parameter with `astimezone()`, i.e. in the
   process's local zone. The image sets `TZ=UTC`, `python -m app.mcp` pins it

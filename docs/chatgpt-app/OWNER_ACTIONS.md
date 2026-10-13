@@ -9,7 +9,9 @@ step). The O-numbers are stable; other documents refer to them.
 deploy, restart or reconfigure production run only when you decide to run
 them. Never paste a secret value into chat, an issue or git.
 
-## Staging — COMPLETE
+## Staging
+
+v1 (8 read-only tools) — complete:
 
 | Item | Status |
 |---|---|
@@ -17,7 +19,15 @@ them. Never paste a secret value into chat, an issue or git.
 | S-2 ChatGPT developer mode | DONE (owner) |
 | S-3 staging app added; OAuth/DCR connected; consent completed | DONE — CHATGPT VERIFIED |
 | S-4 acceptance prompts (positive, negative, control read) | DONE — CHATGPT VERIFIED; results in staging-acceptance.md §5 |
-| S-5 *(optional)* re-check the `fcd7ae3` metadata | NOT YET — refresh the staging app in ChatGPT developer mode, then ask the two prompts in staging-acceptance.md §7 |
+| S-5 *(optional)* re-check the `fcd7ae3` metadata | SUPERSEDED by S-7 (v2 replaces that build) |
+
+v2 (free v1 read/write, 22 tools) — the public automated acceptance is in
+`staging-acceptance-v2.md`; what remains needs your ChatGPT account:
+
+| Item | Status |
+|---|---|
+| S-6 reconnect MITA staging in ChatGPT developer mode | NOT YET — the old connection holds the two read scopes only, so every write tool answers `insufficient_scope`. ChatGPT → Settings → Apps → MITA (staging) → disconnect, then connect again with the same MCP URL; on MITA's page choose **Create an account** with a fresh test e-mail (not the S-1 account) |
+| S-7 real-ChatGPT acceptance v2 | NOT YET — run `staging-acceptance-v2.md` §6 (core conversation, receipt, feedback, negatives) and fill in its results table; §7 is the read-only SQL that checks the database side |
 
 Keep staging running until production is live; teardown is in staging.md.
 
@@ -100,6 +110,18 @@ publishing the Terms.
 (`legal/support-page.md`). Check: each URL returns 200 over HTTPS with its
 own content (today every path returns the landing page).
 
+**O-17 Usage statistics and feedback (decide before O-8b).** v2 stores
+feedback the user asks to send (`product_feedback`) and, only for users who
+tick the box on the sign-in page, pseudonymous usage events
+(`analytics.events`; `data-inventory.md`, `product-analytics.md`). Decide
+and write into the Privacy Policy (`legal/policy-redline.md` §C):
+(a) the legal basis (the code treats usage statistics as consent: off by
+default, switchable in ChatGPT, turning it off deletes the linked events);
+(b) how long feedback and linked events are kept while the account exists —
+nothing is purged automatically today, every **[OWNER]** cell in
+`data-inventory.md`; (c) who at MITA may read feedback text. Tell me the
+periods and I will add the purge job.
+
 ## Step 5 — Age requirement
 
 **O-9c Decide** between 13+ (variant a), keeping 18+ and submitting anyway,
@@ -122,13 +144,16 @@ in the app enforces an age today.
    `MCP_AUTH_MODE=builtin`, `MCP_SUPPORT_URL=https://mitafinance.com/support`,
    `LOG_LEVEL=INFO`, `MCP_TRUSTED_PROXY_HOPS=1`, `PORT=8080`, the
    `generate_keys.py` values (`MCP_OAUTH_PRIVATE_KEY`, `MCP_LOGIN_CSRF_SECRET`,
-   `MCP_GRANT_FINGERPRINT_SECRET`, `MCP_METRICS_TOKEN`, and new
-   `JWT_SECRET`/`SECRET_KEY` that are never the API's). `DATABASE_URL`:
-   `mita-production-db` has no `DATABASE_URL` variable, so build it the
-   same way `mita-production`'s is built, on the private host — or use the
-   least-privilege role in deployment.md (run that SQL in
-   `mita-production-db`, not Supabase). Do not set `OPENAI_API_KEY`, SMTP or
-   IAP variables.
+   `MCP_GRANT_FINGERPRINT_SECRET`, `MCP_DATA_SECRET`, `MCP_ANALYTICS_SECRET`,
+   `MCP_METRICS_TOKEN`, and new `JWT_SECRET`/`SECRET_KEY` that are never the
+   API's). Never reuse a staging value. `MCP_ANALYTICS_SECRET` must then stay
+   unchanged (rotating it splits every user's usage history).
+   `DATABASE_URL`: use the least-privilege role — after Step 7, run
+   `scripts/mcp/mcp_service_role.sql` as the database owner in
+   `mita-production-db` (not Supabase; command in deployment.md) and build
+   the URL with user `mita_mcp` on the private host, the way
+   `mita-production`'s is built (`mita-production-db` has no `DATABASE_URL`
+   variable). Do not set `OPENAI_API_KEY`, SMTP or IAP variables.
 5. Deploy. Check: deploy log shows Uvicorn on 8080; `/health` → 200.
 
 **O-7 DNS.** `mita-mcp` → Settings → Networking → Custom domain
@@ -143,7 +168,7 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST $H/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'  # 401
 ```
 
-## Step 7 — Migration 0037 (merge)
+## Step 7 — Migrations 0037–0039 (merge)
 
 **O-11a Give `mita-production` a healthcheck first.** Settings → Deploy →
 Healthcheck path `/health`, timeout 300 → apply/deploy. Without it, a failed
@@ -159,7 +184,12 @@ Check: the deployment shows the healthcheck passing; `/health` still reports
 SELECT version_num FROM alembic_version;                       -- 0036
 SELECT to_regclass('public.mcp_oauth_clients'),
        to_regclass('public.mcp_oauth_authorization_codes'),
-       to_regclass('public.mcp_oauth_refresh_tokens');          -- all NULL
+       to_regclass('public.mcp_oauth_refresh_tokens'),
+       to_regclass('public.mcp_user_profiles'),
+       to_regclass('public.mcp_idempotency_keys'),
+       to_regclass('public.product_feedback'),
+       to_regclass('public.analytics_identities');              -- all NULL
+SELECT count(*) FROM pg_namespace WHERE nspname = 'analytics';  -- 0
 SELECT data_type FROM information_schema.columns
  WHERE table_schema = 'public' AND table_name = 'users' AND column_name = 'id';  -- uuid
 SELECT pid, state, now() - xact_start AS open_for
@@ -168,30 +198,34 @@ SELECT pid, state, now() - xact_start AS open_for
 ```
 
 **O-11c Review and merge** `feat/chatgpt-plugin` into `main` (PR) at a
-low-traffic time. Railway builds the merge commit; `start.sh` applies 0037
-(three new tables, a brief `ShareRowExclusiveLock` on `users`); the
-healthcheck gates the switch.
+low-traffic time. Railway builds the merge commit; `start.sh` applies 0037,
+0038 and 0039 in one run (nine tables, schema `analytics` with 14 views;
+each new foreign key takes a brief `ShareRowExclusiveLock` on `users`); the
+healthcheck gates the switch. The API code in the merge changes only by
+behaviour-preserving extractions (`production-readiness.md` Step 7).
 
-**O-11d Verify.** `/health` shows `alembic_revision` `0037` and the merge
-commit; the deploy log shows `Running upgrade 0036 -> 0037`; the mobile app
-signs in and saves an expense.
+**O-11d Verify.** `/health` shows `alembic_revision` `0039` and the merge
+commit; the deploy log shows `Running upgrade 0036 -> 0037`, `0037 -> 0038`,
+`0038 -> 0039`; the mobile app registers a new account, signs in and saves an
+expense.
 
 **Rollback.** Fix forward. A Railway rollback to a pre-merge deployment
-cannot boot against a 0037 database (`Can't locate revision identified by
-'0037'`, reproduced). If the old code is really needed: run
-`alembic downgrade 0036` from the merged code first (drops only the three
-`mcp_oauth_*` tables), then roll back.
+cannot boot against a migrated database (`Can't locate revision identified
+by '0037'`, reproduced). If the old code is really needed: run
+`alembic downgrade 0036` from the merged code first — it drops every table
+these migrations created, so it ends every ChatGPT grant and deletes
+ChatGPT profiles, feedback and usage events (expenses, plans and goals stay
+in the existing tables) — then roll back.
 
 ## Step 8 — Production review account
 
 **O-10 Create it** exactly as in `review/review-account.md`: a mailbox on the
-domain from Step 2, a MITA e-mail/password account (not Google sign-in), the
-listed data entered in the app in the current month. Grant Premium so goals
-can be created; for a direct grant, in `mita-production-db`:
-`UPDATE users SET is_premium = true, premium_until = now() + interval '1 year' WHERE email = '<review e-mail>';`
-No MFA or e-mail verification blocks sign-in. Five wrong passwords lock it
-for 30 minutes. Check: the five positive cases answer correctly in ChatGPT
-developer mode against `https://mcp.mitafinance.com/mcp`.
+domain from Step 2, a MITA e-mail/password account (not Google sign-in),
+currency EUR, the listed data entered through ChatGPT developer mode against
+`https://mcp.mitafinance.com/mcp` in the current month. No Premium grant is
+needed any more (goals are free in ChatGPT). No MFA or e-mail verification
+blocks sign-in. Five wrong passwords lock it for 30 minutes. Check: the five
+positive cases (`review/positive-test-cases.md`) answer correctly.
 
 ## Step 9 — OpenAI verification (start now)
 
@@ -224,7 +258,7 @@ DEMO_RECORDING_URL=<video URL> python scripts/mcp/build_plugin.py --release
 
 ## Step 13 — Submit
 
-**O-15b** Upload `dist/plugin/mita-finance-1.0.0.zip`; enter the review
+**O-15b** Upload `dist/plugin/mita-finance-2.0.0.zip`; enter the review
 credentials in **Review details**; resolve automated findings; attest;
 submit.
 
@@ -233,3 +267,11 @@ submit.
 **O-16 Google-only accounts.** They have no MITA password and cannot connect.
 Decide whether to add "Sign in with Google" to the consent page (needs a
 Google OAuth web client) or a "set password" flow in the app.
+
+**O-18 Metabase (when you want dashboards).** `product-analytics.md` lists the
+questions and the views behind them; until then
+`scripts/mcp/analytics_report.py` prints the same report. Hosting Metabase is
+a billing decision (Metabase Cloud, or a Railway service in the production
+project). Connect it ONLY with `mita_analytics_reader`
+(`scripts/mcp/analytics_reader_role.sql`), never the owner or `mita_mcp`
+role, and do not expose it publicly without its own sign-in.

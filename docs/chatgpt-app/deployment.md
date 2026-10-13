@@ -39,33 +39,40 @@ OWNER_ACTIONS O-6, O-7, O-11.
 | `MCP_OAUTH_PRIVATE_KEY` | from `scripts/mcp/generate_keys.py` | yes |
 | `MCP_LOGIN_CSRF_SECRET` | from `generate_keys.py` (consent-page CSRF only) | yes |
 | `MCP_GRANT_FINGERPRINT_SECRET` | from `generate_keys.py`, independent of the CSRF secret; binds grants to the password hash — rotating it revokes every ChatGPT grant | yes |
+| `MCP_DATA_SECRET` | from `generate_keys.py`; keys for opaque expense refs, signed budget drafts and list cursors (rotating it only invalidates outstanding ones) | yes |
+| `MCP_ANALYTICS_SECRET` | from `generate_keys.py`; HMAC key for pseudonymous analytics ids — **keep it stable** (rotation splits every user's usage history) | yes |
 | `JWT_SECRET`, `SECRET_KEY` | from `generate_keys.py` — **new random values, never the API's**; required only because `app.core.config` refuses to import in production without them; the MCP service never uses them | yes |
 | `MCP_METRICS_TOKEN` | from `generate_keys.py` (enables `/metrics`) | yes |
 | `OPENAI_APPS_CHALLENGE_TOKEN` | token shown in the OpenAI dashboard for domain verification | |
 | `MCP_SUPPORT_URL` | public support page URL (shown on the consent page) | |
 | `LOG_LEVEL` | `INFO` | |
-| optional | `MCP_ACCESS_TOKEN_TTL_SECONDS` (900), `MCP_REFRESH_TOKEN_TTL_SECONDS` (2592000), `MCP_TOOL_CALLS_PER_MINUTE` (60), `MCP_LOGIN_ATTEMPTS_PER_MINUTE` (10), `MCP_TRUSTED_PROXY_HOPS` (1), `MCP_OAUTH_ALLOWED_REDIRECT_PREFIXES` (ChatGPT's two redirect URIs) | |
+| optional | `MCP_ACCESS_TOKEN_TTL_SECONDS` (900), `MCP_REFRESH_TOKEN_TTL_SECONDS` (2592000), `MCP_TOOL_CALLS_PER_MINUTE` (60), `MCP_LOGIN_ATTEMPTS_PER_MINUTE` (10), `MCP_REGISTRATIONS_PER_HOUR` (5), `MCP_TRUSTED_PROXY_HOPS` (1), `MCP_OAUTH_ALLOWED_REDIRECT_PREFIXES` (ChatGPT's two redirect URIs) | |
 
 Never set `OPENAI_API_KEY`, SMTP or IAP variables on `mita-mcp`: it does not
 use them.
 
 ### Recommended: a least-privilege database role
 
-The MCP tools run in `READ ONLY` transactions regardless, but a dedicated role
-limits what a compromised MCP process could do. Run as the database owner in
-`mita-production-db` (Railway → Data tab, or `railway connect`), then use the
-role in `mita-mcp`'s `DATABASE_URL`:
+Since v2 the service writes (sign-up, expenses, plans, obligations, goals,
+feedback, analytics) through the canonical domain writers, so the role needs
+exactly those writes and nothing else. Run, as the database owner and AFTER
+migrations 0037–0039, `scripts/mcp/mcp_service_role.sql`:
 
-```sql
-CREATE ROLE mita_mcp LOGIN PASSWORD '<generate>';
-GRANT USAGE ON SCHEMA public TO mita_mcp;
-GRANT SELECT ON users, transactions, daily_plan, goals, scheduled_expenses TO mita_mcp;
--- consent-page lockout counters (same columns the mobile login updates)
-GRANT UPDATE (failed_login_attempts, account_locked_until) ON users TO mita_mcp;
-GRANT SELECT, INSERT, UPDATE, DELETE ON
-  mcp_oauth_clients, mcp_oauth_authorization_codes, mcp_oauth_refresh_tokens TO mita_mcp;
-GRANT SELECT ON alembic_version TO mita_mcp;
+```bash
+psql "$OWNER_DATABASE_URL" -v mcp_password="$(openssl rand -hex 24)" \
+     -f scripts/mcp/mcp_service_role.sql
 ```
+
+then build `mita-mcp`'s `DATABASE_URL` with user `mita_mcp`. Verified
+2026-10-12 by running the full acceptance conversation
+(`scripts/mcp/e2e_v2.py`, 70 checks) against a server connected as this role:
+0 errors and 0 warnings — including the non-blocking redistribution audit
+writes, which need `SELECT` as well as `INSERT` because the ORM inserts with
+`RETURNING`. The role cannot run DDL or read any other table.
+
+For product analytics, `scripts/mcp/analytics_reader_role.sql` creates the
+separate read-only `mita_analytics_reader` (schema `analytics` only) for
+Metabase or `scripts/mcp/analytics_report.py`.
 
 (Production moved from Supabase to Railway Postgres; there is no pooler, so
 the role name is used as-is.)

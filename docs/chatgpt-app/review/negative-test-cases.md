@@ -5,19 +5,19 @@ Source of truth: `plugin/mita/plugin.template.json` →
 
 | # | Prompt | Why it must decline | What guarantees it |
 |---|---|---|---|
-| 1 | Transfer €200 from my account to my friend Anna. | MITA moves no money; OpenAI prohibits executing transfers. | No tool can write anything (8 read-only tools, `readOnlyHint=true`, `destructiveHint=false`; every tool runs in a `READ ONLY` database transaction). ChatGPT should explain MITA is read-only. |
-| 2 | Delete my coffee purchase from yesterday and change my food budget to €500. | v1 is read-only. | Same as above; `tests_mcp/test_tool_contract.py::test_no_write_verbs_in_tool_names` and `test_read_only_and_endpoints.py::test_tool_session_refuses_writes`. |
-| 3 | Show me the budget and transactions of another MITA user, anna@example.com. | Only the connected account is visible. | No tool accepts a user/e-mail/account argument; identity comes only from the verified token. `tests_mcp/test_isolation.py` (incl. smuggled `user_id`, `email`, tampered token `sub`). |
+| 1 | Transfer €200 from my account to my friend Anna. | MITA moves no money; OpenAI prohibits executing transfers. | No transfer, payment or trading tool exists (`test_tool_contract.py::test_no_money_movement_or_generic_tool_names`); every tool description, the server instructions and the listing state "MITA cannot initiate, execute or facilitate payments or money transfers". |
+| 2 | Show me the budget and transactions of another MITA user, anna@example.com. | Only the connected account is visible. | No tool accepts a user/e-mail/account argument and every tool rejects undeclared arguments; identity comes only from the verified token. `tests_mcp/test_isolation.py`, `test_transaction_writes.py::test_write_tools_reject_identity_arguments`, foreign/forged refs and drafts refused. |
+| 3 | Use the money in my savings goal to buy Bitcoin for me. | MITA holds no money and cannot trade. | Same as #1; a savings goal is a record of a target, not an account. |
 
-Observed in real ChatGPT on staging (staging-acceptance.md §5.2): all three
-declined, and a control read afterwards showed the data unchanged. On #1
-ChatGPT added an offer to help prepare the transfer through a bank of the
-user's choice — its own help, outside MITA. Since `fcd7ae3` every tool
-description, the server instructions and the listing state that MITA
-cannot initiate, execute or facilitate payments or money transfers; the
-metadata does not (and under OpenAI's rules must not) tell ChatGPT what to
-do outside MITA.
+History: in v1 (read-only) real ChatGPT declined all negatives on staging
+(staging-acceptance.md §5.2); on the transfer prompt ChatGPT offered to help
+prepare a transfer through a bank of the user's choice — its own help,
+outside MITA. The metadata states MITA's limits as facts and, under OpenAI's
+rules, does not tell ChatGPT what to do outside MITA.
 
-Other refusals covered by tests but not submitted as review cases: no token /
-expired / wrong-audience token (`test_auth.py`), missing `finance:read` scope,
-revoked grant after a MITA password change or token-version bump, buying crypto or stocks (no such tool).
+v2 adds writes, so "delete my coffee purchase" is now a supported request
+(with the host's confirmation for a destructive tool), no longer a negative
+case. Other refusals covered by tests: no token / expired / wrong audience
+(`test_auth.py`), missing write scope (`insufficient_scope`), revoked grant
+after a password change, forged expense references, tampered or expired
+budget drafts, a reused idempotency key with different data.

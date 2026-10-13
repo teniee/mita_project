@@ -1,25 +1,35 @@
 # Demo video script (reviewer-accessible URL required)
 
-Length ~3–4 minutes. Record in ChatGPT on the web with the **production**
-MITA app and the review account. Do not show real users' data, tokens,
-Railway/Supabase dashboards or the password field contents.
+Length ~4–5 minutes. Record in ChatGPT on the web with the **production**
+MITA app and a fresh demo account created on camera (or the review account).
+Do not show real users' data, tokens, Railway dashboards or password fields.
 
-1. **Intro (15 s).** "MITA is a daily budgeting app. This plugin gives ChatGPT
-   read-only access to your own MITA data."
-2. **Connect (40 s).** ChatGPT → Apps/Plugins → MITA Finance → Connect.
-   Show the MITA consent page: requested permissions, the read-only statement,
-   the return host `chatgpt.com`. Sign in with the review account → Allow.
-3. **Case 1 (30 s).** "How much have I spent this month, and what are my biggest
-   categories?" — show the answer and the tool call `get_financial_summary`.
-4. **Case 2 (30 s).** "Am I over budget in any category this month?"
-5. **Case 3 (30 s).** "At my current pace, how will this month end…?" — point
-   out the safe daily amount and that it is a projection.
-6. **Case 4 (20 s).** "Show my grocery purchases from the last 14 days."
-7. **Case 5 (30 s).** "What bills do I have coming up, and how are my savings goals doing?"
-8. **Negative (40 s).** "Transfer €200 to Anna." → ChatGPT explains it cannot;
-   "Delete my coffee purchase…" → read-only; "Show anna@example.com's budget" → not possible.
-9. **Disconnect (15 s).** Show where to disconnect in ChatGPT; mention that
-   changing the MITA password also ends access.
+1. **Intro (15 s).** "MITA keeps your budget, expenses, recurring expenses and
+   goals in your MITA account, so they are there in every conversation."
+2. **Connect and sign up (45 s).** ChatGPT → Apps → MITA Finance → Connect.
+   On the MITA page: the permissions list, "MITA cannot move money, make
+   payments or connect to your bank", the usage-statistics box; choose
+   **Create an account**, return to ChatGPT.
+3. **Setup (40 s).** "Set up my monthly budget from scratch." → MITA asks only
+   for missing facts; "I earn €2,500 net, there are two of us, I want to save
+   €400; my rent is €700 every month on the first."
+4. **Budget (40 s).** "Build my budget for this month." → show the preview
+   (fixed obligations, savings, categories, warnings; *not saved*). "Save it."
+5. **Record (40 s).** "I spent €36.80 at Lidl on groceries today." Then
+   "Also €8 coffee and €55 fuel." Attach a sample receipt photo: "Add these
+   expenses to MITA."
+6. **Correct (20 s).** "The coffee was €6, not €8."
+7. **Position (30 s).** "How am I doing against my budget?" and "How much can I
+   spend per day until the end of the month?"
+8. **New conversation (30 s).** Start a new chat: "How much have I spent and
+   what is my budget?" — the same figures, from MITA.
+9. **History and goal (30 s).** "How have my grocery costs changed over six
+   months?" (say: months before the account show as no data). "I want to save
+   €5,000 by June."
+10. **Feedback (15 s).** "Tell the MITA team that categories are confusing."
+11. **Negatives (30 s).** "Transfer €200 to Anna." → not possible;
+    "Show anna@example.com's budget" → not possible.
+12. **Control (15 s).** Disconnect in ChatGPT; changing the MITA password also
+    ends access; "stop sharing my usage statistics".
 
-Upload unlisted (e.g. YouTube unlisted or a public file link) and put the URL in
-`DEMO_RECORDING_URL` when building the ZIP.
+Upload unlisted and put the URL in `DEMO_RECORDING_URL` when building the ZIP.
