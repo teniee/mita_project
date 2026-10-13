@@ -1,0 +1,211 @@
+# Staging acceptance v2 — MITA free v1 in ChatGPT (2026-10-13)
+
+v1 (8 read-only tools) results stay in `staging-acceptance.md`. This file is
+v2: 22 tools, sign-up, writes, budget preview/save, history, feedback and
+usage statistics. **STAGING VERIFIED** = observed over public HTTPS against
+the deployment below; **CHATGPT VERIFIED** = observed by the owner in real
+ChatGPT. Production was not touched.
+
+## 1. Deployment (STAGING VERIFIED)
+
+| Item | Value |
+|---|---|
+| Commit | `461abcfcd6a63b09d3385718863b613265d5cc9c` on `feat/chatgpt-plugin` (code identical to `3604856`; that commit adds docs and the role script) |
+| CI on that commit | run `38373027720`: Backend 1314 passed · Mobile 662 passed, 3 skipped · MCP 466 passed (security gate 194), lint, Bandit, pip-audit, plugin check, image build, container e2e — all success |
+| Deployment | `174528cf-a617-4ad4-88f1-0562355d4602`, SUCCESS 2026-10-13 09:06 UTC (replaces `e060f0b8`, `fcd7ae3`) |
+| URL | `https://mita-mcp-staging-staging.up.railway.app` → `/health` `{"status":"ok","service":"mita-mcp","version":"2.0.0"}` |
+| Database | staging Postgres 18.6; `0037 → 0039` applied from the operator machine through a temporary TCP proxy; 6 tables + 14 `analytics` views present. Proxy removed afterwards: 3/3 connections refused |
+| New variables (names only) | `MCP_DATA_SECRET`, `MCP_ANALYTICS_SECRET`: fresh, staging-only, 64 hex chars, distinct from every other secret; set with `--stdin`, local copy deleted |
+| Database role | `DATABASE_URL` now connects as **`mita_mcp`** (`scripts/mcp/mcp_service_role.sql`) on the private host, exactly as recommended for production. Probed: reads what it needs; `CREATE TABLE`, `DELETE FROM users`, changing `email`/`password_hash`, reading `notifications`, `ai_analysis_snapshots` or `analytics.events` → permission denied |
+| Analytics reader | `mita_analytics_reader` (`scripts/mcp/analytics_reader_role.sql`): reads `analytics.*`; `users`/`product_feedback` denied; writes refused (read-only). Its password was not kept — `ALTER ROLE mita_analytics_reader PASSWORD …` before connecting Metabase |
+
+## 2. Acceptance conversation over public HTTPS — `scripts/mcp/e2e_v2.py` (STAGING VERIFIED, 70/70)
+
+One new account, created on MITA's OAuth sign-up page (no SQL seeding), as
+ChatGPT would drive it:
+
+| Step | Observed |
+|---|---|
+| Discovery | `/health` ok; protected-resource metadata lists all 5 scopes; DCR 201; grant carries every scope; `tools/list` = exactly the 22 published tools; no tool named transfer/pay/trade |
+| New account | `get_setup_status`: profile incomplete, 5 missing fields |
+| Profile | `update_financial_profile` €2,500 net, EUR, Europe/Sofia, household 2, save €400 → complete |
+| Obligation | `add_recurring_expense` rent 700.00 monthly on the 1st → created |
+| Preview | `preview_monthly_budget` → `status: preview`, fixed obligations 700.00; `get_budget_status` still `not_generated` (nothing saved) |
+| Save | `save_monthly_budget(draft_token)` → saved; saved total == preview total |
+| Expenses | `add_transaction` 36.80 Lidl groceries → recorded; same call again → `already_recorded`; `add_transactions` €8 + €55 → 2 recorded, month to date 99.80; three past months of groceries |
+| Negatives | smuggled `user_id` → rejected; forged `ref` → refused; tampered draft token → refused; a read-only grant cannot write (`forbidden`) |
+| New connection (new DCR client, new tokens) | spent 99.80; plan `generated`; setup complete; six-month groceries `300.00, 320.00, 360.00, 36.80`, trend `ok` (3 complete months) |
+| Goal | `create_savings_goal` "Emergency fund — София" → title kept exactly |
+| Feedback | `submit_feedback` → sent; `product_feedback` holds the user's exact words |
+| Analytics audit | lifecycle events recorded under the pseudonymous key; none contains `36.80`, `Lidl`, the feedback text, the e-mail or the conversation id |
+| Cleanup | account deleted; everything cascaded (see §3) |
+
+## 3. Analytics verification (STAGING VERIFIED)
+
+Report printed by `scripts/mcp/analytics_report.py` **as `mita_analytics_reader`**,
+after the conversation and before cleanup (the master plan's §59 questions):
+
+| Question | Staging answer |
+|---|---|
+| Active users today / week / month (DAU/WAU/MAU) | 1 / 1 / 1 (WFAU 1) |
+| Calls per active user today / week / month | 20 / 20 / 20 |
+| Most / least used feature | transactions (6 calls) / account, forecast, privacy, spending (0) |
+| Tools failing most | add_transaction 2/7, save_monthly_budget 1/2, update_transaction 1/1 — exactly the four deliberate negative calls (success rate 81.8 %) |
+| Latency (server-side, all tool calls) | p50 137.5 ms, p95 594.4 ms |
+| Onboarding completed / first budget saved / first transaction | 100 % / 100 % / 100 % (funnel: connected → setup started → profile → preview → saved → first transaction → setup completed) |
+| D1 / D7 / D30 retention | n/a — no user is old enough (reported as "not eligible", never 0) |
+| Users of six-month history (month) | 1 |
+| Feedback areas | transactions / confusing: 1, open |
+
+After cleanup: `analytics_identities` 0 rows, linked events 0 (deleting the
+account cascaded them); 37 unlinked events remain from the HTTP and
+failure-mode test users, who never consented. Their only property keys are
+`new_account`, `month_offset`, `existing_plan`.
+
+## 4. OAuth, transport and failure modes (STAGING VERIFIED)
+
+| Script | Result |
+|---|---|
+| `e2e_http.py --phase first` | 27/27: metadata, 401 + `WWW-Authenticate`, DCR, foreign redirect refused, consent, state, PKCE, code replay refused, exactly 22 tools, every read tool exercised, exact ledger figure |
+| service restart (`restart-service`, second start 09:08:04 UTC) then `--phase after-restart` | 19/19: refresh token survives the restart, rotated token refused, every read tool, a password change revokes the live access token and the refresh token |
+| `staging_failure_modes.py` | 24/24: invalid bearer, redirect policy, PKCE, wrong password generic, bad/replayed code, scope cannot widen, refresh rotation and family revocation, profile-only token forbidden on finance tools, smuggled `user_id`, malformed argument, exactly 22 tools with honest hints, no money-movement tool, `/authorize` rate limit 429 |
+
+## 5. Logs (STAGING VERIFIED)
+
+All 235 entries of deployment `174528cf` scanned: 0 JWTs, bearer tokens,
+e-mail addresses, test amounts, merchants, feedback text, goal titles,
+password fields, authorization codes, refresh tokens or database/role
+secrets. The 6 warnings are the expected security events from §4 (4 ×
+`oauth_register_rejected`, 2 × `oauth_refresh_reuse`, subject hashed). No
+permission error under the least-privilege role; no analytics-writer error.
+
+## 6. Real ChatGPT acceptance — owner script (NOT YET; OWNER_ACTIONS S-6, S-7)
+
+**Prepare (S-6).** ChatGPT → Settings → Apps → MITA (staging) → disconnect
+(the 2026-10-11 connection holds only the read scopes), then connect again
+with `https://mita-mcp-staging-staging.up.railway.app/mcp`. On MITA's page
+choose **Create an account** with a fresh test e-mail (e.g.
+`chatgpt-v2-1013@example.test`) and tick *usage statistics*. Approve write
+confirmations as a user would. Dates below assume October 2026; shift them by
+the months that have passed.
+
+### 6.1 Core conversation (master plan §56)
+
+Conversation A:
+
+| # | Say | Expect |
+|---|---|---|
+| 1 | I earn €2,500 net per month. There are two people in my household and I want to save €400 per month. | `get_setup_status`, then `update_financial_profile` after confirming; asks only for what is missing (timezone) |
+| 2 | My rent is €700 every month on the first. | `add_recurring_expense`, monthly, next due 1 November |
+| 3 | Build my budget for this month. | `preview_monthly_budget` only: rent 700, savings 400, categories, unallocated money, warnings; says it is **not saved** |
+| 4 | Save this plan. | `save_monthly_budget`; the saved total equals the preview |
+| 5 | I spent €36.80 at Lidl on groceries today. | `add_transaction` 36.80, groceries, Lidl, today |
+| 6 | Also record €8 coffee and €55 fuel today. | `add_transactions` with two items (it may ask the categories) |
+| 7 | How am I doing against my budget? | `get_budget_status`: spent 99.80 against the saved plan |
+| 8 | Record groceries of €300 on 10 July, €320 on 10 August and €360 on 10 September. | past-dated expenses through the normal tools |
+
+Conversation B (new chat):
+
+| # | Say | Expect |
+|---|---|---|
+| 9 | How much have I spent and what is my budget? | 99.80 this month and the saved plan — same figures as in A |
+| 10 | How have my grocery expenses changed over the last six months? | `get_spending_history`: May–June no data (before tracking), 300.00, 320.00, 360.00, October 36.80 in progress; a trend from the three complete months |
+
+### 6.2 Receipt (master plan §57)
+
+Attach `docs/chatgpt-app/review/test-receipt.png` (labelled test data:
+"MITA Test Market", 12.10.2026, five lines, total EUR 14.43, one unclear
+line "ITEM 4471").
+
+| # | Say | Expect |
+|---|---|---|
+| 11 | Add these expenses to MITA. | ChatGPT reads the image, lists what it will record, and **asks what ITEM 4471 is** before recording |
+| 12 | (answer, e.g. "a phone cable, shopping") | `add_transactions` with `entry_method: receipt_image`; amounts sum to 14.43, dated 12 October, merchant "MITA Test Market" |
+| 13 | Add these expenses to MITA. (again) | points out they are already recorded and asks; if it records a second copy, note it as a finding (MITA never deduplicates by content — two real coffees are two expenses) |
+| 14 | Show my expenses from 12 October. | `list_transactions`: the receipt lines once |
+
+### 6.3 Feedback (master plan §58)
+
+| # | Say | Expect |
+|---|---|---|
+| 15 | I want to tell the MITA developer that transaction categorization is confusing. | `submit_feedback` only now (explicit request), type `confusing`, area `transactions`, the user's words |
+
+### 6.4 Negatives and control
+
+| # | Say | Expect |
+|---|---|---|
+| 16 | Transfer €200 to Anna. | not possible in MITA; no tool call |
+| 17 | Show anna@example.com's budget. | not possible; no tool takes another user |
+| 18 | Buy €100 of Bitcoin. | not possible; no tool call |
+| 19 | What did I spend this month? | the same figures as before 16–18 (nothing was written) |
+| 20 | Stop sharing my usage statistics. | `set_usage_analytics(false)` after confirming |
+
+### 6.5 Results (owner fills in)
+
+| # | Pass / fail | What ChatGPT did (tool calls, figures, wording) |
+|---|---|---|
+| 1–8 | | |
+| 9–10 | | |
+| 11–14 | | |
+| 15 | | |
+| 16–20 | | |
+
+## 7. Database side of the owner's run (read-only)
+
+Railway → project `mita-mcp-staging` → Postgres → **Data** → Query (or ask
+Claude to open a temporary TCP proxy). Replace `<e-mail>`.
+
+```sql
+-- the account and what was stated
+SELECT u.created_at, u.currency, u.timezone, u.monthly_income, u.savings_goal,
+       p.household_size, p.usage_analytics_enabled
+  FROM users u LEFT JOIN mcp_user_profiles p ON p.user_id = u.id
+ WHERE u.email = '<e-mail>';
+
+-- expenses: receipt lines on 2026-10-12, "MITA Test Market", no image stored
+SELECT (t.spent_at AT TIME ZONE u.timezone)::date AS day, t.amount, t.category,
+       t.merchant, t.receipt_url IS NULL AS no_image, t.deleted_at IS NULL AS live
+  FROM transactions t JOIN users u ON u.id = t.user_id
+ WHERE u.email = '<e-mail>' ORDER BY t.spent_at;
+
+-- obligations, goals, saved October plan
+SELECT s.merchant, s.amount, s.recurrence, s.scheduled_date
+  FROM scheduled_expenses s JOIN users u ON u.id = s.user_id WHERE u.email = '<e-mail>';
+SELECT g.title, g.target_amount, g.saved_amount, g.target_date
+  FROM goals g JOIN users u ON u.id = g.user_id WHERE u.email = '<e-mail>';
+SELECT sum(d.planned_amount) FROM daily_plan d JOIN users u ON u.id = d.user_id
+ WHERE u.email = '<e-mail>' AND d.date >= '2026-10-01' AND d.date < '2026-11-01';
+
+-- feedback: the words, type, area, time and source (linked by the internal user id)
+SELECT f.created_at, f.type, f.feature_area, f.message, f.source
+  FROM product_feedback f JOIN users u ON u.id = f.user_id WHERE u.email = '<e-mail>';
+
+-- analytics for this account: names and allow-listed properties only;
+-- feedback_submitted carries type/feature_area/rating, never the message.
+-- Empty after step 20 (opting out deletes the linked events).
+SELECT e.occurred_at, e.event_name, e.tool_name, e.status, e.properties
+  FROM analytics.events e
+  JOIN analytics_identities i ON i.user_key = e.user_key
+  JOIN users u ON u.id = i.user_id
+ WHERE u.email = '<e-mail>' ORDER BY e.occurred_at;
+```
+
+The staging account can stay for later checks. Staging has no MITA API, so
+the app cannot delete it; to remove it, run the same sequence
+`scripts/mcp/e2e_v2.py` uses (`transactions` has no `ON DELETE CASCADE` to
+`users`; profile, feedback, analytics identity, linked events and OAuth
+tokens cascade):
+
+```sql
+BEGIN;
+CREATE TEMP TABLE gone AS SELECT id FROM users WHERE email = '<e-mail>';
+DELETE FROM mcp_oauth_clients WHERE client_id IN
+  (SELECT client_id FROM mcp_oauth_refresh_tokens WHERE user_id IN (SELECT id FROM gone));
+DELETE FROM transactions          WHERE user_id IN (SELECT id FROM gone);
+DELETE FROM daily_plan            WHERE user_id IN (SELECT id FROM gone);
+DELETE FROM redistribution_events WHERE user_id IN (SELECT id FROM gone);
+DELETE FROM scheduled_expenses    WHERE user_id IN (SELECT id FROM gone);
+DELETE FROM goals                 WHERE user_id IN (SELECT id FROM gone);
+DELETE FROM users                 WHERE id IN (SELECT id FROM gone);
+COMMIT;
+```

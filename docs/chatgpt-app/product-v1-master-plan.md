@@ -94,5 +94,5 @@ both ≥ 32 chars, distinct from each other and from the CSRF / grant secrets.
 | 6 | Setup skill, starter prompts, dialogue contract, golden prompts | done — skill packaged and validated, 51 golden prompts (en/ru/bg); MCP 451 passed |
 | 7 | Analytics schema/sink/views, feedback, Metabase prep | done — 0039 rehearsed up→down→up; reader role verified; report script; MCP 466 passed |
 | 8 | 600k benchmark, EXPLAIN, indexes | done — p95 ≤ 20 ms per tool query at 600k tx / 1.47M plan rows; indexes already sufficient (no 0040); capacity-plan.md |
-| 9 | Full CI | — |
-| 10 | Staging deploy + public E2E; real ChatGPT acceptance (owner) | — |
+| 9 | Full CI | done — runs `38302676947` (`3604856`) and `38373027720` (`461abcf`): Backend 1314 passed, Mobile 662 passed, MCP 466 passed + lint, Bandit, pip-audit, plugin check, image build, container e2e with restart and log scan |
+| 10 | Staging deploy + public E2E; real ChatGPT acceptance (owner) | staging done — `461abcf`, deployment `174528cf`, 0039, least-privilege role; e2e_v2 70/70, e2e_http 27 + 19 across a restart, failure modes 24/24, analytics report, clean logs (staging-acceptance-v2.md). Real ChatGPT: owner (S-6, S-7) |
