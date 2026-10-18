@@ -27,8 +27,8 @@ ChatGPT results are in `staging-acceptance-v2.md` (§2–§5, §8):
 | Item | Status |
 |---|---|
 | S-6 reconnect MITA staging in ChatGPT developer mode | DONE — CHATGPT VERIFIED (2026-10-18): plugin object recreated with DCR, all five scopes discovered, writes work |
-| S-7 real-ChatGPT acceptance v2 | MOSTLY CHATGPT VERIFIED (§8). Still pending: §6 case 8 (past months → six-month trend), 13 (same receipt asked twice), 19 (control read after the negatives), 20 (turn usage statistics off), and the read-only database checks in §7. They are folded into S-8 |
-| S-8 final smoke test of the fixed build (MCP 2.1.0) | NOT YET — `staging-acceptance-v2.md` §10, about 10 minutes. Starts by checking the app's ChatGPT-side description and replacing any "Read-only access…" text |
+| S-7 real-ChatGPT acceptance v2 | MOSTLY CHATGPT VERIFIED (§8). The database side of the feedback case was verified read-only on 2026-10-19 (§9). Still pending, folded into S-8: case 8 (past months → trend), 13 (same receipt twice), 19 (control read), 20 (usage statistics off) and the opt-out database check |
+| S-8 final smoke test of MCP 2.1.0 | NOT YET — `staging-acceptance-v2.md` §10 (steps A–J, about 10 minutes) against deployment `87d26668` (`79efb1d`), which passed every automated public check (§9). Step A: paste the v2 description into the ChatGPT app's own Description field — MITA cannot change that field |
 
 Keep staging running until production is live; teardown is in staging.md.
 

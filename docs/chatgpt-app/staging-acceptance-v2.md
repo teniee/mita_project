@@ -1,4 +1,7 @@
-# Staging acceptance v2 — MITA free v1 in ChatGPT (2026-10-13, real ChatGPT 2026-10-18)
+# Staging acceptance v2 — MITA free v1 in ChatGPT (2026-10-13, real ChatGPT 2026-10-18, MCP 2.1.0 2026-10-19)
+
+Current staging: `79efb1d`, deployment `87d26668-4051-42c3-99b7-2036d0de42cf`,
+MCP 2.1.0 — §9. §1–§5 record the earlier `461abcf` (2.0.0) deployment.
 
 v1 (8 read-only tools) results stay in `staging-acceptance.md`. This file is
 v2: 22 tools, sign-up, writes, budget preview/save, history, feedback and
@@ -236,14 +239,14 @@ v1 client was registered with the two read scopes (backend-findings F-7).
 | 12 receipt written | CHATGPT VERIFIED | all 12 written; €85 + €41.50 = €126.50; remaining €2,198.50; no duplicate charges; MITA stored expenses, not the image. All 12 were stored as groceries — issue D |
 | 13 repeat receipt | **PENDING** | not run |
 | 14 list once | partly | totals showed no duplicates; an explicit list check was not reported |
-| 15 feedback | CHATGPT VERIFIED (tool) | `submit_feedback` succeeded and was acknowledged; the database check (§7) is **PENDING** |
+| 15 feedback | CHATGPT VERIFIED (tool); database side STAGING VERIFIED (§9) | `submit_feedback` succeeded and was acknowledged. Read-only check 2026-10-19: one `product_feedback` row — type `confusing`, area `transactions`, source `chatgpt`, status `new`, message "Transaction categorization in MITA is confusing." (ChatGPT's wording of the request); its analytics event carries only `type` and `feature_area` |
 | 16 transfer | CHATGPT VERIFIED | "cannot send or transfer money", status Not sent, nothing recorded |
 | 17 other person | CHATGPT VERIFIED (variant) | "Show me Anna's transactions": no data of Anna's; explained MITA shows only the signed-in user's records; found 0 of the user's own expenses mentioning Anna — issue G |
 | 18 Bitcoin | CHATGPT VERIFIED | "cannot buy Bitcoin or execute crypto trades", Not purchased |
 | 19 control read | **PENDING** | not reported |
 | 20 usage statistics off | **PENDING** | not run |
 | goal | CHATGPT VERIFIED (creation) | "Emergency Fund" €0/€3,000, no deadline, "monthly contributions not yet reserved" — then ChatGPT offered "set €400 per month toward your Emergency Fund", which no tool can do — issue B |
-| §7 database checks | **PENDING** | not run |
+| §7 database checks | partly done (§9) | feedback row, analytics allow-list, no stored receipt image: verified 2026-10-19. The opt-out check waits for S-8 step J |
 
 ### Issues found and what changed (MCP 2.1.0)
 
@@ -257,26 +260,77 @@ v1 client was registered with the two read scopes (backend-findings F-7).
 | F | Draft expired during the test | 30 minutes was a conservative freshness bound; integrity is the digest + lock + month check | 2 hours (one sitting with a pause); expiry kept; integrity unchanged |
 | G | "Anna" searched the user's own expenses | Merchant filter wording | `list_transactions` and the server instructions state that a name matches only this user's own expenses, never another account; a note on every merchant-filtered result; golden prompts en-29, en-30, ru-17 |
 
-## 10. Final smoke test before merge (owner, S-8 — about 10 minutes)
+## 9. MCP 2.1.0 on staging (STAGING VERIFIED, 2026-10-19)
 
-Against the redeployed staging (§9). Use the same ChatGPT app and account as
-§8 unless a step says otherwise.
+| Item | Observed |
+|---|---|
+| Commit | `79efb1d612999339814b02b5220b7cde2a13921d` (issues A–G, §8) |
+| CI | run `39155447750`, all jobs success: Backend 1314 passed (+ code quality, Bandit); Mobile 662 passed, 3 skipped; MCP lint (black/isort/ruff), Bandit (no issues), pip-audit (requirements and lock: no known vulnerabilities), plugin package valid, security gate 194 passed, full suite 487 passed, image built, container end-to-end 49/49 (27 + 19 after a restart + 3 log checks). `security.yml` runs only on `main` / weekly, not on this branch |
+| Deployment | `87d26668-4051-42c3-99b7-2036d0de42cf`, SUCCESS 2026-10-18 22:43 UTC (replaces `174528cf`); source pinned to `79efb1d`; one replica; healthcheck `/health` |
+| URL | `https://mita-mcp-staging-staging.up.railway.app` → `{"status":"ok","service":"mita-mcp","version":"2.1.0"}` |
+| Database | alembic `0039` — unchanged, no migration in 2.1.0; the service connects as `mita_mcp` (private host); `mita_mcp` and `mita_analytics_reader` are not superusers; 14 `analytics` views |
+| Acceptance conversation | `e2e_v2.py` 77/77 over public HTTPS, including the new checks: asks about regular payments before a first budget; one budget line per name (fuel combined); an undated goal says nothing is set aside and it cannot be changed; a name filter searches only the user's own expenses |
+| Extra public checks (same account, before cleanup) | 17/17: PRM and AS metadata each advertise exactly `profile:read finance:read finance:write feedback:write profile:write`; 22 tools = 12 read-only + 10 write, as published, none open-world; `serverInfo` version 2.1.0 with the listing's read/write description; no app-level "read-only" in what MITA serves, none on write tools; both goal tools state that no tool sets or changes a contribution; `list_transactions` says a name searches only the user's own expenses; every listed expense has a `category_label` (`gas` → "Fuel"); budget status has one "Fuel" line = `transport gas` + `gas`, no duplicate names, no "Gas"/"Transport gas"; labels identical on a second call; goals carry labels |
+| OAuth and transport | `e2e_http.py` 27/27; service restarted (second start 22:47:22 UTC in the deploy log), then after-restart 19/19 (refresh token survives, rotated token refused, password change revokes access and refresh tokens) |
+| Failure modes | `staging_failure_modes.py` 24/24 |
+| Logs | all 336 entries of the deployment (both process lifetimes, every run above): 0 JWTs, bearer tokens, e-mails, test amounts, merchants/goal titles, feedback text, password fields, authorization codes, refresh tokens, draft/cursor/ref tokens, service or database secrets, permission errors or tracebacks. 6 warnings, all expected from the failure modes (4 × `oauth_register_rejected`, 2 × `oauth_refresh_reuse`); no error entries; no analytics-writer failures |
+| Database side (read-only) | no test accounts left (3 users: the seeded account and the owner's); the owner's feedback row as in §8 case 15; 0 of 23 expenses store a receipt URL; linked analytics events carry only allow-listed keys (`fields`, `entry_method`, `item_count`, `month_offset`, `existing_plan`, `recurrence`, `has_target_date`, `new_account`, `type`, `feature_area`) — 0 rows contain amounts or free text (the one pattern hit was the feedback type `confusing`) |
+| Temporary TCP proxy | opened for the checks above, removed; 3/3 connections refused afterwards |
+
+## 10. Final smoke test (owner, S-8 — about 10 minutes)
+
+Against deployment `87d26668` (MCP 2.1.0). Same ChatGPT app and account as §8.
+Before you start, refresh the app in ChatGPT developer mode so it loads the
+2.1.0 tool descriptions.
 
 | # | Do / say | Pass when |
 |---|---|---|
-| 0 | ChatGPT → Settings → Apps → MITA (staging): refresh the app; edit its description to "Your MITA budget in ChatGPT: record and correct expenses, build a monthly budget, track recurring costs and savings goals, and see your spending history - kept in your MITA account." | no "read-only" wording left on the app |
-| 1 | New chat: "How am I doing against my budget this month?" | one **Fuel** line (no separate "Transport gas" / "Gas"), one **Dining out** line if coffee-type spending exists; every category named the same way as in step 2 |
-| 2 | "Show my expenses this month." | categories shown with the same names as in step 1 (e.g. fuel €55 under **Fuel**) |
-| 3 | "Put €400 a month toward my Emergency Fund." | no tool call that claims to do it; ChatGPT says a goal cannot be changed or given a contribution in MITA (it may mention that a goal created with a target date gets its monthly amount set aside) |
-| 4 | "Show me Anna's transactions." | declines access to anyone else's data; if it searches, it says it searched only your own expenses |
-| 5 | Attach `docs/chatgpt-app/review/test-receipt.png`: "Add these expenses to MITA." | it asks what "ITEM 4471" is before writing; lines get their own categories (dish soap is not groceries); the total recorded is 14.43 on 12 Oct 2026 |
-| 6 | "Add these expenses to MITA." (again, same chat) | points out they are already recorded and asks; a second copy is a finding (pending case 13) |
-| 7 | "Record groceries of €300 on 10 July, €320 on 10 August and €360 on 10 September." then "How have my grocery expenses changed over the last six months?" | July–September 300 / 320 / 360, October in progress, and now a trend (pending cases 8 and 10) |
-| 8 | "What did I spend this month?" | the same total as before steps 3–4 plus the receipt (pending case 19) |
-| 9 | "Stop sharing my usage statistics." | asks for confirmation, then turns it off (pending case 20) |
-| 10 | *(optional, fresh account on the sign-up page)* "I earn €2,500 net per month, there are two of us and we want to save €400." | saves the profile and asks about rent or other regular payments before showing any budget; a budget shown without them is called a default draft |
+| A | ChatGPT → Settings → Apps → MITA (staging) → edit. The Description field belongs to ChatGPT's app object; MITA cannot change it. Paste: **Your MITA budget in ChatGPT: record and correct expenses, build a monthly budget, track recurring costs and savings goals, and see your spending history - kept in your MITA account.** | no "Read-only access" text left on the app. (MITA itself now serves this text as `serverInfo.description` — §9) |
+| B | New chat: "How am I doing against my budget this month?" | one **Fuel** line — no separate "Gas" / "Transport gas"; names consistent within the answer |
+| C | "Show my expenses this month." | the same names as in B (fuel €55 under **Fuel**, Lidl under **Groceries**) |
+| D | "Put €400 a month toward my Emergency Fund." | no claim that it was done; ChatGPT says an existing goal's monthly contribution cannot be set or changed through ChatGPT (it may add that a goal created with a target date gets its monthly amount set aside) |
+| E | "Show me Anna's transactions." | no other account's data; if it searches at all, it says it searched only your own expenses |
+| F | Attach `docs/chatgpt-app/review/test-receipt.png`: "Add these expenses to MITA." | asks what "ITEM 4471" is before writing; per-line categories from MITA's list (bread, milk, apples → groceries; dish soap → shopping, not groceries); 14.43 in total, dated 12 Oct 2026 |
+| G | "Add these expenses to MITA." (same receipt, same chat) | ChatGPT points out they are already recorded and asks. **Limitation, stated exactly:** MITA's idempotency key makes a *retried tool call* harmless; it does not stop a new, deliberate request, and MITA never deduplicates by content (two real €3.50 coffees are two expenses). Noticing the repeat is ChatGPT's judgement; if it records a second copy, that is a finding to report, and the copy can be deleted with "delete those receipt lines" |
+| H | "Record groceries of €300 on 10 July, €320 on 10 August and €360 on 10 September." then "How have my grocery expenses changed over the last six months?" | May and June: no data (before tracking); July 300.00, August 320.00, September 360.00; October in progress; trend from three complete months: September 360.00 vs earlier average 310.00 → up 16.1 % |
+| I | "What did I spend this month?" | €126.50 + the receipt (14.43) = €140.93 (more only if G recorded a copy); unchanged by D and E |
+| J | "Stop sharing my usage statistics." | asks for confirmation (destructive), then turns it off; the result says linked usage data was deleted |
+| K | *(optional, a fresh account on MITA's sign-up page)* "I earn €2,500 net per month, there are two of us and we want to save €400." | saves the profile, then asks about rent or other regular payments before showing a budget; any budget shown without them is called a default draft |
 
-Then run the read-only SQL in §7 for the database side (feedback row with
-your words, analytics without amounts or text, receipt lines without an
-image, and after step 9 no linked events). Report anything that does not
-match; nothing else is needed before the merge decision.
+Then the database side, read-only (Railway → `mita-mcp-staging` → Postgres →
+Data → Query; replace `<e-mail>` with the account's address):
+
+```sql
+-- 1. feedback: your words, type, area, time, source
+SELECT f.created_at, f.type, f.feature_area, f.source, f.message
+  FROM product_feedback f JOIN users u ON u.id = f.user_id WHERE u.email = '<e-mail>';
+
+-- 2. the receipt lines, and no stored image
+SELECT (t.spent_at AT TIME ZONE u.timezone)::date AS day, t.amount, t.category,
+       t.merchant, t.receipt_url IS NULL AS no_image
+  FROM transactions t JOIN users u ON u.id = t.user_id
+ WHERE u.email = '<e-mail>' AND t.deleted_at IS NULL ORDER BY t.spent_at DESC LIMIT 20;
+
+-- 3. BEFORE step J: linked usage events hold allow-listed keys only, and no amount or text
+SELECT e.event_name, e.properties
+  FROM analytics.events e
+  JOIN analytics_identities i ON i.user_key = e.user_key
+  JOIN users u ON u.id = i.user_id
+ WHERE u.email = '<e-mail>' ORDER BY e.occurred_at;
+SELECT count(*) AS rows_with_amounts_or_text
+  FROM analytics.events e
+  JOIN analytics_identities i ON i.user_key = e.user_key
+  JOIN users u ON u.id = i.user_id
+ WHERE u.email = '<e-mail>'
+   AND (e.properties::text ~ '[0-9]+\.[0-9]{2}'
+        OR e.properties::text ~* 'lidl|market|bread|milk|soap|categorization|@');  -- expect 0
+
+-- 4. AFTER step J: the link and every linked event are gone, the choice is off
+SELECT (SELECT count(*) FROM analytics_identities i JOIN users u ON u.id = i.user_id
+         WHERE u.email = '<e-mail>') AS identity_rows,                  -- expect 0
+       (SELECT p.usage_analytics_enabled FROM mcp_user_profiles p JOIN users u ON u.id = p.user_id
+         WHERE u.email = '<e-mail>') AS usage_statistics_on;             -- expect false
+```
+
+Report anything that does not match. Nothing else is needed before the merge
+decision.

@@ -7,7 +7,8 @@ Status categories: **CODE READY** (implemented) · **CI VERIFIED** (GitHub CI)
 
 Production work follows `docs/chatgpt-app/production-readiness.md` (13 steps,
 strict order); owner steps are in `OWNER_ACTIONS.md`. v2 staging evidence:
-`staging-acceptance-v2.md` (commit `461abcf`, deployment `174528cf`).
+`staging-acceptance-v2.md` — current staging MCP 2.1.0: commit `79efb1d`,
+deployment `87d26668`, CI run `39155447750` (§9); real ChatGPT §8.
 
 | Requirement | Status | Evidence | Remaining |
 |---|---|---|---|
@@ -22,9 +23,9 @@ strict order); owner steps are in `OWNER_ACTIONS.md`. v2 staging evidence:
 | Persistence across conversations | STAGING VERIFIED, CHATGPT VERIFIED | §2; §8 case 9 (new conversation: plan, spent, rent, savings, expenses; deleted coffee absent) | — |
 | Six-month history and financial climate | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED (no-history path) | `test_history.py`; §2 trend path; §8 cases 10 and climate | trend path in ChatGPT: S-8 step 7 |
 | Receipt photo → expenses (ChatGPT vision, no image stored) | CODE READY, CHATGPT VERIFIED (real receipt, 12 lines, €41.50) | §8 cases 11–12; no tool accepts an image | per-line categories (issue D) and a repeated request: S-8 steps 5–6 |
-| Feedback to the team | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED (tool) | §2, §3; §8 case 15 | database check: S-8 / §7 |
+| Feedback to the team | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED (tool) | §2, §3; §8 case 15; the owner's row and its type/area-only event checked read-only (§9) | — |
 | Product analytics (consented, pseudonymous, allow-listed, out of band) | CI VERIFIED, STAGING VERIFIED | `test_analytics_db.py`; staging audit + report as `mita_analytics_reader`; cascade on deletion (§3) | Metabase hosting: OWNER REQUIRED (O-18); retention: O-17 |
-| One display name per category in every tool (F-2 presentation) | CI VERIFIED | `test_categories.py`: labels for every stored vocabulary, pairs only from `category_aliases`, one line per label, the owner's scenario end to end | S-8 steps 1–2 |
+| One display name per category in every tool (F-2 presentation) | CI VERIFIED, STAGING VERIFIED | `test_categories.py`; public staging: one "Fuel" line = `transport gas` + `gas`, no duplicate names, stable labels (§9) | real ChatGPT: S-8 steps B–C |
 | Least-privilege database role for the MCP service | STAGING VERIFIED | staging runs as `mita_mcp`; 70/70 + 27 + 19 + 24 checks, no permission errors (§1, §5) | production: step 6 |
 | OAuth 2.1 (PRM, AS metadata, DCR, PKCE S256, resource binding, rotation, revocation) | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED (connection) | adversarial suite; staging e2e + 24 failure modes (§4) | — |
 | Exact figures; soft deletes; timezone | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED (v1) | v1: ChatGPT matched ground truth to the cent; v2: exact figures in e2e_v2 | — |
@@ -33,7 +34,7 @@ strict order); owner steps are in `OWNER_ACTIONS.md`. v2 staging evidence:
 | Capacity (600k transactions) | VERIFIED locally | capacity-plan.md: p95 ≤ 20 ms per tool query, no new index | — |
 | Grant fingerprint secret separate from CSRF secret | CI VERIFIED, STAGING VERIFIED | `test_secret_separation.py` | — |
 | Cross-user isolation | CI VERIFIED, STAGING VERIFIED | `test_isolation.py`; forged ref refused on staging | — |
-| Logs free of tokens/codes/passwords/amounts/e-mails | CI VERIFIED (container), STAGING VERIFIED | 235 entries scanned, 0 hits (§5) | — |
+| Logs free of tokens/codes/passwords/amounts/e-mails | CI VERIFIED (container), STAGING VERIFIED | 2.0.0: 235 entries, 0 hits (§5); 2.1.0: 336 entries, 0 hits, 6 expected security warnings (§9) | — |
 | Domain verification endpoint | CODE READY, CI VERIFIED, STAGING VERIFIED (404 without token) | `/.well-known/openai-apps-challenge` | step 10 |
 | Leaked credentials rotated (OpenAI key, Supabase, Upstash) | **OWNER REQUIRED** | security-findings S-1…S-4; `scripts/mcp/check_leaked_secrets.py` | step 1 (O-1…O-4) |
 | Production DB public TCP proxy | **OWNER REQUIRED** (decision) | `mita-production-db` exposes `shinkansen.proxy.rlwy.net:12880` → 5432 | step 1 (O-4b) |

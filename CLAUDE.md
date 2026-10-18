@@ -1207,7 +1207,7 @@ Rules:
   over public HTTPS with `scripts/mcp/e2e_http.py` and
   `scripts/mcp/staging_failure_modes.py`; results in
   `docs/chatgpt-app/staging-acceptance.md`. Real-ChatGPT acceptance is owner-run.
-  Since 2026-10-13 it runs v2 (`461abcf`, alembic 0039) connected as
+  Since 2026-10-18 it runs MCP 2.1.0 (`79efb1d`, alembic 0039) connected as
   `mita_mcp`, so a missing grant shows up there before production;
   `scripts/mcp/e2e_v2.py` results are in `staging-acceptance-v2.md`, whose §6
   is the owner's real-ChatGPT script. Migrations reach staging only from the
