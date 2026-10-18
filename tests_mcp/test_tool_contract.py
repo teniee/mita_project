@@ -179,7 +179,14 @@ async def test_server_instructions_state_limits_and_category_names(mcp, seed):
         in instructions
     )
     assert "not connected to any bank or payment account" in instructions
-    assert "Category names are MITA's own" in instructions
+    # Real ChatGPT showed one plan category as "Insurance medical" and "Medical
+    # insurance": every category carries MITA's display name, to be kept as is.
+    assert "Every category comes with category_label" in instructions
+    assert "rather than renaming or merging categories" in instructions
+    # "Show me Anna's transactions" must never read as access to Anna's account.
+    assert "MITA has no access to anyone else's account" in instructions
+    # Real ChatGPT offered to set a goal contribution no tool can set.
+    assert "Offer only what a MITA tool can do" in instructions
 
 
 async def test_summary_metadata_says_top_categories_is_not_a_full_breakdown(tools):
@@ -196,8 +203,12 @@ async def test_summary_metadata_says_top_categories_is_not_a_full_breakdown(tool
         category = by_name[name].output_schema["$defs"]["CategorySpendOut"][
             "properties"
         ]["category"]["description"]
-        assert "MITA's category name" in category, name
-        assert "do not rename it or merge it" in category, name
+        assert "MITA's stored category code" in category, name
+        assert "Do not rename it or merge it" in category, name
+        label = by_name[name].output_schema["$defs"]["CategorySpendOut"]["properties"][
+            "category_label"
+        ]["description"]
+        assert "never rename or merge categories yourself" in label, name
 
 
 async def test_every_tool_publishes_an_output_schema(tools):

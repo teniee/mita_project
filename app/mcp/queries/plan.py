@@ -3,6 +3,10 @@
 Allocation comes from persisted plan rows only. A month the app has not
 materialized yet has no allocation here — this layer never calls
 ``ensure_month_plan`` (it writes) and never computes a preview.
+
+Lines are grouped for display by ``app.mcp.categories`` (an expense category
+is shown with its paired plan bucket, e.g. ``gas`` with ``transport gas``);
+every figure is still a sum of stored rows.
 """
 
 from __future__ import annotations
@@ -16,6 +20,7 @@ from typing import Dict, List, Optional, Tuple
 from sqlalchemy.orm import Session
 
 from app.db.models import DailyPlan
+from app.mcp.categories import group_lines, regroup_by_day
 from app.mcp.queries import ledger
 from app.mcp.queries.periods import UserContext, month_days, month_position
 from app.services.core.engine.budget_forecast_engine import (
@@ -23,6 +28,7 @@ from app.services.core.engine.budget_forecast_engine import (
     ForecastResult,
     compute_forecast,
 )
+from app.services.core.engine.realtime_rebalancer import REALTIME_ADJUSTMENT_KEY
 from app.services.monthly_plan_service import month_bounds, month_has_plan
 
 ZERO = Decimal("0.00")
@@ -50,11 +56,37 @@ def planned_by_day_and_category(
     return dict(planned)
 
 
+def redistributed_total(
+    db: Session, ctx: UserContext, year: int, month: int
+) -> Decimal:
+    """Money MITA's in-month redistribution moved INTO categories this month
+    (the positive ``_mita_realtime_adjustment_v1`` amounts)."""
+    start, end = month_bounds(year, month)
+    rows = (
+        db.query(DailyPlan.plan_json)
+        .filter(
+            DailyPlan.user_id == ctx.user_id,
+            DailyPlan.date >= start,
+            DailyPlan.date < end,
+        )
+        .all()
+    )
+    moved = ZERO
+    for (meta,) in rows:
+        if isinstance(meta, dict):
+            adjustment = Decimal(str(meta.get(REALTIME_ADJUSTMENT_KEY) or 0))
+            if adjustment > ZERO:
+                moved += adjustment
+    return moved
+
+
 @dataclass(frozen=True)
 class CategoryStatus:
     category: str
     planned: Decimal
     spent: Decimal
+    label: str = ""
+    codes: Tuple[str, ...] = ()
 
     @property
     def remaining(self) -> Decimal:
@@ -79,6 +111,7 @@ class BudgetStatus:
     total_spent: Decimal
     today: Optional[DayStatus]
     other_currencies: Tuple[str, ...]
+    redistributed: Decimal = ZERO
 
 
 def _merged_buckets(
@@ -90,7 +123,14 @@ def _merged_buckets(
     return planned, spent
 
 
-def budget_status(db: Session, ctx: UserContext, year: int, month: int) -> BudgetStatus:
+def budget_status(
+    db: Session,
+    ctx: UserContext,
+    year: int,
+    month: int,
+    *,
+    with_redistribution: bool = True,
+) -> BudgetStatus:
     plan_generated = month_has_plan(db, ctx.user_id, year, month)
     planned, spent = _merged_buckets(db, ctx, year, month)
 
@@ -101,15 +141,18 @@ def budget_status(db: Session, ctx: UserContext, year: int, month: int) -> Budge
     for (_, category), amount in spent.items():
         spent_by_cat[category] += amount
 
-    names = set(planned_by_cat) | set(spent_by_cat)
     categories = sorted(
         (
             CategoryStatus(
-                category=name,
-                planned=planned_by_cat.get(name, ZERO),
-                spent=spent_by_cat.get(name, ZERO),
+                category=key,
+                planned=line_planned,
+                spent=line_spent,
+                label=name,
+                codes=tuple(codes),
             )
-            for name in names
+            for key, name, codes, line_planned, line_spent in group_lines(
+                planned_by_cat, spent_by_cat
+            )
         ),
         key=lambda item: (-item.planned, -item.spent, item.category),
     )
@@ -134,6 +177,11 @@ def budget_status(db: Session, ctx: UserContext, year: int, month: int) -> Budge
         total_spent=sum(spent.values(), ZERO),
         today=today,
         other_currencies=ledger.other_currencies_in_range(db, ctx, first, last),
+        redistributed=(
+            redistributed_total(db, ctx, year, month)
+            if plan_generated and with_redistribution
+            else ZERO
+        ),
     )
 
 
@@ -159,6 +207,9 @@ def month_forecast(
         return MonthForecast(year, month, position, False, None)
 
     planned, spent = _merged_buckets(db, ctx, year, month)
+    buckets = {category for _, category in planned}
+    planned = regroup_by_day(planned, buckets)
+    spent = regroup_by_day(spent, buckets)
     keys = set(planned) | set(spent)
     plan_data = [
         DailyPlanData(

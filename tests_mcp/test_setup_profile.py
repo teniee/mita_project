@@ -79,6 +79,10 @@ async def test_conversational_profile_is_saved_and_survives_a_new_session(
         "monthly_savings_target": "400.00",
     }
     assert result["profile_complete"] is True and result["missing_fields"] == []
+    # Real ChatGPT built a final-looking budget before rent was known: the
+    # result now says to ask about regular payments first (never mandatory).
+    assert result["suggested_next_step"] == "ask_about_obligations"
+    assert any("No regular payments are saved yet" in n for n in result["notes"])
 
     row = await _user_row(connection, newcomer)
     assert row["monthly_income"] == Decimal("2500.00")
@@ -97,7 +101,7 @@ async def test_conversational_profile_is_saved_and_survives_a_new_session(
     assert status["profile_complete"] is True
     assert status["missing_fields"] == []
     assert status["known"]["monthly_net_income"] == "2500.00"
-    assert status["suggested_next_step"] == "build_budget"
+    assert status["suggested_next_step"] == "ask_about_obligations"
     created = [
         e for e in analytics_sink.events if e.event_name == "financial_profile_created"
     ]

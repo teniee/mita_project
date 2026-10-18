@@ -44,7 +44,12 @@ from app.services.monthly_plan_service import (
 CENT = Decimal("0.01")
 ZERO = Decimal("0.00")
 HISTORY_MONTHS = 3
-DRAFT_TTL = timedelta(minutes=30)
+# How long a reviewed preview stays savable. Integrity does not depend on it —
+# save_monthly_budget rebuilds the draft under the ledger lock and compares the
+# digest, refuses changed inputs and a month that has ended — so this only
+# bounds how stale a confirmation may be: one sitting, including a pause to
+# check other figures before saying yes.
+DRAFT_TTL = timedelta(hours=2)
 UNSTATED_REGIONS = {None, "", "ZZ"}
 
 

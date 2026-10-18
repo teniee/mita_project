@@ -11,6 +11,7 @@ from mcp_types import CallToolResult
 from pydantic import Field
 
 from app.mcp.auth.scopes import FINANCE_READ
+from app.mcp.categories import label as category_label
 from app.mcp.errors import ValidationError
 from app.mcp.queries import budget_draft, history
 from app.mcp.queries.periods import month_days
@@ -87,7 +88,12 @@ def _end_month(ctx, end_month: Optional[str]):
 def _categories_out(categories) -> List[CategoryAmountOut]:
     ordered = sorted(categories.items(), key=lambda kv: (-kv[1][0], kv[0]))
     return [
-        CategoryAmountOut(category=name, total=money(total), transaction_count=count)
+        CategoryAmountOut(
+            category=name,
+            category_label=category_label(name),
+            total=money(total),
+            transaction_count=count,
+        )
         for name, (total, count) in ordered
     ]
 
@@ -115,7 +121,10 @@ def history_out(ctx, record: history.History) -> SpendingHistoryOut:
         name, total = sorted(totals.items(), key=lambda kv: (-kv[1], kv[0]))[0]
         count = sum(m.categories.get(name, (ZERO, 0))[1] for m in months)
         largest = CategoryAmountOut(
-            category=name, total=money(total), transaction_count=count
+            category=name,
+            category_label=category_label(name),
+            total=money(total),
+            transaction_count=count,
         )
     category_trends: List[CategoryTrendOut] = []
     if record.category is None:
@@ -123,7 +132,11 @@ def history_out(ctx, record: history.History) -> SpendingHistoryOut:
             : history.TOP_CATEGORY_TRENDS
         ]:
             category_trends.append(
-                CategoryTrendOut(category=name, trend=_trend_out(record.trend(name)))
+                CategoryTrendOut(
+                    category=name,
+                    category_label=category_label(name),
+                    trend=_trend_out(record.trend(name)),
+                )
             )
     notes: List[str] = []
     if any(m.status == "recorded" and m.transaction_count == 0 for m in months):
@@ -141,6 +154,9 @@ def history_out(ctx, record: history.History) -> SpendingHistoryOut:
         currency=ctx.currency,
         timezone=ctx.timezone,
         category=record.category,
+        category_label=(
+            category_label(record.category) if record.category is not None else None
+        ),
         months_requested=len(months),
         months_with_data=record.months_with_data,
         complete_months=len(record.complete),
@@ -277,6 +293,7 @@ def climate_out(ctx, result: history.Climate) -> FinancialClimateOut:
             averages.append(
                 CategoryAmountOut(
                     category=name,
+                    category_label=category_label(name),
                     total=money(total / len(complete)),
                     transaction_count=count,
                 )

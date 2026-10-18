@@ -12,6 +12,7 @@ from app.core.financial_constants import FinancialConstants
 from app.db.models import Goal
 from app.mcp import analytics, idempotency
 from app.mcp.auth.scopes import FINANCE_READ, FINANCE_WRITE
+from app.mcp.categories import goal_label
 from app.mcp.errors import ValidationError
 from app.mcp.queries import setup as setup_queries
 from app.mcp.queries.goals import list_goals
@@ -30,13 +31,19 @@ from app.mcp.tools.inputs import money as money_input
 from app.mcp.writes import goals as writes
 from app.mcp.writes.transactions import require_currency
 
+GOAL_LIMITS = (
+    "A goal cannot be changed from ChatGPT once it exists: no MITA tool sets or "
+    "changes a monthly contribution, adds a target date, adds money to a goal or "
+    "deletes it, so do not offer to."
+)
+
 DESCRIPTION = (
     "List the user's MITA savings goals with target, amount saved, remaining amount, "
     "progress and target date. For active goals it adds a deterministic projection: "
     "whether saved + monthly contribution × months left reaches the target by the "
     "target date, the monthly amount that would be required, and any shortfall. Goals "
     "without a target date get no on-track verdict. By default only active goals are "
-    "returned. " + READ_ONLY_DISCLAIMER
+    "returned. " + GOAL_LIMITS + " " + READ_ONLY_DISCLAIMER
 )
 
 CREATE_DESCRIPTION = (
@@ -44,9 +51,16 @@ CREATE_DESCRIPTION = (
     "Use the user's own words as the title, unchanged (do not shorten, translate or "
     "rename). target_date is the date the user named; if they named only a month, "
     "use the last day of that month and say so. If they already saved part of it, "
-    "pass already_saved. MITA returns the plain arithmetic of the monthly amount "
-    "needed and reserves it in this month's budget plan when it can; it gives no "
-    "advice. MITA does not move or hold the money: " + NO_MONEY_MOVEMENT
+    "pass already_saved. Only a target date makes MITA set money aside: it then "
+    "returns the plain arithmetic of the monthly amount needed and reserves it in "
+    "this month's budget plan when it can; without a target date nothing is set "
+    "aside. " + GOAL_LIMITS + " MITA gives no advice and does not move or hold the "
+    "money: " + NO_MONEY_MOVEMENT
+)
+
+NO_TARGET_DATE_NOTE = (
+    "This goal has no target date, so MITA set nothing aside for it in the budget "
+    "plan. " + GOAL_LIMITS
 )
 
 STATUS_SETS = {
@@ -168,6 +182,8 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
                     "This goal was already created by an earlier identical request; "
                     "nothing new was written."
                 )
+                if goal.target_date is None:
+                    notes.append(NO_TARGET_DATE_NOTE)
             else:
                 goal = writes.build_goal(
                     user_ctx,
@@ -190,7 +206,9 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
                 analytics.emit(
                     "savings_goal_created", has_target_date=target_date is not None
                 )
-                if target_date is not None and not reserved:
+                if target_date is None:
+                    notes.append(NO_TARGET_DATE_NOTE)
+                elif not reserved:
                     notes.append(
                         "The goal is saved, but MITA could not set aside its daily "
                         "amounts in this month's budget plan (a known limitation when "
@@ -214,6 +232,7 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
                 status=status,
                 title=goal.title,
                 category=goal.category or "savings",
+                category_label=goal_label(goal.category or "savings"),
                 currency=user_ctx.currency,
                 target_amount=money(Decimal(str(goal.target_amount))),
                 saved_amount=money(Decimal(str(goal.saved_amount or 0))),

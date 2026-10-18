@@ -9,6 +9,7 @@ from pydantic import Field
 
 from app.mcp import analytics, idempotency
 from app.mcp.auth.scopes import FINANCE_READ, FINANCE_WRITE
+from app.mcp.categories import label as category_label
 from app.mcp.errors import ValidationError
 from app.mcp.queries import setup as setup_queries
 from app.mcp.queries.recurring import recurring_expenses
@@ -193,6 +194,7 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
                 status=status,
                 name=label,
                 category=category,
+                category_label=category_label(category),
                 amount=money(amount),
                 currency=user_ctx.currency,
                 recurrence=recurrence,

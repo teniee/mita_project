@@ -18,23 +18,28 @@ connections, transfers or trading.
    `get_setup_status`, asks once for only the missing fields (net income,
    currency, timezone, household size, savings target) and saves what the
    user states with `update_financial_profile`.
-3. **Obligations.** "My rent is €700 every month on the first" →
+3. **Obligations.** Before a first budget MITA suggests asking once about
+   regular payments (`suggested_next_step: ask_about_obligations`, never
+   mandatory). "My rent is €700 every month on the first" →
    `add_recurring_expense` (next due date computed from what was said;
-   never guessed).
+   never guessed). A preview without obligations is labelled a default draft.
 4. **Budget.** "Build my budget for this month" → `preview_monthly_budget`
    (nothing saved) → the user reviews fixed obligations, savings, categories,
    unallocated money, warnings → "Save it" → `save_monthly_budget` with the
    draft token saves exactly that plan.
 5. **Everyday use.** "I spent €36.80 at Lidl on groceries today" →
    `add_transaction`; "Also €8 coffee and €55 fuel" → `add_transactions`;
-   a receipt photo → ChatGPT reads it, MITA records the lines
-   (`entry_method: receipt_image`; the image never reaches MITA). Mistakes:
+   a receipt photo → ChatGPT reads it, MITA records the lines, each with the
+   category of what it is (`entry_method: receipt_image`; the image never
+   reaches MITA). Mistakes:
    `list_transactions` → `update_transaction` / `delete_transaction` by `ref`.
 6. **Questions.** Budget status, forecast, summary, spending breakdown,
    `get_spending_history` ("how have my groceries changed over six
    months?") and `get_financial_climate` (overview).
 7. **Goals and feedback.** "I want to save €5,000 by June" →
-   `create_savings_goal`; "Tell the MITA team that…" → `submit_feedback`.
+   `create_savings_goal` (with a target date MITA sets the monthly amount
+   aside; a goal cannot be changed afterwards from ChatGPT, and the tools say
+   so); "Tell the MITA team that…" → `submit_feedback`.
 8. **A new conversation months later** sees all of it: everything above is in
    MITA's database, keyed to the account the token belongs to.
 
@@ -52,7 +57,8 @@ says so. Recorded history (up to three complete months) only adds warnings.
 No regional cost data and no income-class labels are exposed.
 
 **Reviewed == saved:** the draft token carries the month and a digest of the
-allocations and day layout, HMAC-bound to the user, valid 30 minutes. Saving
+allocations and day layout, HMAC-bound to the user, valid 2 hours (a
+freshness bound; integrity comes from the digest check below). Saving
 rebuilds the draft under the ledger lock and writes it only if the digest
 matches; a change to income, savings or obligations since the preview makes
 the user preview again. Replacing a month's plan keeps goal reservations and
@@ -88,6 +94,11 @@ no OCR in v1.
 * Savings goals are not Premium-gated in ChatGPT (v1 is free).
 * A second savings goal with a target date cannot reserve its daily amounts
   in the plan (backend finding F-1); the goal is saved and the result says so.
-* Plan categories (`dining out`, `transport public`…) and expense categories
-  (`dining`, `transportation`…) are named differently by the existing engine
-  (F-2); MITA reports both as stored.
+* Plan categories (`dining out`, `transport gas`…) and expense categories
+  (`dining`, `gas`…) are stored under different names by the existing engine
+  (F-2). In ChatGPT every category carries one display name (`category_label`:
+  "Fuel" for both `transport gas` and `gas`) and budget status shows such a
+  pair as one line; the app still shows both stored names, and the ledger
+  still treats `gas` spending as unplanned (the redistribution covers it).
+* MITA's taxonomy has no alcohol or tobacco category: drinks bought in a shop
+  are groceries unless the user chooses otherwise.

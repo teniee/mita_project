@@ -2,8 +2,9 @@
 
 v1 (8 read-only tools) passed real-ChatGPT staging acceptance
 (staging-acceptance.md §5). v2 — free v1 read/write, 22 tools, migrations
-0038–0039 — is verified over public staging HTTPS (staging-acceptance-v2.md);
-its real-ChatGPT acceptance is owner-run (OWNER_ACTIONS S-6, S-7).
+0038–0039 — is verified over public staging HTTPS and, by the owner, in real
+ChatGPT (staging-acceptance-v2.md §8, 2026-10-18). The issues that run found
+are fixed in MCP 2.1.0 on staging (§9); the final owner smoke test is S-8.
 Production is untouched: no deploy, no variable or setting change, `main` not
 merged. **Every production step below needs the owner's explicit
 authorization**; owner click-paths and commands are in `OWNER_ACTIONS.md`

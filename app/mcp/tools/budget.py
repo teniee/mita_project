@@ -9,6 +9,7 @@ from pydantic import Field
 
 from app.mcp import analytics
 from app.mcp.auth.scopes import FINANCE_READ, FINANCE_WRITE
+from app.mcp.categories import label as category_label
 from app.mcp.crypto import DraftClaims
 from app.mcp.queries import budget_draft, ledger, plan
 from app.mcp.queries import setup as setup_queries
@@ -82,6 +83,9 @@ STATUS_DESCRIPTION = (
     "not_started), plus today's planned/spent/remaining for the current month. "
     "Allocations are MITA's persisted daily plan (including any automatic "
     "redistribution MITA already applied); spending is the user's recorded expenses. "
+    "Each line has category_label, MITA's display name, and category_codes: expenses "
+    "are shown on the line of the plan category they spend from (expenses recorded as "
+    "'gas' with the 'transport gas' plan, as 'Fuel'). "
     + PLAN_NOTE
     + " "
     + READ_ONLY_DISCLAIMER
@@ -107,7 +111,15 @@ PREVIEW_DESCRIPTION = (
     "and data sources. Show the figures to the user; if they confirm, call "
     "save_monthly_budget with the draft_token. Never present a preview as saved, "
     "and never recompute or edit the numbers yourself. Needs income and currency "
-    "(see get_setup_status). " + READ_ONLY_DISCLAIMER
+    "(see get_setup_status); for a first budget, ask about regular payments such as "
+    "rent first — without them the preview is a default draft and says so. "
+    + READ_ONLY_DISCLAIMER
+)
+
+NO_OBLIGATIONS_WARNING = (
+    "No regular payments (rent, utilities, loans, subscriptions) are saved, so this "
+    "is a default draft that assumes there are none. Ask the user about them, save "
+    "them with add_recurring_expense and preview again before relying on it."
 )
 
 SAVE_DESCRIPTION = (
@@ -147,6 +159,8 @@ def preview_out(
             "free to spend."
         )
     warnings: List[str] = []
+    if not draft.obligations:
+        warnings.append(NO_OBLIGATIONS_WARNING)
     if draft.existing_plan:
         warnings.append(
             f"A plan for {month_label} is already saved; saving this one replaces it"
@@ -172,8 +186,8 @@ def preview_out(
         planned = alloc.allocations.get(category)
         if planned is not None and average > planned:
             warnings.append(
-                f"{category}: recorded average {money(average)} a month vs "
-                f"{money(planned)} planned."
+                f"{category_label(category)}: recorded average {money(average)} a "
+                f"month vs {money(planned)} planned."
             )
     if not setup_queries.savings_set(ctx):
         warnings.append("No monthly savings target is set, so nothing is set aside.")
@@ -221,7 +235,11 @@ def preview_out(
         stated_monthly_income=money(draft.income),
         fixed_obligations=[
             ObligationOut(
-                name=o.name, category=o.category, amount=money(o.amount), basis=o.basis
+                name=o.name,
+                category=o.category,
+                category_label=category_label(o.category),
+                amount=money(o.amount),
+                basis=o.basis,
             )
             for o in draft.obligations
         ],
@@ -230,6 +248,7 @@ def preview_out(
         category_allocations=[
             AllocationOut(
                 category=category,
+                category_label=category_label(category),
                 amount=money(amount),
                 layout=budget_draft.layout_of(category),
             )
@@ -273,7 +292,10 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
     ) -> Annotated[CallToolResult, FinancialSummaryOut]:
         def body(session, user_ctx):
             y, m = resolve_month(user_ctx, year, month)
-            status = plan.budget_status(session, user_ctx, y, m)
+            # Totals only: the redistribution note belongs to get_budget_status.
+            status = plan.budget_status(
+                session, user_ctx, y, m, with_redistribution=False
+            )
             first, last = month_days(y, m)
             totals = ledger.totals_by_category(session, user_ctx, first, last)
             return financial_summary_out(user_ctx, status, totals)

@@ -69,6 +69,10 @@ class SetupState:
         if not self.profile_complete:
             return "complete_profile"
         if not self.monthly_plan_exists:
+            # A first budget built before rent or other regular payments are
+            # known looks final but is not; ask once (never mandatory).
+            if self.recurring_expense_count == 0:
+                return "ask_about_obligations"
             return "build_budget"
         if self.transaction_count == 0:
             return "record_expenses"

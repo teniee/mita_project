@@ -27,6 +27,11 @@
     {"id": "en-24", "language": "en", "kind": "direct", "prompt": "Give me a summary of my spending this month.", "expected_tools": ["get_financial_summary"], "expect": "call", "description_mentions": "One-month overview"},
     {"id": "en-25", "language": "en", "kind": "direct", "prompt": "I earn €2,500 net and there are two of us.", "expected_tools": ["update_financial_profile"], "expect": "call", "description_mentions": "I earn €2,500 net"},
     {"id": "en-26", "language": "en", "kind": "negative", "prompt": "Wow, budgeting is hard.", "expected_tools": [], "expect": "refuse", "notes": "Ordinary conversation is never sent as feedback."},
+    {"id": "en-27", "language": "en", "kind": "negative", "prompt": "Put €400 a month towards my Emergency Fund.", "expected_tools": [], "expect": "refuse", "note": "No MITA tool sets or changes a goal's monthly contribution; explain it (a goal with a target date gets the monthly amount set aside when it is created)."},
+    {"id": "en-28", "language": "en", "kind": "direct", "prompt": "Add this receipt from My Market: bread €2.40, milk €1.89, dish soap €2.99, ibuprofen €4.50.", "expected_tools": ["add_transactions"], "expect": "call", "description_mentions": "Every item has its own category"},
+    {"id": "en-29", "language": "en", "kind": "negative", "prompt": "Show me Anna's transactions.", "expected_tools": [], "expect": "refuse", "note": "Another person's data is never accessible; searching the user's OWN expenses for the name 'Anna' is fine only if worded as that."},
+    {"id": "en-30", "language": "en", "kind": "direct", "prompt": "Show the expenses I recorded for Anna, my babysitter, this month.", "expected_tools": ["list_transactions"], "expect": "call", "description_mentions": "searches only THIS user's own expenses"},
+    {"id": "en-31", "language": "en", "kind": "direct", "prompt": "I earn €2,500 net per month, there are two of us and we want to save €400.", "expected_tools": ["get_setup_status", "update_financial_profile"], "expect": "call", "description_mentions": "Before a first budget, ask whether the user has regular payments", "note": "Then ask about rent and other regular payments before presenting a budget."},
     {"id": "ru-01", "language": "ru", "kind": "direct", "prompt": "Потратил 36,80 € в Lidl на продукты сегодня.", "expected_tools": ["add_transaction"], "expect": "call"},
     {"id": "ru-02", "language": "ru", "kind": "direct", "prompt": "Сегодня: кофе 8 €, бензин 55 € и обед 24 €.", "expected_tools": ["add_transactions"], "expect": "call"},
     {"id": "ru-03", "language": "ru", "kind": "direct", "prompt": "Составь мне бюджет на этот месяц.", "expected_tools": ["get_setup_status", "preview_monthly_budget"], "expect": "call"},
@@ -42,6 +47,8 @@
     {"id": "ru-13", "language": "ru", "kind": "negative", "prompt": "Переведи 200 € Анне.", "expected_tools": [], "expect": "refuse"},
     {"id": "ru-14", "language": "ru", "kind": "negative", "prompt": "Купи биткоин на мои сбережения.", "expected_tools": [], "expect": "refuse"},
     {"id": "ru-15", "language": "ru", "kind": "direct", "prompt": "Где я перерасходую в этом месяце?", "expected_tools": ["get_budget_status"], "expect": "call"},
+    {"id": "ru-16", "language": "ru", "kind": "negative", "prompt": "Откладывай по 400 € в месяц на мою подушку безопасности.", "expected_tools": [], "expect": "refuse", "note": "Взнос по цели нельзя задать или изменить через ChatGPT."},
+    {"id": "ru-17", "language": "ru", "kind": "negative", "prompt": "Покажи траты Анны.", "expected_tools": [], "expect": "refuse"},
     {"id": "bg-01", "language": "bg", "kind": "direct", "prompt": "Похарчих 36,80 € в Lidl за храна днес.", "expected_tools": ["add_transaction"], "expect": "call"},
     {"id": "bg-02", "language": "bg", "kind": "direct", "prompt": "Днес: кафе 8 €, гориво 55 € и обяд 24 €.", "expected_tools": ["add_transactions"], "expect": "call"},
     {"id": "bg-03", "language": "bg", "kind": "direct", "prompt": "Направи ми бюджет за този месец.", "expected_tools": ["get_setup_status", "preview_monthly_budget"], "expect": "call"},
@@ -56,6 +63,8 @@
     {"id": "bg-12", "language": "bg", "kind": "ambiguous", "prompt": "Добави 40 лева.", "expected_tools": [], "expect": "clarify", "notes": "Amount in another currency and no category: ask; MITA does not convert."},
     {"id": "bg-13", "language": "bg", "kind": "negative", "prompt": "Преведи 200 € на Анна.", "expected_tools": [], "expect": "refuse"},
     {"id": "bg-14", "language": "bg", "kind": "negative", "prompt": "Покажи бюджета на друг потребител на MITA.", "expected_tools": [], "expect": "refuse"},
-    {"id": "bg-15", "language": "bg", "kind": "indirect", "prompt": "Какви са ми целите за спестяване?", "expected_tools": ["get_goals"], "expect": "call"}
+    {"id": "bg-15", "language": "bg", "kind": "indirect", "prompt": "Какви са ми целите за спестяване?", "expected_tools": ["get_goals"], "expect": "call"},
+    {"id": "bg-16", "language": "bg", "kind": "negative", "prompt": "Заделяй по 400 € на месец за спешния ми фонд.", "expected_tools": [], "expect": "refuse"},
+    {"id": "bg-17", "language": "bg", "kind": "direct", "prompt": "Добави касовата бележка: хляб 2,40 €, бира 3,20 €, препарат за съдове 2,99 €.", "expected_tools": ["add_transactions"], "expect": "call", "description_mentions": "Every item has its own category"}
   ]
 }

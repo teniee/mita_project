@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.mcp import analytics, idempotency
 from app.mcp.auth.scopes import FINANCE_READ, FINANCE_WRITE
+from app.mcp.categories import label as category_label
 from app.mcp.crypto import CursorPosition
 from app.mcp.errors import ValidationError
 from app.mcp.queries import ledger
@@ -85,7 +86,10 @@ LIST_DESCRIPTION = (
     "item has the local date, amount, currency, category, merchant (when recorded) "
     "and an opaque `ref` used only to correct or delete that expense; free-text "
     "notes, receipts and locations are never returned. Optional filters: category "
-    "(exact, e.g. 'groceries') and merchant (case-insensitive contains). Dates are "
+    "(exact code, e.g. 'groceries') and merchant (case-insensitive contains). The "
+    "merchant filter searches only THIS user's own expenses by the merchant text they "
+    "recorded: MITA has no access to anyone else's account, so a person's name finds "
+    "only this user's expenses recorded with that name, never that person's data. Dates are "
     "calendar days in the user's timezone; the range may span at most 366 days. "
     "Returns at most `limit` items plus the count and total of ALL matching "
     "expenses; when has_more is true, call again with `cursor` = next_cursor (same "
@@ -120,7 +124,12 @@ ADD_MANY_DESCRIPTION = (
     "and €74 at Lidl', or the lines of a receipt photo the user attached. All are "
     "saved together or none is: if any item is invalid, nothing is recorded and the "
     "error names the item. Same rules per item as add_transaction (amounts as "
-    "stated, ask when a category or total is unclear). " + NO_MONEY_MOVEMENT
+    "stated, ask when a category or total is unclear). Every item has its own "
+    "category: give each receipt line the category of what it is, not of the shop — "
+    "a supermarket receipt can mix groceries with household goods (shopping) or "
+    "medicine (healthcare). MITA has no alcohol or tobacco category: drinks bought "
+    "in a shop count as groceries unless the user picks another category. "
+    + NO_MONEY_MOVEMENT
 )
 
 UPDATE_DESCRIPTION = (
@@ -174,6 +183,7 @@ def _recorded(keys, ctx, row) -> RecordedTransactionOut:
         amount=money(Decimal(str(row.amount))),
         currency=(row.currency or ctx.currency).upper(),
         category=row.category,
+        category_label=category_label(row.category),
         merchant=(row.merchant or "").strip() or None,
     )
 
@@ -258,7 +268,13 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
                     ),
                 )
             return transactions_out(
-                user_ctx, start, end, page, keys=keys, next_cursor=next_cursor
+                user_ctx,
+                start,
+                end,
+                page,
+                keys=keys,
+                next_cursor=next_cursor,
+                merchant_filter=merch,
             )
 
         return await runtime.execute(

@@ -47,9 +47,17 @@ UPDATE_DESCRIPTION = (
     "monthly_net_income 2500, household_size 2, monthly_savings_target 400 (and "
     "currency EUR if not yet set). Send only fields the user actually stated; never "
     "guess or estimate a value. Overwrites the previous value of each field sent. "
-    "Does not change an already saved budget — use preview_monthly_budget for a new "
-    "one. The currency cannot be changed once expenses are recorded, because MITA "
-    "does not convert amounts. " + NO_MONEY_MOVEMENT
+    "Does not change an already saved budget. Before a first budget, ask whether the "
+    "user has regular payments (rent, utilities, loans, subscriptions) and save them "
+    "with add_recurring_expense; then preview_monthly_budget. The currency cannot be "
+    "changed once expenses are recorded, because MITA does not convert amounts. "
+    + NO_MONEY_MOVEMENT
+)
+
+OBLIGATIONS_FIRST = (
+    "No regular payments are saved yet. Before building a first budget, ask once "
+    "whether the user has any (rent, utilities, loans, subscriptions) and save each "
+    "with add_recurring_expense; a budget previewed now assumes there are none."
 )
 
 PROFILE_FIELDS = (
@@ -92,6 +100,8 @@ def setup_status_out(state: setup_queries.SetupState, ctx) -> SetupStatusOut:
         notes.append("No expenses are recorded in MITA yet.")
     if not state.monthly_plan_exists:
         notes.append("No budget plan is saved for the current month yet.")
+    if state.suggested_next_step == "ask_about_obligations":
+        notes.append(OBLIGATIONS_FIRST)
     return SetupStatusOut(
         profile_complete=state.profile_complete,
         income_set=state.income_set,
@@ -329,12 +339,15 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
                     )
                 if setup_queries.FIELD_TIMEZONE in changed:
                     notes.append("Days and months are now counted in the new timezone.")
+                if after.suggested_next_step == "ask_about_obligations":
+                    notes.append(OBLIGATIONS_FIRST)
                 return ProfileUpdateOut(
                     status="updated" if changed else "unchanged",
                     updated_fields=[f for f in PROFILE_FIELDS if f in changed],
                     profile=known_profile(after_ctx),
                     profile_complete=after.profile_complete,
                     missing_fields=after.missing_fields,
+                    suggested_next_step=after.suggested_next_step,
                     notes=notes,
                 )
 

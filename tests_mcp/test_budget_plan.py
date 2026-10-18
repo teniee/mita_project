@@ -14,6 +14,7 @@ from decimal import Decimal
 import pytest
 from sqlalchemy import text
 
+from app.mcp.queries import budget_draft
 from app.mcp.writes.budget import CHANGED_DRAFT, EXPIRED_DRAFT, INVALID_DRAFT
 from app.services.core.engine.realtime_rebalancer import REALTIME_ADJUSTMENT_KEY
 from app.services.monthly_plan_service import allocations_from_profile, month_calendar
@@ -31,8 +32,7 @@ def m(mcp):
     return mcp.at(NOW)
 
 
-@pytest.fixture
-async def ana(m, seed):
+async def seed_ana(m, seed):
     """A ChatGPT-created account after the user stated their profile and rent."""
     user = await seed.user(income="0", onboarded=False, name=None, country="ZZ")
     token = m.token(user)
@@ -64,6 +64,11 @@ async def ana(m, seed):
         )
     )
     return user
+
+
+@pytest.fixture
+async def ana(m, seed):
+    return await seed_ana(m, seed)
 
 
 async def plan_rows(connection, user, *, goal_rows=False):
@@ -105,7 +110,13 @@ async def test_preview_is_the_canonical_engine_and_writes_nothing(m, ana, connec
     assert preview["existing_plan"] is False and preview["currency"] == "EUR"
     assert preview["stated_monthly_income"] == "2500.00"
     assert preview["fixed_obligations"] == [
-        {"name": "Rent", "category": "rent", "amount": "700.00", "basis": "monthly"}
+        {
+            "name": "Rent",
+            "category": "rent",
+            "category_label": "Rent",
+            "amount": "700.00",
+            "basis": "monthly",
+        }
     ]
     assert preview["fixed_obligations_total"] == "700.00"
     assert preview["savings_allocation"] == "400.00"
@@ -231,7 +242,7 @@ async def test_forged_foreign_and_expired_drafts_are_refused(
     ):
         result = await m.call(who, "save_monthly_budget", {"draft_token": bogus})
         assert result.is_error and INVALID_DRAFT in result.content[0].text
-    later = mcp.at(NOW + timedelta(minutes=31))
+    later = mcp.at(NOW + budget_draft.DRAFT_TTL + timedelta(minutes=1))
     expired = await later.call(
         later.token(ana), "save_monthly_budget", {"draft_token": draft}
     )
@@ -464,7 +475,7 @@ async def test_recorded_history_only_adds_warnings(m, ana, seed):
         "average_monthly_spending": "900.00",
     }
     assert any(
-        w.startswith("groceries: recorded average 900.00") for w in preview["warnings"]
+        w.startswith("Groceries: recorded average 900.00") for w in preview["warnings"]
     )
     # Same allocations as without history: history never changes the plan.
     engine = allocations_from_profile(

@@ -31,7 +31,7 @@ from starlette.responses import JSONResponse, PlainTextResponse, Response
 from starlette.routing import Route
 from starlette.types import ASGIApp
 
-from app.mcp import MCP_SERVER_NAME, MCP_SERVER_VERSION
+from app.mcp import MCP_SERVER_DESCRIPTION, MCP_SERVER_NAME, MCP_SERVER_VERSION
 from app.mcp.analytics import TOOL_FEATURES, Analytics, AnalyticsSink, CallTelemetry
 from app.mcp.auth.keys import SigningKeys, load_signing_keys
 from app.mcp.auth.login import ConsentPage
@@ -60,17 +60,21 @@ logger = logging.getLogger("app.mcp")
 INSTRUCTIONS = (
     "MITA is a personal budgeting app. These tools work only on the signed-in user's "
     "own MITA account, and what they save persists in MITA (not in this conversation), "
-    "so it is available in every future chat. Facts: amounts are decimal strings in "
-    "the user's MITA currency; dates and 'today' follow the timezone MITA returns. "
-    "Category names are MITA's own (for example 'subscriptions'); keep them as "
-    "returned rather than renaming or merging them, and keep merchant names and goal "
-    "titles exactly as the user wrote them. When a field is null, a list is empty or "
-    "plan_status is 'not_generated', MITA has no such data — say so rather than "
-    "estimating. A budget is saved only from a preview the user reviewed "
-    "(preview_monthly_budget, then save_monthly_budget with its draft_token). "
-    "MITA records expenses; it is not connected to any bank or payment account, has "
-    "no verified balances, and stated income is what the user typed in. MITA cannot "
-    "initiate, execute or facilitate payments, money transfers or trades."
+    "so it is available in every future chat. MITA has no access to anyone else's "
+    "account: a person's name only matches this user's own records (for example a "
+    "merchant they typed). Facts: amounts are decimal strings in the user's MITA "
+    "currency; dates and 'today' follow the timezone MITA returns. Every category "
+    "comes with category_label, MITA's display name for it: use that name, the same "
+    "way in every answer, rather than renaming or merging categories; keep merchant "
+    "names and goal titles exactly as the user wrote them. When a field is null, a "
+    "list is empty or plan_status is 'not_generated', MITA has no such data — say so "
+    "rather than estimating. A budget is saved only from a preview the user reviewed "
+    "(preview_monthly_budget, then save_monthly_budget with its draft_token). Offer "
+    "only what a MITA tool can do; for example, a savings goal cannot be changed "
+    "after it is created. MITA records expenses; it is not connected to any bank or "
+    "payment account, has no verified balances, and stated income is what the user "
+    "typed in. MITA cannot initiate, execute or facilitate payments, money transfers "
+    "or trades."
 )
 
 OPENAI_CHALLENGE_PATH = "/.well-known/openai-apps-challenge"
@@ -184,6 +188,7 @@ def build_service(
         server = MitaMCPServer(
             MCP_SERVER_NAME,
             title="MITA Finance",
+            description=MCP_SERVER_DESCRIPTION,
             instructions=INSTRUCTIONS,
             version=MCP_SERVER_VERSION,
             auth_server_provider=provider,
@@ -194,6 +199,7 @@ def build_service(
         server = MitaMCPServer(
             MCP_SERVER_NAME,
             title="MITA Finance",
+            description=MCP_SERVER_DESCRIPTION,
             instructions=INSTRUCTIONS,
             version=MCP_SERVER_VERSION,
             token_verifier=verifier,

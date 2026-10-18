@@ -206,7 +206,7 @@ def operations() -> Dict[str, Callable]:
 
     def summary(s, ctx):
         y, m = ctx.today.year, ctx.today.month
-        plan.budget_status(s, ctx, y, m)
+        plan.budget_status(s, ctx, y, m, with_redistribution=False)
         ledger.totals_by_category(s, ctx, date(y, m, 1), ctx.today)
 
     def climate(s, ctx):

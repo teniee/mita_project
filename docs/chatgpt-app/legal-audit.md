@@ -37,7 +37,9 @@ both age variants: `legal/policy-redline.md`. Support page draft:
 
 ## Additions needed for the ChatGPT data flow (draft text for counsel)
 
-Proposed new Privacy Policy section — **draft, to be reviewed**:
+Proposed new Privacy Policy section — **draft, to be reviewed**. *Superseded
+for v2:* this v1 draft says "read-only access"; the v2 app also records what
+the user asks it to, so use `legal/policy-redline.md` §C instead.
 
 > **Using MITA in ChatGPT.** If you connect MITA to ChatGPT, you sign in with
 > your MITA e-mail and password on a MITA page and approve read-only access.

@@ -25,10 +25,12 @@ EXPENSE_CATEGORIES = tuple(
 ExpenseCategory = Literal[EXPENSE_CATEGORIES]  # type: ignore[valid-type]
 
 CATEGORY_HELP = (
-    "MITA category of the expense, exactly one of the listed values. Choose the "
-    "one that plainly fits what the user said (groceries for a supermarket, gas "
-    "for fuel, dining for restaurants and cafés). If more than one could fit, "
-    "ask the user; use 'other' only when the user says it fits nothing else."
+    "MITA category of the expense, exactly one of the listed values. Choose by what "
+    "was bought, not only where: groceries for food and drink for home, gas for "
+    "fuel, public_transport for tickets and passes, dining for restaurants and "
+    "cafés, healthcare for medicine and doctors, clothing for clothes, shopping for "
+    "household and other goods. If more than one could fit, ask the user; use "
+    "'other' only when the user says it fits nothing else."
 )
 
 

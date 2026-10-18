@@ -1,10 +1,11 @@
-# MITA in ChatGPT — tool catalog (v2.0, 22 tools)
+# MITA in ChatGPT — tool catalog (v2.1, 22 tools)
 
 Generated from the live tool list (`app/mcp/tools`); the semantics column is
 pinned by `tests_mcp/test_tool_contract.EXPECTED`. Every tool: identity from
 the OAuth token only, undeclared arguments rejected, `openWorldHint` false,
 "MITA cannot initiate, execute or facilitate payments or money transfers" in
-its description, and an output schema.
+its description, and an output schema. Every category in a result comes with
+`category_label`, MITA's one display name for it (`app/mcp/categories.py`).
 
 **Confirmation.** ChatGPT asks the user before write tools; `destructiveHint`
 (overwrite or delete) makes that an explicit approval. The tools themselves
@@ -23,7 +24,7 @@ only from a signed preview, feedback only on explicit request.
 | `get_budget_status` | plan vs actual per category; today's figures | year, month | finance:read |
 | `get_budget_forecast` | month-end projection at the current pace; safe daily amount | year, month | finance:read |
 | `get_recurring_expenses` | scheduled obligations and expenses marked recurring (never inferred) | — | finance:read |
-| `get_goals` | savings goals with deterministic projection | status | finance:read |
+| `get_goals` | savings goals with deterministic projection (goals cannot be changed from ChatGPT) | status | finance:read |
 | `get_spending_history` | up to 12 local months, per-category totals, completeness, trend (≥ 3 complete months) | months, category, end_month | finance:read |
 | `get_financial_climate` | compact factual overview: averages, pace vs earlier months, plan adherence, late-month share, obligations, goals | months | finance:read |
 | `preview_monthly_budget` | a budget draft from stated facts and MITA's engine; returns a signed `draft_token`; **saves nothing** | month | finance:read |
@@ -39,7 +40,7 @@ only from a signed preview, feedback only on explicit request.
 | `delete_transaction` | soft-delete one expense (`ref`) | yes | yes | second call → `already_deleted` | finance:write |
 | `save_monthly_budget` | save exactly the reviewed draft (`draft_token`); may replace the month's plan | yes | yes | same draft → `already_saved` | finance:write |
 | `add_recurring_expense` | save a repeating obligation with a computed next due date | no | yes | `idempotency_key` | finance:write |
-| `create_savings_goal` | create a goal with the user's exact title | no | yes | `idempotency_key` | finance:write |
+| `create_savings_goal` | create a goal with the user's exact title; a target date sets the monthly amount aside; the goal cannot be changed afterwards | no | yes | `idempotency_key` | finance:write |
 | `submit_feedback` | send the user's feedback to the MITA team (explicit request only) | no | yes | `idempotency_key` | feedback:write |
 | `set_usage_analytics` | turn usage statistics on/off (off deletes linked usage data) | yes | yes | same value → same state | profile:write |
 
@@ -52,5 +53,6 @@ data is refused; nothing is ever deduplicated by content.
 ## Never offered
 
 Transfers, payments, trading, bank connections, receipt-image upload or OCR,
-deleting a goal or an obligation, deleting the account (in the app only),
+changing or deleting a goal (no monthly contribution, target date or added
+money after creation) or an obligation, deleting the account (in the app only),
 another user's data, raw analytics.

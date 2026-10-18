@@ -1053,6 +1053,12 @@ Rules:
   the tool refuses so ChatGPT asks. Goals have no Premium gate in ChatGPT (v1 is
   free); the plan reservation runs in a SAVEPOINT and never fails the goal
   (F-1: a second dated goal cannot reserve; the result says so).
+- **Offer only what a tool can do.** A goal cannot be changed after creation
+  (no contribution, target date, added money or deletion from ChatGPT); only a
+  target date at creation makes MITA set money aside. `GOAL_LIMITS` states this
+  in both goal descriptions and in the no-date result — real ChatGPT offered
+  "€400 a month toward your Emergency Fund" before it did. Adding such a
+  capability means a real tool plus tests, never softer wording.
 - **Reviewed budget == saved budget.** `preview_monthly_budget` is read-only:
   it computes a draft (`app/mcp/queries/budget_draft.py`) from stated facts
   only — income, savings target, saved obligations — through
@@ -1061,9 +1067,31 @@ Rules:
   draft's digest (never the numbers). `save_monthly_budget` rebuilds the draft
   under the ledger lock and saves it only if the digest is unchanged, via
   `replace_month_plan` (goal reservations kept, transaction-generated rows
-  re-derived). History only adds warnings. After a save the visible
+  re-derived). History only adds warnings. Drafts live `DRAFT_TTL` (2 hours):
+  a freshness bound only — integrity is the digest re-check under the lock,
+  refused changed inputs and refused ended months. Before a first budget the
+  setup step is `ask_about_obligations` (no regular payments saved); a preview
+  without obligations carries a "default draft" warning. Never mandatory. After a save the visible
   `planned_amount` can differ from the preview by MITA's in-month
   redistribution; the BASE plan (adjustment backed out) is the reviewed one.
+- **One display name per category** (`app/mcp/categories.py`): every result
+  carries `category_label`; budget status and the forecast put an expense
+  category on its paired plan bucket's line ("Fuel" = `transport gas` +
+  `gas`) when that bucket is in the month's plan. Pairs must be declared in
+  `app/config/category_aliases.py` (tested) — never invent one. Presentation
+  only: stored rows, the ledger and the app are unchanged (F-2 stays open in
+  the backend). New plan buckets or expense categories need a label (tested).
+- **Only this account, worded so.** A name in `list_transactions(merchant=…)`
+  matches only this user's own expenses; the description, a result note and
+  the server instructions say MITA cannot see another account.
+- **No app-level "read-only".** The v2 app writes: `serverInfo.description`
+  equals the listing description, and `test_acceptance_fixes.py` forbids
+  "read-only" on the listing, server text, scopes, consent page and skill.
+  Tool-level read-only statements stay on read tools. ChatGPT's developer-mode
+  app object has its own Description field — the runbook must give v2 text.
+- **A DCR client keeps its registered scopes** (SDK `validate_scope`): adding
+  a scope breaks existing connections with `invalid_scope` until they
+  re-register (backend-findings F-7).
 - **History is aggregated in SQL by LOCAL month** (`app/mcp/queries/history.py`,
   `date_trunc('month', timezone(user_tz, spent_at))`), never returned as raw
   rows. A month before the first recorded expense is `before_tracking` (no

@@ -21,13 +21,14 @@ v1 (8 read-only tools) — complete:
 | S-4 acceptance prompts (positive, negative, control read) | DONE — CHATGPT VERIFIED; results in staging-acceptance.md §5 |
 | S-5 *(optional)* re-check the `fcd7ae3` metadata | SUPERSEDED by S-7 (v2 replaces that build) |
 
-v2 (free v1 read/write, 22 tools) — the public automated acceptance is in
-`staging-acceptance-v2.md`; what remains needs your ChatGPT account:
+v2 (free v1 read/write, 22 tools) — public automated acceptance and the real
+ChatGPT results are in `staging-acceptance-v2.md` (§2–§5, §8):
 
 | Item | Status |
 |---|---|
-| S-6 reconnect MITA staging in ChatGPT developer mode | NOT YET — the old connection holds the two read scopes only, so every write tool answers `insufficient_scope`. ChatGPT → Settings → Apps → MITA (staging) → disconnect, then connect again with the same MCP URL; on MITA's page choose **Create an account** with a fresh test e-mail (not the S-1 account) |
-| S-7 real-ChatGPT acceptance v2 | NOT YET — run `staging-acceptance-v2.md` §6 (core conversation, receipt, feedback, negatives) and fill in its results table; §7 is the read-only SQL that checks the database side |
+| S-6 reconnect MITA staging in ChatGPT developer mode | DONE — CHATGPT VERIFIED (2026-10-18): plugin object recreated with DCR, all five scopes discovered, writes work |
+| S-7 real-ChatGPT acceptance v2 | MOSTLY CHATGPT VERIFIED (§8). Still pending: §6 case 8 (past months → six-month trend), 13 (same receipt asked twice), 19 (control read after the negatives), 20 (turn usage statistics off), and the read-only database checks in §7. They are folded into S-8 |
+| S-8 final smoke test of the fixed build (MCP 2.1.0) | NOT YET — `staging-acceptance-v2.md` §10, about 10 minutes. Starts by checking the app's ChatGPT-side description and replacing any "Read-only access…" text |
 
 Keep staging running until production is live; teardown is in staging.md.
 

@@ -34,8 +34,25 @@ Onboarding plans are stored under `CATEGORY_BEHAVIOR` names (`dining out`,
 code path applies it to the ledger. Result, reproduced through
 `GET /api/budget/spent`: a $72 dinner is "unplanned" `dining` spending while the
 `dining out` allocation shows $0 spent. The rebalancer then treats it as
-overspend. The MCP service reports exactly what is stored (it must not invent a
-mapping), so ChatGPT will see the same split the app shows.
+overspend.
+
+Real ChatGPT (2026-10-18) showed the consequence as names: "Transport gas /
+Fuel / Gas", "Insurance medical / Medical insurance". Reproduced locally
+through the MCP tools with the owner's inputs: after €55 recorded as `gas`, budget status had
+`transport gas` (112.50 planned, 0 spent) and `gas` (55 moved in by the
+redistribution, 55 spent), and the forecast listed `gas` as at risk.
+
+**MCP presentation since 2.1.0 (no data change):** every result carries
+`category_label` (`app/mcp/categories.py`), and budget status / forecast show an
+expense category on the line of the plan bucket it spends from, only for pairs
+declared in `app/config/category_aliases.py` (`gas`→`transport gas`,
+`dining`→`dining out`, `public_transport`→`transport public`,
+`entertainment`→`entertainment events`, `healthcare`→`out of pocket medical`).
+Figures stay sums of stored rows, so the redistribution's effect is still
+visible (a note says when it moved money). **Still open, backend:** the ledger
+does not accrue `gas` spending to `transport gas`, so the rebalancer covers it
+from other categories and the app shows both rows; fixing that changes the
+mobile app and the rebalancer and needs its own change and review.
 
 ## F-3 (P2) Route-level issues in budget/AI endpoints
 
@@ -73,3 +90,18 @@ handlers at startup (`configure_logging`) and its own logs are proven
 token-free (`tests_mcp/test_oauth_adversarial.py::test_oauth_flow_logs_no_secrets`,
 container log scan in `mcp-ci`). Recommend: stop logging token material in
 `app/core/audit_logging.py` and delete existing fallback logs.
+
+## F-7 (OAuth) A registered client keeps the scopes it registered with
+
+The SDK's `/authorize` handler checks the requested scopes against the
+client's registration (`OAuthClientInformationFull.validate_scope`: "Client
+was not registered with scope …"). The v1 staging app was registered with the
+two read scopes, so after v2 added `finance:write`, `feedback:write` and
+`profile:write`, ChatGPT got `invalid_scope` until the owner recreated the app
+(2026-10-18). Production starts at v2 (all five scopes at registration), so
+this does not affect launch; it will affect every existing connection the next
+time a scope is added. Options: treat the registered scope as advisory in
+`MitaAuthorizationProvider.get_client` (requests are already limited to
+`SUPPORTED_SCOPES` and shown on the consent page; DCR is open, so the
+registered list adds no protection), or document "reconnect" in the release
+notes of such a version. Not changed before the merge.

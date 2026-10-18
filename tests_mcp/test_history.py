@@ -64,8 +64,18 @@ async def test_six_month_history_with_explicit_completeness(m, ana):
     ]
     june = data["months"][1]["categories"]
     assert june == [
-        {"category": "groceries", "total": "300.00", "transaction_count": 1},
-        {"category": "dining", "total": "50.00", "transaction_count": 1},
+        {
+            "category": "groceries",
+            "category_label": "Groceries",
+            "total": "300.00",
+            "transaction_count": 1,
+        },
+        {
+            "category": "dining",
+            "category_label": "Dining out",
+            "total": "50.00",
+            "transaction_count": 1,
+        },
     ]
     assert data["months_with_data"] == 4 and data["complete_months"] == 4
     assert data["average_monthly_spending"] == "267.50"  # (350+320+0+400)/4
@@ -73,6 +83,7 @@ async def test_six_month_history_with_explicit_completeness(m, ana):
     assert data["current_month_to_date"] == "100.00"
     assert data["largest_category"] == {
         "category": "groceries",
+        "category_label": "Groceries",
         "total": "1080.00",
         "transaction_count": 4,
     }
@@ -205,8 +216,18 @@ async def test_financial_climate_states_exact_facts(m, ana, seed):
     assert data["average_monthly_spending"] == "267.50"
     assert data["median_monthly_spending"] == "335.00"
     assert data["category_averages"] == [
-        {"category": "groceries", "total": "245.00", "transaction_count": 3},
-        {"category": "dining", "total": "22.50", "transaction_count": 2},
+        {
+            "category": "groceries",
+            "category_label": "Groceries",
+            "total": "245.00",
+            "transaction_count": 3,
+        },
+        {
+            "category": "dining",
+            "category_label": "Dining out",
+            "total": "22.50",
+            "transaction_count": 2,
+        },
     ]
     assert data["current_month_pace"] == {
         "day_of_month": 11,

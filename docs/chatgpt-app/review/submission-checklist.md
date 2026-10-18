@@ -1,4 +1,4 @@
-# Readiness (2026-10-11, v2 update 2026-10-13)
+# Readiness (2026-10-11, v2 update 2026-10-18)
 
 Status categories: **CODE READY** (implemented) · **CI VERIFIED** (GitHub CI)
 · **STAGING VERIFIED** (observed on the public staging endpoint) ·
@@ -12,22 +12,23 @@ strict order); owner steps are in `OWNER_ACTIONS.md`. v2 staging evidence:
 | Requirement | Status | Evidence | Remaining |
 |---|---|---|---|
 | Streamable HTTP MCP at `/mcp`, public HTTPS | STAGING VERIFIED, CHATGPT VERIFIED (v1) | `https://mita-mcp-staging-staging.up.railway.app/mcp`, `/health` version 2.0.0 | production: PRODUCTION NOT DONE (steps 6–7) |
-| Connected in real ChatGPT developer mode | CHATGPT VERIFIED (v1 grant) | staging-acceptance.md §5.1 | v2: reconnect for the write scopes — OWNER REQUIRED (S-6) |
-| 22 tools (12 read, 10 write), facts-only hints, no identity inputs, strict arguments | CI VERIFIED, STAGING VERIFIED | `test_tool_contract.py`; staging: exactly 22 tools, smuggled `user_id` rejected (§2, §4) | real ChatGPT: S-7 |
+| Connected in real ChatGPT developer mode | CHATGPT VERIFIED (v2, all five scopes) | staging-acceptance-v2.md §8 (S-6): plugin recreated with DCR; v1 grant earlier (staging-acceptance.md §5.1) | an old DCR registration keeps its v1 scopes (F-7) |
+| 22 tools (12 read, 10 write), facts-only hints, no identity inputs, strict arguments | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED | `test_tool_contract.py`; staging: exactly 22 tools, smuggled `user_id` rejected (§2, §4); writes used in ChatGPT (§8) | — |
 | 8 original read tools unchanged | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED (v1) | every read tool exercised before and after a restart (§4) | — |
 | Account creation in the OAuth flow (shared e-mail/password policy, generic errors, per-IP limit) | CI VERIFIED, STAGING VERIFIED | `test_registration.py`; e2e_v2 sign-up (§2) | real ChatGPT: S-6 |
-| Profile, expenses, batch, corrections, retry safety (idempotency) | CI VERIFIED, STAGING VERIFIED | `test_transaction_writes.py` (75), `test_idempotency_concurrency.py` (forced race); retry → `already_recorded` on staging | real ChatGPT: S-7 §6.1 |
-| Recurring expenses, savings goals | CI VERIFIED, STAGING VERIFIED | `test_recurring_goal_writes.py` (37); staging rent + goal (§2) | real ChatGPT: S-7 |
-| Budget preview → signed draft → save (reviewed == saved) | CI VERIFIED, STAGING VERIFIED | `test_budget_plan.py`; preview saved nothing, saved total == preview, tampered token refused (§2) | real ChatGPT: S-7 |
-| Persistence across conversations | STAGING VERIFIED | new DCR client and tokens saw spending, plan and setup (§2) | real ChatGPT: S-7 conversation B |
-| Six-month history and financial climate | CI VERIFIED, STAGING VERIFIED | `test_history.py`; 300/320/360/36.80, trend from 3 complete months (§2) | real ChatGPT: S-7 #10 |
-| Receipt photo → expenses (ChatGPT vision, no image stored) | CODE READY | `entry_method: receipt_image`; no tool accepts an image | real ChatGPT: S-7 §6.2 with `review/test-receipt.png` |
-| Feedback to the team | CI VERIFIED, STAGING VERIFIED | stored with the user's words; analytics only type/area/rating (§2, §3) | real ChatGPT: S-7 §6.3 |
+| Profile, expenses, batch, corrections, retry safety (idempotency) | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED (profile, expenses, update, delete) | `test_transaction_writes.py`, `test_idempotency_concurrency.py` (forced race); retry → `already_recorded` on staging; §8 cases 1, 5–6, correction, deletion | retry is not observable from ChatGPT |
+| Recurring expenses, savings goals | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED (rent; goal creation) | `test_recurring_goal_writes.py`; §8 case 2 and goal | fixed: ChatGPT offered a goal contribution no tool can set (issue B, `test_acceptance_fixes.py`); S-8 step 3 |
+| Budget preview → signed draft → save (reviewed == saved) | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED | `test_budget_plan.py`; §8: preview not saved, expired draft refused, identical re-preview saved (2,325 / 175 / 2,500) | drafts now last 2 hours (issue F) |
+| Persistence across conversations | STAGING VERIFIED, CHATGPT VERIFIED | §2; §8 case 9 (new conversation: plan, spent, rent, savings, expenses; deleted coffee absent) | — |
+| Six-month history and financial climate | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED (no-history path) | `test_history.py`; §2 trend path; §8 cases 10 and climate | trend path in ChatGPT: S-8 step 7 |
+| Receipt photo → expenses (ChatGPT vision, no image stored) | CODE READY, CHATGPT VERIFIED (real receipt, 12 lines, €41.50) | §8 cases 11–12; no tool accepts an image | per-line categories (issue D) and a repeated request: S-8 steps 5–6 |
+| Feedback to the team | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED (tool) | §2, §3; §8 case 15 | database check: S-8 / §7 |
 | Product analytics (consented, pseudonymous, allow-listed, out of band) | CI VERIFIED, STAGING VERIFIED | `test_analytics_db.py`; staging audit + report as `mita_analytics_reader`; cascade on deletion (§3) | Metabase hosting: OWNER REQUIRED (O-18); retention: O-17 |
+| One display name per category in every tool (F-2 presentation) | CI VERIFIED | `test_categories.py`: labels for every stored vocabulary, pairs only from `category_aliases`, one line per label, the owner's scenario end to end | S-8 steps 1–2 |
 | Least-privilege database role for the MCP service | STAGING VERIFIED | staging runs as `mita_mcp`; 70/70 + 27 + 19 + 24 checks, no permission errors (§1, §5) | production: step 6 |
 | OAuth 2.1 (PRM, AS metadata, DCR, PKCE S256, resource binding, rotation, revocation) | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED (connection) | adversarial suite; staging e2e + 24 failure modes (§4) | — |
 | Exact figures; soft deletes; timezone | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED (v1) | v1: ChatGPT matched ground truth to the cent; v2: exact figures in e2e_v2 | — |
-| Negative cases (transfer, other user, trading) | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED (v1: transfer, other user) | no money-movement tool; v1 control read unchanged | v2 incl. Bitcoin: S-7 §6.4 |
+| Negative cases (transfer, other user, trading) | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED (v2: transfer, another person, Bitcoin) | no money-movement tool; §8 cases 16–18 | wording for another person's name tightened (issue G); S-8 step 4 |
 | Onboarding skill, starter prompts, listing (plugin 2.0.0) | CODE READY, CI VERIFIED (`--check`) | `build_plugin.py`, `test_plugin_package.py`, 56 golden prompts (en/ru/bg) | final ZIP: OWNER REQUIRED (step 12) |
 | Capacity (600k transactions) | VERIFIED locally | capacity-plan.md: p95 ≤ 20 ms per tool query, no new index | — |
 | Grant fingerprint secret separate from CSRF secret | CI VERIFIED, STAGING VERIFIED | `test_secret_separation.py` | — |

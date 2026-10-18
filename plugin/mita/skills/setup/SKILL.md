@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Set up MITA and show what it can do. First check what MITA already knows (get_setup_status); ask only for missing income, currency, timezone, household size and savings target; save them; then offer to preview and, after the user confirms, save a first monthly budget. Use when the user connects MITA, is new to MITA, or asks to set up or start their budget.
+description: Set up MITA and show what it can do. First check what MITA already knows (get_setup_status); ask only for missing income, currency, timezone, household size and savings target; save them; ask about regular payments such as rent and save them; then offer to preview and, after the user confirms, save a first monthly budget. Use when the user connects MITA, is new to MITA, or asks to set up or start their budget.
 ---
 
 # MITA setup
@@ -27,15 +27,18 @@ setup — never block them on it.
    Do not ask for an address, location, bank details, card numbers or
    passwords. Do not guess: if an answer is unclear, ask again.
 3. **Save only what the user stated** with `update_financial_profile`.
-4. **Fixed obligations.** Ask whether they have regular payments such as rent,
-   utilities, loans or subscriptions. For each one they name, get the amount,
-   the category and when it is due (day of the month, weekday, or next date),
-   then save it with `add_recurring_expense`, keeping their name for it. If
-   they have none or prefer to skip, move on.
+4. **Fixed obligations — before any budget.** Ask once whether they have
+   regular payments such as rent, utilities, loans or subscriptions (MITA
+   suggests this as `ask_about_obligations`). For each one they name, get the
+   amount, the category and when it is due (day of the month, weekday, or next
+   date), then save it with `add_recurring_expense`, keeping their name for
+   it. If they have none or prefer to skip, move on — do not show a detailed
+   budget before asking.
 5. **First budget.** Offer it; if they want it, call `preview_monthly_budget`
    and explain in plain words: fixed obligations, savings, the category
    amounts, unallocated money, the daily average and every warning. It is a
-   preview — nothing is saved yet. Save only after an explicit yes, with
+   preview — nothing is saved yet; without regular payments it is a default
+   draft and says so. Save only after an explicit yes, with
    `save_monthly_budget` and the `draft_token`. If they want different
    figures, change income, savings or obligations with the tools and preview
    again; never adjust the numbers yourself.
@@ -44,7 +47,13 @@ setup — never block them on it.
 ## Rules
 
 - Use MITA's figures exactly as returned, in the user's MITA currency.
+- Call every category by its `category_label`, the same way each time.
 - Keep the user's own words for names of goals, merchants and obligations.
+- Offer only what MITA's tools can do. A savings goal cannot be changed after
+  it is created (no monthly contribution, target date or added money from
+  ChatGPT) — say so rather than offering it.
+- MITA has only this user's own records; never suggest it can look up another
+  person.
 - When MITA has no data (empty lists, `insufficient_data`, no plan), say so;
   never estimate it.
 - Do not repeat setup questions in later conversations once they are answered.

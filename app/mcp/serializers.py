@@ -10,6 +10,8 @@ import hashlib
 from decimal import ROUND_HALF_UP, Decimal
 from typing import List, Optional, Sequence
 
+from app.mcp.categories import goal_label
+from app.mcp.categories import label as category_label
 from app.mcp.crypto import DataKeys
 from app.mcp.queries.goals import GoalView
 from app.mcp.queries.ledger import CategoryTotal, LedgerPage
@@ -106,6 +108,19 @@ def profile_out(ctx: UserContext) -> ProfileOut:
     )
 
 
+MERCHANT_FILTER_NOTE = (
+    "Only this user's own recorded expenses were searched, by the merchant text "
+    "they entered. MITA cannot see other people's accounts, so a person's name "
+    "matches only expenses this user recorded with that name."
+)
+
+REDISTRIBUTION_NOTE = (
+    "Planned amounts include {moved} that MITA's automatic redistribution moved "
+    "between categories this month to cover spending above a day's plan; the plan "
+    "total is unchanged."
+)
+
+
 def transaction_ref(keys: DataKeys, ctx: UserContext, transaction_id) -> str:
     return keys.transaction_ref(ctx.user_id, transaction_id)
 
@@ -118,10 +133,13 @@ def transactions_out(
     *,
     keys: DataKeys,
     next_cursor: Optional[str] = None,
+    merchant_filter: Optional[str] = None,
 ) -> TransactionsOut:
     notes = _currency_notes(ctx, page.other_currencies)
     if page.matching_count == 0:
         notes.append("No expenses are recorded in MITA for this range and filter.")
+    if merchant_filter:
+        notes.append(MERCHANT_FILTER_NOTE)
     return TransactionsOut(
         start_date=start,
         end_date=end,
@@ -133,6 +151,7 @@ def transactions_out(
                 amount=money(e.amount),
                 currency=e.currency,
                 category=e.category,
+                category_label=category_label(e.category),
                 merchant=e.merchant,
             )
             for e in page.entries
@@ -153,6 +172,7 @@ def _category_spend(
     return [
         CategorySpendOut(
             category=item.category,
+            category_label=category_label(item.category),
             total=money(item.total),
             transaction_count=item.count,
             share_percent=(
@@ -233,6 +253,8 @@ def budget_status_out(ctx: UserContext, status: BudgetStatus) -> BudgetStatusOut
         categories=[
             CategoryBudgetOut(
                 category=c.category,
+                category_label=c.label or category_label(c.category),
+                category_codes=list(c.codes) or [c.category],
                 planned=money(c.planned),
                 spent=money(c.spent),
                 remaining=money(c.remaining),
@@ -243,7 +265,12 @@ def budget_status_out(ctx: UserContext, status: BudgetStatus) -> BudgetStatusOut
         ],
         today=today,
         notes=_plan_notes(ctx, status.plan_generated)
-        + _currency_notes(ctx, status.other_currencies),
+        + _currency_notes(ctx, status.other_currencies)
+        + (
+            [REDISTRIBUTION_NOTE.format(moved=money(status.redistributed))]
+            if status.redistributed > 0
+            else []
+        ),
     )
 
 
@@ -295,6 +322,7 @@ def forecast_out(
         categories_at_risk=[
             CategoryRiskOut(
                 category=c.category,
+                category_label=category_label(c.category),
                 monthly_planned=money(c.monthly_planned),
                 monthly_spent=money(c.monthly_spent),
                 daily_pace=money(c.daily_pace),
@@ -351,6 +379,7 @@ def goals_out(ctx: UserContext, goals: Sequence[GoalView]) -> GoalsOut:
             GoalOut(
                 title=g.title,
                 category=g.category,
+                category_label=goal_label(g.category),
                 status=g.status,  # type: ignore[arg-type]
                 priority=g.priority,
                 target_amount=money(g.target_amount),
@@ -377,6 +406,7 @@ def recurring_out(ctx: UserContext, view: RecurringView) -> RecurringOut:
     def scheduled(item) -> ScheduledExpenseOut:
         return ScheduledExpenseOut(
             category=item.category,
+            category_label=category_label(item.category),
             amount=money(item.amount),
             merchant=item.merchant,
             due_date=item.next_date,
@@ -389,8 +419,11 @@ def recurring_out(ctx: UserContext, view: RecurringView) -> RecurringOut:
         upcoming_one_time=[scheduled(i) for i in view.upcoming_one_time],
         marked_recurring=[
             MarkedRecurringOut(
-                label=m.label,
+                label=(
+                    category_label(m.category) if m.label == m.category else m.label
+                ),
                 category=m.category,
+                category_label=category_label(m.category),
                 last_amount=money(m.last_amount),
                 last_date=m.last_date,
                 occurrences_in_lookback=m.occurrences,

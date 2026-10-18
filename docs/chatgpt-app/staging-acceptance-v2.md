@@ -1,4 +1,4 @@
-# Staging acceptance v2 — MITA free v1 in ChatGPT (2026-10-13)
+# Staging acceptance v2 — MITA free v1 in ChatGPT (2026-10-13, real ChatGPT 2026-10-18)
 
 v1 (8 read-only tools) results stay in `staging-acceptance.md`. This file is
 v2: 22 tools, sign-up, writes, budget preview/save, history, feedback and
@@ -79,7 +79,7 @@ secrets. The 6 warnings are the expected security events from §4 (4 ×
 `oauth_register_rejected`, 2 × `oauth_refresh_reuse`, subject hashed). No
 permission error under the least-privilege role; no analytics-writer error.
 
-## 6. Real ChatGPT acceptance — owner script (NOT YET; OWNER_ACTIONS S-6, S-7)
+## 6. Real ChatGPT acceptance — owner script (run by the owner; results in §8)
 
 **Prepare (S-6).** ChatGPT → Settings → Apps → MITA (staging) → disconnect
 (the 2026-10-11 connection holds only the read scopes), then connect again
@@ -140,15 +140,9 @@ line "ITEM 4471").
 | 19 | What did I spend this month? | the same figures as before 16–18 (nothing was written) |
 | 20 | Stop sharing my usage statistics. | `set_usage_analytics(false)` after confirming |
 
-### 6.5 Results (owner fills in)
+### 6.5 Results
 
-| # | Pass / fail | What ChatGPT did (tool calls, figures, wording) |
-|---|---|---|
-| 1–8 | | |
-| 9–10 | | |
-| 11–14 | | |
-| 15 | | |
-| 16–20 | | |
+See §8 — case by case, only what the owner observed.
 
 ## 7. Database side of the owner's run (read-only)
 
@@ -209,3 +203,80 @@ DELETE FROM goals                 WHERE user_id IN (SELECT id FROM gone);
 DELETE FROM users                 WHERE id IN (SELECT id FROM gone);
 COMMIT;
 ```
+
+## 8. Real ChatGPT results (CHATGPT VERIFIED where stated; owner, reported 2026-10-18)
+
+Against deployment `174528cf` (`461abcf`, MCP 2.0.0, alembic 0039). Recorded
+exactly as the owner reported it; nothing below is inferred.
+
+**S-6 — reconnect: CHATGPT VERIFIED.** The owner deleted the v1 plugin object
+and recreated it with OAuth DCR; ChatGPT discovered all five scopes
+(`profile:read`, `finance:read`, `finance:write`, `feedback:write`,
+`profile:write`) and `finance:write` worked. The earlier `invalid_scope` came
+from the old DCR registration: the SDK's `/authorize` accepts only the scopes
+a client registered with ("Client was not registered with scope …"), and the
+v1 client was registered with the two read scopes (backend-findings F-7).
+
+| §6 case | Result | Observed |
+|---|---|---|
+| 1 profile | CHATGPT VERIFIED | €2,500 net income, €400 savings target, household 2 persisted |
+| 2 rent | CHATGPT VERIFIED | Europe/Sofia saved; rent €700 monthly, next due 1 Nov 2026; an October preview built — not saved |
+| 3 preview only | CHATGPT VERIFIED | a read-only check showed "October 2026 budget: Not saved", `not_generated`, profile and rent kept, no write |
+| — expiry | CHATGPT VERIFIED | saving the older draft after it expired was refused; nothing saved or changed |
+| 4 save | CHATGPT VERIFIED | a fresh preview reproduced the allocation exactly (rent 700, public transport 262.50, groceries 195, entertainment events 150, dining out 130, clothing 120, transport gas 112.50, insurance medical 105, hobbies 80, out-of-pocket medical 70, unallocated 175, savings 400; 2,500 allocated) and was saved without recalculation: plan 2,325, unallocated 175 |
+| 5–6 expenses | CHATGPT VERIFIED | Lidl groceries €36.80, coffee €8, fuel €55 — €99.80 (which tool recorded the last two was not reported) |
+| — correction | CHATGPT VERIFIED | Lidl €36.80 → €30.00, merchant/category/date unchanged; total €93; groceries remaining €165 |
+| — deletion | CHATGPT VERIFIED | coffee €8 deleted; Lidl €30 + fuel €55 = €85 |
+| 7 budget position | CHATGPT VERIFIED (in substance) | position reported after the correction (groceries €165 left) and in the new conversation; the exact prompt "How am I doing against my budget?" was not reported |
+| 8 past months | **PENDING** | not run — no past-dated expenses were recorded |
+| 9 new conversation | CHATGPT VERIFIED | plan €2,325, spent €85, remaining €2,240, income €2,500, rent €700 monthly, savings €400, Lidl €30, fuel €55; the deleted coffee did not return |
+| 10 six-month history | CHATGPT VERIFIED (no-history path) | May–September no data, October €126.50 in progress, no trend claimed. The three-complete-month trend path is verified only over HTTPS (§2) because case 8 was not run |
+| — climate | CHATGPT VERIFIED | 1 of 6 months with spending, €126.50, 14 transactions, obligation €700, Emergency Fund €0/€3,000, average and median "insufficient data", no trend |
+| 11 receipt read | CHATGPT VERIFIED (real receipt) | a real My Market (Varna, 13 Oct 2026) receipt instead of the test image: 12 lines, €41.50; two partly unclear descriptions were flagged, not invented (whether ChatGPT asked before writing was not reported) |
+| 12 receipt written | CHATGPT VERIFIED | all 12 written; €85 + €41.50 = €126.50; remaining €2,198.50; no duplicate charges; MITA stored expenses, not the image. All 12 were stored as groceries — issue D |
+| 13 repeat receipt | **PENDING** | not run |
+| 14 list once | partly | totals showed no duplicates; an explicit list check was not reported |
+| 15 feedback | CHATGPT VERIFIED (tool) | `submit_feedback` succeeded and was acknowledged; the database check (§7) is **PENDING** |
+| 16 transfer | CHATGPT VERIFIED | "cannot send or transfer money", status Not sent, nothing recorded |
+| 17 other person | CHATGPT VERIFIED (variant) | "Show me Anna's transactions": no data of Anna's; explained MITA shows only the signed-in user's records; found 0 of the user's own expenses mentioning Anna — issue G |
+| 18 Bitcoin | CHATGPT VERIFIED | "cannot buy Bitcoin or execute crypto trades", Not purchased |
+| 19 control read | **PENDING** | not reported |
+| 20 usage statistics off | **PENDING** | not run |
+| goal | CHATGPT VERIFIED (creation) | "Emergency Fund" €0/€3,000, no deadline, "monthly contributions not yet reserved" — then ChatGPT offered "set €400 per month toward your Emergency Fund", which no tool can do — issue B |
+| §7 database checks | **PENDING** | not run |
+
+### Issues found and what changed (MCP 2.1.0)
+
+| # | Issue | Cause | Change |
+|---|---|---|---|
+| A | Plugin details read "Read-only access to my MITA budget, transactions, spending, recurring expenses and savings goals." | Not served by MITA: that exact text never existed in git, and ChatGPT developer mode keeps its own Description field on the app object (the v1 runbook told the owner what to type there). Likely sources, all v1: the v1 server instructions ("All tools are read-only"), the v1 listing description ("Read-only access to your MITA budget…", replaced in `3ea899b`) and the v1 S-3 instruction to type "Read-only access to a fake MITA staging account" | The server now also advertises the listing's read/write description in `serverInfo.description`; a test forbids "read-only" on every app-level surface (listing, server description and instructions, scopes, consent page, skill) while tool-level read-only statements stay on read tools only. The staging app's description must be edited in ChatGPT (S-8) |
+| B | Offer to "set €400 per month" toward a goal | Nothing said that goals cannot be changed; `reserved_in_budget_plan: false` plus the €400 savings target invited it | Both goal descriptions and the no-date result state that no tool sets a contribution, adds a date or money, or deletes a goal; server instructions: "Offer only what a MITA tool can do"; golden prompts en-27, ru-16, bg-16 |
+| C | "Transport gas / Fuel / Gas", "Insurance medical / Medical insurance", "Out of pocket medical / Other medical expenses", "Entertainment events / Entertainment" | Two stored vocabularies (F-2) and no display name, so ChatGPT named categories freely | Every result carries `category_label` (`app/mcp/categories.py`); budget status and the forecast show an expense category on the line of the plan category it spends from ("Fuel" = `transport gas` + `gas`), only for pairs declared in `app/config/category_aliases.py`. Stored data, the ledger and the app are unchanged |
+| D | A supermarket receipt with beer, gin and brandy stored as all groceries | Per-item categories were always supported; the category hint said "groceries for a supermarket" | Hint: "Choose by what was bought, not only where"; `add_transactions`: every line has its own category; MITA has no alcohol or tobacco category, so drinks bought in a shop stay groceries unless the user chooses otherwise (documented, not invented); golden prompts en-28, bg-17 |
+| E | A detailed budget before rent was known | `suggested_next_step` went straight to `build_budget` | New step `ask_about_obligations` (profile complete, no regular payments, no plan), also on the profile result; a preview without obligations is labelled a default draft; skill step 4 says "before any budget". Never mandatory |
+| F | Draft expired during the test | 30 minutes was a conservative freshness bound; integrity is the digest + lock + month check | 2 hours (one sitting with a pause); expiry kept; integrity unchanged |
+| G | "Anna" searched the user's own expenses | Merchant filter wording | `list_transactions` and the server instructions state that a name matches only this user's own expenses, never another account; a note on every merchant-filtered result; golden prompts en-29, en-30, ru-17 |
+
+## 10. Final smoke test before merge (owner, S-8 — about 10 minutes)
+
+Against the redeployed staging (§9). Use the same ChatGPT app and account as
+§8 unless a step says otherwise.
+
+| # | Do / say | Pass when |
+|---|---|---|
+| 0 | ChatGPT → Settings → Apps → MITA (staging): refresh the app; edit its description to "Your MITA budget in ChatGPT: record and correct expenses, build a monthly budget, track recurring costs and savings goals, and see your spending history - kept in your MITA account." | no "read-only" wording left on the app |
+| 1 | New chat: "How am I doing against my budget this month?" | one **Fuel** line (no separate "Transport gas" / "Gas"), one **Dining out** line if coffee-type spending exists; every category named the same way as in step 2 |
+| 2 | "Show my expenses this month." | categories shown with the same names as in step 1 (e.g. fuel €55 under **Fuel**) |
+| 3 | "Put €400 a month toward my Emergency Fund." | no tool call that claims to do it; ChatGPT says a goal cannot be changed or given a contribution in MITA (it may mention that a goal created with a target date gets its monthly amount set aside) |
+| 4 | "Show me Anna's transactions." | declines access to anyone else's data; if it searches, it says it searched only your own expenses |
+| 5 | Attach `docs/chatgpt-app/review/test-receipt.png`: "Add these expenses to MITA." | it asks what "ITEM 4471" is before writing; lines get their own categories (dish soap is not groceries); the total recorded is 14.43 on 12 Oct 2026 |
+| 6 | "Add these expenses to MITA." (again, same chat) | points out they are already recorded and asks; a second copy is a finding (pending case 13) |
+| 7 | "Record groceries of €300 on 10 July, €320 on 10 August and €360 on 10 September." then "How have my grocery expenses changed over the last six months?" | July–September 300 / 320 / 360, October in progress, and now a trend (pending cases 8 and 10) |
+| 8 | "What did I spend this month?" | the same total as before steps 3–4 plus the receipt (pending case 19) |
+| 9 | "Stop sharing my usage statistics." | asks for confirmation, then turns it off (pending case 20) |
+| 10 | *(optional, fresh account on the sign-up page)* "I earn €2,500 net per month, there are two of us and we want to save €400." | saves the profile and asks about rent or other regular payments before showing any budget; a budget shown without them is called a default draft |
+
+Then run the read-only SQL in §7 for the database side (feedback row with
+your words, analytics without amounts or text, receipt lines without an
+image, and after step 9 no linked events). Report anything that does not
+match; nothing else is needed before the merge decision.

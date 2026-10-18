@@ -251,6 +251,10 @@ async def run(base: str, database_url: Optional[str]) -> None:
                 },
             )
             check("profile saved and complete", profile["profile_complete"] is True)
+            check(
+                "asks about regular payments before a first budget",
+                profile["suggested_next_step"] == "ask_about_obligations",
+            )
             rent = await s.call(
                 "add_recurring_expense",
                 {
@@ -320,6 +324,17 @@ async def run(base: str, database_url: Optional[str]) -> None:
             check(
                 "batch recorded",
                 batch["count"] == 2 and batch["month_to_date_spent"] == "99.80",
+            )
+            lines = (await s.call("get_budget_status"))["categories"]
+            labels = [c["category_label"] for c in lines]
+            fuel = [c for c in lines if c["category_label"] == "Fuel"]
+            check(
+                "one budget line per category name (fuel combined)",
+                len(labels) == len(set(labels))
+                and len(fuel) == 1
+                and "gas" in fuel[0]["category_codes"]
+                and fuel[0]["spent"] == "55.00",
+                str(labels),
             )
             for back, amount in ((3, "300.00"), (2, "320.00"), (1, "360.00")):
                 await s.call(
@@ -395,6 +410,25 @@ async def run(base: str, database_url: Optional[str]) -> None:
                 },
             )
             check("goal title kept exactly", goal["title"] == "Emergency fund — София")
+            undated = await s.call(
+                "create_savings_goal",
+                {
+                    "title": "Holiday",
+                    "target_amount": 1000,
+                    "idempotency_key": uuid.uuid4().hex,
+                },
+            )
+            check(
+                "an undated goal says nothing is set aside and it cannot be changed",
+                undated["reserved_in_budget_plan"] is False
+                and any("cannot be changed" in n for n in undated["notes"]),
+            )
+            anna = await s.call("list_transactions", {"merchant": "Anna"})
+            check(
+                "a name filter searches only the user's own expenses",
+                anna["matching_count"] == 0
+                and any("own recorded expenses" in n for n in anna["notes"]),
+            )
             sent = await s.call(
                 "submit_feedback",
                 {

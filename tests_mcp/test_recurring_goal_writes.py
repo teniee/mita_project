@@ -99,6 +99,7 @@ async def test_rent_on_the_first_is_scheduled_for_the_next_first(m, sofia, conne
         "status": "created",
         "name": "Rent",
         "category": "rent",
+        "category_label": "Rent",
         "amount": "700.00",
         "currency": "EUR",
         "recurrence": "monthly",

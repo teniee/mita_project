@@ -168,6 +168,8 @@ def test_skill_names_only_published_tools():
         "missing_fields",
         "draft_token",
         "insufficient_data",
+        "category_label",  # a result field
+        "ask_about_obligations",  # a suggested_next_step value
     }
     assert named and named <= set(PUBLISHED_TOOLS), named - set(PUBLISHED_TOOLS)
 

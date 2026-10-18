@@ -130,6 +130,8 @@ async def test_budget_status_exact_and_ignores_stale_plan_cache(m, ledger_user):
     rows = {c["category"]: c for c in data["categories"]}
     assert rows["rent"] == {
         "category": "rent",
+        "category_label": "Rent",
+        "category_codes": ["rent"],
         "planned": "1200.00",
         "spent": "1200.00",
         "remaining": "0.00",
@@ -138,6 +140,8 @@ async def test_budget_status_exact_and_ignores_stale_plan_cache(m, ledger_user):
     }
     assert rows["food"] == {
         "category": "food",
+        "category_label": "Food",
+        "category_codes": ["food"],
         "planned": "310.00",
         "spent": "60.00",
         "remaining": "250.00",
@@ -146,6 +150,8 @@ async def test_budget_status_exact_and_ignores_stale_plan_cache(m, ledger_user):
     }
     assert rows["shopping"] == {
         "category": "shopping",
+        "category_label": "Shopping",
+        "category_codes": ["shopping"],
         "planned": "0.00",
         "spent": "30.00",
         "remaining": "-30.00",
@@ -231,6 +237,7 @@ async def test_list_transactions_fields_order_and_totals(m, ledger_user):
             "amount",
             "currency",
             "category",
+            "category_label",
             "merchant",
         }
         assert item["ref"].startswith("tx_")  # opaque: no database id visible

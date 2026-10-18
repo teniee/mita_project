@@ -28,6 +28,18 @@ def money_field(description: str) -> object:
     return Field(description=description, pattern=MONEY_PATTERN)
 
 
+CATEGORY_LABEL_DESCRIPTION = (
+    "MITA's display name for this category (app/mcp/categories.py). Show it "
+    "exactly as given, translated consistently if you answer in another "
+    "language; never rename or merge categories yourself. `category` is the "
+    "stored code."
+)
+
+
+def category_label_field() -> object:
+    return Field(description=CATEGORY_LABEL_DESCRIPTION)
+
+
 # --- get_profile -----------------------------------------------------------
 
 
@@ -65,6 +77,7 @@ class TransactionOut(_Out):
     amount: Money = money_field("Expense amount (positive).")
     currency: str = Field(description="Currency recorded on the transaction.")
     category: str
+    category_label: str = category_label_field()
     merchant: Optional[str] = Field(description="Merchant, if the user recorded one.")
 
 
@@ -101,10 +114,11 @@ class TransactionsOut(_Out):
 class CategorySpendOut(_Out):
     category: str = Field(
         description=(
-            "MITA's category name, as recorded (for example 'subscriptions'). Report "
-            "it under this name; do not rename it or merge it with other categories."
+            "MITA's stored category code, as recorded (for example 'subscriptions'). "
+            "Do not rename it or merge it with other categories."
         )
     )
+    category_label: str = category_label_field()
     total: Money = money_field("Total spent in this category in the range.")
     transaction_count: int
     share_percent: str = Field(
@@ -167,7 +181,19 @@ class FinancialSummaryOut(_Out):
 
 
 class CategoryBudgetOut(_Out):
-    category: str
+    category: str = Field(
+        description=(
+            "Stored code of this budget line: the plan category when the line "
+            "combines a plan category with the expenses recorded for it."
+        )
+    )
+    category_label: str = category_label_field()
+    category_codes: List[str] = Field(
+        description=(
+            "Every stored category this line adds up — e.g. plan 'transport gas' "
+            "and expenses recorded as 'gas' are one line, 'Fuel'."
+        )
+    )
     planned: Money = money_field("Budget allocated to this category for the month.")
     spent: Money = money_field("Recorded spending in this category this month.")
     remaining: Money = money_field("planned minus spent; negative means over budget.")
@@ -203,7 +229,10 @@ class BudgetStatusOut(_Out):
 
 
 class CategoryRiskOut(_Out):
-    category: str
+    category: str = Field(
+        description="Stored code of the budget line (see get_budget_status)."
+    )
+    category_label: str = category_label_field()
     monthly_planned: Money = money_field("Category allocation for the month.")
     monthly_spent: Money = money_field("Category spending so far.")
     daily_pace: Money = money_field("Average spent per elapsed day.")
@@ -274,6 +303,7 @@ class GoalProjectionOut(_Out):
 class GoalOut(_Out):
     title: str
     category: Optional[str]
+    category_label: str = category_label_field()
     status: Literal["active", "paused", "completed", "cancelled"]
     priority: Optional[str]
     target_amount: Money = money_field("Goal target.")
@@ -298,6 +328,7 @@ class GoalsOut(_Out):
 
 class ScheduledExpenseOut(_Out):
     category: str
+    category_label: str = category_label_field()
     amount: Money = money_field("Scheduled amount.")
     merchant: Optional[str]
     due_date: dt.date = Field(
@@ -309,8 +340,11 @@ class ScheduledExpenseOut(_Out):
 
 
 class MarkedRecurringOut(_Out):
-    label: str = Field(description="Merchant if recorded, otherwise the category.")
+    label: str = Field(
+        description="Merchant if recorded, otherwise the category label."
+    )
     category: str
+    category_label: str = category_label_field()
     last_amount: Money = money_field("Amount of the most recent marked transaction.")
     last_date: dt.date
     occurrences_in_lookback: int
@@ -375,6 +409,22 @@ class KnownProfileOut(_Out):
     )
 
 
+NextStep = Literal[
+    "complete_profile",
+    "ask_about_obligations",
+    "build_budget",
+    "record_expenses",
+    "ready",
+]
+NEXT_STEP_DESCRIPTION = (
+    "complete_profile: ask for missing_fields. ask_about_obligations: before a "
+    "first budget, ask once whether the user has regular payments such as rent, "
+    "utilities, loans or subscriptions and save them with add_recurring_expense; "
+    "a budget previewed without them assumes there are none. build_budget: offer "
+    "preview_monthly_budget. record_expenses / ready: nothing to set up."
+)
+
+
 class SetupStatusOut(_Out):
     profile_complete: bool = Field(
         description="True when income, currency and timezone are known — enough to build a budget."
@@ -399,9 +449,7 @@ class SetupStatusOut(_Out):
     missing_fields: List[ProfileField] = Field(
         description="Profile fields MITA does not know yet. Ask only for these."
     )
-    suggested_next_step: Literal[
-        "complete_profile", "build_budget", "record_expenses", "ready"
-    ]
+    suggested_next_step: NextStep = Field(description=NEXT_STEP_DESCRIPTION)
     known: KnownProfileOut = Field(
         description="Values MITA already has. Do not ask the user for these again."
     )
@@ -414,6 +462,7 @@ class ProfileUpdateOut(_Out):
     profile: KnownProfileOut
     profile_complete: bool
     missing_fields: List[ProfileField]
+    suggested_next_step: NextStep = Field(description=NEXT_STEP_DESCRIPTION)
     notes: List[str]
 
 
@@ -426,6 +475,7 @@ class RecordedTransactionOut(_Out):
     amount: Money = money_field("Amount recorded.")
     currency: str
     category: str
+    category_label: str = category_label_field()
     merchant: Optional[str] = Field(description="Merchant exactly as recorded.")
 
 
@@ -470,6 +520,7 @@ class RecurringCreatedOut(_Out):
     )
     name: str = Field(description="The name exactly as the user gave it.")
     category: str
+    category_label: str = category_label_field()
     amount: Money = money_field("Amount each time it is due.")
     currency: str
     recurrence: Literal["monthly", "weekly"]
@@ -483,6 +534,7 @@ class GoalCreatedOut(_Out):
     status: Literal["created", "already_created"]
     title: str = Field(description="The title exactly as the user gave it.")
     category: str
+    category_label: str = category_label_field()
     currency: str
     target_amount: Money = money_field("Goal target.")
     saved_amount: Money = money_field("Already saved, as the user stated.")
@@ -498,7 +550,9 @@ class GoalCreatedOut(_Out):
     reserved_in_budget_plan: bool = Field(
         description=(
             "True when MITA set aside the daily amounts for this goal in the "
-            "current month's plan."
+            "current month's plan. Always false for a goal without a target date: "
+            "only a target date makes MITA reserve a monthly amount, and a goal "
+            "cannot be given one (or a contribution) after it is created."
         )
     )
     notes: List[str]
@@ -510,6 +564,7 @@ class GoalCreatedOut(_Out):
 class ObligationOut(_Out):
     name: Optional[str] = Field(description="Name the user gave the obligation.")
     category: str
+    category_label: str = category_label_field()
     amount: Money = money_field("Amount counted in this month.")
     basis: str = Field(
         description="How it was counted, e.g. 'monthly', 'weekly × 4 Mondays', 'one-time on 2026-10-20'."
@@ -517,7 +572,10 @@ class ObligationOut(_Out):
 
 
 class AllocationOut(_Out):
-    category: str = Field(description="MITA plan category, as the engine names it.")
+    category: str = Field(
+        description="MITA plan category code, as the engine names it."
+    )
+    category_label: str = category_label_field()
     amount: Money = money_field("Monthly allocation.")
     layout: Literal["fixed", "spread", "clustered"] = Field(
         description="How MITA spreads it over the days: on one day, across weekdays, or on a few days."
@@ -582,7 +640,7 @@ class BudgetPreviewOut(_Out):
     draft_token: str = Field(
         description=(
             "Pass exactly this to save_monthly_budget after the user confirms. It "
-            "only saves this exact plan, expires in 30 minutes, and stops working "
+            "only saves this exact plan, expires after 2 hours, and stops working "
             "if the user's income, savings target or obligations change."
         )
     )
@@ -606,7 +664,8 @@ MonthStatus = Literal["before_tracking", "recorded", "in_progress"]
 
 
 class CategoryAmountOut(_Out):
-    category: str = Field(description="MITA category name, as recorded.")
+    category: str = Field(description="MITA category code, as recorded.")
+    category_label: str = category_label_field()
     total: Money = money_field("Recorded spending in this category.")
     transaction_count: int
 
@@ -645,6 +704,7 @@ class TrendOut(_Out):
 
 class CategoryTrendOut(_Out):
     category: str
+    category_label: str = category_label_field()
     trend: TrendOut
 
 
@@ -654,6 +714,9 @@ class SpendingHistoryOut(_Out):
     currency: str
     timezone: str
     category: Optional[str] = Field(description="The category filter, if any.")
+    category_label: Optional[str] = Field(
+        description="Display name of the category filter, if any."
+    )
     months_requested: int
     months_with_data: int = Field(
         description="Months with at least one recorded expense."

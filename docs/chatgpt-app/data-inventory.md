@@ -20,7 +20,7 @@ need a legal decision are marked **[OWNER]**.
 | Feedback message, type, area, rating, triage status/theme/notes | `product_feedback` | improving MITA | the user, explicitly | **[OWNER]** (no purge today) | the user sees their own words only in ChatGPT | type, area, rating only | personal text | deleted (cascade) |
 | Analytics identity link (user id → pseudonymous key) | `analytics_identities` | delete a user's analytics with them | MITA | until opt-out or account deletion | no | — | pseudonymous | deleted (cascade) |
 | Usage events: tool, feature, intent, status, error class, latency, locale, conversation key, allow-listed properties | `analytics.events` | product decisions, reliability | MITA, only if consented (otherwise unlinked) | **[OWNER]** (no purge today) | no | — | pseudonymous usage | linked rows deleted (cascade); unlinked rows remain |
-| Opaque references and draft tokens handed to ChatGPT | not stored | correct an expense; save a reviewed budget | MITA (AES-SIV / HMAC, user-bound) | refs stable; drafts 30 min | in tool results | no | low | invalid without the account |
+| Opaque references and draft tokens handed to ChatGPT | not stored | correct an expense; save a reviewed budget | MITA (AES-SIV / HMAC, user-bound) | refs stable; drafts 2 hours | in tool results | no | low | invalid without the account |
 | Request logs: method, path, status, latency, request id, tool, outcome, hashed subject | stdout (Railway logs) | operations | MITA | Railway log retention **[OWNER]** | no | no | low | not linked by e-mail; subject hash only |
 
 ## Never stored

@@ -42,6 +42,13 @@ context loaded separately (2 statements, not counted below).
 No N+1 pattern: every tool is 1–6 statements regardless of data size. The
 p99 tail (25–35 ms) is cold cache on the first sample per user.
 
+**Re-run 2026-10-18 (MCP 2.1.0, same dataset, `--runs 2`).** Budget status
+gained one statement (5: the redistribution note reads `plan_json` on the
+same `(user_id, date)` index; the summary skips it and stays at 5); the
+forecast regroups lines in Python. p95: budget status 11.1 ms, forecast 10.0,
+summary 11.7, climate 22.2, every other tool ≤ 14.2 ms — within run-to-run
+noise of the table above on a shared laptop.
+
 ## EXPLAIN (ANALYZE, BUFFERS) — heaviest statement per operation
 
 | Operation | Execution | Plan |
