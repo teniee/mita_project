@@ -27,10 +27,11 @@ ChatGPT results are in `staging-acceptance-v2.md` (§2–§5, §8):
 | Item | Status |
 |---|---|
 | S-6 reconnect MITA staging in ChatGPT developer mode | DONE — CHATGPT VERIFIED (2026-10-18): plugin object recreated with DCR, all five scopes discovered, writes work |
-| S-7 real-ChatGPT acceptance v2 | MOSTLY CHATGPT VERIFIED (§8). The database side of the feedback case was verified read-only on 2026-10-19 (§9). Still pending, folded into S-8: case 8 (past months → trend), 13 (same receipt twice), 19 (control read), 20 (usage statistics off) and the opt-out database check |
-| S-8 final smoke test of MCP 2.1.0 | NOT YET — `staging-acceptance-v2.md` §10 (steps A–J, about 10 minutes) against deployment `87d26668` (`79efb1d`), which passed every automated public check (§9). Step A: paste the v2 description into the ChatGPT app's own Description field — MITA cannot change that field |
+| S-7 real-ChatGPT acceptance v2 | DONE — CHATGPT VERIFIED (§8); the cases it left open were completed in S-8 |
+| S-8 final real-ChatGPT smoke test of MCP 2.1.0 | DONE — CHATGPT VERIFIED / STAGING VERIFIED (2026-10-19, `staging-acceptance-v2.md` §11): B, C, D, E, H, I, J, two real receipts and a repeated receipt with no duplicate; the opt-out verified in the database. **Staging acceptance is closed.** The synthetic `test-receipt.png` was not owner-run (repository coverage only). The ChatGPT app object's own Description field is owner-managed and moves to the listing/onboarding phase |
 
-Keep staging running until production is live; teardown is in staging.md.
+Staging acceptance is closed; production is untouched. Keep staging running
+until production is live; teardown is in staging.md.
 
 ## Step 1 — Rotate historically exposed credentials
 

@@ -1,7 +1,8 @@
 # Staging acceptance v2 — MITA free v1 in ChatGPT (2026-10-13, real ChatGPT 2026-10-18, MCP 2.1.0 2026-10-19)
 
-Current staging: `79efb1d`, deployment `87d26668-4051-42c3-99b7-2036d0de42cf`,
-MCP 2.1.0 — §9. §1–§5 record the earlier `461abcf` (2.0.0) deployment.
+**STAGING ACCEPTANCE CLOSED (2026-10-19)** — §11. Current staging: `79efb1d`,
+deployment `87d26668-4051-42c3-99b7-2036d0de42cf`, MCP 2.1.0 (§9). §1–§5
+record the earlier `461abcf` (2.0.0) deployment. Production was never touched.
 
 v1 (8 read-only tools) results stay in `staging-acceptance.md`. This file is
 v2: 22 tools, sign-up, writes, budget preview/save, history, feedback and
@@ -231,22 +232,22 @@ v1 client was registered with the two read scopes (backend-findings F-7).
 | — correction | CHATGPT VERIFIED | Lidl €36.80 → €30.00, merchant/category/date unchanged; total €93; groceries remaining €165 |
 | — deletion | CHATGPT VERIFIED | coffee €8 deleted; Lidl €30 + fuel €55 = €85 |
 | 7 budget position | CHATGPT VERIFIED (in substance) | position reported after the correction (groceries €165 left) and in the new conversation; the exact prompt "How am I doing against my budget?" was not reported |
-| 8 past months | **PENDING** | not run — no past-dated expenses were recorded |
+| 8 past months | done in S-8 (§11, H) | not run in this session; the owner recorded July–September in S-8 |
 | 9 new conversation | CHATGPT VERIFIED | plan €2,325, spent €85, remaining €2,240, income €2,500, rent €700 monthly, savings €400, Lidl €30, fuel €55; the deleted coffee did not return |
 | 10 six-month history | CHATGPT VERIFIED (no-history path) | May–September no data, October €126.50 in progress, no trend claimed. The three-complete-month trend path is verified only over HTTPS (§2) because case 8 was not run |
 | — climate | CHATGPT VERIFIED | 1 of 6 months with spending, €126.50, 14 transactions, obligation €700, Emergency Fund €0/€3,000, average and median "insufficient data", no trend |
 | 11 receipt read | CHATGPT VERIFIED (real receipt) | a real My Market (Varna, 13 Oct 2026) receipt instead of the test image: 12 lines, €41.50; two partly unclear descriptions were flagged, not invented (whether ChatGPT asked before writing was not reported) |
 | 12 receipt written | CHATGPT VERIFIED | all 12 written; €85 + €41.50 = €126.50; remaining €2,198.50; no duplicate charges; MITA stored expenses, not the image. All 12 were stored as groceries — issue D |
-| 13 repeat receipt | **PENDING** | not run |
-| 14 list once | partly | totals showed no duplicates; an explicit list check was not reported |
+| 13 repeat receipt | done in S-8 (§11) | the same real My Market receipt, uploaded again: nothing new recorded |
+| 14 list once | done in S-8 (§11, C) | the month listed 14 expenses once each; totals unchanged |
 | 15 feedback | CHATGPT VERIFIED (tool); database side STAGING VERIFIED (§9) | `submit_feedback` succeeded and was acknowledged. Read-only check 2026-10-19: one `product_feedback` row — type `confusing`, area `transactions`, source `chatgpt`, status `new`, message "Transaction categorization in MITA is confusing." (ChatGPT's wording of the request); its analytics event carries only `type` and `feature_area` |
 | 16 transfer | CHATGPT VERIFIED | "cannot send or transfer money", status Not sent, nothing recorded |
 | 17 other person | CHATGPT VERIFIED (variant) | "Show me Anna's transactions": no data of Anna's; explained MITA shows only the signed-in user's records; found 0 of the user's own expenses mentioning Anna — issue G |
 | 18 Bitcoin | CHATGPT VERIFIED | "cannot buy Bitcoin or execute crypto trades", Not purchased |
-| 19 control read | **PENDING** | not reported |
-| 20 usage statistics off | **PENDING** | not run |
+| 19 control read | done in S-8 (§11, I) | |
+| 20 usage statistics off | done in S-8 (§11, J) | tool, host confirmation and database side verified |
 | goal | CHATGPT VERIFIED (creation) | "Emergency Fund" €0/€3,000, no deadline, "monthly contributions not yet reserved" — then ChatGPT offered "set €400 per month toward your Emergency Fund", which no tool can do — issue B |
-| §7 database checks | partly done (§9) | feedback row, analytics allow-list, no stored receipt image: verified 2026-10-19. The opt-out check waits for S-8 step J |
+| §7 database checks | done (§9, §11) | feedback row, analytics allow-list, no stored receipt image (§9); the opt-out (§11) |
 
 ### Issues found and what changed (MCP 2.1.0)
 
@@ -278,6 +279,9 @@ v1 client was registered with the two read scopes (backend-findings F-7).
 | Temporary TCP proxy | opened for the checks above, removed; 3/3 connections refused afterwards |
 
 ## 10. Final smoke test (owner, S-8 — about 10 minutes)
+
+*Run by the owner on 2026-10-19; results in §11. Steps F–G were run with real
+receipts instead of the synthetic fixture.*
 
 Against deployment `87d26668` (MCP 2.1.0). Same ChatGPT app and account as §8.
 Before you start, refresh the app in ChatGPT developer mode so it loads the
@@ -334,3 +338,47 @@ SELECT (SELECT count(*) FROM analytics_identities i JOIN users u ON u.id = i.use
 
 Report anything that does not match. Nothing else is needed before the merge
 decision.
+
+## 11. S-8 results — STAGING ACCEPTANCE CLOSED (owner, real ChatGPT, 2026-10-19)
+
+Against deployment `87d26668` (`79efb1d`, MCP 2.1.0). As reported by the owner;
+nothing added.
+
+| Step | Result | Observed |
+|---|---|---|
+| A app description | MITA side VERIFIED; ChatGPT side owner-managed | MITA serves the read/write description (`serverInfo`, §9) and no app-level "read-only" text. The Description field of ChatGPT's own developer-mode app object is not controlled by MITA; no evidence it was edited — it belongs to the next listing/onboarding phase and does not block staging |
+| B budget | CHATGPT VERIFIED | October 2026 report, On track: spent €126.50 of €2,325.00, €2,198.50 remaining; one **Fuel** category, no separate Gas / Transport gas; consistent labels |
+| C expenses | CHATGPT VERIFIED | €126.50 across 14 expenses: Groceries €71.50, Fuel €55.00; the same names as in B |
+| D goal contribution | CHATGPT VERIFIED | did not claim a change; explained that the €400 monthly savings budget is not linked to the Emergency Fund, whose contribution stays unset, and that the MITA connection cannot update it; no money moved or reserved |
+| E another person | CHATGPT VERIFIED | searched only the owner's own records for "Anna" (0 found); stated MITA sees only the owner's account and cannot view Anna's accounts or history; nothing of anyone else exposed |
+| Real receipt | CHATGPT VERIFIED (§8) | My Market, Varna, 13 Oct 2026: 12 lines, €41.50 read by ChatGPT and recorded as expenses; no image stored |
+| Same real receipt again | CHATGPT VERIFIED | "Receipt already recorded in MITA": all 12 amounts matched recorded expenses (€41.50 of €41.50), 0 new expenses, October stayed €126.50 |
+| Second real receipt | CHATGPT VERIFIED | GamingGear.bg, Spartan Gear Dory, 11 Nov 2025: 59.00 BGN recorded as the printed €30.17, category Shopping (MITA's taxonomy has no electronics expense category), one item; correctly outside October 2026 |
+| H six-month trend | CHATGPT VERIFIED | May, June no data; July €300.00, August €320.00, September €360.00; October €71.50 in progress and not compared; MITA's finished-month comparison: September €360 is 16.1 % above the July–August average €310; complete-month average €326.67. ChatGPT also mentioned July → September +€60 / 20 %, alongside MITA's figure |
+| I control read | CHATGPT VERIFIED | October €126.50, 14 expenses, Groceries €71.50, Fuel €55.00, plan €2,325.00, €2,198.50 remaining — unchanged by the July–September entries, the November 2025 receipt and the negative tests |
+| J usage statistics off | CHATGPT VERIFIED + STAGING VERIFIED | ChatGPT explained the effect (stop collecting, delete linked statistics, finances unchanged), asked, the owner confirmed, ChatGPT's host confirmation was approved: "MITA usage analytics successfully disabled" |
+
+**Synthetic fixture.** `docs/chatgpt-app/review/test-receipt.png` (with the
+unclear "ITEM 4471") was not run by the owner and is not claimed as ChatGPT
+verified. Its behaviour is covered in the repository (per-line categories,
+mixed receipts, golden prompts en-28 and bg-17, `test_acceptance_fixes.py`);
+the receipt path itself was exercised in real ChatGPT with two real receipts.
+
+**Repeated receipt — what is guaranteed.** MITA's idempotency key makes a
+retried tool call write nothing new. A new, deliberate request is not
+deduplicated by content (two real €3.50 coffees are two expenses); here ChatGPT
+compared the receipt with the recorded expenses and wrote nothing. That is
+ChatGPT's judgement, not a backend guarantee.
+
+**Database side of J (read-only, 2026-10-19, through a temporary proxy that was
+removed afterwards — 3/3 connections refused):** alembic `0039`; the account
+holding the feedback row (exactly one) has `usage_analytics_enabled = false`
+(changed 16:10:12 UTC), 0 `analytics_identities` rows, 0 events under its
+pseudonymous key, 0 linked rows after the opt-out, and the opt-out call itself
+recorded once unlinked, as designed; 0 linked events anywhere without an
+identity. Finances unchanged: profile (income, timezone, currency, savings
+target, household size), the October plan (total 2,325.00), 14 October
+expenses totalling 126.50, one each in July–September and November 2025, the
+soft-deleted expense still deleted, the monthly rent and the Emergency Fund.
+The feedback row is kept (it is not usage statistics). 0 expenses store a
+receipt URL, in this account or any other.

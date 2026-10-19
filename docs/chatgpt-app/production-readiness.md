@@ -4,9 +4,11 @@ v1 (8 read-only tools) passed real-ChatGPT staging acceptance
 (staging-acceptance.md §5). v2 — free v1 read/write, 22 tools, migrations
 0038–0039 — is verified over public staging HTTPS and, by the owner, in real
 ChatGPT (staging-acceptance-v2.md §8, 2026-10-18). The issues that run found
-are fixed in MCP 2.1.0 (`79efb1d`), deployed to staging as `87d26668` and
-verified over public HTTPS on 2026-10-19 (§9); the final owner smoke test is
-S-8.
+are fixed in MCP 2.1.0 (`79efb1d`), deployed to staging as `87d26668`,
+verified over public HTTPS (§9) and in the owner's final real-ChatGPT smoke
+test S-8 (§11). **Staging is closed (2026-10-19). Production remains
+untouched. The next stage is launch/production preparation**, starting from
+the steps below; `HANDOFF.md` has the state and the merge warning.
 Production is untouched: no deploy, no variable or setting change, `main` not
 merged. **Every production step below needs the owner's explicit
 authorization**; owner click-paths and commands are in `OWNER_ACTIONS.md`
