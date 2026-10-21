@@ -45,6 +45,12 @@ All brand files are in `F:/adata/MITA FINANCE/brand/` (26 PNG files).
 - Bottom-left: Teal `#14B8A6` (T)
 - Bottom-right: Yellow `#FFD25F` (A)
 
+> The Figma **Brand Guidelines** (`512WdjnhPJXM8jeHKcg4g8`) are authoritative
+> where they differ from this section: the background variable is `#FFF9F0`
+> (the Flutter theme agrees), and each module of the logomark is a
+> letter-shaped geometric form, not a rounded square. Use the master vectors,
+> never a redraw. Inventory: `docs/brand/AUTH-UI-DESIGN.md`.
+
 ### Background
 The site is **LIGHT** — warm cream `#FFF8F0`. NOT dark. Glass cards use white `rgba(255,255,255,0.72)` with navy borders.
 
@@ -1241,3 +1247,38 @@ Rules:
   - `scripts/mcp/check_leaked_secrets.py` compares live variables with all 33
     committed secret fingerprints and prints names only. It is owner-run,
     because reading production variables is owner-only.
+- **The sign-in page is presentation over a fixed flow** (branch
+  `feat/chatgpt-auth-ui`, 2026-10). `app/mcp/auth/pages.py` renders
+  `/oauth/login` and its error pages; `login.py` owns the flow and must not
+  change for looks. Rules:
+  - **No JavaScript, nothing third-party** — the audit's XSS control. CSP
+    stays `default-src 'none'` with no `script-src`; `font-src 'self'` is
+    the only addition, for the three brand fonts in
+    `app/mcp/auth/static/fonts/` (OFL subsets built by
+    `scripts/mcp/build_auth_fonts.py`), served by exact name from
+    `/oauth/assets/` with a content version. Motion is CSS and stops under
+    `prefers-reduced-motion`. A show/hide-password toggle would need script:
+    deliberately absent.
+  - **Brand values come from Figma**, not the website section above:
+    `docs/brand/AUTH-UI-DESIGN.md`. The logo is the Figma master vector.
+  - **Copy states facts only** (`data-inventory.md`). Example prompts must map
+    to published tools and demo figures are labelled fictional;
+    `test_auth_ui.py` forbids "bank-grade", "encrypted", "free", "read-only"
+    and the like. Keep the tested security sentences: the forgery warning,
+    "cannot move money, make payments or connect to your bank" and the one
+    generic "Sign-in failed" for every cause.
+  - **The primary button is the first submit button**, so Enter signs in;
+    Cancel keeps `formnovalidate`. Errors mark their field (`aria-invalid`,
+    `aria-describedby="form-error"`); a sign-in failure marks both fields
+    identically whatever the cause.
+  - **Success is an immediate 302 to ChatGPT.** No "connected" interstitial:
+    it would put the code in an HTML body and claim a connection before
+    ChatGPT's token exchange. What to ask next is shown before submitting.
+  - **A refused `/authorize` in a browser is a page**
+    (`app/mcp/auth/browser_errors.py`, `Accept: text/html` only): same status,
+    `Retry-After` and redirects; JSON for everything else; never echoes the
+    request. A database or network failure on the sign-in page is a 503 page
+    with no code issued, logging the exception class only.
+  - Regressions: `tests_mcp/test_auth_ui.py` (in the CI security gate);
+    screenshots: `scripts/mcp/auth_ui_screenshots.py` →
+    `docs/chatgpt-app/review/auth-ui/`.

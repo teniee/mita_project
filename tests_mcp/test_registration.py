@@ -208,7 +208,7 @@ async def test_taken_and_new_addresses_both_pay_for_a_hash(mcp, seed, monkeypatc
 @pytest.mark.parametrize(
     "email,password,confirm,message",
     [
-        ("not-an-email", NEW_PASSWORD, None, "Enter a valid e-mail address."),
+        ("not-an-email", NEW_PASSWORD, None, "Enter a valid email address."),
         ("short@example.test", "Ab1!", None, "at least 8 characters"),
         ("nosymbol@example.test", "Abcdefgh123", None, "special characters"),
         ("mismatch@example.test", NEW_PASSWORD, "Other-Pass-2026!", "do not match"),

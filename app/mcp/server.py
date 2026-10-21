@@ -33,6 +33,8 @@ from starlette.types import ASGIApp
 
 from app.mcp import MCP_SERVER_DESCRIPTION, MCP_SERVER_NAME, MCP_SERVER_VERSION
 from app.mcp.analytics import TOOL_FEATURES, Analytics, AnalyticsSink, CallTelemetry
+from app.mcp.auth import pages
+from app.mcp.auth.browser_errors import BrowserAuthorizeErrors
 from app.mcp.auth.keys import SigningKeys, load_signing_keys
 from app.mcp.auth.login import ConsentPage
 from app.mcp.auth.provider import (
@@ -267,6 +269,28 @@ def build_service(
             consent.post
         )
 
+        # Fonts and the favicon of the pages above, by exact name only (no
+        # path from the request reaches the filesystem). URLs carry a content
+        # version, so the files are cached as immutable.
+        @server.custom_route(
+            f"{pages.ASSET_PREFIX}{{name}}", methods=["GET"], include_in_schema=False
+        )
+        async def oauth_asset(request: Request) -> Response:
+            asset = pages.ASSETS.get(request.path_params.get("name", ""))
+            if asset is None:
+                return PlainTextResponse(
+                    "", status_code=404, headers={"Cache-Control": "no-store"}
+                )
+            body, content_type = asset
+            headers = {
+                "Cache-Control": "public, max-age=31536000, immutable",
+                "X-Content-Type-Options": "nosniff",
+                "Cross-Origin-Resource-Policy": "same-origin",
+            }
+            if content_type == "image/svg+xml":
+                headers["Content-Security-Policy"] = "default-src 'none'"
+            return Response(body, media_type=content_type, headers=headers)
+
     app: Starlette = server.streamable_http_app(
         streamable_http_path="/mcp",
         stateless_http=True,
@@ -398,6 +422,8 @@ def build_service(
             per_minute=settings.oauth_requests_per_minute,
             trusted_hops=settings.trusted_proxy_hops,
         )
+        # Outside the limiter, so a browser's 429 is a page too.
+        wrapped = BrowserAuthorizeErrors(wrapped)
     return McpService(
         app=RequestLogMiddleware(wrapped),
         server=server,

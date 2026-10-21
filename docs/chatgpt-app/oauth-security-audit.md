@@ -139,7 +139,9 @@ sees exactly A's own figures on every tool:
 ### Consent / sign-in page
 | Concern | Behavior | Evidence |
 |---|---|---|
-| XSS | all client-supplied text escaped; no scripts; CSP `default-src 'none'`, no `script-src` | `test_consent_page_is_hardened` (`<script>` client name) |
+| XSS | all client-supplied text escaped; no scripts; CSP `default-src 'none'`, no `script-src` (since the 2026-10 redesign also `font-src 'self'`: three self-hosted fonts from `/oauth/assets/`, served by exact name only) | `test_consent_page_is_hardened` (`<script>` client name), `test_auth_ui.py` (no script or inline handler, no third-party URL, hostile client name in title and headings, asset names) |
+| Refused `/authorize` in a browser | the SDK's 400 (unknown client, untrusted redirect URI) and the limiter's 429 are shown as a page instead of JSON, for `Accept: text/html` only; status, `Retry-After` and every redirect unchanged; never echoes the request or `error_description` | `test_authorize_refusals_are_a_page_for_a_person_and_json_for_a_client`, `test_authorize_rate_limit_is_a_page_for_a_person` |
+| Database down on the sign-in page | 503 page, no code issued; only the exception class is logged (driver errors can carry statement parameters) | `test_a_database_outage_at_sign_in_issues_no_code_and_logs_no_data`, `test_a_database_outage_on_the_form_is_a_page` |
 | Clickjacking | `frame-ancestors 'none'`, `X-Frame-Options: DENY` | same |
 | Cookies | `__Host-`, `Secure`, `HttpOnly`, `SameSite=Strict`, max-age = pending TTL (10 min), deleted after success | same |
 | Caching / referrer | `Cache-Control: no-store`, `Referrer-Policy: no-referrer` | same |

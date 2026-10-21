@@ -298,7 +298,8 @@ jobs:
           PYTHONPATH=. /tmp/mcp-venv/bin/pytest -c tests_mcp/pytest.ini -q \
             tests_mcp/test_tool_contract.py tests_mcp/test_isolation.py \
             tests_mcp/test_auth.py tests_mcp/test_oauth_flow.py \
-            tests_mcp/test_oauth_adversarial.py tests_mcp/test_oauth_concurrency.py
+            tests_mcp/test_oauth_adversarial.py tests_mcp/test_oauth_concurrency.py \
+            tests_mcp/test_auth_ui.py
 
       - name: MCP tests (full suite)
         run: PYTHONPATH=. /tmp/mcp-venv/bin/pytest -c tests_mcp/pytest.ini tests_mcp -q
