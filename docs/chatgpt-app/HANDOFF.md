@@ -4,10 +4,10 @@
 
 | Item | State |
 |---|---|
-| Branch | `feat/chatgpt-auth-ui`, a child of `feat/chatgpt-plugin` @ `200c34d`; head `8c5116b` (`fc9aeeb` the UI, `8c5116b` import order) plus this documentation |
+| Branch | `feat/chatgpt-auth-ui`, a child of `feat/chatgpt-plugin` @ `200c34d`: `fc9aeeb` the UI, `8c5116b` import order, `ee388c0` tablet header + owner test, then documentation |
 | What changed | the `/oauth/login` sign-in / sign-up / consent page and its error pages (`app/mcp/auth/pages.py`, `browser_errors.py`, self-hosted fonts); `login.py` keeps the verified flow; scopes unchanged |
 | Design source | Figma Brand Guidelines `512WdjnhPJXM8jeHKcg4g8` → `docs/brand/AUTH-UI-DESIGN.md` |
-| Tests | MCP suite 513 passed (baseline 487 + 26 in `test_auth_ui.py`, now in the CI security gate); `e2e_v2.py` 77 checks and `e2e_http.py` both phases against a local server; axe-core 0 violations; text contrast ≥ 4.85:1 |
+| Tests | MCP suite 513 passed (baseline 487 + 26 in `test_auth_ui.py`, now in the CI security gate); CI run `39644016485` green on `ee388c0`; `e2e_v2.py` 77 checks and `e2e_http.py` both phases against a local server; axe-core 0 violations; text contrast ≥ 4.85:1 |
 | Screenshots | `docs/chatgpt-app/review/auth-ui/` (12, fictional data) |
 | Staging | see "Staging deployment" below |
 | Owner test | `auth-ui-owner-test.md` (≈ 5 minutes) |
@@ -19,12 +19,28 @@ branch joins `feat/chatgpt-plugin` (PR #287); launch preparation follows
 Plugin Directory submission, production MCP, production migrations, the
 analytics dashboard.
 
-### Staging deployment
+### Staging deployment — BLOCKED by a Railway outage
 
-Pending — Railway paused all builds and deployments (incident "Dashboard and
-API unavailable, builds paused", 2026-10-21 from ~17:00 UTC). The staging
-service source was re-pinned to `feat/chatgpt-auth-ui` @ `fc9aeeb` before the
-pause refused the build; staging still runs `87d26668` (`79efb1d`, MCP 2.1.0).
+Railway paused every build and deployment platform-wide (incident "Dashboard
+and API unavailable, builds paused", Major Outage, from about 17:00 UTC on
+2026-10-21; still paused at 21:36 UTC). Every attempt answered "Deploys have
+been paused temporarily".
+
+* The staging service's **source setting** is `feat/chatgpt-auth-ui` @
+  `ee388c0` (CI run `39644016485`: MCP, Backend and Mobile CI green; the MCP
+  job built the image and ran the container e2e).
+* The **running deployment** is unchanged: `87d26668` (`79efb1d`, MCP 2.1.0,
+  old page) — `/health` ok; `/oauth/assets/mita-mark.svg` 404 shows the new
+  code is not live.
+
+To finish once Railway resumes: re-authenticate the Railway MCP (`/mcp`);
+connect the source again with commit `ee388c0` (this triggers the build —
+"Redeploy" would rebuild `79efb1d`); wait for SUCCESS; check `/health`
+(2.1.0), `/oauth/assets/mita-mark.svg` (200), five scopes in
+`/.well-known/oauth-authorization-server`, the page in a browser
+(`scripts/mcp/auth_ui_screenshots.py --base-url <staging>`), then
+`scripts/mcp/e2e_v2.py --base-url <staging>` (without `--database-url` it
+leaves its synthetic account on staging); then the owner test.
 
 ## Previous phase: staging acceptance — CLOSED (2026-10-19)
 
