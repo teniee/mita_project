@@ -1284,4 +1284,7 @@ Rules:
     with no code issued, logging the exception class only.
   - Regressions: `tests_mcp/test_auth_ui.py` (in the CI security gate);
     screenshots: `scripts/mcp/auth_ui_screenshots.py` →
-    `docs/chatgpt-app/review/auth-ui/`.
+    `docs/chatgpt-app/review/auth-ui/`; owner check on staging:
+    `docs/chatgpt-app/auth-ui-owner-test.md`. Locally the flow needs HTTPS
+    (the CSRF cookie is `__Host-`/`Secure`): a self-signed localhost
+    certificate, never a relaxed cookie.

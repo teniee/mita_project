@@ -277,7 +277,7 @@ p,h1,h2,h3,ul,ol,dl,dd,figure{margin:0}
 .vh{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .i{width:20px;height:20px;flex:none}
 .page{max-width:1200px;margin:0 auto;padding:20px 16px 32px}
-.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:28px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;max-width:580px;margin:0 auto 28px}
 .brand{display:flex;align-items:center;gap:12px}
 .logo{display:block;height:30px;width:auto}
 .tag{font:700 .6875rem/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);padding:7px 10px;border:1px solid var(--line-2);border-radius:var(--pill);background:rgba(255,255,255,.6);white-space:nowrap}
@@ -394,7 +394,7 @@ p,h1,h2,h3,ul,ol,dl,dd,figure{margin:0}
 @media (min-width:640px){.page{padding:28px 32px 40px}.logo{height:34px}}
 @media (min-width:1040px){
 .layout{max-width:none;grid-template-columns:minmax(0,1fr) minmax(420px,484px);grid-template-areas:"hero auth" "demo auth" "ask auth" "how auth" "trust auth";grid-template-rows:auto auto auto auto 1fr;column-gap:64px;row-gap:48px}
-.auth{align-self:start}.hero{padding-top:12px}.lede{font-size:1.1875rem}.foot{max-width:none}
+.auth{align-self:start}.hero{padding-top:12px}.lede{font-size:1.1875rem}.foot,.topbar{max-width:none}
 .demo{max-width:600px}}
 @media (min-width:1040px) and (min-height:1020px){.auth{position:sticky;top:24px}}
 @media (prefers-reduced-motion:no-preference) and (min-width:1040px){
