@@ -48,12 +48,7 @@ from app.core.password_security import hash_password_async
 from app.db.models import McpUserProfile, User
 from app.mcp.analytics import Analytics
 from app.mcp.auth import pages
-from app.mcp.auth.pages import (
-    MAX_FIELD,
-    REGISTER,
-    UNAVAILABLE,
-    UNAVAILABLE_TITLE,
-)
+from app.mcp.auth.pages import MAX_FIELD, REGISTER, UNAVAILABLE, UNAVAILABLE_TITLE
 from app.mcp.auth.provider import MitaAuthorizationProvider
 from app.mcp.config import McpSettings
 from app.mcp.observability import subject_hash

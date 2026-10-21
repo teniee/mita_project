@@ -1169,6 +1169,9 @@ Rules:
   per record to stdout, keeps `app.*` at WARNING (domain code logs amounts at
   INFO, e.g. `compute_forecast`) and withholds message text from non-MCP
   loggers. Never log tokens, amounts, merchants, e-mails or tool arguments.
+- **Lint like CI before pushing:** `black --check`, `isort --check` AND `ruff
+  check` (MCP CI on `app/mcp tests_mcp scripts/mcp`, Backend CI on the whole
+  repo). isort rejects a parenthesised import that black accepts.
 - **MCP tests live in `tests_mcp/`** (own env: `pip install -r requirements-mcp-dev.txt`;
   run `PYTHONPATH=. pytest -c tests_mcp/pytest.ini tests_mcp`). Real PostgreSQL,
   one rolled-back transaction per test, tools driven through the SDK client
