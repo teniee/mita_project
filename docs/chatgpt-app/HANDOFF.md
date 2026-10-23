@@ -1,29 +1,30 @@
 # Handoff — MITA in ChatGPT (MCP), 2026-10-23
 
-## Current phase: sign-in / first-impression UI — waiting for owner design approval
+## Current phase: mobile-first sign-in + safe-daily fix live on staging — waiting for the owner's live review
 
 | Item | State |
 |---|---|
-| Branch | `feat/chatgpt-auth-ui`, a child of `feat/chatgpt-plugin` @ `200c34d`: `fc9aeeb` the UI, `8c5116b` import order, `ee388c0` tablet header + owner test, then documentation |
-| What changed | the `/oauth/login` sign-in / sign-up / consent page and its error pages (`app/mcp/auth/pages.py`, `browser_errors.py`, self-hosted fonts); `login.py` keeps the verified flow; scopes unchanged |
+| Branch | `feat/chatgpt-auth-ui`, a child of `feat/chatgpt-plugin` @ `200c34d`: `fc9aeeb` the UI, `8c5116b` import order, `ee388c0` tablet header + owner test, `1e24bf4` mobile-first page + safe-daily fix, then documentation |
+| What changed | the `/oauth/login` sign-in / sign-up / consent page, now phone-first (`app/mcp/auth/pages.py`); the forecast engine no longer counts set-aside money as spendable (`savings_set_aside`); `login.py`, scopes, CSP and headers unchanged |
 | Design source | Figma Brand Guidelines `512WdjnhPJXM8jeHKcg4g8` → `docs/brand/AUTH-UI-DESIGN.md` |
-| Tests | MCP suite 513 passed (baseline 487 + 26 in `test_auth_ui.py`, now in the CI security gate); CI run `39644016485` green on `ee388c0`; `e2e_v2.py` 77 checks and `e2e_http.py` both phases against a local server; axe-core 0 violations; text contrast ≥ 4.85:1 |
-| Screenshots | `docs/chatgpt-app/review/auth-ui/` (12, fictional data) |
-| Staging | `ee388c0` live since 2026-10-23 (deployment `33783139`), after the Railway-incident rotation — see below |
+| Tests | MCP suite 542 passed locally (25 new in `test_spendable_forecast.py`); CI run `39999435592` on `1e24bf4`: Backend and Mobile CI green, MCP CI stopped at its dependency audit — a new advisory against `opentelemetry-api` (below) — so its later steps did not run; on staging `e2e_v2.py` 77/77 and the live safe-daily check 45/45 |
+| Screenshots | `docs/chatgpt-app/review/auth-ui-v2/` (20 states + before/after, fictional data) |
+| Staging | `1e24bf4` live since 2026-10-23 18:02 UTC (deployment `dd8b4894`) — see below |
 | Owner test | `auth-ui-owner-test.md` (≈ 5 minutes) |
 | PR #287, `main`, production | untouched: PR head still `200c34d`, `main` `27ed25d`, no production deploy, migration, variable or secret change |
 
-Next: the owner reviews the page on staging. After approval, decide how the
-branch joins `feat/chatgpt-plugin` (PR #287); launch preparation follows
-`production-readiness.md`. Not started and not to start without the owner:
-Plugin Directory submission, production MCP, production migrations, the
-analytics dashboard.
+Next: the owner reviews the page live from ChatGPT on staging. Open owner
+decision: the `opentelemetry-api` lock bump (below). After approval, decide
+how the branch joins `feat/chatgpt-plugin` (PR #287); launch preparation
+follows `production-readiness.md`. Not started and not to start without the
+owner: Plugin Directory submission, production MCP, production migrations,
+the analytics dashboard.
 
-### Mobile-first refinement and safe-daily fix — owner-approved for staging (2026-10-23)
+### Mobile-first refinement and safe-daily fix — live on staging (2026-10-23)
 
 The owner approved the mobile-first direction but blocked it on a financial
 bug: `safe_daily_limit` counted the Savings line and goal reservations as
-spendable. Fixed locally (owner decision): the forecast engine now returns
+spendable. Fixed (owner decision): the forecast engine now returns
 `savings_set_aside` (what set-aside lines still hold) and
 `safe_daily_limit = (remaining_budget − savings_set_aside) / days_remaining`;
 `get_budget_status.today` leaves set-aside lines out. The status / projection
@@ -46,10 +47,41 @@ month for anyone who records rent on the 1st, because the pace counts rent.
   forecast-engine task, with future fixed / recurring bills.
 * Deferred technical debt: the mobile app's `/api/scheduled-expenses` impact
   still counts savings.
-* Approved for staging on 2026-10-23; the deployment is recorded in the
-  next documentation commit.
+* Approved for staging on 2026-10-23 and deployed as `1e24bf4` (below).
 
-### Staging deployment — live since 2026-10-23
+### Staging deployment of `1e24bf4` — live since 2026-10-23 18:02 UTC
+
+| Item | Result (2026-10-23) |
+|---|---|
+| Deployment | `dd8b4894-0c17-413e-920e-8a578ea2d831`, created 17:58:43 UTC, SUCCESS 18:02:06 UTC |
+| Source | `teniee/mita_project` @ `feat/chatgpt-auth-ui`, pinned to `1e24bf40202f1e5e5132c63d59d9146be6f49927` by connecting the source again with the SHA (a new build, not "Redeploy"); later commits are documentation only |
+| Health | `/health` ok, MCP 2.1.0; `/oauth/assets/mita-mark.svg` 200 |
+| Runtime | 1 replica; connected as `mita_mcp` over the private network; alembic `0039`, no migration ran |
+| Auth surface | compared with a capture of `ee388c0` taken just before the switch: status and security headers identical on 13 endpoints (sign-in, sign-up, error pages, metadata, assets), metadata identical, assets byte-identical; exactly `profile:read finance:read finance:write feedback:write profile:write`; PKCE `S256` only (plain and missing challenge refused); DCR; a foreign redirect refused at registration and at `/authorize`; no script, inline handler, `javascript:` URL or third-party resource |
+| Page | phone-first order, `<details>` permissions, pacing example and calendar, no "On track"; 20 states rendered from staging: 9 pixel-identical to `review/auth-ui-v2/`, 4 differ only below the noise threshold, 7 only by the optional support link (`MCP_SUPPORT_URL` is not set on staging) |
+| Safe daily, live | a synthetic account through the sign-up page: income 2,400, savings target 400, reviewed plan saved (1,785.34 over 13 lines, including the Savings line 400.00 and goal reservations 209.34 for a 900 goal due 30 November), expenses 85.60 on 23 October (Europe/Sofia, 8 days left). Forecast: `remaining_budget` 1,699.74, `savings_set_aside` 609.34, `safe_daily_limit` 136.30 = (1,699.74 − 609.34) / 8 — equal to the figure computed from the database rows (the old formula gave 212.47); `get_budget_status.today.planned` 97.05 = today's spending rows, the 41.44 set aside today left out; `status` still returned. Account deleted |
+| OAuth, in memory | code replay refused; refresh rotates and the rotated-out token is refused; the code of a real sign-in is refused with the wrong PKCE verifier; tools/list = the 22 published tools; granted scopes = the five (45/45 checks with the safe-daily ones) |
+| `e2e_v2.py` | 77/77 through the new sign-up page; account deleted |
+| Logs | 407 lines (deploy, HTTP and build of the new deployment, the old one during the switch, Postgres): no e-mail, token, JWT, key, DB URL, code, password, synthetic amount or merchant; none of the service's 50 secret values or the 2 Postgres credential values; no query string logged |
+| Cleanup | both synthetic accounts deleted with their data, plus this run's 3 token-less OAuth clients and the 22 anonymous analytics events of the account that did not opt in (the opted-in account's events cascade with it). Staging is back to 3 users, 27 transactions, 3 OAuth clients — one, registered 12:56 UTC without tokens, predates this run and was left as is. The temporary DB proxy was removed and its endpoint no longer serves Postgres |
+| Not re-run | `e2e_http.py` (its restart phase keeps tokens in a state file) and `staging_failure_modes.py`: covered by the checks above, or unaffected by this change |
+
+### CI dependency audit red on `1e24bf4` — not fixed, owner decision
+
+`pip-audit` on `requirements-mcp.lock` now reports GHSA-xcq7-p3pf-p88h /
+CVE-2026-114603 (published 2026-10-22, moderate, availability only):
+`opentelemetry-api` 1.45.0 parses a W3C `tracestate` with quadratic cost;
+fixed in 1.45.1. It arrives through `mcp` 2.2.0, whose OpenTelemetry
+middleware extracts trace context from each request's `_meta`, so it is
+reachable on authenticated `/mcp` calls. `1e24bf4` did not introduce it: the
+lock is unchanged, `ee388c0`'s image carries the same version, and its CI
+passed before the advisory existed. Because the audit fails first, CI skipped
+the MCP security gate, full suite, image build and container e2e for
+`1e24bf4`; the full suite passed locally (542). Fix: `opentelemetry-api==1.45.1`
+in `requirements-mcp.lock` (one line, or `scripts/mcp/lock_deps.sh`), CI,
+then a staging redeploy.
+
+### Staging deployment of `ee388c0` — 2026-10-23 12:12 UTC (superseded by `1e24bf4`)
 
 Railway paused all builds from 2026-10-21 (~17:00 UTC) until 2026-10-23 and
 disclosed a security incident (below); the build ran once Hobby builds were
@@ -58,7 +90,7 @@ back, after the staging credentials were rotated.
 | Item | Result (2026-10-23) |
 |---|---|
 | Deployment | `33783139-2cd3-49a8-9ec4-d166c7435404`, SUCCESS at 12:12 UTC (restarted in place 12:16 for the persistence check) |
-| Source | `teniee/mita_project` @ `feat/chatgpt-auth-ui`, pinned to `ee388c02cc51883f2cf56bd68ec35571a7cef8df` (later commits are documentation only) |
+| Source | `teniee/mita_project` @ `feat/chatgpt-auth-ui`, pinned to `ee388c02cc51883f2cf56bd68ec35571a7cef8df` (the commits after it were documentation only until `1e24bf4`) |
 | Health | `/health` ok, MCP 2.1.0; `/oauth/assets/mita-mark.svg` 200 (404 on the old build) |
 | Runtime | 1 replica; connected as `mita_mcp` over the private network; alembic `0039`, no migration ran |
 | OAuth metadata | exactly `profile:read finance:read finance:write feedback:write profile:write`; PKCE `S256` only; DCR; exact issuer |

@@ -1229,16 +1229,19 @@ Rules:
   over public HTTPS with `scripts/mcp/e2e_http.py` and
   `scripts/mcp/staging_failure_modes.py`; results in
   `docs/chatgpt-app/staging-acceptance.md`. Real-ChatGPT acceptance is owner-run.
-  Since 2026-10-23 it runs `ee388c0` (deployment `33783139`, MCP 2.1.0,
-  alembic 0039, the new sign-in page), deployed after every staging secret
-  and both database passwords were rotated following Railway's 2026-10-21
-  security incident (`staging.md` → "Credential rotation"). It is connected as
+  Since 2026-10-23 18:02 UTC it runs `1e24bf4` (deployment `dd8b4894`, MCP
+  2.1.0, alembic 0039: the mobile-first sign-in page, set-aside money out of
+  `safe_daily_limit`); every staging secret and both database passwords were
+  rotated earlier that day after Railway's 2026-10-21 security incident
+  (`staging.md` → "Credential rotation"). It is connected as
   `mita_mcp`, so a missing grant shows up there before production; staging
   acceptance closed 2026-10-19 (`docs/chatgpt-app/HANDOFF.md`);
   `scripts/mcp/e2e_v2.py` results are in `staging-acceptance-v2.md`, whose §6
   is the owner's real-ChatGPT script. Migrations reach staging only from the
   operator machine through a temporary TCP proxy — remove it afterwards and
-  verify the connection is refused.
+  verify Postgres no longer answers there (`delete-tcp-proxy` can lose its
+  response and still apply; the proxy host may still accept a bare TCP
+  handshake).
 - **Secret values never pass through a chat, a tool argument or a log.**
   Generate into a 0600 file (`generate_keys.py --out`), set with
   `railway variable set NAME --stdin --skip-deploys`, and inspect only through
