@@ -1,7 +1,7 @@
 """Review screenshots of the ChatGPT sign-in / sign-up / consent pages.
 
     python scripts/mcp/auth_ui_screenshots.py --base-url http://localhost:8765 \\
-        --out docs/chatgpt-app/review/auth-ui-v2
+        --out docs/chatgpt-app/review/auth-ui-v3
 
 Drives the real pages the way ChatGPT does: registers a client (DCR), opens
 /authorize with PKCE and follows it to /oauth/login. Phone and tablet shots
@@ -48,6 +48,7 @@ IPHONE = {
     "has_touch": True,
     "user_agent": IOS_UA,
 }
+IPHONE_PRO = dict(IPHONE, viewport={"width": 393, "height": 852})
 IPHONE_MAX = dict(IPHONE, viewport={"width": 430, "height": 932})
 TABLET = {
     "viewport": {"width": 768, "height": 1024},
@@ -111,7 +112,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", required=True, help="local or staging origin")
     parser.add_argument(
-        "--out", default=str(ROOT / "docs/chatgpt-app/review/auth-ui-v2")
+        "--out", default=str(ROOT / "docs/chatgpt-app/review/auth-ui-v3")
     )
     parser.add_argument(
         "--webp",
@@ -136,28 +137,33 @@ def main() -> None:
         page = webkit.new_context(**IPHONE, **tls).new_page()
         page.goto(url)
         settle(page)
-        page.screenshot(path=out / "01-mobile-first-screen.png")
+        page.screenshot(path=out / "01-mobile-390x844-first-screen.png")
         page.locator(".consent").screenshot(path=out / "03-mobile-consent.png")
         page.locator(".perm summary").click()
         page.locator(".consent").screenshot(path=out / "04-mobile-consent-details.png")
-        page.locator(".pace").screenshot(path=out / "05-mobile-pacing-calendar.png")
-        page.locator(".story").screenshot(path=out / "06-mobile-story.png")
+        page.locator(".snap").screenshot(path=out / "05-mobile-example.png")
+        page.locator(".calc summary").click()
+        page.locator(".hero").screenshot(path=out / "06-mobile-example-calculation.png")
         page.goto(url)
         settle(page)
         page.screenshot(path=out / "07-mobile-full-page.png", full_page=True)
         page.goto(register)
         settle(page)
-        page.screenshot(path=out / "02-mobile-create-account.png", full_page=True)
+        page.screenshot(
+            path=out / "02-mobile-390x844-create-account.png", full_page=True
+        )
 
-        page = webkit.new_context(**IPHONE_MAX, **tls).new_page()
-        page.goto(url)
-        settle(page)
-        page.screenshot(path=out / "08-mobile-430x932-first-screen.png")
+        for number, preset in ((8, IPHONE_PRO), (9, IPHONE_MAX)):
+            page = webkit.new_context(**preset, **tls).new_page()
+            page.goto(url)
+            settle(page)
+            size = "{width}x{height}".format(**preset["viewport"])
+            page.screenshot(path=out / f"{number:02d}-mobile-{size}-first-screen.png")
 
         page = webkit.new_context(**TABLET, **tls).new_page()
         page.goto(url)
         settle(page)
-        page.screenshot(path=out / "09-tablet-768x1024-first-screen.png")
+        page.screenshot(path=out / "10-tablet-768x1024-first-screen.png")
         webkit.close()
 
         chromium = p.chromium.launch()
@@ -167,7 +173,7 @@ def main() -> None:
             ).new_page()
             page.goto(url)
             settle(page)
-            number = (10, 11, 14)[index]
+            number = (11, 12, 14)[index]
             page.screenshot(
                 path=out / f"{number}-desktop-{width}x{height}-first-screen.png"
             )
@@ -177,11 +183,13 @@ def main() -> None:
         ).new_page()
         page.goto(register)
         settle(page)
-        page.screenshot(path=out / "12-desktop-1440x900-create-account.png")
+        page.screenshot(path=out / "13-desktop-1440x900-create-account.png")
         page.goto(url)
         settle(page)
-        page.locator(".story").screenshot(path=out / "13-desktop-pacing-calendar.png")
-        page.screenshot(path=out / "15-desktop-full-page.png", full_page=True)
+        page.screenshot(path=out / "16-desktop-full-page.png", full_page=True)
+        for summary in page.locator(".more summary").all():
+            summary.click()
+        page.locator(".more").screenshot(path=out / "15-desktop-more-details.png")
 
         page.goto(register)
         settle(page)
@@ -190,7 +198,7 @@ def main() -> None:
         page.fill("#password_confirm", "Fresh-Start-2025!")
         page.click("button[value=register]")
         settle(page)
-        page.locator(".auth-card").screenshot(path=out / "16-validation-error.png")
+        page.locator(".auth-card").screenshot(path=out / "17-validation-error.png")
 
         page.goto(url)
         settle(page)
@@ -198,15 +206,15 @@ def main() -> None:
         page.fill("#password", "Not-The-Password-1!")
         page.click("button[value=allow]")
         settle(page)
-        page.locator(".auth-card").screenshot(path=out / "17-sign-in-failed.png")
+        page.locator(".auth-card").screenshot(path=out / "18-sign-in-failed.png")
 
         page.goto(base + "/oauth/login?req=expired.0")
         settle(page)
-        page.screenshot(path=out / "18-expired-link.png")
+        page.screenshot(path=out / "19-expired-link.png")
 
         page.goto(base + "/authorize?client_id=unknown-client&response_type=code")
         settle(page)
-        page.screenshot(path=out / "19-connection-error.png")
+        page.screenshot(path=out / "20-connection-error.png")
 
         unavailable = pages.problem_page(
             pages.UNAVAILABLE_TITLE,
@@ -222,7 +230,7 @@ def main() -> None:
         )
         page.goto(base + "/review-unavailable")
         settle(page)
-        page.screenshot(path=out / "20-temporarily-unavailable.png")
+        page.screenshot(path=out / "21-temporarily-unavailable.png")
         chromium.close()
 
     if args.webp:

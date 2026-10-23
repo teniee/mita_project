@@ -6,7 +6,8 @@ What it adds and must keep true: labelled fields wired to their errors,
 password hints that are the policy, every granted scope in plain language,
 a page instead of JSON for a person on a refused /authorize, a page instead
 of a 500 when the database is down, only real, supported example prompts, and
-a pacing example whose figures are what MITA's forecast engine returns.
+one labelled example whose figures are what MITA's forecast engine returns —
+headline, example and sign-in first, everything secondary after them, closed.
 """
 
 import json
@@ -273,7 +274,10 @@ async def test_consent_titles_are_on_screen_and_the_details_one_tap_away(mcp):
         assert pages.e(SCOPE_DESCRIPTIONS[scope]) in disclosure.group(1)
     assert pages.e(pages.CANNOT_MOVE_MONEY) in disclosure.group(1)
     # The short line on screen restates the full sentence, nothing more.
-    assert pages.e(pages.CANNOT_MOVE_MONEY_SHORT) in html.split("<details")[0]
+    on_screen = re.search(
+        r'<div class="consent"(.*?)<details class="perm">', html, re.S
+    )
+    assert pages.e(pages.CANNOT_MOVE_MONEY_SHORT) in on_screen.group(1)
     assert "move money" in pages.CANNOT_MOVE_MONEY_SHORT
 
 
@@ -515,10 +519,8 @@ async def test_a_database_outage_at_sign_in_issues_no_code_and_logs_no_data(
 PROMPT_TOOLS = {
     # safe_daily_limit: what is left of the month's plan per day after today
     "How much can I safely spend per day?": "get_budget_forecast",
-    "Help me build my monthly budget.": "preview_monthly_budget",
     "I spent €36.80 on groceries today.": "add_transaction",
-    "Add the expenses from this receipt to MITA.": "add_transactions",
-    "How am I doing against my budget?": "get_budget_status",
+    "Help me build my monthly budget.": "preview_monthly_budget",
     "Create an Emergency Fund goal for €3,000.": "create_savings_goal",
     "How has my spending changed over the last six months?": "get_spending_history",
 }
@@ -528,11 +530,12 @@ async def test_the_page_shows_real_prompts_fictional_figures_and_no_overclaims(m
     async with mcp.http() as http:
         html = (await http.get(await _login_url(http))).text
     words = visible_text(html)
-    assert {text for _, text in pages.PROMPTS} == set(PROMPT_TOOLS)
+    assert set(pages.PROMPTS) == set(PROMPT_TOOLS)
     for prompt, tool in PROMPT_TOOLS.items():
         assert prompt in words
         assert tool in PUBLISHED_TOOLS
-    assert "All figures are fictional" in words
+    assert "Fictional example" in words
+    assert pages.ANSWER_NOTE in words
     assert "It does not store your ChatGPT conversations" in words
     # The forecast's status is not shown: its linear pace counts rent paid on
     # the 1st as daily spending, so it can mislead until that model is fixed.
@@ -558,68 +561,118 @@ async def test_motion_respects_reduced_motion_and_focus_is_visible(mcp):
     async with mcp.http() as http:
         html = (await http.get(await _login_url(http))).text
     assert "@media (prefers-reduced-motion:reduce)" in html
-    assert "@media (prefers-reduced-motion:no-preference)" in html
+    assert (
+        "@keyframes" not in html
+        and "animation:" not in html.split("@media (prefers-reduced-motion:reduce)")[0]
+    )
     assert re.search(r":focus-visible[^{]*\{outline:3px solid", html)
     assert html.count("@font-face") == 4 and "font-display:swap" in html
 
 
-# --- the pacing example is MITA's arithmetic ---------------------------------------
+# --- the example is MITA's arithmetic -----------------------------------------------
 
 
 def _amount(text_value: str) -> Decimal:
     return Decimal(text_value.replace(",", ""))
 
 
-def test_the_pacing_example_is_what_the_forecast_engine_returns():
+def test_the_example_is_what_the_forecast_engine_returns():
     """The page's fictional month — a plan with a Savings line — run through
     compute_forecast (the engine behind get_budget_forecast): same days left,
     amount left, savings kept out and amount per day, so the example never
     shows arithmetic MITA would not do."""
-    first = date(2026, 10, 1)
-    assert first.weekday() == pages.DEMO_FIRST_WEEKDAY
+    example = pages.EXAMPLE
     assert monthrange(2026, 10)[1] == pages.DEMO_DAYS_IN_MONTH
+    today = date(2026, 10, example.day)
+    assert today.strftime("%A") == example.weekday
     savings = _amount(pages.DEMO_SAVINGS)
     spending_plan = _amount(pages.DEMO_PLANNED) - savings
-    for example in (pages.MONDAY, pages.FRIDAY):
-        today = date(2026, 10, example.day)
-        assert today.strftime("%A") == example.weekday
-        result = compute_forecast(
-            daily_plans=[
-                DailyPlanData(
-                    first, "groceries", spending_plan, _amount(example.spent)
-                ),
-                DailyPlanData(first, SAVINGS_GOAL_CATEGORY, savings, Decimal("0")),
-            ],
-            goals=[],
-            year=2026,
-            month=10,
-            today=today,
-        )
-        assert result.days_remaining == example.days_left
-        assert result.remaining_budget == _amount(example.left)
-        assert result.savings_set_aside == savings
-        assert result.remaining_budget - savings == _amount(example.spendable)
-        assert result.safe_daily_limit == _amount(example.per_day)
+    result = compute_forecast(
+        daily_plans=[
+            DailyPlanData(
+                date(2026, 10, 1), "groceries", spending_plan, _amount(example.spent)
+            ),
+            DailyPlanData(
+                date(2026, 10, 1), SAVINGS_GOAL_CATEGORY, savings, Decimal("0")
+            ),
+        ],
+        goals=[],
+        year=2026,
+        month=10,
+        today=today,
+    )
+    assert result.total_spent == _amount(example.spent)
+    assert result.days_remaining == example.days_left
+    assert result.remaining_budget == _amount(example.left)
+    assert result.savings_set_aside == savings
+    assert result.remaining_budget - savings == _amount(example.spendable)
+    assert result.safe_daily_limit == _amount(example.per_day)
 
 
-async def test_the_calendar_shows_days_passed_today_and_days_left_only(mcp):
-    """One shade for every day left (the forecast's single amount), today
-    marked once — no per-date amounts; the grid itself is decorative."""
+async def test_the_example_shows_four_labelled_figures_and_no_calendar(mcp):
+    """Safe amount per day, spent this month, protected savings, days left —
+    marked as a fictional example; the arithmetic in a closed <details>; no
+    calendar, strip or per-date amount on this page."""
     async with mcp.http() as http:
         html = (await http.get(await _login_url(http))).text
-    calendar = re.search(r'<div class="cal" aria-hidden="true">(.*?)</div>', html)
-    strip = re.search(r'<div class="strip" aria-hidden="true">(.*?)</div>', html)
-    day = pages.MONDAY
-    for block in (calendar.group(1), strip.group(1)):
-        states = re.findall(r'class="([ptf])"', block)
-        assert states == (["p"] * (day.day - 1) + ["t"] + ["f"] * day.days_left), block
-        assert "€" not in block
-    words = visible_text(html)
-    assert (
-        f"€{day.left} left − €{pages.DEMO_SAVINGS} savings = €{day.spendable} "
-        f"÷ {day.days_left} days = €{day.per_day}"
-    ) in words
-    assert f"for the {day.days_left} days left in {pages.DEMO_MONTH}" in words
+    snap = re.search(r'<figure class="snap">(.*?)</figure>', html, re.S).group(1)
+    ex = pages.EXAMPLE
+    words = visible_text(snap)
+    assert "Fictional example" in words
+    assert f"€{ex.per_day} a day" in words
+    assert f"for the rest of {pages.DEMO_MONTH}, with savings left out" in words
+    stats = dict(re.findall(r"<dt>(.*?)</dt><dd>(.*?)</dd>", snap))
+    assert stats == {
+        "Spent this month": f"€{ex.spent}",
+        "Protected savings": f"€{pages.DEMO_SAVINGS}",
+        "Days left": str(ex.days_left),
+    }
+    calc = re.search(r'<details class="disclose calc">(.*?)</details>', snap, re.S)
+    assert calc and f"How is €{ex.per_day} worked out?" in calc.group(1)
+    lines = [
+        (re.sub(r"[^0-9.,]", "", b), label)
+        for b, label in re.findall(
+            r"<li[^>]*><b>(.*?)</b><span>(.*?)</span></li>", calc.group(1)
+        )
+    ]
+    figures = {label: _amount(number) for number, label in lines}
+    assert figures["budget"] - figures["spent"] == figures["left"]
+    assert figures["left"] - figures["protected savings"] == figures["to spend"]
+    assert figures["days left"] == ex.days_left
+    per_day = (figures["to spend"] / figures["days left"]).quantize(Decimal("0.01"))
+    assert per_day == figures["a day"] == _amount(ex.per_day)
+    assert pages.BILLS_NOTE in visible_text(calc.group(1))
+    for leftover in ('class="cal"', 'class="strip"', "days passed"):
+        assert leftover not in html
+
+
+async def test_headline_example_and_sign_in_come_first_details_stay_closed(mcp):
+    """The phone's order: headline, one line of value, the example, the
+    sign-in form; limits and secondary detail after the form, closed."""
+    async with mcp.http() as http:
+        html = (await http.get(await _login_url(http))).text
+    order = [
+        html.index('<h1 id="hero-title">'),
+        html.index('<p class="lede">'),
+        html.index('<figure class="snap">'),
+        html.index("<form "),
+        html.index('<section class="trust"'),
+        html.index('<section class="more"'),
+    ]
+    assert order == sorted(order)
+    headline = visible_text(html.split('<h1 id="hero-title">', 1)[1].split("</h1>")[0])
+    assert headline == "Know what you can safely spend each day."
+    assert visible_text(html).count(pages.ASK_LINE) == 1
+    details = re.findall(r"<details[^>]*>", html)
+    assert len(details) == 4 and not any(" open" in d for d in details)
+    # The removed walkthrough, prompt cards and step cards stay removed.
+    for gone in (
+        "What MITA does in ChatGPT",
+        "How MITA works",
+        "Try asking",
+        "New conversation",
+    ):
+        assert gone not in html
 
 
 def test_the_layout_is_mobile_first():
@@ -627,6 +680,7 @@ def test_the_layout_is_mobile_first():
     css = pages._CSS
     base = css.split("@media")[0]
     assert ".layout{display:grid;grid-template-columns:minmax(0,1fr);" in base
+    assert 'grid-template-areas:"hero" "auth" "trust" "more"' in base
     widths = re.findall(r"@media \((min|max)-width:(\d+)px\)", css)
     assert ("max", "359") in widths
     assert all(kind == "min" for kind, px in widths if px != "359")

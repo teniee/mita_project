@@ -1310,17 +1310,22 @@ Rules:
     `Retry-After` and redirects; JSON for everything else; never echoes the
     request. A database or network failure on the sign-in page is a 503 page
     with no code issued, logging the exception class only.
-  - **Mobile first.** ChatGPT opens the page in a phone browser: at 390×844
-    the order is logo, headline, one compact example, the form; desktop is
-    the enhancement. Consent shows all five scope titles with the details in
-    a native `<details>`. The pacing example's figures are what
-    `compute_forecast` returns for the stated plan (tested), the calendar
-    shows only days passed / today / days left — never per-date budgets —
-    and the page shows no forecast status ("On track" removed: the status's
-    rent pace is a known gap; the `status` field stays in the contract).
+  - **Mobile first, one job per screen** (v3, owner brief 2026-10-23).
+    ChatGPT opens the page in a phone browser: headline ("Know what you can
+    safely spend each day." — "each day", never "today": `safe_daily_limit`
+    is per remaining day), one line of value, one example (safe per day,
+    spent this month, protected savings, days left; labelled "Fictional
+    example"; arithmetic in a closed `<details>`), then the form; three
+    limits and closed secondary details after it. No calendar, walkthrough
+    or prompt cards on this page (a spending calendar belongs in the
+    signed-in product — spec in `docs/brand/AUTH-UI-DESIGN.md`), no forecast
+    status (its rent pace is a known gap; `status` stays in the contract),
+    no entrance animation. Consent shows all five scope titles with the
+    details in a native `<details>`. The example's figures are what
+    `compute_forecast` returns (tested).
   - Regressions: `tests_mcp/test_auth_ui.py` (in the CI security gate);
     screenshots: `scripts/mcp/auth_ui_screenshots.py` →
-    `docs/chatgpt-app/review/auth-ui-v2/`; owner check on staging:
+    `docs/chatgpt-app/review/auth-ui-v3/`; owner check on staging:
     `docs/chatgpt-app/auth-ui-owner-test.md`. Locally the flow needs HTTPS
     (the CSRF cookie is `__Host-`/`Secure`): a self-signed localhost
     certificate, never a relaxed cookie.

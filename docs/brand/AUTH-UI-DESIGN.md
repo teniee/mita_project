@@ -2,8 +2,9 @@
 
 The ChatGPT sign-in / sign-up / consent page (`/oauth/login`) and its error
 pages. Code: `app/mcp/auth/pages.py` (markup, CSS, copy), served by the MCP
-service; fonts and favicon in `app/mcp/auth/static/`. Designed mobile first
-(2026-10-23 refinement, below): ChatGPT opens it in its in-app browser.
+service; fonts and favicon in `app/mcp/auth/static/`. Designed mobile first:
+ChatGPT opens it in its in-app browser. Current version: the conversion
+redesign (v3, below); the earlier versions are kept below as history.
 
 ## Sources
 
@@ -99,30 +100,85 @@ Decisions, not brand facts. Contrast ratios are WCAG 2.x.
 * Fonts: WOFF2 subsets built by `scripts/mcp/build_auth_fonts.py` — Manrope
   and Sora variable (400–700) from the app's OFL files, Space Mono from
   google/fonts (SHA-256 pinned); 74 KB together, cached as immutable.
-* Motion: one entrance sequence of the demo on wide screens, CSS only, none
-  under `prefers-reduced-motion`.
+* Motion: none beyond hover transitions on buttons (the v2 entrance
+  sequence was removed in v3); nothing moves under `prefers-reduced-motion`.
 * Copy states facts from `docs/chatgpt-app/data-inventory.md`; demo figures
   are fictional and labelled so. No "bank-grade", "encrypted", "free" or
   similar claims (tested).
 * Mobile first: the base CSS is the phone layout; `min-width` queries only
-  add (560 px: wider cards, two-column lists; 1040 px: the sign-in card as a
-  right-hand column level with the logo). Tested.
+  add (560 px: wider cards, the three limits side by side; 1040 px: the
+  sign-in card as a right-hand column level with the logo). Order, from the
+  top: headline, one line of value, the example, the sign-in card, limits,
+  closed secondary details. Tested.
 * Permissions: the five scope titles are always on screen; each one's
   explanation and the full "cannot move money" sentence are in a native
   `<details>` ("View permission details"), closed by default. Tested.
-* The pacing example's figures are what MITA's forecast engine returns for
-  them (`test_the_pacing_example_is_what_the_forecast_engine_returns`).
+* The example's figures are what MITA's forecast engine returns for them
+  (`test_the_example_is_what_the_forecast_engine_returns`), it is labelled
+  "Fictional example", and its arithmetic is one tap away and tested.
+* No calendar on this page: a day-by-day calendar needs per-day data and
+  belongs in the signed-in product ("Spending calendar", below).
 * No forecast status on the page — no "On track", "warning" or "danger"
   badge (owner decision 2026-10-23, tested). `get_budget_forecast` still
   returns `status` unchanged; its linear pace counts rent paid on the 1st as
   daily spending, so it can mislead until the forecast model is fixed in a
   dedicated task (below).
-* Review screenshots: `docs/chatgpt-app/review/auth-ui/` (first version, on
-  staging since 2026-10-23) and `docs/chatgpt-app/review/auth-ui-v2/` (mobile
-  first, local only, waiting for the owner), produced by
-  `scripts/mcp/auth_ui_screenshots.py`.
+* Review screenshots, produced by `scripts/mcp/auth_ui_screenshots.py`:
+  `docs/chatgpt-app/review/auth-ui-v3/` (current), `auth-ui-v2/` (mobile
+  first, `1e24bf4`) and `auth-ui/` (first version, `ee388c0`).
 
-## Mobile-first refinement (2026-10-23, local, not deployed)
+## Conversion redesign (v3, 2026-10-23)
+
+The owner's review of v2 live from ChatGPT: polished, but overloaded with
+explanations and examples — a new user could not tell within seconds what
+MITA solves, why they need it next to ChatGPT, or what they get after
+connecting. Brief: one benefit headline, one sentence of value, one compact
+financial preview, the sign-in right after; trust in brief; everything
+secondary progressive; no calendar on this page.
+
+**Order now (phone; wider screens keep it):** logo + "for ChatGPT" → "Know
+what you can safely spend each day." → "Just ask ChatGPT. MITA remembers your
+expenses, budget and savings goals across chats." → the example (the
+question, then safe to spend per day, spent this month, protected savings,
+days left; the arithmetic in a closed "How is €66.70 worked out?") → the
+sign-in card (unchanged flow: tabs, fields, five permission titles,
+usage-statistics choice, button, forgery warning) → "Clear limits. Your
+control." (three lines) → two closed details: "What can I ask ChatGPT?"
+(five prompts) and "What MITA keeps, and what it doesn't".
+
+**Removed:** the four-step conversation walkthrough (record / understand /
+pace / remember), the month calendar and the 31-day strip, the seven prompt
+cards, the three "How MITA works" step cards, the entrance animation. The
+phone page is 1,876 px long instead of about 4,100.
+
+**Headline wording.** The brief's promise reads "Know what you can safely
+spend today". The page says "each day": `safe_daily_limit` is one amount for
+every day left in the month (today counts as elapsed), not a figure for
+today, and the owner's 2026-10-23 rule — tested — forbids "safe to spend
+today". `get_budget_status.today` (today's spending plan minus today's
+spending) exists, but it is a different number; using both on one page
+would mislead.
+
+Where the primary button ends (page px; "below" = scroll needed to see it);
+v2 is `1e24bf4`, v3 adds the four-figure example above the card:
+
+| Viewport | Sign in: v2 | v3 | Create account: v2 | v3 | v3: card starts |
+|---|---|---|---|---|---|
+| 390×844 | 983 (139 below) | 1,095 (251 below) | 1,137 (293 below) | 1,249 (405 below) | 432 |
+| 393×852 | — | 1,097 (245 below) | — | 1,251 (399 below) | 434 |
+| 430×932 | 985 (53 below) | 1,099 (167 below) | 1,139 (207 below) | 1,253 (321 below) | 436 |
+| 768×1024 | 1,043 (19 below) | 1,152 (128 below) | 1,177 (153 below) | 1,286 (262 below) | 509 |
+| 1280×800 | 686 — on screen | 686 — on screen | 841 (41 below) | 841 (41 below) | 22 |
+| 1440×900 | 686 — on screen | 686 — on screen | 841 — on screen | 841 — on screen | 22 |
+| 1440×1000 | 686 — on screen | 686 — on screen | 841 — on screen | 841 — on screen | 22 |
+
+The trade-off is deliberate: on phones the first screen now carries the
+whole promise — headline, value, the complete example — plus the start of
+the form (tabs, e-mail, password); the button follows the five permission
+titles and the usage-statistics choice, which must come before it, one
+short scroll down. Desktop is unchanged: the button is on the first screen.
+
+## Mobile-first refinement (v2, 2026-10-23, `1e24bf4`)
 
 The owner's review of the first version: it felt desktop-first, and the
 daily-spending value of MITA was shown nowhere.
@@ -229,44 +285,79 @@ mobile scheduled-expenses figure:
 | A goal reservation on top of a savings target | both are set aside; whether a goal's contribution should come out of the savings target is a model question | D |
 | Mobile app: `/api/scheduled-expenses` impact (`base_safe_daily_limit`, `adjusted_safe_daily_limit`) | A for the app only: still counts savings (not used by ChatGPT); `/api/budget/forecast` shares the corrected engine | deferred (technical debt) |
 
-**The calendar.** It shows where the month stands — days passed, today, the
-days left — and `safe_daily_limit` as one shade on every remaining day,
-because the forecast gives one amount for each of them. It does not show or
-imply a budget per date, spending per day, or a calendar in ChatGPT; the
-grid is decorative (`aria-hidden`) and the key beside it states the figures,
-including the arithmetic: "€1,200.40 left − €400.00 savings = €800.40 ÷ 12
-days = €66.70".
+**The calendar (v2 only, removed in v3).** It showed where the month stood —
+days passed, today, the days left — with `safe_daily_limit` as one shade on
+every remaining day. It never showed a budget per date or spending per day.
+v3 replaces it with the four-figure example; the day-by-day calendar is
+specified for the signed-in product ("Spending calendar", below).
 
 **The example figures** (fictional; recomputed with `compute_forecast` by a
 test): plan €2,325.00 with €400.00 Savings; Monday 19 October, spent
 €1,124.60 → €1,200.40 left, €800.40 to spend, 12 days left, €66.70 a day
-(the old formula: €100.03); Friday 23 October, spent €1,342.20 → €982.80
-left, €582.80 to spend, 8 days left, €72.85 a day. 1 October falls on a
-Thursday, as in 2026. The status the engine returns for them is not shown.
+(the old formula: €100.03). v2 also showed Friday 23 October (€72.85 a day,
+8 days left); v3 shows Monday only. The status the engine returns for them
+is not shown.
 
-## Visible claims and what supports them
+## Visible claims and what supports them (v3)
 
 | Visual claim | Backend / tool | Exact field / calculation | Safe to display? |
 |---|---|---|---|
-| "Your finances, remembered in ChatGPT." | MITA account data, read by every read tool | stored rows per account; any conversation with MITA connected can read them | Yes |
-| "Log expenses by chatting" · "I spent €36.80 at Lidl." → Expense recorded, Groceries · Lidl · €36.80 | `add_transaction` | one transaction: amount, category, merchant, date | Yes |
-| "How am I doing this month?" → Budget €2,325.00 · Spent €1,124.60 · Left €1,200.40 | `get_budget_status` | `total_planned`, `total_spent`, `total_remaining` | Yes |
-| "48% of October's budget used" | from `get_budget_status` | `total_spent ÷ total_planned` (page arithmetic) | Yes |
-| "Safe to spend per day €66.70" | `get_budget_forecast` | `safe_daily_limit` = (`remaining_budget` − `savings_set_aside`) ÷ `days_remaining` | Yes, per remaining day — not "today"; bills must be recorded (D above) |
-| "for the 12 days left in October" | `get_budget_forecast` | `days_remaining` | Yes |
-| "€1,200.40 left − €400.00 savings = €800.40 ÷ 12 days = €66.70" | `get_budget_forecast` | `remaining_budget`, `savings_set_aside`, `days_remaining`, `safe_daily_limit` | Yes |
-| "Your €400.00 of savings is never counted as money to spend." | `get_budget_forecast` | `savings_set_aside` excluded from `safe_daily_limit` | Yes |
-| (no status badge) | `get_budget_forecast` → `status` | not displayed: the linear pace can mislead (B above) | No — removed from the page until the forecast model is fixed |
-| Calendar and strip: days passed, today, days left | `get_budget_forecast` | `days_elapsed`, `days_remaining`, `days_in_month` | Yes — one shade for all days left |
-| "Spent so far €1,124.60" | `get_budget_forecast` | `total_spent` | Yes |
-| New conversation: Per day €72.85 · Days left 8 · Savings kept €400.00 | `get_budget_forecast` | `safe_daily_limit`, `days_remaining`, `savings_set_aside` four days later | Yes |
-| "Saved in your MITA account" | storage | — | Yes |
-| "How much can I safely spend per day?" | `get_budget_forecast` | `safe_daily_limit` | Yes; golden prompt `bg-11` has the same meaning; routing of this English wording in real ChatGPT not yet observed |
-| "Help me build my monthly budget." | `preview_monthly_budget` → `save_monthly_budget` | deterministic draft, saved only after the user confirms | Yes |
-| "I spent €36.80 on groceries today." / "Add the expenses from this receipt to MITA." | `add_transaction` / `add_transactions` | ChatGPT reads the photo; MITA keeps date, amount, category, merchant | Yes |
-| "How am I doing against my budget?" | `get_budget_status` | per-category planned, spent, remaining, state | Yes |
-| "Create an Emergency Fund goal for €3,000." | `create_savings_goal` | — | Yes |
-| "How has my spending changed over the last six months?" | `get_spending_history` | — | Yes |
-| "MITA can't move money or access banks." | no payment or bank capability (`scopes.py`) | — | Yes |
-| "It does not store your ChatGPT conversations" | `docs/chatgpt-app/data-inventory.md` | — | Yes |
-| "ChatGPT answers in its own words, using the figures MITA returns." | no widget; the cards are illustrations | — | Yes |
+| "Know what you can safely spend each day." | `get_budget_forecast` | `safe_daily_limit` — one amount for each remaining day | Yes, as "each day"; not "today" (see "Headline wording") |
+| "Just ask ChatGPT." | MITA's tools, called by ChatGPT | — | Yes |
+| "MITA remembers your expenses, budget and savings goals across chats." | stored rows per account, read by every read tool | transactions, `daily_plan`, goals | Yes |
+| "How much can I safely spend per day?" | `get_budget_forecast` | `safe_daily_limit` | Yes; golden prompt `bg-11` has the same meaning |
+| "Safe to spend €66.70 a day" | `get_budget_forecast` | `safe_daily_limit` = (`remaining_budget` − `savings_set_aside`) ÷ `days_remaining` | Yes — fictional, labelled "Fictional example", recomputed by a test |
+| "for the rest of October, with savings left out" | `get_budget_forecast` | `days_remaining`; `savings_set_aside` excluded | Yes |
+| "Spent this month €1,124.60" | `get_budget_forecast` (also `get_budget_status`) | `total_spent` | Yes |
+| "Protected savings €400.00" | `get_budget_forecast` | `savings_set_aside` | Yes |
+| "Days left 12" | `get_budget_forecast` | `days_remaining` (the days after today) | Yes |
+| "How is €66.70 worked out?": budget − spent = left; − protected savings = to spend; ÷ days left = a day | `get_budget_forecast` | `total_planned`, `total_spent`, `remaining_budget`, `savings_set_aside`, `days_remaining`, `safe_daily_limit` | Yes; the arithmetic is tested |
+| "A bill in your plan counts as spent once you record it as an expense." | `get_budget_forecast` method text | an unrecorded bill stays in `remaining_budget` (D above) | Yes — states the limit |
+| "ChatGPT writes the answer using MITA's figures." | no widget; the card is an illustration | — | Yes |
+| (no status badge, no calendar) | `status`; per-day data | not displayed (B above; no per-day tool) | No — not on this page |
+| The five permission titles, their details | `app/mcp/auth/scopes.py` | `SCOPE_TITLES`, `SCOPE_DESCRIPTIONS` | Yes (tested) |
+| "MITA can't move money or access banks." / "Can't move money: no payments, transfers or trades, and no connection to your bank." | no payment, trading or bank capability | — | Yes |
+| "Your records, not your chats: MITA stores the financial records its features need. It does not store your ChatGPT conversations." | `docs/chatgpt-app/data-inventory.md` | — | Yes |
+| "You stay in control: Disconnect MITA in ChatGPT at any time; changing your MITA password also ends its access." | ChatGPT's app settings; grants are bound to the password (`fingerprint.py`) | — | Yes |
+| "What can I ask ChatGPT?": the safe-per-day question, "I spent €36.80 on groceries today.", "Help me build my monthly budget.", "Create an Emergency Fund goal for €3,000.", "How has my spending changed over the last six months?" | `get_budget_forecast`, `add_transaction`, `preview_monthly_budget` → `save_monthly_budget`, `create_savings_goal`, `get_spending_history` | — | Yes (tested map) |
+| "What MITA keeps, and what it doesn't": records stay in the account; receipt photos stay in ChatGPT; usage statistics optional, opting out deletes linked events | `data-inventory.md`, `product-analytics.md` | — | Yes |
+
+## Spending calendar — the signed-in product (design; not built)
+
+Not on the sign-in page: a calendar is only honest with per-day data, which
+the page's fictional example does not have and ChatGPT's tools do not
+return. Where it belongs: the MITA app's Calendar screen, which exists
+(`mobile_app/lib/screens/calendar_screen.dart`,
+`calendar_day_details_screen.dart`, data from `app/api/calendar/routes.py`);
+an in-ChatGPT version would need a new read tool returning per-day figures
+and a UI component (script, its own CSP, app review) — an owner decision.
+
+**Month header** — the same four figures as the sign-in example, so the
+product keeps the page's promise: safe to spend per day (`safe_daily_limit`),
+spent this month, protected savings (`savings_set_aside`), days left.
+
+**Each day cell** (user's time zone, money to the cent):
+
+| Day | Shows | Data |
+|---|---|---|
+| Past | amount spent; "+€x" and an over icon when spending passed that day's spending plan | non-deleted expenses that day; the day's `daily_plan` rows **excluding** `SET_ASIDE_CATEGORIES` |
+| Today | a navy ring with a yellow outline; spent so far and what is left of today's spending plan | `get_budget_status.today` semantics |
+| Future | lighter, dashed outline, the planned spending for that date labelled "plan" — never "safe to spend"; no spending | the day's spending rows of `daily_plan` |
+
+Past and future must differ in more than colour (solid vs dashed, amount vs
+"plan" label); an overrun shows text and an icon, not only red. Each cell is
+a button with a full label ("Tuesday 14 October: spent €42.10 of a €38.00
+plan, €4.10 over"); at 390 px seven columns leave 51 px per cell, above the
+44 px tap target.
+
+**Selected day** — a bottom sheet on phones, a side panel on wide screens:
+the date; spent vs that day's spending plan; what was set aside that day,
+shown separately; the day's expenses (merchant, category, amount, time) with
+edit; for a future date its planned categories and "No spending yet".
+
+**Gaps found in the current app while specifying this (not fixed here):**
+the saved-calendar endpoint's day `limit` sums every plan row, savings and
+goal reservations included (`app/api/calendar/routes.py`), so the app shows
+set-aside money as daily spending room — the calendar counterpart of the
+safe-daily fix; and the screen reads `limit` / `spent` as integers
+(`calendar_screen.dart`), where the design needs cents.

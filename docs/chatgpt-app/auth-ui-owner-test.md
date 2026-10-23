@@ -8,7 +8,7 @@ one — and any password that meets the four rules shown on the page.
 | Step | Do | Look for |
 |---|---|---|
 | A | ChatGPT → Settings → Apps → **MITA (staging)** → disconnect, then **Connect**. The connection made before 2026-10-23 no longer works: staging's keys were rotated after Railway's security incident. | ChatGPT opens MITA's page. |
-| B | Before typing anything, look for ~10 seconds — on the phone first (ChatGPT opens the page there), then on the computer. | Phone: MITA logo, "Your finances, remembered in ChatGPT.", one short example ("€66.70 a day", marked Example), then the sign-in card. Computer: the same, with the card on the right. Further down: the daily-pacing calendar, with the calculation and "Your €400.00 of savings is never counted as money to spend." Does it read as MITA? |
+| B | Before typing anything, look for ~5 seconds — on the phone first (ChatGPT opens the page there), then on the computer. | "Know what you can safely spend each day." and "Just ask ChatGPT.", then one example marked "Fictional example": €66.70 a day, spent this month, protected savings, days left. The sign-in card starts on the same screen (on the computer: on the right). Can you tell what MITA does and why to connect it? Open "How is €66.70 worked out?" once. |
 | C | Choose **Create account**. Type the e-mail and a password, and a *different* confirmation once. | The mismatch is explained and only "Confirm password" is marked. Then enter matching passwords. |
 | D | Read the box **ChatGPT will be able to** before continuing, then open **View permission details**. | Five plain-language permissions and "MITA can't move money or access banks." on screen; the details open in place. Untick usage statistics if you prefer — both are fine. |
 | E | Press **Create account and connect**. | You go straight back to ChatGPT, connected — there is deliberately no page in between. |
@@ -19,7 +19,8 @@ Optional: disconnect, connect again and use **Sign in** with the same account;
 try a wrong password once (generic "Sign-in failed" message, both fields marked).
 
 Send back: approve, or what to change (a screenshot helps). Reference
-screenshots of every state are in `docs/chatgpt-app/review/auth-ui-v2/`
-(staging runs `1e24bf4` since 2026-10-23); they were taken with a support
-link configured, so they show "Need help? Contact MITA support" (and "Help"
-on error pages), which staging does not set (`MCP_SUPPORT_URL`).
+screenshots of every state are in `docs/chatgpt-app/review/auth-ui-v3/`
+(the conversion redesign, on staging since 2026-10-23). They were taken
+without a support link, as on staging (`MCP_SUPPORT_URL` is not set there),
+so they show no "Need help? Contact MITA support" and no "Help" link on
+error pages.
