@@ -1198,6 +1198,13 @@ Rules:
   (refuses placeholders, example hosts and `mita.finance`). The review
   seeder `scripts/mcp/seed_review_account.py` goes through `_target_guard`
   and never writes to production. CI job `mcp-ci` runs all of it.
+- **`requirements-mcp.lock` is the image's whole closure**, installed with
+  `pip install --no-deps`, and CI's `pip-audit` of it gates every later MCP
+  step (security gate, suite, image, container e2e). A new advisory turns
+  CI red without a code change. Fix by raising the one pin when PyPI shows
+  the fixed version has the same requirements (note it in the header, as
+  for `opentelemetry-api` 1.45.1 on 2026-10-23), else regenerate with
+  `scripts/mcp/lock_deps.sh`; then redeploy staging so it runs the fix.
 - **Owner-gated items** live in `docs/chatgpt-app/OWNER_ACTIONS.md`; readiness
   table in `docs/chatgpt-app/review/submission-checklist.md`; pre-existing API
   defects found along the way in `docs/chatgpt-app/backend-findings.md`

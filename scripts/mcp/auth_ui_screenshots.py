@@ -140,9 +140,11 @@ def main() -> None:
         page.screenshot(path=out / "01-mobile-390x844-first-screen.png")
         page.locator(".consent").screenshot(path=out / "03-mobile-consent.png")
         page.locator(".perm summary").click()
+        settle(page)  # an opened disclosure can need a font face not loaded yet
         page.locator(".consent").screenshot(path=out / "04-mobile-consent-details.png")
         page.locator(".snap").screenshot(path=out / "05-mobile-example.png")
         page.locator(".calc summary").click()
+        settle(page)
         page.locator(".hero").screenshot(path=out / "06-mobile-example-calculation.png")
         page.goto(url)
         settle(page)
@@ -189,6 +191,7 @@ def main() -> None:
         page.screenshot(path=out / "16-desktop-full-page.png", full_page=True)
         for summary in page.locator(".more summary").all():
             summary.click()
+        settle(page)
         page.locator(".more").screenshot(path=out / "15-desktop-more-details.png")
 
         page.goto(register)

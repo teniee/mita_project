@@ -1,5 +1,6 @@
 # Full, exact dependency lock for the MCP image (generated from requirements-mcp.txt
 # in a clean virtualenv on 2026-10-03; regenerate with scripts/mcp/lock_deps.sh).
+# 2026-10-23: opentelemetry-api 1.45.0 -> 1.45.1 by hand for GHSA-xcq7-p3pf-p88h (same requirements).
 annotated-types==0.8.0
 anyio==4.15.1
 asyncpg==0.30.0
@@ -20,7 +21,7 @@ jsonschema==4.26.0
 jsonschema-specifications==2025.9.1
 mcp==2.2.0
 mcp-types==2.2.0
-opentelemetry-api==1.45.0
+opentelemetry-api==1.45.1
 passlib==1.7.4
 psycopg2-binary==2.9.9
 pycparser==3.0
