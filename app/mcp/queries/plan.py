@@ -19,6 +19,7 @@ from typing import Dict, List, Optional, Tuple
 
 from sqlalchemy.orm import Session
 
+from app.core.category_priority import is_set_aside
 from app.db.models import DailyPlan
 from app.mcp.categories import group_lines, regroup_by_day
 from app.mcp.queries import ledger
@@ -160,10 +161,26 @@ def budget_status(
     position = month_position(ctx, year, month)
     today = None
     if position == "current":
+        # Today's spending allocations: a line that sets money aside (savings,
+        # goal reservations) is not something to spend today.
         today = DayStatus(
             day=ctx.today,
-            planned=sum((v for (d, _), v in planned.items() if d == ctx.today), ZERO),
-            spent=sum((v for (d, _), v in spent.items() if d == ctx.today), ZERO),
+            planned=sum(
+                (
+                    v
+                    for (d, c), v in planned.items()
+                    if d == ctx.today and not is_set_aside(c)
+                ),
+                ZERO,
+            ),
+            spent=sum(
+                (
+                    v
+                    for (d, c), v in spent.items()
+                    if d == ctx.today and not is_set_aside(c)
+                ),
+                ZERO,
+            ),
         )
 
     first, last = month_days(year, month)

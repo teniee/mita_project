@@ -22,7 +22,7 @@ only from a signed preview, feedback only on explicit request.
 | `list_transactions` | expenses for a range with opaque `ref`s; keyset paging (`next_cursor`) | start_date, end_date, category, merchant, limit, cursor | finance:read |
 | `get_spending_breakdown` | spending by category for a range | start_date, end_date | finance:read |
 | `get_budget_status` | plan vs actual per category; today's figures | year, month | finance:read |
-| `get_budget_forecast` | month-end projection at the current pace; safe daily amount | year, month | finance:read |
+| `get_budget_forecast` | month-end projection at the current pace; safe daily amount, never counting money set aside for savings, goals or investments (`savings_set_aside`) | year, month | finance:read |
 | `get_recurring_expenses` | scheduled obligations and expenses marked recurring (never inferred) | — | finance:read |
 | `get_goals` | savings goals with deterministic projection (goals cannot be changed from ChatGPT) | status | finance:read |
 | `get_spending_history` | up to 12 local months, per-category totals, completeness, trend (≥ 3 complete months) | months, category, end_month | finance:read |

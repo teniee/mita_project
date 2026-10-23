@@ -277,7 +277,10 @@ def budget_status_out(ctx: UserContext, status: BudgetStatus) -> BudgetStatusOut
 FORECAST_METHOD = (
     "Linear projection from MITA's forecast engine: spent so far divided by days "
     "elapsed (in the user's timezone), extended over the rest of the month, compared "
-    "with the month's plan. It does not include scheduled future expenses."
+    "with the month's plan. The safe daily limit never counts money the plan sets "
+    "aside for savings, goals or investments (savings_set_aside) as spendable. A bill "
+    "in the plan counts as spent only once it is recorded as an expense. It does not "
+    "include scheduled future expenses."
 )
 
 
@@ -315,6 +318,7 @@ def forecast_out(
         total_planned=money(result.total_planned),
         total_spent=money(result.total_spent),
         remaining_budget=money(result.remaining_budget),
+        savings_set_aside=money(result.savings_set_aside),
         current_daily_pace=money(result.current_daily_pace),
         safe_daily_limit=money(result.safe_daily_limit),
         projected_month_end_spend=money(result.projected_month_end_spend),

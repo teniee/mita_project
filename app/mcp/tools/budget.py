@@ -80,7 +80,8 @@ SUMMARY_DESCRIPTION = (
 STATUS_DESCRIPTION = (
     "Budget vs. actual for one month, per category: planned amount, spent, remaining, "
     "percent used and a state (within_budget, over_budget, unplanned_spending, "
-    "not_started), plus today's planned/spent/remaining for the current month. "
+    "not_started), plus today's planned/spent/remaining for the current month (today "
+    "counts spending allocations only, not money set aside for savings or goals). "
     "Allocations are MITA's persisted daily plan (including any automatic "
     "redistribution MITA already applied); spending is the user's recorded expenses. "
     "Each line has category_label, MITA's display name, and category_codes: expenses "
@@ -95,7 +96,9 @@ FORECAST_DESCRIPTION = (
     "Project where the user's budget lands at month end at the current pace, using "
     "MITA's forecast engine: daily pace so far, safe daily amount for the remaining "
     "days, projected month-end spend and balance, a status (on_track / warning / "
-    "danger / no_data) and the categories spending 1.2× faster than planned. It is a "
+    "danger / no_data) and the categories spending 1.2× faster than planned. The safe "
+    "daily amount never counts money the plan sets aside for savings, goals or "
+    "investments (savings_set_aside) as spendable. It is a "
     "linear projection, not a prediction of specific purchases, and does not include "
     "scheduled future expenses. " + PLAN_NOTE + " " + READ_ONLY_DISCLAIMER
 )

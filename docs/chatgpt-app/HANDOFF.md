@@ -19,6 +19,36 @@ branch joins `feat/chatgpt-plugin` (PR #287); launch preparation follows
 Plugin Directory submission, production MCP, production migrations, the
 analytics dashboard.
 
+### Mobile-first refinement and safe-daily fix — owner-approved for staging (2026-10-23)
+
+The owner approved the mobile-first direction but blocked it on a financial
+bug: `safe_daily_limit` counted the Savings line and goal reservations as
+spendable. Fixed locally (owner decision): the forecast engine now returns
+`savings_set_aside` (what set-aside lines still hold) and
+`safe_daily_limit = (remaining_budget − savings_set_aside) / days_remaining`;
+`get_budget_status.today` leaves set-aside lines out. The status / projection
+are unchanged on purpose — see `docs/brand/AUTH-UI-DESIGN.md` ("What
+remains, classified"): fixing savings there alone would read "danger" all
+month for anyone who records rent on the 1st, because the pace counts rent.
+
+* Code: `app/core/category_priority.py` (`SET_ASIDE_CATEGORIES`), the engine,
+  `app/mcp/{schemas,serializers,tools/budget,queries/plan}.py`; tests
+  `tests_mcp/test_spendable_forecast.py`. The engine is shared: after a merge
+  the mobile app's `/api/budget/forecast` returns the corrected figure too;
+  `/api/scheduled-expenses` impact still counts savings (follow-up).
+* Page: mobile-first `pages.py`, example figures from the corrected engine
+  (€66.70 a day with €400.00 savings kept), screenshots in `review/auth-ui-v2/`.
+  Owner-approved (direction, safe-daily semantics, compact permissions,
+  calendar, final visuals).
+* The page shows no forecast status ("On track" removed, owner decision):
+  `status` is unchanged in the MCP contract, but its linear pace counts rent
+  paid on the 1st as daily spending. Not fixed — deferred to a dedicated
+  forecast-engine task, with future fixed / recurring bills.
+* Deferred technical debt: the mobile app's `/api/scheduled-expenses` impact
+  still counts savings.
+* Approved for staging on 2026-10-23; the deployment is recorded in the
+  next documentation commit.
+
 ### Staging deployment — live since 2026-10-23
 
 Railway paused all builds from 2026-10-21 (~17:00 UTC) until 2026-10-23 and

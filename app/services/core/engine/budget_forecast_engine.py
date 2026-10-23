@@ -2,7 +2,7 @@
 Budget Forecast Engine — MITA Problem 3.
 
 "At current pace, you'll run out of dining_out budget in 6 days."
-"Safe daily limit from today: $64.20"
+"Safe daily limit for the rest of the month: $64.20"
 "Projected month-end balance: -$278.00 (danger)"
 
 DESIGN PHILOSOPHY:
@@ -12,6 +12,12 @@ DESIGN PHILOSOPHY:
 - Category "at risk" threshold: burning > 120% of planned daily pace.
 - Status thresholds: warning when projected overspend < 10% of plan,
   danger when projected overspend >= 10% of plan.
+- Money the plan sets aside (savings, goal reservations, investments —
+  category_priority.SET_ASIDE_CATEGORIES) is part of the plan but never
+  spendable: the safe daily limit leaves out what those lines still hold.
+  The month-end projection and status still compare spending with the whole
+  plan (owner decision 2026-10-23 covers the safe daily limit; see
+  docs/brand/AUTH-UI-DESIGN.md for why the projection waits for the pace fix).
 """
 
 from __future__ import annotations
@@ -22,6 +28,8 @@ from dataclasses import dataclass
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Dict, List, Optional
+
+from app.core.category_priority import is_set_aside
 
 logger = logging.getLogger(__name__)
 
@@ -156,8 +164,10 @@ class ForecastResult:
     total_planned: Decimal  # sum of all planned_amount for the month
     total_spent: Decimal  # sum of all spent_amount so far
     remaining_budget: Decimal  # total_planned - total_spent
+    # what the set-aside lines still hold: per line max(0, planned - deposited)
+    savings_set_aside: Decimal
     current_daily_pace: Decimal  # total_spent / days_elapsed
-    safe_daily_limit: Decimal  # remaining_budget / days_remaining
+    safe_daily_limit: Decimal  # (remaining_budget - savings_set_aside) / days_remaining
     projected_month_end_spend: Decimal  # total_spent + pace * days_remaining
     projected_month_end_balance: Decimal  # total_planned - projected_spend
     status: str  # "on_track" | "warning" | "danger" | "no_data"
@@ -175,6 +185,7 @@ class ForecastResult:
             "total_planned": float(self.total_planned),
             "total_spent": float(self.total_spent),
             "remaining_budget": float(self.remaining_budget),
+            "savings_set_aside": float(self.savings_set_aside),
             "current_daily_pace": float(self.current_daily_pace),
             "safe_daily_limit": float(self.safe_daily_limit),
             "projected_month_end_spend": float(self.projected_month_end_spend),
@@ -364,6 +375,23 @@ def _compute_category_forecasts(
     return forecasts
 
 
+def _still_set_aside(daily_plans: List[DailyPlanData]) -> Decimal:
+    """What the set-aside lines still hold: per line, planned minus what was
+    deposited into it, never below zero.
+
+    A line its deposits already filled holds nothing back, and a deposit
+    beyond the line's plan has left the remaining budget through total_spent
+    already — subtracting it again would count it twice.
+    """
+    planned: Dict[str, Decimal] = {}
+    deposited: Dict[str, Decimal] = {}
+    for p in daily_plans:
+        if is_set_aside(p.category):
+            planned[p.category] = planned.get(p.category, _ZERO) + p.planned_amount
+            deposited[p.category] = deposited.get(p.category, _ZERO) + p.spent_amount
+    return sum((max(_ZERO, planned[c] - deposited[c]) for c in planned), _ZERO)
+
+
 def _determine_status(
     projected_balance: Decimal,
     total_planned: Decimal,
@@ -451,6 +479,7 @@ def compute_forecast(
             total_planned=_ZERO,
             total_spent=_ZERO,
             remaining_budget=_ZERO,
+            savings_set_aside=_ZERO,
             current_daily_pace=_ZERO,
             safe_daily_limit=_ZERO,
             projected_month_end_spend=_ZERO,
@@ -466,6 +495,9 @@ def compute_forecast(
     total_spent = sum((p.spent_amount for p in daily_plans), _ZERO)
     remaining_budget = total_planned - total_spent
 
+    # Savings, goal reservations and investments: in the plan, not for spending.
+    savings_set_aside = _still_set_aside(daily_plans)
+
     days_remaining_d = Decimal(str(days_remaining))
 
     # Pace: if no days elapsed yet, pace = 0 (nothing spent in a future month)
@@ -475,9 +507,12 @@ def compute_forecast(
     else:
         current_daily_pace = _ZERO
 
-    # Safe limit: how much can be spent per remaining day and still end at 0
+    # Safe limit: how much can be spent per remaining day and still end the
+    # month at 0 without touching the money the plan sets aside.
     safe_daily_limit = (
-        _q(remaining_budget / days_remaining_d) if days_remaining > 0 else _ZERO
+        _q((remaining_budget - savings_set_aside) / days_remaining_d)
+        if days_remaining > 0
+        else _ZERO
     )
 
     # Projection: if no pace yet, projected spend = total already spent
@@ -525,6 +560,7 @@ def compute_forecast(
         total_planned=total_planned,
         total_spent=total_spent,
         remaining_budget=remaining_budget,
+        savings_set_aside=savings_set_aside,
         current_daily_pace=current_daily_pace,
         safe_daily_limit=safe_daily_limit,
         projected_month_end_spend=projected_month_end_spend,

@@ -1080,6 +1080,19 @@ Rules:
   without obligations carries a "default draft" warning. Never mandatory. After a save the visible
   `planned_amount` can differ from the preview by MITA's in-month
   redistribution; the BASE plan (adjustment backed out) is the reviewed one.
+- **Set-aside money is never spendable** (owner decision, 2026-10-23).
+  `SET_ASIDE_CATEGORIES` (`app/core/category_priority.py`: the savings line,
+  emergency savings, `goal_savings`, investment contributions) is narrower
+  than SACRED, whose rent and utilities do get paid. `compute_forecast`
+  returns `savings_set_aside` = Σ per set-aside line max(0, planned −
+  deposited) and `safe_daily_limit = (remaining_budget − savings_set_aside)
+  / days_remaining` (Decimal, half-up); `get_budget_status.today` leaves
+  those lines out. Status / projection still compare with the whole plan and
+  their linear pace counts rent paid on the 1st as daily spending: known,
+  deferred, not to be "fixed" for savings alone (it would read "danger" all
+  month for savers). Unrecorded future bills still count as spendable, and
+  the mobile `/api/scheduled-expenses` impact still counts savings (debt).
+  Exact figures: `tests_mcp/test_spendable_forecast.py`.
 - **One display name per category** (`app/mcp/categories.py`): every result
   carries `category_label`; budget status and the forecast put an expense
   category on its paired plan bucket's line ("Fuel" = `transport gas` +
@@ -1294,9 +1307,17 @@ Rules:
     `Retry-After` and redirects; JSON for everything else; never echoes the
     request. A database or network failure on the sign-in page is a 503 page
     with no code issued, logging the exception class only.
+  - **Mobile first.** ChatGPT opens the page in a phone browser: at 390×844
+    the order is logo, headline, one compact example, the form; desktop is
+    the enhancement. Consent shows all five scope titles with the details in
+    a native `<details>`. The pacing example's figures are what
+    `compute_forecast` returns for the stated plan (tested), the calendar
+    shows only days passed / today / days left — never per-date budgets —
+    and the page shows no forecast status ("On track" removed: the status's
+    rent pace is a known gap; the `status` field stays in the contract).
   - Regressions: `tests_mcp/test_auth_ui.py` (in the CI security gate);
     screenshots: `scripts/mcp/auth_ui_screenshots.py` →
-    `docs/chatgpt-app/review/auth-ui/`; owner check on staging:
+    `docs/chatgpt-app/review/auth-ui-v2/`; owner check on staging:
     `docs/chatgpt-app/auth-ui-owner-test.md`. Locally the flow needs HTTPS
     (the CSRF cookie is `__Host-`/`Secure`): a self-signed localhost
     certificate, never a relaxed cookie.

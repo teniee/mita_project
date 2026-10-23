@@ -206,7 +206,10 @@ class CategoryBudgetOut(_Out):
 
 class DayBudgetOut(_Out):
     date: dt.date
-    planned: Money = money_field("Sum of today's category allocations.")
+    planned: Money = money_field(
+        "Sum of today's spending allocations. Money set aside for savings, goals "
+        "or investments is not included: it is not for spending."
+    )
     spent: Money = money_field("Recorded spending today.")
     remaining: Money = money_field("planned minus spent for today.")
 
@@ -253,7 +256,7 @@ class ForecastOut(_Out):
     currency: str
     plan_status: PlanStatus
     status: Optional[Literal["on_track", "warning", "danger", "no_data"]] = Field(
-        description="on_track: projected balance ≥ 0; warning: projected overspend under 10% of plan; danger: 10% or more; no_data: month not started or nothing planned. Null without a plan."
+        description="on_track: projected balance ≥ 0; warning: projected overspend under 10% of plan; danger: 10% or more; no_data: month not started or nothing planned. Null without a plan. The projection compares spending with the whole plan, including savings_set_aside."
     )
     method: str
     days_in_month: int
@@ -261,18 +264,33 @@ class ForecastOut(_Out):
     days_remaining: int
     total_planned: Optional[Money] = Field(default=None, pattern=MONEY_PATTERN)
     total_spent: Optional[Money] = Field(default=None, pattern=MONEY_PATTERN)
-    remaining_budget: Optional[Money] = Field(default=None, pattern=MONEY_PATTERN)
-    current_daily_pace: Optional[Money] = Field(default=None, pattern=MONEY_PATTERN)
+    remaining_budget: Optional[Money] = Field(
+        default=None,
+        description="total_planned minus total_spent: what is left of the whole plan, including money set aside.",
+        pattern=MONEY_PATTERN,
+    )
+    savings_set_aside: Optional[Money] = Field(
+        default=None,
+        description="Part of remaining_budget that the plan sets aside for savings, savings goals or investments and that is not yet used. It is not spendable, so safe_daily_limit leaves it out.",
+        pattern=MONEY_PATTERN,
+    )
+    current_daily_pace: Optional[Money] = Field(
+        default=None,
+        description="total_spent / days_elapsed.",
+        pattern=MONEY_PATTERN,
+    )
     safe_daily_limit: Optional[Money] = Field(
         default=None,
-        description="remaining_budget / days_remaining. Negative when the month's plan is already exceeded.",
+        description="(remaining_budget minus savings_set_aside) / days_remaining: how much can be spent per day after today while keeping the money set aside untouched. Negative when spending has already used more than the plan leaves for spending.",
         pattern=MONEY_PATTERN,
     )
     projected_month_end_spend: Optional[Money] = Field(
         default=None, pattern=MONEY_PATTERN
     )
     projected_month_end_balance: Optional[Money] = Field(
-        default=None, pattern=MONEY_PATTERN
+        default=None,
+        description="total_planned minus projected_month_end_spend (the whole plan, including savings_set_aside); negative is projected overspend.",
+        pattern=MONEY_PATTERN,
     )
     categories_at_risk: List[CategoryRiskOut] = Field(
         description="Categories spending at 1.2× or more of their planned daily rate, worst first."
