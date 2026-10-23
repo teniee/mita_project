@@ -1,4 +1,4 @@
-# MITA MCP — staging (observed 2026-10-03, v2 update 2026-10-13)
+# MITA MCP — staging (observed 2026-10-03, v2 update 2026-10-13, credentials rotated 2026-10-23)
 
 ## What exists
 
@@ -6,8 +6,8 @@
 |---|---|---|
 | Railway project | `mita-mcp-staging` (`497476f2-de93-44b7-b170-2b175c8d5621`) — **separate project**, no access to the production project's variables, services or database | STAGING VERIFIED |
 | Environment | `staging` (`0f67cf7a-5ce4-472e-a842-2e5448d64c08`) | STAGING VERIFIED |
-| MCP service | `mita-mcp-staging` (`833466fc-f7f2-4d51-8db1-48edfbb46057`), Dockerfile `deploy/mcp/Dockerfile`, healthcheck `/health`, restart ON_FAILURE ×5, **1 replica** (region `asia-southeast1-eqsg3a`), source `teniee/mita_project` @ `feat/chatgpt-plugin` **pinned to commit `79efb1d`** (MCP 2.1.0) since 2026-10-18, deployment `87d26668-4051-42c3-99b7-2036d0de42cf` — on 2026-10-21 the source setting was re-pinned to `feat/chatgpt-auth-ui` @ `ee388c0` (new sign-in page), but Railway's platform-wide build pause refused the build: until a new deployment succeeds, staging still RUNS `87d26668` (`79efb1d`). Trigger it by connecting the source again with that commit — not "Redeploy", which rebuilds the old one (before: `461abcf` / `174528cf` 2.0.0 from 2026-10-13, `fcd7ae3` from 2026-10-11, `842d365` on which the v1 real-ChatGPT acceptance ran). Pushes do not redeploy it | STAGING VERIFIED |
-| Database | Railway Postgres 18 template (18.6), private network only, alembic `0039`. The MCP service connects as the least-privilege role `mita_mcp` (`scripts/mcp/mcp_service_role.sql`) on `postgres.railway.internal`; the read-only `mita_analytics_reader` exists (password not kept — reset before use). Temporary TCP proxies used for migrations and checks (2026-10-03, 2026-10-13, 2026-10-18) were removed and verified unreachable | STAGING VERIFIED |
+| MCP service | `mita-mcp-staging` (`833466fc-f7f2-4d51-8db1-48edfbb46057`), Dockerfile `deploy/mcp/Dockerfile`, healthcheck `/health`, restart ON_FAILURE ×5, **1 replica** (region `asia-southeast1-eqsg3a`), source `teniee/mita_project` @ `feat/chatgpt-auth-ui` **pinned to commit `ee388c0`** (MCP 2.1.0, new sign-in page) since 2026-10-23, deployment `33783139-2cd3-49a8-9ec4-d166c7435404`. Deploy another commit by connecting the source again with it — not "Redeploy", which rebuilds the current one (before: `79efb1d` / `87d26668` 2.1.0 from 2026-10-18 — the re-pin of 2026-10-21 waited for Railway's build pause —, `461abcf` / `174528cf` 2.0.0 from 2026-10-13, `fcd7ae3` from 2026-10-11, `842d365` on which the v1 real-ChatGPT acceptance ran). Pushes do not redeploy it | STAGING VERIFIED |
+| Database | Railway Postgres 18 template (18.6), private network only, alembic `0039`. The MCP service connects as the least-privilege role `mita_mcp` (`scripts/mcp/mcp_service_role.sql`) on `postgres.railway.internal`; the read-only `mita_analytics_reader` exists (password not kept — reset before use). Both stored passwords were rotated on 2026-10-23 (see "Credential rotation"). Temporary TCP proxies used for migrations and checks (2026-10-03, 2026-10-13, 2026-10-18, twice on 2026-10-23) were removed and verified unreachable | STAGING VERIFIED |
 | Public URL | `https://mita-mcp-staging-staging.up.railway.app` (Railway-managed TLS) | STAGING VERIFIED |
 | Custom domain | none (not needed for staging) | — |
 
@@ -58,7 +58,39 @@ MCP_OAUTH_PRIVATE_KEY, MCP_OAUTH_REQUESTS_PER_MINUTE, MCP_PUBLIC_URL,
 MCP_TOOL_CALLS_PER_MINUTE, MCP_TRUSTED_PROXY_HOPS, PORT, SECRET_KEY`. All
 secrets were generated fresh for staging with `generate_keys.py --out` and
 pushed with the Railway CLI (`--stdin`; the two v2 secrets on 2026-10-13);
-the local copies were deleted. No production value was used.
+the local copies were deleted. No production value was used. All of them
+were rotated on 2026-10-23 after Railway's security incident (below).
+
+## Credential rotation (done 2026-10-23, after Railway's security incident)
+
+Railway disclosed on 2026-10-21 that environment variables may have been
+read. No value is ever printed: secrets go from a 0600 file to the CLI's
+stdin, checks print names and booleans, and the files are deleted after.
+
+1. **App secrets:** `scripts/mcp/generate_keys.py --out <0600 file>`, then
+   for each name `railway variable set NAME --stdin --skip-deploys -p … -e …
+   -s …`. Proof: SHA-256 fingerprints compared under `railway run` (changed /
+   unchanged only) and each live value equal to the generated one.
+2. **`postgres`:** Railway → Postgres → Database → Config → Connection →
+   **Regenerate**, done by the owner. It changes the database password and
+   `POSTGRES_PASSWORD` / `PGPASSWORD` / `DATABASE_URL` together and restarts
+   Postgres. Never `ALTER USER postgres` or edit the variable by hand.
+3. **`mita_mcp`** (Railway cannot regenerate a custom role): open a temporary
+   TCP proxy; under `railway run --service Postgres`, `SET log_statement =
+   'none'` and `ALTER ROLE mita_mcp WITH PASSWORD '<SCRAM-SHA-256 verifier
+   computed locally>'`; write `postgresql://mita_mcp:…@postgres.railway.internal:5432/railway`
+   to the 0600 file and set `DATABASE_URL` from it with `--stdin
+   --skip-deploys`. Check that the old password is rejected and the new one
+   accepted, then remove the proxy and check the endpoint no longer serves
+   Postgres.
+4. **Deploy** the pinned commit (connect the source again with it); the
+   service reads the new values at start.
+
+Consequences: every staging ChatGPT connection, access and refresh token from
+before the rotation is invalid (reconnect); analytics pseudonyms restart.
+Result 2026-10-23: 8 app secrets, `DATABASE_URL`, the `postgres` and
+`mita_mcp` passwords rotated; both old passwords rejected; deployment
+`33783139` verified (HANDOFF.md). Production was not touched.
 
 ## Database
 
