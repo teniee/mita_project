@@ -30,8 +30,15 @@ ChatGPT results are in `staging-acceptance-v2.md` (§2–§5, §8):
 | S-7 real-ChatGPT acceptance v2 | DONE — CHATGPT VERIFIED (§8); the cases it left open were completed in S-8 |
 | S-8 final real-ChatGPT smoke test of MCP 2.1.0 | DONE — CHATGPT VERIFIED / STAGING VERIFIED (2026-10-19, `staging-acceptance-v2.md` §11): B, C, D, E, H, I, J, two real receipts and a repeated receipt with no duplicate; the opt-out verified in the database. **Staging acceptance is closed.** The synthetic `test-receipt.png` was not owner-run (repository coverage only). The ChatGPT app object's own Description field is owner-managed and moves to the listing/onboarding phase |
 
-Staging acceptance is closed; production is untouched. Keep staging running
-until production is live; teardown is in staging.md.
+MCP 2.2.0 (24 tools, the financial calendar component, sign-in page v4):
+
+| Item | Status |
+|---|---|
+| S-9 refresh the MITA staging app in ChatGPT developer mode (the tool list gains `get_calendar_month` and `show_financial_calendar`; no new scope, no reconnect needed unless ChatGPT asks) | OWNER REQUIRED — `calendar-owner-test.md` step A |
+| S-10 review the sign-in page v4 and the calendar in real ChatGPT (phone and desktop; fullscreen; Save as PNG) | OWNER REQUIRED — `calendar-owner-test.md` |
+
+Staging acceptance (v2) is closed; production is untouched. Keep staging
+running until production is live; teardown is in staging.md.
 
 ## Step 1 — Rotate historically exposed credentials
 
@@ -150,6 +157,9 @@ in the app enforces an age today.
    `MCP_METRICS_TOKEN`, and new `JWT_SECRET`/`SECRET_KEY` that are never the
    API's). Never reuse a staging value. `MCP_ANALYTICS_SECRET` must then stay
    unchanged (rotating it splits every user's usage history).
+   `MCP_WIDGET_DOMAIN`: the dedicated origin OpenAI requires for an app
+   with UI (`_meta.ui.domain` on the calendar component; unique to MITA —
+   e.g. `https://mcp.mitafinance.com`, as OpenAI's submission form asks).
    `DATABASE_URL`: use the least-privilege role — after Step 7, run
    `scripts/mcp/mcp_service_role.sql` as the database owner in
    `mita-production-db` (not Supabase; command in deployment.md) and build

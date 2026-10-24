@@ -13,6 +13,7 @@ from typing import List, Optional, Sequence
 from app.mcp.categories import goal_label
 from app.mcp.categories import label as category_label
 from app.mcp.crypto import DataKeys
+from app.mcp.queries.calendar import CalendarMonth
 from app.mcp.queries.goals import GoalView
 from app.mcp.queries.ledger import CategoryTotal, LedgerPage
 from app.mcp.queries.periods import UserContext, days_elapsed, month_days
@@ -20,6 +21,12 @@ from app.mcp.queries.plan import BudgetStatus, MonthForecast
 from app.mcp.queries.recurring import RecurringView
 from app.mcp.schemas import (
     BudgetStatusOut,
+    CalendarBillOut,
+    CalendarDayOut,
+    CalendarLineOut,
+    CalendarMonthOut,
+    CalendarSummaryOut,
+    CalendarViewOut,
     CategoryBudgetOut,
     CategoryRiskOut,
     CategorySpendOut,
@@ -440,4 +447,185 @@ def recurring_out(ctx: UserContext, view: RecurringView) -> RecurringOut:
             "Only expenses the user scheduled or marked as recurring are listed. "
             "MITA does not detect subscriptions automatically."
         ],
+    )
+
+
+# --- the financial calendar ---------------------------------------------------
+
+CALENDAR_METHOD = (
+    "Each date shows MITA's saved plan for it and, once the day has begun, the "
+    "expenses recorded on it (in the user's timezone). Plan lines are grouped as in "
+    "the summary: commitments (rent, mortgage, utilities, debt repayment, medical "
+    "insurance, school fees, online courses and the categories of saved regular "
+    "payments), money set aside (savings, goals, investments — never spendable) and "
+    "everyday spending. A day's state compares everyday spending with that date's "
+    "everyday plan. Future dates show the plan, never a forecast. average_per_day is "
+    "the forecast engine's safe daily figure: an average for each remaining day, not "
+    "a budget for a particular date."
+)
+NOTE_COMMITMENTS_NOT_RECORDED = (
+    "{amount} {currency} planned for commitments is not recorded as paid yet. Until the "
+    "user records those bills as expenses it is part of left_to_spend and "
+    "average_per_day."
+)
+NOTE_BILLS_OUTSIDE_PLAN = (
+    "{count} saved payment(s) this month fall on a category with no money in this "
+    "month's plan, so the plan does not cover them."
+)
+NOTE_MONTH_ENDED = "The month has ended, so there is no daily average for it."
+
+
+def calendar_summary_out(cal: CalendarMonth) -> CalendarSummaryOut:
+    planned = cal.plan_generated
+    forecast = cal.forecast
+    month_open = cal.position != "past"
+    left = (
+        cal.total_planned - cal.total_spent - forecast.savings_set_aside
+        if planned and forecast is not None
+        else None
+    )
+    return CalendarSummaryOut(
+        stated_monthly_income=optional_money(cal.stated_income),
+        total_planned=money(cal.total_planned) if planned else None,
+        commitments_planned=money(cal.commitments_planned) if planned else None,
+        set_aside_planned=money(cal.set_aside_planned) if planned else None,
+        everyday_planned=money(cal.everyday_planned) if planned else None,
+        total_spent=money(cal.total_spent),
+        commitments_spent=money(cal.commitments_spent),
+        everyday_spent=money(cal.everyday_spent),
+        total_remaining=(
+            money(cal.total_planned - cal.total_spent) if planned else None
+        ),
+        savings_set_aside=(
+            money(forecast.savings_set_aside) if forecast is not None else None
+        ),
+        left_to_spend=optional_money(left),
+        average_per_day=(
+            money(forecast.safe_daily_limit)
+            if forecast is not None and month_open
+            else None
+        ),
+        days_elapsed=sum(1 for d in cal.days if d.kind != "future"),
+        days_remaining=sum(1 for d in cal.days if d.kind == "future"),
+        commitments_not_recorded=(
+            money(cal.commitments_unrecorded) if planned else None
+        ),
+        planned_after_today=(
+            money(cal.planned_after_today) if planned and month_open else None
+        ),
+        bills_due_after_today=money(cal.bills_due_after_today),
+    )
+
+
+def _calendar_notes(ctx: UserContext, cal: CalendarMonth) -> List[str]:
+    notes = _plan_notes(ctx, cal.plan_generated)
+    if cal.plan_generated and cal.position != "past":
+        if cal.commitments_unrecorded > ZERO:
+            notes.append(
+                NOTE_COMMITMENTS_NOT_RECORDED.format(
+                    amount=money(cal.commitments_unrecorded), currency=ctx.currency
+                )
+            )
+        outside = sum(1 for b in cal.bills if not b.in_plan)
+        if outside:
+            notes.append(NOTE_BILLS_OUTSIDE_PLAN.format(count=outside))
+    if cal.plan_generated and cal.position == "past":
+        notes.append(NOTE_MONTH_ENDED)
+    return notes + _currency_notes(ctx, cal.other_currencies)
+
+
+def _day_out(day) -> CalendarDayOut:
+    begun = day.kind != "future"
+    return CalendarDayOut(
+        date=day.day,
+        day_kind=day.kind,  # type: ignore[arg-type]
+        state=day.status,  # type: ignore[arg-type]
+        planned=money(day.planned),
+        planned_everyday=money(day.planned_everyday),
+        set_aside=money(day.set_aside),
+        spent=money(day.spent) if begun else None,
+        spent_everyday=money(day.spent_everyday) if begun else None,
+        everyday_left=optional_money(day.everyday_left),
+    )
+
+
+def calendar_month_out(ctx: UserContext, cal: CalendarMonth) -> CalendarMonthOut:
+    return CalendarMonthOut(
+        year=cal.year,
+        month=cal.month,
+        month_position=cal.position,  # type: ignore[arg-type]
+        currency=ctx.currency,
+        timezone=ctx.timezone,
+        today=cal.today,
+        plan_status="generated" if cal.plan_generated else "not_generated",
+        method=CALENDAR_METHOD,
+        summary=calendar_summary_out(cal),
+        categories=[
+            CalendarLineOut(
+                category=line.key,
+                category_label=line.label,
+                category_codes=list(line.codes),
+                group=line.group,  # type: ignore[arg-type]
+                planned=money(line.planned),
+                spent=money(line.spent),
+                remaining=money(line.remaining),
+            )
+            for line in cal.lines
+        ],
+        days=[_day_out(day) for day in cal.days],
+        bills=[
+            CalendarBillOut(
+                date=bill.occurrence.day,
+                name=bill.occurrence.merchant,
+                category=bill.occurrence.category,
+                category_label=category_label(bill.occurrence.category),
+                amount=money(bill.occurrence.amount),
+                recurrence=bill.occurrence.recurrence,  # type: ignore[arg-type]
+                in_plan=bill.in_plan,
+            )
+            for bill in cal.bills
+        ],
+        notes=_calendar_notes(ctx, cal),
+    )
+
+
+def calendar_widget_payload(ctx: UserContext, cal: CalendarMonth) -> dict:
+    """Everything the calendar component draws, for the tool result's
+    ``_meta`` (delivered to the component only, never to the model): the
+    month as ``get_calendar_month`` returns it plus each date's lines."""
+    return {
+        "version": 1,
+        "month": calendar_month_out(ctx, cal).model_dump(mode="json"),
+        "day_lines": {
+            day.day.isoformat(): [
+                [line.line, money(line.planned), money(line.spent)]
+                for line in day.lines
+            ]
+            for day in cal.days
+            if day.lines
+        },
+        "bill_lines": [bill.line for bill in cal.bills],
+    }
+
+
+def calendar_view_out(
+    ctx: UserContext,
+    cal: CalendarMonth,
+    *,
+    focus_date,
+    category: Optional[str],
+    shown: str,
+    notes: Sequence[str] = (),
+) -> CalendarViewOut:
+    return CalendarViewOut(
+        year=cal.year,
+        month=cal.month,
+        month_position=cal.position,  # type: ignore[arg-type]
+        currency=ctx.currency,
+        plan_status="generated" if cal.plan_generated else "not_generated",
+        focus_date=focus_date,
+        category=category,
+        summary=calendar_summary_out(cal),
+        shown=shown,
+        notes=list(notes) + _calendar_notes(ctx, cal),
     )

@@ -1,4 +1,4 @@
-# MITA in ChatGPT — tool catalog (v2.1, 22 tools)
+# MITA in ChatGPT — tool catalog (v2.2, 24 tools)
 
 Generated from the live tool list (`app/mcp/tools`); the semantics column is
 pinned by `tests_mcp/test_tool_contract.EXPECTED`. Every tool: identity from
@@ -28,6 +28,8 @@ only from a signed preview, feedback only on explicit request.
 | `get_spending_history` | up to 12 local months, per-category totals, completeness, trend (≥ 3 complete months) | months, category, end_month | finance:read |
 | `get_financial_climate` | compact factual overview: averages, pace vs earlier months, plan adherence, late-month share, obligations, goals | months | finance:read |
 | `preview_monthly_budget` | a budget draft from stated facts and MITA's engine; returns a signed `draft_token`; **saves nothing** | month | finance:read |
+| `get_calendar_month` | the month as data, date by date: each date's plan, spending and state, budget lines in groups (commitments / set aside / everyday), saved bills by date, a summary with the safe daily average; callable by the calendar component | year, month | finance:read |
+| `show_financial_calendar` | **the only tool bound to a UI component**: shows the interactive calendar (`ui://mita/financial-calendar-v1.html`); figures from the account, never from arguments; short view for the model, the month for the component (`_meta`) | year, month, focus_date, category | finance:read |
 
 ## Write
 
@@ -49,6 +51,14 @@ include an `idempotency_key`: calling again with the same arguments has no
 further effect (`app/mcp/idempotency.py`). The key is scoped by user,
 operation and the hashed ChatGPT conversation; the same key with different
 data is refused; nothing is ever deduplicated by content.
+
+## UI component (MCP Apps)
+
+`show_financial_calendar` carries `_meta.ui.resourceUri` (and ChatGPT's alias
+`openai/outputTemplate`); `get_calendar_month` and `list_transactions` declare
+`_meta.ui.visibility: ["model", "app"]` so the component may call them through
+the host. The component is read-only, loads nothing and connects nowhere
+(empty CSP allowlist). Details: `financial-calendar.md`.
 
 ## Never offered
 

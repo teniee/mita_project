@@ -1,7 +1,7 @@
 """Review screenshots of the ChatGPT sign-in / sign-up / consent pages.
 
     python scripts/mcp/auth_ui_screenshots.py --base-url http://localhost:8765 \\
-        --out docs/chatgpt-app/review/auth-ui-v3
+        --out docs/chatgpt-app/review/auth-ui-v4
 
 Drives the real pages the way ChatGPT does: registers a client (DCR), opens
 /authorize with PKCE and follows it to /oauth/login. Phone and tablet shots
@@ -112,12 +112,18 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", required=True, help="local or staging origin")
     parser.add_argument(
-        "--out", default=str(ROOT / "docs/chatgpt-app/review/auth-ui-v3")
+        "--out", default=str(ROOT / "docs/chatgpt-app/review/auth-ui-v4")
     )
     parser.add_argument(
         "--webp",
         action="store_true",
         help="convert to lossless WebP (needs Pillow): exact colors, about half the size",
+    )
+    parser.add_argument(
+        "--quality",
+        type=int,
+        default=None,
+        help="with --webp: lossy WebP at this quality (the v4 hero has a photograph)",
     )
     args = parser.parse_args()
     base = assert_writable_target(args.base_url, purpose="auth UI screenshots").rstrip(
@@ -142,10 +148,8 @@ def main() -> None:
         page.locator(".perm summary").click()
         settle(page)  # an opened disclosure can need a font face not loaded yet
         page.locator(".consent").screenshot(path=out / "04-mobile-consent-details.png")
-        page.locator(".snap").screenshot(path=out / "05-mobile-example.png")
-        page.locator(".calc summary").click()
-        settle(page)
-        page.locator(".hero").screenshot(path=out / "06-mobile-example-calculation.png")
+        page.locator(".demo").screenshot(path=out / "05-mobile-example.png")
+        page.locator(".hero").screenshot(path=out / "06-mobile-hero.png")
         page.goto(url)
         settle(page)
         page.screenshot(path=out / "07-mobile-full-page.png", full_page=True)
@@ -154,6 +158,15 @@ def main() -> None:
         page.screenshot(
             path=out / "02-mobile-390x844-create-account.png", full_page=True
         )
+
+        moving = webkit.new_context(
+            **IPHONE, ignore_https_errors=is_local(base), reduced_motion="no-preference"
+        ).new_page()
+        moving.goto(url)
+        moving.wait_for_timeout(1300)
+        moving.screenshot(path=out / "22-mobile-motion-at-1.3s.png")
+        moving.wait_for_timeout(3500)
+        moving.screenshot(path=out / "23-mobile-motion-settled.png")
 
         for number, preset in ((8, IPHONE_PRO), (9, IPHONE_MAX)):
             page = webkit.new_context(**preset, **tls).new_page()
@@ -241,7 +254,17 @@ def main() -> None:
 
         for path in sorted(out.glob("*.png")):
             with Image.open(path) as image:
-                image.save(path.with_suffix(".webp"), "WEBP", lossless=True, method=6)
+                if args.quality:
+                    image.convert("RGB").save(
+                        path.with_suffix(".webp"),
+                        "WEBP",
+                        quality=args.quality,
+                        method=6,
+                    )
+                else:
+                    image.save(
+                        path.with_suffix(".webp"), "WEBP", lossless=True, method=6
+                    )
             path.unlink()
     for path in sorted(out.glob("*.png")) + sorted(out.glob("*.webp")):
         print(f"{path}  {path.stat().st_size // 1024} KB")

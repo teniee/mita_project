@@ -49,6 +49,9 @@ EXPECTED = {
     "get_spending_history": (READ, False, True, FINANCE_READ, False),
     "get_financial_climate": (READ, False, True, FINANCE_READ, False),
     "preview_monthly_budget": (READ, False, True, FINANCE_READ, False),
+    "get_calendar_month": (READ, False, True, FINANCE_READ, False),
+    # The only tool bound to a UI component (the calendar).
+    "show_financial_calendar": (READ, False, True, FINANCE_READ, False),
     # Overwrites stated values (OpenAI: "delete or overwrite user data").
     "update_financial_profile": ("write", True, True, FINANCE_WRITE, False),
     # Additive; idempotent only because the arguments carry a key.

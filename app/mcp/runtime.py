@@ -24,7 +24,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import Any, Awaitable, Callable, Dict, Optional
+from typing import Any, Awaitable, Callable, Dict, Optional, Union
 from uuid import UUID
 
 from mcp.server.auth.middleware.auth_context import get_access_token
@@ -66,7 +66,22 @@ from app.mcp.ratelimit import SlidingWindowLimiter
 
 logger = logging.getLogger("app.mcp.tools")
 
-ToolBody = Callable[[Session, UserContext], BaseModel]
+
+@dataclass(frozen=True)
+class ToolOutput:
+    """A body's result when the default — the model's JSON as the text the
+    model reads — is not the right one: ``text`` replaces that text, and
+    ``component_meta`` becomes the result's ``_meta``, which the host hands to
+    a UI component only, never to the model (OpenAI Apps reference, "Tool
+    results"). ``model`` is still the structured content, checked against the
+    tool's output schema."""
+
+    model: BaseModel
+    text: Optional[str] = None
+    component_meta: Optional[Dict[str, Any]] = None
+
+
+ToolBody = Callable[[Session, UserContext], Union[BaseModel, ToolOutput]]
 
 # Write sessions get a longer statement budget than reads: a write rebuilds
 # the month's plan under the per-user ledger lock.
@@ -205,13 +220,18 @@ class McpRuntime:
         return token, user_id
 
     @staticmethod
-    def _success(model: BaseModel) -> CallToolResult:
-        payload = model.model_dump(mode="json")
+    def _success(result: Union[BaseModel, ToolOutput]) -> CallToolResult:
+        output = result if isinstance(result, ToolOutput) else ToolOutput(result)
+        payload = output.model.model_dump(mode="json")
+        text = (
+            output.text
+            if output.text is not None
+            else json.dumps(payload, ensure_ascii=False)
+        )
         return CallToolResult(
-            content=[
-                TextContent(type="text", text=json.dumps(payload, ensure_ascii=False))
-            ],
+            content=[TextContent(type="text", text=text)],
             structured_content=payload,
+            _meta=output.component_meta,
         )
 
     async def _run(

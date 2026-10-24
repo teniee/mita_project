@@ -1,6 +1,27 @@
-# Handoff — MITA in ChatGPT (MCP), 2026-10-23
+# Handoff — MITA in ChatGPT (MCP), 2026-10-24
 
-## Current phase: mobile-first sign-in + safe-daily fix live on staging — waiting for the owner's live review
+## Current phase: the financial calendar in ChatGPT + sign-in page v4 (MCP 2.2.0)
+
+| Item | State |
+|---|---|
+| Brief | owner, 2026-10-24: v3 rejected (generic, static); a premium sign-in/marketing page and a genuinely interactive financial calendar rendered inside ChatGPT (MCP Apps) |
+| Owner decisions | hero photo generated with Figma AI (no real people, alt text "Illustration"); "fixed commitments" = plan lines (SACRED essentials + the categories of saved regular payments), reconciled to the plan |
+| What changed | `get_calendar_month` + `show_financial_calendar` (24 tools, MCP 2.2.0), the `ui://mita/financial-calendar-v1.html` component, `queries/calendar.py`, `ToolOutput` in `runtime.py`, `MCP_WIDGET_DOMAIN`; the sign-in page v4 (`pages.py`, `demo.py`, hero photo); plugin listing 2.1.0 |
+| Unchanged | the OAuth flow (`login.py`, scopes, CSP, headers, no script on the sign-in page), every existing tool's figures, the forecast engine, production |
+| Docs | `financial-calendar.md` (design, definitions, limits), `docs/brand/AUTH-UI-DESIGN.md` (v4 + claim table), `tool-catalog.md`, `backend-findings.md` F-8, `calendar-owner-test.md` |
+| Tests | MCP suite 578 passed, `test_calendar.py` 32, `test_auth_ui.py` rewritten for v4 (34); local MCP Apps host `calendar_widget_review.py` 59/59 incl. axe WCAG 2.2 AA (0 violations, 4 states); capacity re-run: calendar p95 10.8 ms; sign-in page axe 0 violations in 8 states |
+| Screenshots | `review/calendar-v1/` (local MCP Apps host — not ChatGPT), `review/auth-ui-v4/` |
+| Staging | see "Staging deployment of MCP 2.2.0" below |
+| Owner next | `calendar-owner-test.md` (S-9, S-10): refresh the staging app in ChatGPT, review the page and the calendar on the phone and the computer, report what Save as PNG does in ChatGPT |
+
+**Found, not fixed (owner decisions):** F-8 — MITA's automatic rebalancing
+drains the plan of the dates ahead when a saved bill is paid on another date
+than the layout puts it (review account: €12.16 left on 25–31 Oct against a
+base of €299.95, while the safe daily average was €121.99). The calendar shows
+both figures, labelled. Starter prompts were left as the planned three (a
+calendar prompt would replace one — your call).
+
+## Previous phase: mobile-first sign-in + safe-daily fix on staging (2026-10-23) — v3 reviewed and not approved
 
 | Item | State |
 |---|---|

@@ -1,0 +1,2035 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>MITA financial calendar</title>
+<!--
+  MITA's financial calendar, an MCP Apps component (io.modelcontextprotocol/ui).
+  Served by app/mcp/ui as ui://mita/financial-calendar-v1.html; rules in that
+  module and in docs/chatgpt-app/financial-calendar.md:
+  * loads nothing and connects nowhere (empty CSP allowlist); data arrives in
+    tool results the host delivers, more is asked for only through the host
+    (tools/call to MITA's read tools);
+  * every value from a tool result is set as text, never parsed as markup;
+  * the system font stack and the host's colours (OpenAI UI guidelines); MITA
+    colours only on accents: the primary button, the Today badge, savings;
+  * figures are MITA's: this page formats them and never estimates one.
+-->
+<style>
+:root{
+  color-scheme:light;
+  --mita-navy:#193C57;--mita-navy-2:#2B5876;--mita-yellow:#FFD25F;--mita-teal:#14B8A6;--mita-teal-ink:#0B6E64;
+  --fam-groceries:#008300;--fam-dining:#eb6834;--fam-transport:#2a78d6;--fam-shopping:#eda100;
+  --fam-fun:#e87ba4;--fam-health:#1baf7a;--fam-home:#6250d6;--fam-other:#898781;
+  --over:#d03b3b;--over-bg:rgba(208,59,59,.09);--within:#14B8A6;--track:rgba(13,13,13,.08);
+  --color-background-primary:#ffffff;--color-background-secondary:#f6f5f2;--color-background-tertiary:#ecebe6;
+  --color-text-primary:#0d0d0d;--color-text-secondary:#5c5b57;--color-text-tertiary:#76756f;
+  --color-text-danger:#b3261e;--color-border-primary:rgba(13,13,13,.14);--color-border-secondary:rgba(13,13,13,.08);
+  --font-sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --border-radius-sm:8px;--border-radius-md:12px;--border-radius-lg:16px;--border-radius-xl:20px;--border-radius-full:999px;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.06),0 0 0 1px rgba(0,0,0,.02);
+  --shadow-md:0 6px 20px rgba(0,0,0,.07),0 1px 3px rgba(0,0,0,.06);
+  --shadow-lg:0 18px 44px rgba(0,0,0,.13),0 3px 8px rgba(0,0,0,.06);
+  --cell-h:62px;
+}
+:root[data-theme=dark]{
+  color-scheme:dark;
+  --fam-groceries:#2c9b2c;--fam-dining:#d95926;--fam-transport:#3987e5;--fam-shopping:#c98500;
+  --fam-fun:#d55181;--fam-health:#199e70;--fam-home:#9085e9;--fam-other:#898781;
+  --over:#e66767;--over-bg:rgba(230,103,103,.15);--within:#2cc5b4;--track:rgba(255,255,255,.10);--mita-teal-ink:#5EEAD4;
+  --color-background-primary:#212121;--color-background-secondary:#2a2a2a;--color-background-tertiary:#343434;
+  --color-text-primary:#f2f2f0;--color-text-secondary:#c3c2b7;--color-text-tertiary:#a3a29b;
+  --color-text-danger:#ff8a80;--color-border-primary:rgba(255,255,255,.16);--color-border-secondary:rgba(255,255,255,.08);
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);--shadow-md:0 6px 20px rgba(0,0,0,.35);--shadow-lg:0 18px 44px rgba(0,0,0,.55);
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--color-background-primary)}
+body{font-family:var(--font-sans);color:var(--color-text-primary);font-size:15px;line-height:1.45;-webkit-font-smoothing:antialiased;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+button{font:inherit;color:inherit}
+h1,h2,h3,p,dl,dd,ul{margin:0}
+.vh{position:absolute!important;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.num{font-variant-numeric:tabular-nums}
+.ico{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.app{padding:16px}
+.app[data-mode=fullscreen]{padding:14px 16px 104px;max-width:1180px;margin:0 auto}
+
+/* --- shared --- */
+.eyebrow{font-size:12px;font-weight:600;letter-spacing:.01em;color:var(--color-text-secondary)}
+.title{font-size:21px;line-height:1.15;font-weight:750;letter-spacing:-.015em}
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:26px;padding:3px 10px;border-radius:var(--border-radius-full);font-size:12px;font-weight:650;white-space:nowrap;border:1px solid var(--color-border-primary);color:var(--color-text-secondary);background:var(--color-background-primary)}
+.chip .ico{width:13px;height:13px}
+.chip-today{background:var(--mita-yellow);border-color:transparent;color:var(--mita-navy)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 18px;border-radius:var(--border-radius-full);border:1px solid var(--color-border-primary);background:var(--color-background-primary);font-weight:650;font-size:15px;cursor:pointer;white-space:nowrap;transition:transform .12s ease,box-shadow .2s ease,background-color .2s ease}
+.btn:hover{background:var(--color-background-secondary)}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--mita-navy);border-color:var(--mita-navy);color:var(--mita-yellow);box-shadow:0 8px 18px rgba(25,60,87,.22)}
+.btn-primary:hover{background:var(--mita-navy-2)}
+:root[data-theme=dark] .btn-primary{background:var(--mita-yellow);border-color:var(--mita-yellow);color:var(--mita-navy);box-shadow:none}
+:root[data-theme=dark] .btn-primary:hover{background:#ffdf86}
+.btn[disabled]{opacity:.5;cursor:default;transform:none}
+.btn-icon{min-width:44px;padding:10px}
+.btn-small{min-height:36px;padding:6px 14px;font-size:14px}
+.btn:focus-visible,.cell:focus-visible,.fchip:focus-visible,.line:focus-visible,.link:focus-visible,.disc:focus-visible{outline:3px solid #6B73FF;outline-offset:2px}
+.link{border:0;background:none;padding:0;font-weight:650;text-decoration:underline;text-underline-offset:3px;cursor:pointer;color:inherit;font-size:inherit}
+.muted{color:var(--color-text-secondary)}
+.note{font-size:13px;line-height:1.5;color:var(--color-text-secondary)}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;display:inline-block}
+.bar{position:relative;height:6px;border-radius:999px;background:var(--track);overflow:hidden}
+.bar>i{position:absolute;inset:0 auto 0 0;border-radius:999px;background:var(--within);transition:width .35s ease}
+.bar.over>i{background:var(--over)}
+.enter{animation:rise .34s cubic-bezier(.2,.7,.2,1) both}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes pulse{50%{opacity:.5}}
+.skel{height:14px;border-radius:7px;background:var(--color-background-tertiary);animation:pulse 1.2s ease-in-out infinite}
+.error{margin-top:12px;padding:12px 14px;border-radius:var(--border-radius-md);background:var(--over-bg);color:var(--color-text-danger);font-weight:650;font-size:14px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);max-width:min(92vw,420px);padding:10px 14px;border-radius:var(--border-radius-md);background:var(--color-text-primary);color:var(--color-background-primary);font-size:14px;box-shadow:var(--shadow-lg);z-index:5}
+
+/* --- inline card --- */
+.ihead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.hero{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 10px;margin-top:10px}
+.hero-fig{font-size:36px;line-height:1.02;font-weight:780;letter-spacing:-.03em}
+.hero-cap{font-size:14px;color:var(--color-text-secondary)}
+.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}
+.kpi{min-width:0;padding:9px 10px;border-radius:var(--border-radius-md);background:var(--color-background-secondary)}
+.kpi dt{font-size:11.5px;line-height:1.25;color:var(--color-text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi dd{margin-top:3px;font-size:15px;line-height:1.2;font-weight:720;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi.savings dd{color:var(--mita-teal-ink)}
+.mini{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-top:14px}
+.mini .wd{font-size:11px;font-weight:650;color:var(--color-text-tertiary);text-align:center;padding-bottom:1px}
+.mcell{position:relative;height:42px;border-radius:9px;background:var(--color-background-secondary);padding:4px 5px 0;display:flex;flex-direction:column;justify-content:space-between;min-width:0;overflow:hidden}
+.mcell b{font-size:10.5px;font-weight:700;line-height:1;color:var(--color-text-secondary)}
+.mcell span{font-size:10.5px;font-weight:650;line-height:1;padding-bottom:7px;white-space:nowrap;overflow:hidden;color:var(--color-text-primary)}
+.mcell.future{background:transparent;border:1px dashed var(--color-border-primary)}
+.mcell.future span{color:var(--color-text-tertiary);font-weight:550}
+.mcell.blank{background:transparent;border:0}
+.mcell.over{background:var(--over-bg)}
+.mcell.today{background:var(--mita-yellow)}
+.mcell.today b,.mcell.today span{color:var(--mita-navy)}
+.mcell i{position:absolute;left:5px;right:5px;bottom:3px;height:3px;border-radius:2px;background:var(--track)}
+.mcell i>s{display:block;height:100%;border-radius:2px;background:var(--within);text-decoration:none}
+.mcell.over i>s{background:var(--over)}
+.mcell .mbill{position:absolute;right:4px;top:4px;width:5px;height:5px;border-radius:50%;background:var(--color-text-secondary)}
+.inote{margin-top:10px;display:flex;flex-wrap:wrap;gap:4px 12px;font-size:13px;color:var(--color-text-secondary)}
+.inote span{display:inline-flex;align-items:center;gap:5px}
+.inote .ico{width:14px;height:14px}
+.inote .over{color:var(--color-text-danger);font-weight:600}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.empty{margin-top:14px;padding:14px;border-radius:var(--border-radius-md);background:var(--color-background-secondary)}
+.empty h2{font-size:15px}
+.empty p{margin-top:4px}
+
+/* --- fullscreen --- */
+.fhead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.fhead .title{font-size:26px;margin-top:2px}
+.nav{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.seg{display:inline-flex;align-items:center;border:1px solid var(--color-border-primary);border-radius:var(--border-radius-full);overflow:hidden;background:var(--color-background-primary)}
+.seg .btn{border:0;border-radius:0;min-height:40px}
+.seg .btn+.btn{border-left:1px solid var(--color-border-secondary)}
+.summary{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;margin-top:14px}
+.lead{position:relative;padding:16px 18px 14px;border-radius:var(--border-radius-xl);background:var(--color-background-primary);border:1px solid var(--color-border-secondary);box-shadow:var(--shadow-md);overflow:hidden}
+.lead::before{content:"";position:absolute;left:0;top:0;right:0;height:4px;background:var(--mita-yellow)}
+.lead .top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.lead .hero{margin-top:6px}
+.lead .hero-fig{font-size:40px}
+.lead .kpis{margin-top:12px}
+.disc{display:inline-flex;align-items:center;gap:6px;margin-top:10px;border:0;background:none;padding:0;font-size:13px;font-weight:650;cursor:pointer;color:var(--color-text-primary);text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--mita-yellow);text-decoration-thickness:2px}
+.disc::after{content:"";width:6px;height:6px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform .2s ease}
+.disc[aria-expanded=true]::after{transform:translateY(1px) rotate(-135deg)}
+.calc{margin-top:8px;display:grid;gap:1px;font-size:13px;color:var(--color-text-secondary)}
+.calc div{display:flex;justify-content:space-between;gap:12px;padding:2px 0}
+.calc div.eq{border-top:1px dashed var(--color-border-primary);padding-top:5px;margin-top:2px;color:var(--color-text-primary);font-weight:650}
+.tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.tile{padding:11px 12px;border-radius:var(--border-radius-md);background:var(--color-background-secondary);min-width:0}
+.tile dt{font-size:12px;color:var(--color-text-secondary);display:flex;align-items:center;gap:6px}
+.tile dt .ico{width:14px;height:14px}
+.tile dd{margin-top:3px;font-size:17px;font-weight:720;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .sub{display:block;font-size:12px;font-weight:500;color:var(--color-text-secondary);margin-top:1px;white-space:normal}
+.tile.savings dd{color:var(--mita-teal-ink)}
+.tile.savings dt .ico{color:var(--mita-teal-ink)}
+.callouts{display:grid;gap:6px;margin-top:10px}
+.callout{display:flex;gap:9px;align-items:flex-start;padding:10px 12px;border-radius:var(--border-radius-md);background:var(--color-background-secondary);font-size:13px;line-height:1.5;color:var(--color-text-secondary)}
+.callout .ico{margin-top:2px;width:15px;height:15px;color:var(--color-text-primary)}
+.callout strong{color:var(--color-text-primary)}
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.fchip{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:6px 12px;border-radius:var(--border-radius-full);border:1px solid var(--color-border-primary);background:var(--color-background-primary);font-size:13px;font-weight:650;cursor:pointer;transition:background-color .15s ease,border-color .15s ease}
+.fchip[aria-pressed=true]{background:var(--color-text-primary);color:var(--color-background-primary);border-color:var(--color-text-primary)}
+.fchip.more{border-style:dashed}
+.banner{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px;padding:9px 12px;border-radius:var(--border-radius-md);background:var(--color-background-secondary);font-size:13px}
+.banner span{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.main{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;margin-top:12px}
+.calendar{padding:10px;border-radius:var(--border-radius-xl);background:var(--color-background-primary);border:1px solid var(--color-border-secondary);box-shadow:var(--shadow-md)}
+.calendar[aria-busy=true] .grid{opacity:.45;transition:opacity .2s ease}
+.weekdays,.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.weekdays div{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--color-text-tertiary);text-align:center;padding:2px 0 6px}
+.cell{position:relative;display:flex;flex-direction:column;align-items:stretch;justify-content:space-between;gap:2px;min-height:var(--cell-h);padding:6px 5px 5px;border-radius:12px;border:1px solid transparent;background:var(--color-background-secondary);text-align:left;cursor:pointer;transition:transform .16s ease,box-shadow .2s ease,background-color .2s ease;-webkit-tap-highlight-color:transparent;min-width:0;overflow:hidden}
+.cell:hover{box-shadow:var(--shadow-sm)}
+.cell.future{background:var(--color-background-primary);border:1px dashed var(--color-border-primary)}
+.cell.over{background:var(--over-bg)}
+.cell.today{border:2px solid var(--mita-navy);background:var(--color-background-primary)}
+:root[data-theme=dark] .cell.today{border-color:var(--mita-yellow)}
+.cell[aria-selected=true]{transform:translateY(-2px);box-shadow:var(--shadow-lg);border-color:var(--color-text-primary);z-index:1}
+.cell.blank{visibility:hidden;pointer-events:none}
+.cell .d{display:flex;align-items:center;justify-content:space-between;gap:2px;font-size:12px;font-weight:720;line-height:1}
+.cell .tday{font-size:9.5px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;padding:2px 4px;border-radius:5px;background:var(--mita-yellow);color:var(--mita-navy);line-height:1}
+.cell .amt{font-size:12px;font-weight:720;line-height:1.1;white-space:nowrap;overflow:hidden}
+.cell.future .amt{font-weight:600;color:var(--color-text-secondary)}
+.cell .amt .pl{display:block;font-size:10px;font-weight:600;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.04em;margin-bottom:1px}
+.cell .meter{height:3px;border-radius:2px;background:var(--track);overflow:hidden}
+.cell .meter>i{display:block;height:100%;background:var(--within)}
+.cell.over .meter>i{background:var(--over)}
+.cell .marks{display:flex;align-items:center;gap:3px;min-height:8px}
+.cell .marks .dot{width:6px;height:6px}
+.cell .bill{width:12px;height:12px;color:var(--color-text-secondary);margin-left:auto}
+.cell .flag{display:inline-flex;color:var(--over)}
+.cell .flag .ico{width:12px;height:12px;stroke-width:2.6}
+.cell.dim .amt,.cell.dim .marks{opacity:.35}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:10px 2px 2px;font-size:12px;color:var(--color-text-secondary)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend .ico{width:13px;height:13px}
+.sw{width:14px;height:10px;border-radius:3px;background:var(--color-background-tertiary);display:inline-block}
+.sw.plan{background:transparent;border:1px dashed var(--color-text-tertiary)}
+.sw.overm{background:var(--over)}
+.sw.todaym{background:var(--mita-yellow)}
+.detail{padding:16px;border-radius:var(--border-radius-xl);background:var(--color-background-primary);border:1px solid var(--color-border-secondary);box-shadow:var(--shadow-md);scroll-margin-top:12px}
+.detail h2{font-size:18px;line-height:1.25}
+.detail .kind{margin-top:6px}
+.detail section{margin-top:14px}
+.detail h3{margin:0 0 6px;font-size:12px;font-weight:750;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.05em}
+.big{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.big b{font-size:26px;letter-spacing:-.015em}
+.state{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:14px;font-weight:650}
+.state.over{color:var(--color-text-danger)}
+.state.ok{color:var(--mita-teal-ink)}
+.rows{list-style:none;padding:0;display:grid;gap:0}
+.rows li{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--color-border-secondary);font-size:14px}
+.rows li:last-child{border-bottom:0}
+.rows .who{display:flex;align-items:center;gap:9px;min-width:0}
+.rows .who>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rows .what{display:block;font-size:12px;color:var(--color-text-secondary)}
+.rows .amtc{font-weight:650;white-space:nowrap;text-align:right}
+.breakdown{margin-top:14px;padding:16px;border-radius:var(--border-radius-xl);background:var(--color-background-primary);border:1px solid var(--color-border-secondary);box-shadow:var(--shadow-md)}
+.breakdown h2{font-size:17px}
+.group{margin-top:14px}
+.group h3{margin:0 0 4px;font-size:12px;font-weight:750;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.05em;display:flex;justify-content:space-between;gap:8px}
+.line{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 12px;width:calc(100% + 16px);padding:9px 8px;margin:0 -8px;border:0;border-radius:var(--border-radius-md);background:none;text-align:left;cursor:pointer;transition:background-color .15s ease}
+.line:hover{background:var(--color-background-secondary)}
+.line[aria-pressed=true]{background:var(--color-background-secondary);box-shadow:inset 0 0 0 1.5px var(--color-text-primary)}
+.line.static{cursor:default}
+.line.static:hover{background:none}
+.line .nm{display:flex;align-items:center;gap:8px;font-weight:650;font-size:14px;min-width:0}
+.line .nm span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.line .val{font-size:13px;font-weight:650;text-align:right;white-space:nowrap}
+.line .bar{grid-column:1/-1}
+.line .meta{grid-column:1/-1;font-size:12px;color:var(--color-text-secondary)}
+.line .meta.over{color:var(--color-text-danger);font-weight:650}
+.shield{color:var(--mita-teal-ink)}
+.method{margin-top:14px;font-size:12px;color:var(--color-text-secondary);line-height:1.55}
+.preview{margin-top:14px;padding:12px;border-radius:var(--border-radius-lg);background:var(--color-background-secondary)}
+.preview .ptop{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.preview img{display:block;width:100%;max-width:420px;height:auto;margin:8px auto 0;border-radius:12px;box-shadow:var(--shadow-md)}
+.loading{display:grid;gap:10px}
+.loading .grid .cell{cursor:default;animation:pulse 1.2s ease-in-out infinite}
+@media (min-width:560px){
+  :root{--cell-h:74px}
+  .cell{padding:8px 8px 7px}
+  .cell .amt{font-size:13px}
+  .tiles{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (min-width:900px){
+  :root{--cell-h:86px}
+  .group .lines{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:28px}
+  .summary{grid-template-columns:minmax(0,.9fr) minmax(0,1.6fr);align-items:stretch}
+  .main{grid-template-columns:minmax(0,1fr) 340px;align-items:start}
+  .detail{position:sticky;top:12px}
+}
+@media (max-width:559px){
+  .cell{padding:5px 4px 4px;border-radius:10px}
+  .cell .amt{font-size:11px}
+  .cell .tday{display:none}
+}
+@media (max-width:380px){
+  .kpi{padding:8px}
+  .kpi dd{font-size:14px}
+  .cell{padding:5px 3px 4px;border-radius:10px}
+  .cell .amt{font-size:11px}
+  .hero-fig{font-size:32px}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.cell[aria-selected=true]{transform:none}}
+@media (forced-colors:active){.cell,.fchip,.btn,.line,.mcell{border:1px solid CanvasText}.bar>i,.cell .meter>i,.mcell i>s{background:Highlight}}
+</style>
+</head>
+<body>
+<div id="app" class="app" data-mode="inline"></div>
+<div id="announce" class="vh" aria-live="polite"></div>
+<script>
+(function () {
+  "use strict";
+
+  // ---------------------------------------------------------------------
+  // Constants
+  // ---------------------------------------------------------------------
+  var APP_INFO = { name: "MITA financial calendar", version: "1.0.0" };
+  var PROTOCOL_VERSION = "2026-01-26";
+  var MODES = ["inline", "fullscreen"];
+  var CALENDAR_KEY = "mita/calendar";
+  var VIEW_KEY = "mita/view";
+  var TX_PAGE = 100;
+  var TX_MAX_PAGES = 5;
+  var FILTERS_SHOWN_WIDE = 8;
+  var FILTERS_SHOWN_NARROW = 3;
+  var WIDE = 900;
+  var DATE_LOCALE = "en-GB";
+  var SVG_NS = "http://www.w3.org/2000/svg";
+
+  // Category families: one colour per family, fixed order, never by rank —
+  // a filter or another month never repaints a category.
+  var FAMILIES = {
+    groceries: ["groceries", "food"],
+    dining: ["dining out", "dining", "delivery", "coffee"],
+    transport: ["transport gas", "gas", "transport public", "public_transport", "local transport", "taxi ridehailing", "transportation", "car maintenance"],
+    shopping: ["clothing", "shopping", "home goods", "tech gadgets", "gifts"],
+    fun: ["entertainment events", "entertainment", "gaming", "hobbies", "books", "media streaming", "travel", "flights", "hotels"],
+    health: ["out of pocket medical", "healthcare", "gym fitness", "personal care"],
+    home: ["rent", "mortgage", "utilities", "insurance", "insurance medical", "subscriptions", "subscriptions software", "cloud storage", "debt repayment", "school fees", "courses online", "education", "childcare", "home repairs"]
+  };
+  var FAMILY_OF = {};
+  Object.keys(FAMILIES).forEach(function (family) {
+    FAMILIES[family].forEach(function (code) { FAMILY_OF[code] = family; });
+  });
+  var FAMILY_VAR = {
+    groceries: "--fam-groceries", dining: "--fam-dining", transport: "--fam-transport", shopping: "--fam-shopping",
+    fun: "--fam-fun", health: "--fam-health", home: "--fam-home", other: "--fam-other"
+  };
+
+  var ICONS = {
+    prev: "M15 18l-6-6 6-6",
+    next: "M9 18l6-6-6-6",
+    expand: "M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3",
+    image: "M4 5h16v14H4zM4 15l4-4 4 4 3-3 5 5M15 9.5h.01",
+    bill: "M7 3h10v18l-2.5-1.6L12 21l-2.5-1.6L7 21zM9.5 8h5M9.5 12h5",
+    alert: "M12 8v5M12 16.5h.01M10.3 3.9L2.6 17.2A2 2 0 0 0 4.3 20h15.4a2 2 0 0 0 1.7-2.8L13.7 3.9a2 2 0 0 0-3.4 0z",
+    check: "M5 12.5l4.2 4.2L19 7",
+    shield: "M12 3l7 3v5c0 4.6-3 8.4-7 10-4-1.6-7-5.4-7-10V6zM9 12l2.2 2.2L15.5 10",
+    calendar: "M4 5h16v15H4zM4 10h16M9 3v4M15 3v4",
+    close: "M6 6l12 12M18 6L6 18",
+    info: "M12 11v5M12 7.6h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z",
+    spread: "M4 18h16M7 14v4M12 9v9M17 12v6"
+  };
+
+  // ---------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------
+  var state = {
+    hostContext: {},
+    hostCapabilities: {},
+    bridge: false,
+    mode: "inline",
+    payload: null,
+    view: { focus: null, category: null },
+    selected: null,
+    filter: null,
+    loading: true,
+    busy: false,
+    error: null,
+    cancelled: false,
+    tx: {},
+    toast: null,
+    preview: null,
+    exporting: false,
+    restored: false,
+    showCalc: false,
+    moreFilters: false,
+    wide: window.innerWidth >= WIDE
+  };
+
+  // ---------------------------------------------------------------------
+  // Host bridge: MCP Apps (JSON-RPC over postMessage), ChatGPT's
+  // window.openai only where the shared spec has no equivalent.
+  // ---------------------------------------------------------------------
+  var nextId = 1;
+  var pending = {};
+
+  function post(message) {
+    window.parent.postMessage(message, "*");
+  }
+
+  function request(method, params, timeoutMs) {
+    var id = nextId++;
+    post({ jsonrpc: "2.0", id: id, method: method, params: params || {} });
+    return new Promise(function (resolve, reject) {
+      var timer = setTimeout(function () {
+        delete pending[id];
+        reject(new Error(method + " timed out"));
+      }, timeoutMs || 30000);
+      pending[id] = {
+        resolve: function (value) { clearTimeout(timer); resolve(value); },
+        reject: function (error) { clearTimeout(timer); reject(error); }
+      };
+    });
+  }
+
+  function notify(method, params) {
+    post({ jsonrpc: "2.0", method: method, params: params || {} });
+  }
+
+  function respond(id, result) {
+    post({ jsonrpc: "2.0", id: id, result: result || {} });
+  }
+
+  function openai() {
+    return typeof window !== "undefined" ? window.openai : undefined;
+  }
+
+  window.addEventListener("message", function (event) {
+    if (event.source !== window.parent) return;
+    var message = event.data;
+    if (!message || message.jsonrpc !== "2.0") return;
+    if (message.id !== undefined && message.method === undefined) {
+      var waiting = pending[message.id];
+      if (!waiting) return;
+      delete pending[message.id];
+      if (message.error) waiting.reject(message.error);
+      else waiting.resolve(message.result);
+      return;
+    }
+    switch (message.method) {
+      case "ui/notifications/tool-input":
+        state.cancelled = false;
+        break;
+      case "ui/notifications/tool-result":
+        onToolResult(message.params || {});
+        break;
+      case "ui/notifications/tool-cancelled":
+        state.cancelled = true;
+        state.loading = false;
+        render();
+        break;
+      case "ui/notifications/host-context-changed":
+        mergeContext(message.params || {});
+        break;
+      case "ui/resource-teardown":
+        if (message.id !== undefined) respond(message.id, {});
+        break;
+      case "ping":
+        if (message.id !== undefined) respond(message.id, {});
+        break;
+      default:
+        if (message.id !== undefined) {
+          post({ jsonrpc: "2.0", id: message.id, error: { code: -32601, message: "Method not found" } });
+        }
+    }
+  }, { passive: true });
+
+  function hasCapability(name) {
+    return !!(state.hostCapabilities && state.hostCapabilities[name]);
+  }
+
+  function callTool(name, args) {
+    if (state.bridge && hasCapability("serverTools")) {
+      return request("tools/call", { name: name, arguments: args || {} }, 30000);
+    }
+    var o = openai();
+    if (o && typeof o.callTool === "function") {
+      return Promise.resolve(o.callTool(name, args || {})).then(function (result) {
+        return result && (result.structuredContent || result._meta || result.meta) ? result : { structuredContent: result };
+      });
+    }
+    return Promise.reject(new Error("This chat cannot load more from MITA here."));
+  }
+
+  function requestMode(mode) {
+    var modes = state.hostContext.availableDisplayModes;
+    if (state.bridge && (!modes || modes.indexOf(mode) !== -1)) {
+      return request("ui/request-display-mode", { mode: mode }).then(function (result) {
+        if (result && result.mode) applyMode(result.mode);
+        return result;
+      }).catch(function () { return fallbackMode(mode); });
+    }
+    return fallbackMode(mode);
+  }
+
+  function fallbackMode(mode) {
+    var o = openai();
+    if (o && typeof o.requestDisplayMode === "function") {
+      return Promise.resolve(o.requestDisplayMode({ mode: mode })).then(function (result) {
+        applyMode((result && result.mode) || mode);
+      });
+    }
+    applyMode(mode);
+    return Promise.resolve();
+  }
+
+  function sendMessage(text) {
+    if (state.bridge && hasCapability("message")) {
+      return request("ui/message", { role: "user", content: { type: "text", text: text } });
+    }
+    var o = openai();
+    if (o && typeof o.sendFollowUpMessage === "function") {
+      return Promise.resolve(o.sendFollowUpMessage({ prompt: text }));
+    }
+    return Promise.reject(new Error("unavailable"));
+  }
+
+  var lastContext = "";
+  function updateModelContext(text, structured) {
+    if (text === lastContext) return;
+    lastContext = text;
+    if (state.bridge && hasCapability("updateModelContext")) {
+      request("ui/update-model-context", {
+        content: [{ type: "text", text: text }],
+        structuredContent: structured
+      }).catch(function () {});
+    }
+  }
+
+  function saveWidgetState() {
+    var o = openai();
+    if (!o || typeof o.setWidgetState !== "function" || !state.payload) return;
+    try {
+      o.setWidgetState({
+        privateContent: {
+          month: monthKey(state.payload.month),
+          selected: state.selected,
+          filter: state.filter
+        }
+      });
+    } catch (e) { /* host refused: nothing to persist */ }
+  }
+
+  // Size: the host sizes the inline frame from what the view reports.
+  var lastSize = "";
+  function reportSize() {
+    var html = document.documentElement;
+    var previous = html.style.height;
+    html.style.height = "max-content";
+    var height = Math.ceil(html.getBoundingClientRect().height);
+    html.style.height = previous;
+    var width = Math.ceil(window.innerWidth);
+    var key = width + "x" + height;
+    if (key === lastSize) return;
+    lastSize = key;
+    if (state.bridge) notify("ui/notifications/size-changed", { width: width, height: height });
+    var o = openai();
+    if (o && typeof o.notifyIntrinsicHeight === "function") {
+      try { o.notifyIntrinsicHeight(height); } catch (e) { /* optional */ }
+    }
+  }
+  var sizeScheduled = false;
+  function scheduleSize() {
+    if (sizeScheduled) return;
+    sizeScheduled = true;
+    requestAnimationFrame(function () { sizeScheduled = false; reportSize(); });
+  }
+  if (typeof ResizeObserver === "function") {
+    var observer = new ResizeObserver(function () {
+      var wide = window.innerWidth >= WIDE;
+      if (wide !== state.wide) { state.wide = wide; render(); }
+      scheduleSize();
+    });
+    observer.observe(document.documentElement);
+    observer.observe(document.body);
+  }
+
+  // ---------------------------------------------------------------------
+  // Host context: theme, host variables, display mode
+  // ---------------------------------------------------------------------
+  function applyTheme() {
+    var theme = state.hostContext.theme;
+    if (theme !== "light" && theme !== "dark") {
+      var o = openai();
+      theme = (o && o.theme) || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    }
+    var root = document.documentElement;
+    root.setAttribute("data-theme", theme === "dark" ? "dark" : "light");
+    root.style.colorScheme = theme === "dark" ? "dark" : "light";
+    var styles = state.hostContext.styles;
+    var variables = styles && styles.variables;
+    if (variables && typeof variables === "object") {
+      Object.keys(variables).forEach(function (key) {
+        var value = variables[key];
+        if (/^--[a-z0-9-]+$/i.test(key) && typeof value === "string" && value.length < 300 && !/[<>{};]/.test(value)) {
+          root.style.setProperty(key, value);
+        }
+      });
+    }
+  }
+
+  function applyMode(mode) {
+    if (MODES.indexOf(mode) === -1) mode = "inline";
+    if (mode === state.mode) return;
+    state.mode = mode;
+    render();
+    if (mode === "fullscreen") window.scrollTo(0, 0);
+  }
+
+  function mergeContext(partial) {
+    Object.keys(partial).forEach(function (key) { state.hostContext[key] = partial[key]; });
+    if (partial.theme || partial.styles) applyTheme();
+    if (partial.displayMode) applyMode(partial.displayMode);
+    else render();
+  }
+
+  // ---------------------------------------------------------------------
+  // Tool results
+  // ---------------------------------------------------------------------
+  function metaOf(result) {
+    return (result && (result._meta || result.meta)) || {};
+  }
+
+  function onToolResult(result) {
+    state.loading = false;
+    state.cancelled = false;
+    if (result.isError) {
+      var err = result.structuredContent && result.structuredContent.error;
+      state.error = (err && err.message) || textOf(result) || "MITA could not load the calendar.";
+      render();
+      return;
+    }
+    var meta = metaOf(result);
+    var payload = meta[CALENDAR_KEY];
+    var view = meta[VIEW_KEY] || {};
+    if (!isPayload(payload)) {
+      // A host that strips _meta: ask MITA for the month the tool showed.
+      var sc = result.structuredContent || {};
+      if (sc.year && sc.month) {
+        loadMonth(sc.year, sc.month, { focus: sc.focus_date || null, category: sc.category || null });
+        return;
+      }
+      state.error = "MITA's calendar data did not arrive. Ask ChatGPT to show it again.";
+      render();
+      return;
+    }
+    state.error = null;
+    setPayload(payload, { focus: view.focus_date || null, category: view.category || null });
+  }
+
+  function textOf(result) {
+    var content = result && result.content;
+    if (Array.isArray(content)) {
+      for (var i = 0; i < content.length; i++) {
+        if (content[i] && content[i].type === "text" && typeof content[i].text === "string") return content[i].text;
+      }
+    }
+    return "";
+  }
+
+  function isPayload(payload) {
+    return !!(payload && payload.version === 1 && payload.month && Array.isArray(payload.month.days));
+  }
+
+  function setPayload(payload, view) {
+    state.payload = payload;
+    state.view = view || { focus: null, category: null };
+    var month = payload.month;
+    var lineKeys = month.categories.map(function (c) { return c.category; });
+    state.filter = view && view.category && lineKeys.indexOf(view.category) !== -1 ? view.category : null;
+    var focus = view && view.focus;
+    if (focus && month.days.some(function (d) { return d.date === focus; })) {
+      state.selected = focus;
+    } else if (month.month_position === "current") {
+      state.selected = month.today;
+    } else {
+      state.selected = null;
+    }
+    if (!state.restored) {
+      state.restored = true;
+      var o = openai();
+      var saved = o && o.widgetState && o.widgetState.privateContent;
+      if (saved && saved.month === monthKey(month)) {
+        if (saved.selected && month.days.some(function (d) { return d.date === saved.selected; })) state.selected = saved.selected;
+        if (saved.filter && lineKeys.indexOf(saved.filter) !== -1) state.filter = saved.filter;
+      }
+    }
+    render();
+    pushContext();
+  }
+
+  function loadMonth(year, month, view) {
+    state.busy = true;
+    state.error = null;
+    render();
+    return callTool("get_calendar_month", { year: year, month: month }).then(function (result) {
+      state.busy = false;
+      if (result && result.isError) {
+        var err = result.structuredContent && result.structuredContent.error;
+        state.error = (err && err.message) || textOf(result) || "MITA could not load that month.";
+        render();
+        return;
+      }
+      var payload = metaOf(result)[CALENDAR_KEY];
+      if (!isPayload(payload)) {
+        state.error = "MITA's calendar data did not arrive for that month.";
+        render();
+        return;
+      }
+      state.loading = false;
+      setPayload(payload, view || { focus: null, category: state.filter });
+      announce(monthTitle(payload.month) + " loaded.");
+    }).catch(function (error) {
+      state.busy = false;
+      state.loading = false;
+      state.error = (error && error.message) || "MITA could not load that month.";
+      render();
+    });
+  }
+
+  // Expenses of the shown month, fetched once when a date is first opened
+  // (list_transactions, paged) — merchant names stay out of the month data.
+  function ensureTransactions() {
+    var month = state.payload && state.payload.month;
+    if (!month) return;
+    var key = monthKey(month);
+    if (state.tx[key]) return;
+    var entry = { status: "loading", byDate: {}, more: false };
+    state.tx[key] = entry;
+    var first = month.days[0].date;
+    var last = month.days[month.days.length - 1].date;
+    var lastBegun = month.today < last ? month.today : last;
+    if (month.month_position === "future" || lastBegun < first) {
+      entry.status = "ready";
+      return;
+    }
+    function page(cursor, count) {
+      var args = { start_date: first, end_date: lastBegun, limit: TX_PAGE };
+      if (cursor) args.cursor = cursor;
+      return callTool("list_transactions", args).then(function (result) {
+        if (!result || result.isError) throw new Error("unavailable");
+        var sc = result.structuredContent || {};
+        (sc.transactions || []).forEach(function (t) {
+          (entry.byDate[t.date] = entry.byDate[t.date] || []).push(t);
+        });
+        if (sc.has_more && sc.next_cursor && count + 1 < TX_MAX_PAGES) return page(sc.next_cursor, count + 1);
+        entry.more = !!sc.has_more;
+        entry.status = "ready";
+      });
+    }
+    page(null, 0).then(render, function () {
+      entry.status = "error";
+      render();
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Formatting (figures are MITA's strings; nothing is recomputed)
+  // ---------------------------------------------------------------------
+  function cents(value) {
+    return value === null || value === undefined ? null : Math.round(Number(value) * 100);
+  }
+
+  var moneyFormats = {};
+  function money(value, currency) {
+    if (value === null || value === undefined) return "—";
+    var key = currency || "XXX";
+    if (!moneyFormats[key]) {
+      try {
+        moneyFormats[key] = new Intl.NumberFormat(DATE_LOCALE, { style: "currency", currency: currency, currencyDisplay: "narrowSymbol", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      } catch (e) {
+        moneyFormats[key] = new Intl.NumberFormat(DATE_LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+    }
+    return moneyFormats[key].format(Number(value));
+  }
+  function moneyCents(c, currency) {
+    return money((c / 100).toFixed(2), currency);
+  }
+
+  var plainFormat = new Intl.NumberFormat(DATE_LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var wholeFormat = new Intl.NumberFormat(DATE_LOCALE, { maximumFractionDigits: 0 });
+  function cellAmount(value) {
+    var n = Number(value);
+    return Math.abs(n) >= 1000 ? wholeFormat.format(n) : plainFormat.format(n);
+  }
+  function fitAmount(value) {
+    // Every cent where a cell has room; whole amounts from 100 on a phone.
+    return window.innerWidth < 560 ? tinyAmount(value) : cellAmount(value);
+  }
+  function tinyAmount(value) {
+    var n = Number(value);
+    return Math.abs(n) >= 100 ? wholeFormat.format(n) : plainFormat.format(n);
+  }
+
+  function parseDate(iso) {
+    var parts = iso.split("-").map(Number);
+    return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+  }
+  var longDate = new Intl.DateTimeFormat(DATE_LOCALE, { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
+  var shortDate = new Intl.DateTimeFormat(DATE_LOCALE, { day: "numeric", month: "short", timeZone: "UTC" });
+  var monthFormat = new Intl.DateTimeFormat(DATE_LOCALE, { month: "long", year: "numeric", timeZone: "UTC" });
+  var monthOnly = new Intl.DateTimeFormat(DATE_LOCALE, { month: "long", timeZone: "UTC" });
+  var weekdayShort = new Intl.DateTimeFormat(DATE_LOCALE, { weekday: "short", timeZone: "UTC" });
+  var weekdayNarrow = new Intl.DateTimeFormat(DATE_LOCALE, { weekday: "narrow", timeZone: "UTC" });
+
+  function monthKey(month) {
+    return month.year + "-" + String(month.month).padStart(2, "0");
+  }
+  function monthDate(month) {
+    return new Date(Date.UTC(month.year, month.month - 1, 1));
+  }
+  function monthTitle(month) {
+    return monthFormat.format(monthDate(month));
+  }
+  function plural(n, one, many) {
+    return n + " " + (n === 1 ? one : many);
+  }
+
+  // ---------------------------------------------------------------------
+  // Data helpers
+  // ---------------------------------------------------------------------
+  function lineByKey(key) {
+    var lines = state.payload.month.categories;
+    for (var i = 0; i < lines.length; i++) if (lines[i].category === key) return lines[i];
+    return null;
+  }
+
+  function familyOfCodes(key, codes) {
+    for (var i = 0; i < codes.length; i++) {
+      var family = FAMILY_OF[String(codes[i]).toLowerCase()];
+      if (family) return family;
+    }
+    return FAMILY_OF[String(key).toLowerCase()] || "other";
+  }
+
+  function familyOf(key) {
+    var line = lineByKey(key);
+    return familyOfCodes(key, line ? line.category_codes : [key]);
+  }
+
+  function familyColor(key) {
+    return "var(" + FAMILY_VAR[familyOf(key)] + ")";
+  }
+
+  function dayLines(iso) {
+    var lines = (state.payload.day_lines && state.payload.day_lines[iso]) || [];
+    return lines.map(function (l) { return { key: l[0], planned: l[1], spent: l[2] }; });
+  }
+
+  function billsOn(iso) {
+    return state.payload.month.bills.filter(function (b) { return b.date === iso; });
+  }
+
+  function lineGroup(key) {
+    var line = lineByKey(key);
+    return line ? line.group : "everyday";
+  }
+
+  // What one date shows, for the whole plan or for the filtered line.
+  function cellModel(day) {
+    var begun = day.day_kind !== "future";
+    if (state.filter) {
+      var match = dayLines(day.date).filter(function (l) { return l.key === state.filter; })[0];
+      var planned = match ? match.planned : "0.00";
+      var spent = match ? match.spent : "0.00";
+      var p = cents(planned), s = cents(spent);
+      var stateName = begun ? (p > 0 ? (s > p ? "over" : "within") : (s > 0 ? "unplanned" : "quiet")) : (p > 0 ? "planned" : "free");
+      return { begun: begun, planned: planned, spent: spent, state: stateName, ratio: p > 0 ? Math.min(1, s / p) : 0, empty: !match };
+    }
+    var pe = cents(day.planned_everyday), se = cents(day.spent_everyday);
+    return {
+      begun: begun,
+      planned: day.planned,
+      spent: day.spent,
+      state: day.state,
+      ratio: begun && pe > 0 ? Math.min(1, se / pe) : 0,
+      empty: false
+    };
+  }
+
+  function dayLabel(day) {
+    var m = state.payload.month;
+    var cur = m.currency;
+    var parts = [longDate.format(parseDate(day.date))];
+    if (day.day_kind === "today") parts.push("today");
+    var model = cellModel(day);
+    var line = state.filter ? lineByKey(state.filter) : null;
+    var prefix = line ? line.category_label + ": " : "";
+    if (model.begun) {
+      if (state.filter) {
+        parts.push(prefix + "spent " + money(model.spent, cur) + (cents(model.planned) > 0 ? " of " + money(model.planned, cur) + " planned" : ""));
+      } else {
+        parts.push("spent " + money(day.spent, cur));
+        if (cents(day.planned_everyday) > 0) {
+          parts.push("everyday " + money(day.spent_everyday, cur) + " of a " + money(day.planned_everyday, cur) + " plan");
+        }
+      }
+      if (model.state === "over") parts.push("over the plan");
+      if (model.state === "unplanned") parts.push("no everyday plan for this date");
+    } else {
+      parts.push(prefix + (cents(model.planned) > 0 ? "planned " + money(model.planned, cur) : "nothing planned"));
+    }
+    var bills = billsOn(day.date);
+    if (bills.length) parts.push(plural(bills.length, "saved bill due", "saved bills due"));
+    return parts.join(", ");
+  }
+
+  // ---------------------------------------------------------------------
+  // DOM helpers (text only — no markup from data)
+  // ---------------------------------------------------------------------
+  function el(tag, attrs, children) {
+    var node = document.createElement(tag);
+    if (attrs) {
+      Object.keys(attrs).forEach(function (key) {
+        var value = attrs[key];
+        if (value === null || value === undefined || value === false) return;
+        if (key === "class") node.className = value;
+        else if (key === "text") node.textContent = value;
+        else if (key === "style") node.setAttribute("style", value);
+        else if (key.slice(0, 2) === "on" && typeof value === "function") node.addEventListener(key.slice(2), value);
+        else node.setAttribute(key, value === true ? "" : String(value));
+      });
+    }
+    append(node, children);
+    return node;
+  }
+
+  function append(node, children) {
+    if (children === null || children === undefined || children === false) return;
+    if (Array.isArray(children)) { children.forEach(function (c) { append(node, c); }); return; }
+    if (typeof children === "string" || typeof children === "number") { node.appendChild(document.createTextNode(String(children))); return; }
+    node.appendChild(children);
+  }
+
+  function icon(name, cls) {
+    var svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("class", "ico" + (cls ? " " + cls : ""));
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("focusable", "false");
+    var path = document.createElementNS(SVG_NS, "path");
+    path.setAttribute("d", ICONS[name]);
+    svg.appendChild(path);
+    return svg;
+  }
+
+  function dot(color) {
+    return el("span", { class: "dot", style: "background:" + color, "aria-hidden": "true" });
+  }
+
+  function bar(ratio, over) {
+    var width = Math.max(0, Math.min(1, ratio)) * 100;
+    return el("div", { class: "bar" + (over ? " over" : ""), "aria-hidden": "true" }, el("i", { style: "width:" + width.toFixed(1) + "%" }));
+  }
+
+  function announce(text) {
+    var region = document.getElementById("announce");
+    region.textContent = "";
+    setTimeout(function () { region.textContent = text; }, 30);
+  }
+
+  // ---------------------------------------------------------------------
+  // Rendering
+  // ---------------------------------------------------------------------
+  var root = document.getElementById("app");
+
+  function render() {
+    root.setAttribute("data-mode", state.mode);
+    var scrollY = window.scrollY;
+    var focusId = document.activeElement && document.activeElement.id;
+    root.textContent = "";
+    if (state.cancelled && !state.payload) {
+      root.appendChild(el("p", { class: "note", text: "The calendar was not opened." }));
+    } else if (!state.payload) {
+      root.appendChild(state.error ? errorView() : loadingView());
+    } else if (state.mode === "fullscreen") {
+      root.appendChild(fullView());
+    } else {
+      root.appendChild(inlineView());
+    }
+    if (state.toast) root.appendChild(el("div", { class: "toast", role: "status", text: state.toast }));
+    if (focusId) {
+      var again = document.getElementById(focusId);
+      if (again) again.focus({ preventScroll: true });
+    }
+    if (state.mode === "fullscreen") window.scrollTo(0, scrollY);
+    scheduleSize();
+  }
+
+  function errorView() {
+    return el("div", null, [
+      el("p", { class: "title", text: "MITA calendar" }),
+      el("p", { class: "error", role: "alert", text: state.error })
+    ]);
+  }
+
+  function loadingView() {
+    var cells = [];
+    for (var i = 0; i < 35; i++) cells.push(el("div", { class: "cell", "aria-hidden": "true" }));
+    return el("div", { class: "loading", "aria-busy": "true" }, [
+      el("div", { class: "skel", style: "width:46%;height:20px" }),
+      el("div", { class: "skel", style: "width:30%;height:34px" }),
+      el("div", { class: "grid" }, cells),
+      el("p", { class: "vh", text: "Opening your calendar…" })
+    ]);
+  }
+
+  function statusChip(month) {
+    if (month.plan_status !== "generated") return el("span", { class: "chip", text: "No plan yet" });
+    if (month.month_position === "past") return el("span", { class: "chip", text: "Month ended" });
+    if (month.month_position === "future") return el("span", { class: "chip", text: "Ahead" });
+    return el("span", { class: "chip chip-today" }, [icon("calendar"), "Today " + shortDate.format(parseDate(month.today))]);
+  }
+
+  function heroBlock(month) {
+    var s = month.summary;
+    var cur = month.currency;
+    if (month.plan_status === "generated" && s.average_per_day !== null) {
+      var days = s.days_remaining;
+      var caption = month.month_position === "future"
+        ? "a day on average · " + plural(days, "day", "days") + " in " + monthOnly.format(monthDate(month))
+        : "a day on average · " + plural(days, "day", "days") + " left";
+      return el("div", { class: "hero" }, [
+        el("span", { class: "hero-fig num", text: money(s.average_per_day, cur) }),
+        el("span", { class: "hero-cap", text: caption })
+      ]);
+    }
+    if (month.plan_status === "generated") {
+      return el("div", { class: "hero" }, [
+        el("span", { class: "hero-fig num", text: money(s.total_spent, cur) }),
+        el("span", { class: "hero-cap", text: "spent of " + money(s.total_planned, cur) + " planned" })
+      ]);
+    }
+    return el("div", { class: "hero" }, [
+      el("span", { class: "hero-fig num", text: money(s.total_spent, cur) }),
+      el("span", { class: "hero-cap", text: "recorded this month" })
+    ]);
+  }
+
+  function weekStart() {
+    // Monday first unless the host locale's week starts on Sunday.
+    try {
+      var lang = state.hostContext.locale || document.documentElement.lang || "";
+      if (lang && typeof Intl.Locale === "function") {
+        var info = new Intl.Locale(lang);
+        var week = typeof info.getWeekInfo === "function" ? info.getWeekInfo() : info.weekInfo;
+        if (week && week.firstDay === 7) return 0;
+      }
+    } catch (e) { /* default */ }
+    return 1;
+  }
+
+  function leadingBlanks(firstIso) {
+    var weekday = parseDate(firstIso).getUTCDay();
+    return (weekday - weekStart() + 7) % 7;
+  }
+
+  function weekdayHeaders(formatter) {
+    var start = weekStart();
+    var names = [];
+    for (var i = 0; i < 7; i++) {
+      // 4 January 1970 was a Sunday.
+      names.push(formatter.format(new Date(Date.UTC(1970, 0, 4 + ((start + i) % 7)))));
+    }
+    return names;
+  }
+
+  function nextBill(month) {
+    var upcoming = month.bills.filter(function (b) { return b.date > month.today; });
+    return upcoming[0] || null;
+  }
+
+  // --- inline card: the month at a glance, two actions ---
+  function inlineView() {
+    var month = state.payload.month;
+    var s = month.summary;
+    var cur = month.currency;
+    var card = el("div", { class: "inline enter" });
+    card.appendChild(el("div", { class: "ihead" }, [
+      el("div", null, [
+        el("p", { class: "eyebrow", text: "Your month in MITA" }),
+        el("h1", { class: "title", text: monthTitle(month) })
+      ]),
+      statusChip(month)
+    ]));
+    card.appendChild(heroBlock(month));
+
+    var kpis = el("dl", { class: "kpis" });
+    if (month.plan_status === "generated") {
+      kpis.appendChild(kpi(month.month_position === "past" ? "Left" : "Left to spend", money(s.left_to_spend, cur)));
+      kpis.appendChild(kpi("Spent", money(s.total_spent, cur)));
+      kpis.appendChild(kpi("Savings kept", money(s.savings_set_aside, cur), "savings"));
+    } else {
+      kpis.appendChild(kpi("Spent", money(s.total_spent, cur)));
+      kpis.appendChild(kpi(month.month_position === "past" ? "Month" : "Days left", month.month_position === "past" ? "Ended" : String(s.days_remaining)));
+      kpis.appendChild(kpi("Plan", "Not saved"));
+    }
+    card.appendChild(kpis);
+
+    var grid = el("div", { class: "mini", "aria-hidden": "true" });
+    weekdayHeaders(weekdayNarrow).forEach(function (name) { grid.appendChild(el("div", { class: "wd", text: name })); });
+    for (var b = leadingBlanks(month.days[0].date); b > 0; b--) grid.appendChild(el("div", { class: "mcell blank" }));
+    month.days.forEach(function (day) {
+      var model = cellModel(day);
+      var classes = "mcell" + (day.day_kind === "future" ? " future" : "") + (day.day_kind === "today" ? " today" : "") + (model.state === "over" ? " over" : "");
+      var amount = "";
+      if (day.day_kind !== "future" && cents(day.spent) > 0) amount = tinyAmount(day.spent);
+      if (day.day_kind === "future" && cents(day.planned) > 0) amount = tinyAmount(day.planned);
+      var cell = el("div", { class: classes }, [el("b", { text: String(parseDate(day.date).getUTCDate()) }), el("span", { class: "num", text: amount })]);
+      if (model.begun && (model.state === "over" || model.state === "within")) {
+        cell.appendChild(el("i", null, el("s", { style: "width:" + (model.ratio * 100).toFixed(1) + "%" })));
+      }
+      if (billsOn(day.date).length) cell.appendChild(el("u", { class: "mbill" }));
+      grid.appendChild(cell);
+    });
+    card.appendChild(grid);
+    card.appendChild(el("p", { class: "vh", text: inlineSummaryText(month) }));
+
+    var notes = el("p", { class: "inote" });
+    var over = month.days.filter(function (d) { return d.state === "over"; }).length;
+    if (over) notes.appendChild(el("span", { class: "over" }, [icon("alert"), plural(over, "day", "days") + " over the everyday plan"]));
+    var bill = nextBill(month);
+    if (bill) notes.appendChild(el("span", null, [icon("bill"), (bill.name || bill.category_label) + " " + money(bill.amount, cur) + " due " + shortDate.format(parseDate(bill.date))]));
+    if (notes.childNodes.length) card.appendChild(notes);
+
+    if (month.plan_status !== "generated") card.appendChild(noPlanCallout(month));
+
+    var actions = el("div", { class: "actions" });
+    actions.appendChild(el("button", { class: "btn btn-primary", type: "button", id: "open-full", onclick: function () { requestMode("fullscreen"); } }, [icon("expand"), "Open calendar"]));
+    actions.appendChild(exportButton());
+    card.appendChild(actions);
+    if (state.preview) card.appendChild(previewBlock());
+    if (state.error) card.appendChild(el("p", { class: "error", role: "alert", text: state.error }));
+    return card;
+  }
+
+  function inlineSummaryText(month) {
+    var over = month.days.filter(function (d) { return d.state === "over"; }).map(function (d) { return shortDate.format(parseDate(d.date)); });
+    return monthTitle(month) + " calendar. " + (over.length ? "Over the everyday plan on " + over.join(", ") + "." : "No date over the everyday plan.") + " Open the calendar for each date.";
+  }
+
+  function kpi(label, value, cls) {
+    return el("div", { class: "kpi" + (cls ? " " + cls : "") }, [el("dt", { text: label }), el("dd", { class: "num", text: value })]);
+  }
+
+  function canPlan(month) {
+    var today = parseDate(month.today);
+    var next = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1));
+    var key = monthKey(month);
+    var current = month.today.slice(0, 7);
+    var nextKey = next.getUTCFullYear() + "-" + String(next.getUTCMonth() + 1).padStart(2, "0");
+    return key === current || key === nextKey;
+  }
+
+  function noPlanCallout(month) {
+    var box = el("div", { class: "empty" }, [
+      el("h2", { text: "No saved plan for " + monthTitle(month) }),
+      el("p", { class: "note", text: "Dates show recorded spending only. MITA never invents a budget for a month you have not planned." })
+    ]);
+    if (canPlan(month)) {
+      box.appendChild(el("button", { class: "btn btn-small", type: "button", id: "plan-month", style: "margin-top:10px", onclick: function () {
+        sendMessage("Help me build my monthly budget for " + monthTitle(month) + ".").catch(function () {
+          toast("Ask ChatGPT: “Help me build my monthly budget for " + monthTitle(month) + ".”");
+        });
+      } }, "Ask ChatGPT to plan " + monthOnly.format(monthDate(month))));
+    }
+    return box;
+  }
+
+  function exportButton(small) {
+    return el("button", {
+      class: "btn" + (small ? " btn-small" : ""), type: "button", id: "export", disabled: state.exporting ? true : null,
+      onclick: function () { exportPng(); }
+    }, [icon("image"), state.exporting ? "Preparing…" : "Save as PNG"]);
+  }
+
+  // --- fullscreen: the calendar first on phones; summary beside it when wide ---
+  function fullView() {
+    var month = state.payload.month;
+    var wrap = el("div", { class: "full enter" });
+    wrap.appendChild(fullHeader(month));
+    if (state.error) wrap.appendChild(el("p", { class: "error", role: "alert", text: state.error }));
+    wrap.appendChild(summaryBlock(month, state.wide));
+    if (month.plan_status !== "generated") wrap.appendChild(noPlanCallout(month));
+    wrap.appendChild(filterBar(month));
+    if (state.filter) wrap.appendChild(filterBanner(month));
+    var main = el("div", { class: "main" });
+    main.appendChild(calendarBlock(month));
+    main.appendChild(detailBlock(month));
+    wrap.appendChild(main);
+    wrap.appendChild(breakdownBlock(month));
+    if (!state.wide && month.plan_status === "generated") wrap.appendChild(planBlock(month));
+    if (state.preview) wrap.appendChild(previewBlock());
+    wrap.appendChild(el("p", { class: "method", text: methodText(month) }));
+    return wrap;
+  }
+
+  function shiftMonth(month, delta) {
+    var index = month.year * 12 + (month.month - 1) + delta;
+    return { year: Math.floor(index / 12), month: (index % 12) + 1 };
+  }
+
+  function fullHeader(month) {
+    var prev = shiftMonth(month, -1);
+    var next = shiftMonth(month, 1);
+    var today = parseDate(month.today);
+    var maxYear = today.getUTCFullYear() + 1;
+    var seg = el("div", { class: "seg", role: "group", "aria-label": "Change month" }, [
+      el("button", { class: "btn btn-icon", type: "button", id: "prev-month", "aria-label": "Previous month", disabled: state.busy || prev.year < 2000 ? true : null, onclick: function () { loadMonth(prev.year, prev.month); } }, icon("prev")),
+      el("button", { class: "btn btn-small", type: "button", id: "this-month", disabled: state.busy || month.month_position === "current" ? true : null, onclick: function () {
+        loadMonth(today.getUTCFullYear(), today.getUTCMonth() + 1);
+      } }, "This month"),
+      el("button", { class: "btn btn-icon", type: "button", id: "next-month", "aria-label": "Next month", disabled: state.busy || next.year > maxYear ? true : null, onclick: function () { loadMonth(next.year, next.month); } }, icon("next"))
+    ]);
+    return el("div", { class: "fhead" }, [
+      el("div", null, [
+        el("p", { class: "eyebrow", text: "MITA financial calendar · " + month.currency }),
+        el("h1", { class: "title", "aria-live": "polite", text: monthTitle(month) })
+      ]),
+      el("div", { class: "nav" }, [seg, exportButton(true)])
+    ]);
+  }
+
+  function summaryBlock(month, wide) {
+    var s = month.summary;
+    var cur = month.currency;
+    var planned = month.plan_status === "generated";
+    var lead = el("div", { class: "lead" }, [
+      el("div", { class: "top" }, [el("p", { class: "eyebrow", text: planned && s.average_per_day !== null ? "Safe to spend, on average" : "This month" }), statusChip(month)]),
+      heroBlock(month)
+    ]);
+    if (planned && s.average_per_day !== null) {
+      var toggle = el("button", { class: "disc", type: "button", id: "calc-toggle", "aria-expanded": state.showCalc ? "true" : "false", "aria-controls": "calc", onclick: function () {
+        state.showCalc = !state.showCalc;
+        render();
+      } }, "How is this worked out?");
+      lead.appendChild(toggle);
+      if (state.showCalc) {
+        lead.appendChild(el("div", { class: "calc num", id: "calc" }, [
+          calcRow("Plan", money(s.total_planned, cur)),
+          calcRow("− Spent", money(s.total_spent, cur)),
+          calcRow("− Protected savings", money(s.savings_set_aside, cur)),
+          calcRow("= Left to spend", money(s.left_to_spend, cur), true),
+          calcRow("÷ Days left", String(s.days_remaining)),
+          calcRow("= On average a day", money(s.average_per_day, cur), true)
+        ]));
+      }
+    }
+    if (!wide) {
+      var kpis = el("dl", { class: "kpis" });
+      if (planned) {
+        kpis.appendChild(kpi(month.month_position === "past" ? "Left" : "Left to spend", money(s.left_to_spend, cur)));
+        kpis.appendChild(kpi("Spent", money(s.total_spent, cur)));
+        kpis.appendChild(kpi("Savings kept", money(s.savings_set_aside, cur), "savings"));
+      } else {
+        kpis.appendChild(kpi("Spent", money(s.total_spent, cur)));
+        kpis.appendChild(kpi(month.month_position === "past" ? "Month" : "Days left", month.month_position === "past" ? "Ended" : String(s.days_remaining)));
+        kpis.appendChild(kpi("Plan", "Not saved"));
+      }
+      lead.appendChild(kpis);
+      return el("div", { class: "summary" }, [lead]);
+    }
+    var tiles = el("dl", { class: "tiles" });
+    if (planned) {
+      if (s.left_to_spend !== null) tiles.appendChild(tile("Left to spend", money(s.left_to_spend, cur), month.month_position === "past" ? "when the month ended" : "after protected savings"));
+      tiles.appendChild(tile("Spent", money(s.total_spent, cur), "of " + money(s.total_planned, cur) + " planned"));
+      tiles.appendChild(tile("Protected savings", money(s.savings_set_aside, cur), "never counted as spendable", "savings", "shield"));
+      if (wide) {
+        tiles.appendChild(tile("Bills & commitments", money(s.commitments_planned, cur), "recorded " + money(s.commitments_spent, cur)));
+        tiles.appendChild(tile("Everyday budget", money(s.everyday_planned, cur), "spent " + money(s.everyday_spent, cur)));
+        if (s.planned_after_today !== null) tiles.appendChild(tile("Planned on the days left", money(s.planned_after_today, cur), "MITA’s plan for the dates ahead"));
+      }
+    } else {
+      tiles.appendChild(tile("Spent", money(s.total_spent, cur), null));
+      tiles.appendChild(tile(month.month_position === "past" ? "Month" : "Days left", month.month_position === "past" ? "Ended" : String(s.days_remaining), null));
+      if (s.stated_monthly_income !== null) tiles.appendChild(tile("Income stated", money(s.stated_monthly_income, cur), "what you told MITA"));
+    }
+    var right = el("div", null, [tiles]);
+    if (wide && planned) {
+      var callouts = calloutList(month);
+      if (callouts) right.appendChild(callouts);
+    }
+    return el("div", { class: "summary" }, [lead, right]);
+  }
+
+  // The plan's composition and its caveats, after the calendar on phones.
+  function planBlock(month) {
+    var s = month.summary;
+    var cur = month.currency;
+    var box = el("section", { class: "breakdown", "aria-labelledby": "plan-title" }, el("h2", { id: "plan-title", text: "Your plan this month" }));
+    var tiles = el("dl", { class: "tiles", style: "margin-top:10px" });
+    tiles.appendChild(tile("Bills & commitments", money(s.commitments_planned, cur), "recorded " + money(s.commitments_spent, cur)));
+    tiles.appendChild(tile("Everyday budget", money(s.everyday_planned, cur), "spent " + money(s.everyday_spent, cur)));
+    if (s.planned_after_today !== null) tiles.appendChild(tile("Planned on the days left", money(s.planned_after_today, cur), "MITA’s plan for the dates ahead"));
+    if (s.stated_monthly_income !== null) tiles.appendChild(tile("Income stated", money(s.stated_monthly_income, cur), "what you told MITA"));
+    box.appendChild(tiles);
+    var callouts = calloutList(month);
+    if (callouts) box.appendChild(callouts);
+    return box;
+  }
+
+  function calloutList(month) {
+    var s = month.summary;
+    var cur = month.currency;
+    var items = [];
+    if (cents(s.commitments_not_recorded) > 0 && month.month_position !== "past") {
+      items.push(el("p", { class: "callout" }, [icon("bill"), el("span", null, [
+        el("strong", { text: money(s.commitments_not_recorded, cur) }),
+        " planned for bills isn’t recorded as paid yet, so it is still inside Left to spend."
+      ])]));
+    }
+    var left = cents(s.left_to_spend), ahead = cents(s.planned_after_today), unpaid = cents(s.commitments_not_recorded) || 0;
+    if (ahead !== null && left !== null && left - unpaid - ahead >= 100 && month.month_position === "current") {
+      items.push(el("p", { class: "callout" }, [icon("spread"), el("span", null, [
+        "MITA’s plan holds ", el("strong", { text: money(s.planned_after_today, cur) }),
+        " for the dates ahead after its automatic rebalancing, which moves money from later dates to cover a day that went over. Money left unspent on earlier dates stays on those dates; the daily average counts it too."
+      ])]));
+    }
+    var outside = month.bills.filter(function (b) { return !b.in_plan && b.date >= month.today; });
+    if (outside.length && month.month_position !== "past") {
+      items.push(el("p", { class: "callout" }, [icon("info"), el("span", { text: plural(outside.length, "saved bill", "saved bills") + " this month " + (outside.length === 1 ? "has" : "have") + " no money on its category in the plan, so the plan doesn’t cover " + (outside.length === 1 ? "it" : "them") + "." })]));
+    }
+    return items.length ? el("div", { class: "callouts" }, items) : null;
+  }
+
+  function calcRow(label, value, eq) {
+    return el("div", { class: eq ? "eq" : null }, [el("span", { text: label }), el("span", { text: value })]);
+  }
+
+  function tile(label, value, sub, cls, iconName) {
+    return el("div", { class: "tile" + (cls ? " " + cls : "") }, [
+      el("dt", null, [iconName ? icon(iconName) : null, label]),
+      el("dd", { class: "num" }, [value, sub ? el("span", { class: "sub", text: sub }) : null])
+    ]);
+  }
+
+  function filterBar(month) {
+    var spendingLines = month.categories.filter(function (c) { return c.group !== "set_aside"; });
+    var group = el("div", { class: "filters", role: "group", "aria-label": "Filter the calendar by category" });
+    group.appendChild(el("button", { class: "fchip", type: "button", id: "filter-all", "aria-pressed": state.filter ? "false" : "true", onclick: function () { setFilter(null); } }, "All categories"));
+    var limit = state.wide ? FILTERS_SHOWN_WIDE : FILTERS_SHOWN_NARROW;
+    var shown = state.moreFilters ? spendingLines : spendingLines.slice(0, limit);
+    if (state.filter && shown.every(function (l) { return l.category !== state.filter; })) {
+      var active = lineByKey(state.filter);
+      if (active) shown = shown.concat([active]);
+    }
+    shown.forEach(function (line, index) {
+      group.appendChild(el("button", {
+        class: "fchip", type: "button", id: "filter-" + index, "aria-pressed": state.filter === line.category ? "true" : "false",
+        onclick: function () { setFilter(state.filter === line.category ? null : line.category); }
+      }, [dot(familyColor(line.category)), line.category_label]));
+    });
+    if (spendingLines.length > limit) {
+      group.appendChild(el("button", { class: "fchip more", type: "button", id: "filter-more", "aria-expanded": state.moreFilters ? "true" : "false", onclick: function () {
+        state.moreFilters = !state.moreFilters;
+        render();
+      } }, state.moreFilters ? "Fewer" : "More (" + (spendingLines.length - limit) + ")"));
+    }
+    return group;
+  }
+
+  function filterBanner(month) {
+    var line = lineByKey(state.filter);
+    if (!line) return null;
+    var cur = month.currency;
+    var over = cents(line.remaining) < 0;
+    return el("div", { class: "banner", role: "status" }, [
+      el("span", null, [dot(familyColor(line.category)),
+        el("strong", { text: line.category_label }),
+        "spent " + money(line.spent, cur) + " of " + money(line.planned, cur) + " planned · " +
+        (over ? moneyCents(-cents(line.remaining), cur) + " over" : money(line.remaining, cur) + " left")]),
+      el("button", { class: "link", type: "button", id: "clear-filter", onclick: function () { setFilter(null); } }, "Show all")
+    ]);
+  }
+
+  function calendarBlock(month) {
+    var box = el("div", { class: "calendar", "aria-busy": state.busy ? "true" : "false" });
+    var weekdays = el("div", { class: "weekdays", "aria-hidden": "true" });
+    weekdayHeaders(weekdayShort).forEach(function (name) { weekdays.appendChild(el("div", { text: name })); });
+    box.appendChild(weekdays);
+    var grid = el("div", { class: "grid", role: "grid", "aria-label": monthTitle(month) + " calendar" });
+    var cells = [];
+    for (var b = leadingBlanks(month.days[0].date); b > 0; b--) cells.push(el("div", { class: "cell blank", "aria-hidden": "true" }));
+    var focusable = state.selected || (month.month_position === "current" ? month.today : month.days[0].date);
+    month.days.forEach(function (day) { cells.push(cellView(day, focusable)); });
+    for (var i = 0; i < cells.length; i += 7) {
+      var row = el("div", { role: "row", style: "display:contents" });
+      cells.slice(i, i + 7).forEach(function (c) { row.appendChild(c); });
+      grid.appendChild(row);
+    }
+    box.appendChild(grid);
+    box.appendChild(legend());
+    return box;
+  }
+
+  function cellView(day, focusable) {
+    var model = cellModel(day);
+    var classes = ["cell"];
+    if (day.day_kind === "future") classes.push("future");
+    if (day.day_kind === "today") classes.push("today");
+    if (model.state === "over") classes.push("over");
+    if (state.filter && model.empty) classes.push("dim");
+    var selected = state.selected === day.date;
+    var number = parseDate(day.date).getUTCDate();
+    var head = el("span", { class: "d" }, [el("span", { text: String(number) }), day.day_kind === "today" ? el("span", { class: "tday", text: "Today" }) : null]);
+    var amountNode;
+    if (model.begun) {
+      var shown = state.filter ? model.spent : day.spent;
+      amountNode = el("span", { class: "amt num", text: cents(shown) > 0 ? fitAmount(shown) : (cents(model.planned) > 0 ? "0.00" : "") });
+    } else {
+      var plannedShown = state.filter ? model.planned : day.planned;
+      amountNode = el("span", { class: "amt num" }, cents(plannedShown) > 0 ? [el("span", { class: "pl", text: "plan" }), fitAmount(plannedShown)] : "");
+    }
+    var meter = null;
+    if (model.begun && (model.state === "over" || model.state === "within")) {
+      meter = el("span", { class: "meter", "aria-hidden": "true" }, el("i", { style: "width:" + (model.ratio * 100).toFixed(1) + "%" }));
+    }
+    var marks = el("span", { class: "marks", "aria-hidden": "true" });
+    if (!state.filter) {
+      dayLines(day.date)
+        .filter(function (l) { return lineGroup(l.key) !== "set_aside" && (model.begun ? cents(l.spent) > 0 : cents(l.planned) > 0); })
+        .slice(0, 3)
+        .forEach(function (l) { marks.appendChild(dot(familyColor(l.key))); });
+    }
+    if (model.state === "over") marks.appendChild(el("span", { class: "flag" }, icon("alert")));
+    if (billsOn(day.date).length) marks.appendChild(icon("bill", "bill"));
+    return el("button", {
+      class: classes.join(" "), type: "button", role: "gridcell", id: "day-" + day.date,
+      "data-date": day.date, "aria-selected": selected ? "true" : "false",
+      "aria-current": day.day_kind === "today" ? "date" : null,
+      "aria-label": dayLabel(day), tabindex: day.date === focusable ? "0" : "-1",
+      onclick: function () { selectDay(day.date, true); },
+      onkeydown: function (event) { onGridKey(event, day.date); }
+    }, [head, amountNode, meter, marks]);
+  }
+
+  function legend() {
+    return el("div", { class: "legend", "aria-label": "Legend" }, [
+      el("span", null, [el("i", { class: "sw" }), "Spent"]),
+      el("span", null, [el("i", { class: "sw plan" }), "Plan, not a forecast"]),
+      el("span", null, [el("i", { class: "sw overm" }), "Over the everyday plan"]),
+      el("span", null, [icon("bill"), "Saved bill due"]),
+      el("span", null, [el("i", { class: "sw todaym" }), "Today"])
+    ]);
+  }
+
+  function onGridKey(event, iso) {
+    var days = state.payload.month.days;
+    var index = days.findIndex(function (d) { return d.date === iso; });
+    var moves = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 };
+    var target = null;
+    if (moves[event.key] !== undefined) target = index + moves[event.key];
+    else if (event.key === "Home") target = index - ((leadingBlanks(days[0].date) + index) % 7);
+    else if (event.key === "End") target = index + (6 - ((leadingBlanks(days[0].date) + index) % 7));
+    else return;
+    event.preventDefault();
+    target = Math.max(0, Math.min(days.length - 1, target));
+    selectDay(days[target].date, false);
+    var node = document.getElementById("day-" + days[target].date);
+    if (node) node.focus();
+  }
+
+  function selectDay(iso, fromPointer) {
+    state.selected = iso;
+    ensureTransactions();
+    render();
+    saveWidgetState();
+    pushContext();
+    if (fromPointer && !state.wide) {
+      var panel = document.getElementById("day-detail");
+      if (panel) panel.scrollIntoView({ block: "start", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    }
+  }
+
+  function setFilter(key) {
+    state.filter = key;
+    render();
+    saveWidgetState();
+    pushContext();
+    announce(key ? "Showing " + lineByKey(key).category_label + " only." : "Showing all categories.");
+  }
+
+  function prefersReducedMotion() {
+    return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }
+
+  function detailBlock(month) {
+    var panel = el("section", { class: "detail", id: "day-detail", "aria-live": "polite", "aria-label": "Selected date" });
+    var day = month.days.filter(function (d) { return d.date === state.selected; })[0];
+    if (!day) {
+      panel.appendChild(el("h2", { text: "Pick a date" }));
+      panel.appendChild(el("p", { class: "note", style: "margin-top:6px", text: "Each date shows what MITA planned for it and, once it has begun, what you recorded." }));
+      return panel;
+    }
+    ensureTransactions();
+    var cur = month.currency;
+    var kindText = day.day_kind === "today" ? "Today" : day.day_kind === "past" ? "Recorded" : "Planned";
+    panel.appendChild(el("h2", { text: longDate.format(parseDate(day.date)) }));
+    panel.appendChild(el("div", { class: "kind" }, el("span", { class: "chip" + (day.day_kind === "today" ? " chip-today" : ""), text: kindText })));
+
+    var everyday = el("section");
+    if (day.day_kind !== "future") {
+      everyday.appendChild(el("h3", { text: "Everyday spending" }));
+      everyday.appendChild(el("div", { class: "big num" }, [
+        el("b", { text: money(day.spent_everyday, cur) }),
+        el("span", { class: "muted", text: cents(day.planned_everyday) > 0 ? "of " + money(day.planned_everyday, cur) + " planned" : "no everyday plan for this date" })
+      ]));
+      if (cents(day.planned_everyday) > 0) {
+        var ratio = Number(day.spent_everyday) / Number(day.planned_everyday);
+        everyday.appendChild(el("div", { style: "margin-top:8px" }, bar(ratio, day.state === "over")));
+        if (day.state === "over") {
+          everyday.appendChild(el("p", { class: "state over" }, [icon("alert"), moneyCents(-cents(day.everyday_left), cur) + " over the everyday plan"]));
+        } else {
+          everyday.appendChild(el("p", { class: "state ok" }, [icon("check"), money(day.everyday_left, cur) + " of the everyday plan left"]));
+        }
+      } else if (day.state === "unplanned") {
+        everyday.appendChild(el("p", { class: "note", style: "margin-top:6px", text: "MITA's plan puts everyday money on other dates, so this date gets no verdict." }));
+      }
+      var committed = cents(day.spent) - cents(day.spent_everyday);
+      if (committed > 0) {
+        everyday.appendChild(el("p", { class: "note", style: "margin-top:6px", text: "Bills and commitments recorded: " + moneyCents(committed, cur) + " · all spending " + money(day.spent, cur) }));
+      }
+    } else {
+      everyday.appendChild(el("h3", { text: "Planned for this date" }));
+      everyday.appendChild(el("div", { class: "big num" }, [
+        el("b", { text: money(day.planned, cur) }),
+        el("span", { class: "muted", text: cents(day.planned_everyday) !== cents(day.planned) ? "everyday " + money(day.planned_everyday, cur) : "everyday spending" })
+      ]));
+      everyday.appendChild(el("p", { class: "note", style: "margin-top:6px", text: "No spending yet. This is MITA’s plan for the date as its automatic rebalancing left it — not a forecast." }));
+    }
+    panel.appendChild(everyday);
+
+    if (cents(day.set_aside) > 0) {
+      panel.appendChild(el("section", null, [
+        el("p", { class: "state ok", style: "margin-top:0" }, [icon("shield"), money(day.set_aside, cur) + " set aside for savings on this date — not for spending"])
+      ]));
+    }
+
+    var bills = billsOn(day.date);
+    if (bills.length) {
+      var list = el("ul", { class: "rows" });
+      bills.forEach(function (bill) {
+        var what = (bill.recurrence ? bill.recurrence : "one-time") + (bill.in_plan ? "" : " · not in this month’s plan");
+        list.appendChild(el("li", null, [
+          el("span", { class: "who" }, [icon("bill"), el("span", null, [el("span", { style: "display:block", text: bill.name || bill.category_label }), el("span", { class: "what", text: what })])]),
+          el("span", { class: "amtc num", text: money(bill.amount, cur) })
+        ]));
+      });
+      panel.appendChild(el("section", null, [el("h3", { text: "Saved bills due" }), list]));
+    }
+
+    var lines = dayLines(day.date).filter(function (l) { return cents(l.planned) > 0 || cents(l.spent) > 0; });
+    if (lines.length) {
+      var rows = el("ul", { class: "rows" });
+      lines.forEach(function (l) {
+        var line = lineByKey(l.key);
+        var label = line ? line.category_label : l.key;
+        var setAside = lineGroup(l.key) === "set_aside";
+        rows.appendChild(el("li", null, [
+          el("span", { class: "who" }, [setAside ? icon("shield", "shield") : dot(familyColor(l.key)), el("span", { text: label })]),
+          el("span", { class: "amtc num" }, day.day_kind === "future" || setAside
+            ? (setAside ? "set aside " : "plan ") + money(l.planned, cur)
+            : money(l.spent, cur) + (cents(l.planned) > 0 ? " / " + money(l.planned, cur) : ""))
+        ]));
+      });
+      panel.appendChild(el("section", null, [el("h3", { text: day.day_kind === "future" ? "Plan by category" : "Spent / planned by category" }), rows]));
+    }
+
+    if (day.day_kind !== "future") panel.appendChild(transactionsSection(month, day));
+    return panel;
+  }
+
+  function transactionsSection(month, day) {
+    var section = el("section", null, el("h3", { text: "Expenses" }));
+    var entry = state.tx[monthKey(month)];
+    if (!entry || entry.status === "loading") {
+      section.appendChild(el("div", { class: "loading", "aria-busy": "true" }, [el("div", { class: "skel", style: "width:80%" }), el("div", { class: "skel", style: "width:60%" })]));
+      return section;
+    }
+    if (entry.status === "error") {
+      section.appendChild(el("p", { class: "note", text: "MITA could not list the expenses here. Ask ChatGPT: “What did I spend on " + shortDate.format(parseDate(day.date)) + "?”" }));
+      return section;
+    }
+    var items = entry.byDate[day.date] || [];
+    if (!items.length) {
+      section.appendChild(el("p", { class: "note", text: cents(day.spent) > 0 && entry.more ? "This month has more expenses than shown here; ask ChatGPT for this date." : "No expenses recorded." }));
+      return section;
+    }
+    var list = el("ul", { class: "rows" });
+    items.forEach(function (t) {
+      list.appendChild(el("li", null, [
+        el("span", { class: "who" }, [dot("var(" + FAMILY_VAR[familyOfCodes(t.category, [t.category])] + ")"), el("span", null, [el("span", { style: "display:block", text: t.merchant || t.category_label }), t.merchant ? el("span", { class: "what", text: t.category_label }) : null])]),
+        el("span", { class: "amtc num", text: money(t.amount, t.currency || month.currency) })
+      ]));
+    });
+    section.appendChild(list);
+    return section;
+  }
+
+  function breakdownBlock(month) {
+    var cur = month.currency;
+    var box = el("section", { class: "breakdown", "aria-labelledby": "bd-title" }, el("h2", { id: "bd-title", text: "Categories this month" }));
+    var groups = [
+      ["commitment", "Bills & commitments"],
+      ["everyday", "Everyday spending"],
+      ["set_aside", "Protected savings"]
+    ];
+    var any = false;
+    groups.forEach(function (g) {
+      var lines = month.categories.filter(function (c) { return c.group === g[0]; });
+      if (!lines.length) return;
+      any = true;
+      var planned = lines.reduce(function (sum, c) { return sum + cents(c.planned); }, 0);
+      var section = el("div", { class: "group" }, el("h3", null, [el("span", { text: g[1] }), el("span", { class: "num", text: moneyCents(planned, cur) + " planned" })]));
+      var holder = el("div", { class: "lines" });
+      section.appendChild(holder);
+      lines.forEach(function (line) {
+        var setAside = g[0] === "set_aside";
+        var p = cents(line.planned), s = cents(line.spent);
+        var over = s > p && p > 0;
+        var meta;
+        if (setAside) meta = "kept out of everyday spending";
+        else if (p === 0) meta = "not in the plan";
+        else if (over) meta = moneyCents(s - p, cur) + " over";
+        else meta = money(line.remaining, cur) + " left";
+        var content = [
+          el("span", { class: "nm" }, [setAside ? icon("shield", "shield") : dot(familyColor(line.category)), el("span", { text: line.category_label })]),
+          el("span", { class: "val num", text: setAside ? money(line.planned, cur) : money(line.spent, cur) + " / " + money(line.planned, cur) }),
+          setAside ? null : bar(p > 0 ? s / p : (s > 0 ? 1 : 0), over || (p === 0 && s > 0)),
+          el("span", { class: "meta" + (over ? " over" : ""), text: meta })
+        ];
+        if (setAside) {
+          holder.appendChild(el("div", { class: "line static" }, content));
+        } else {
+          holder.appendChild(el("button", {
+            class: "line", type: "button", id: "line-" + line.category.replace(/[^a-z0-9]+/gi, "-"),
+            "aria-pressed": state.filter === line.category ? "true" : "false",
+            "aria-label": line.category_label + ": spent " + money(line.spent, cur) + " of " + money(line.planned, cur) + " planned, " + meta + ". Filter the calendar.",
+            onclick: function () { setFilter(state.filter === line.category ? null : line.category); }
+          }, content));
+        }
+      });
+      box.appendChild(section);
+    });
+    if (!any) box.appendChild(el("p", { class: "note", style: "margin-top:8px", text: "Nothing planned or recorded this month yet." }));
+    return box;
+  }
+
+  function methodText(month) {
+    return "Figures come from your MITA account (" + month.currency + ", " + month.timezone + "). Each date shows MITA’s saved plan for it and, once begun, the expenses you recorded; dates ahead show the plan, never a forecast. A date is over when everyday spending passes that date’s everyday plan; bills and commitments are counted on their own. Protected savings are never counted as spendable. The daily average is left to spend divided by the days left.";
+  }
+
+  // ---------------------------------------------------------------------
+  // Model context: what the user is looking at (for follow-up questions)
+  // ---------------------------------------------------------------------
+  function pushContext() {
+    if (!state.payload) return;
+    var month = state.payload.month;
+    var cur = month.currency;
+    var parts = ["The user is viewing their MITA calendar for " + monthTitle(month) + "."];
+    var day = month.days.filter(function (d) { return d.date === state.selected; })[0];
+    if (day) {
+      if (day.day_kind === "future") {
+        parts.push("Selected " + day.date + ": planned " + day.planned + " " + cur + " (everyday " + day.planned_everyday + ").");
+      } else {
+        parts.push("Selected " + day.date + ": spent " + day.spent + " " + cur + ", everyday " + day.spent_everyday + " of a " + day.planned_everyday + " plan (" + day.state + ").");
+      }
+    }
+    if (state.filter) {
+      var line = lineByKey(state.filter);
+      if (line) parts.push("Filtered to " + line.category_label + ".");
+    }
+    updateModelContext(parts.join(" "), {
+      month: monthKey(month),
+      selected_date: day ? day.date : null,
+      category: state.filter
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Save as PNG: the month drawn on a canvas — totals, dates, categories;
+  // no merchant, expense or bill name. Delivered through the host.
+  // ---------------------------------------------------------------------
+  function toast(text) {
+    state.toast = text;
+    render();
+    setTimeout(function () { if (state.toast === text) { state.toast = null; render(); } }, 4200);
+  }
+
+  function exportPng() {
+    if (state.exporting || !state.payload) return;
+    state.exporting = true;
+    render();
+    var month = state.payload.month;
+    var filename = "mita-calendar-" + monthKey(month) + ".png";
+    var canvas;
+    try {
+      canvas = drawExport(state.payload, new Date());
+    } catch (e) {
+      state.exporting = false;
+      toast("MITA could not draw the image.");
+      return;
+    }
+    var dataUrl = canvas.toDataURL("image/png");
+    var base64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
+    deliver(filename, base64).then(function (how) {
+      state.exporting = false;
+      if (how === "download") toast("Image saved: " + filename);
+      else if (how === "opened") toast("Image opened — save it from there.");
+      else render();
+    }, function () {
+      state.exporting = false;
+      state.preview = { dataUrl: dataUrl, filename: filename, height: canvas.height };
+      render();
+      var node = document.getElementById("png-preview");
+      if (node) node.scrollIntoView({ block: "nearest", behavior: prefersReducedMotion() ? "auto" : "smooth" });
+    });
+  }
+
+  function deliver(filename, base64) {
+    // 1. The MCP Apps host download (ui/download-file).
+    if (state.bridge && hasCapability("downloadFile")) {
+      return request("ui/download-file", {
+        contents: [{ type: "resource", resource: { uri: "file:///" + filename, mimeType: "image/png", blob: base64 } }]
+      }, 120000).then(function () { return "download"; });
+    }
+    // 2. ChatGPT's file API: the image goes to the user's own ChatGPT files,
+    //    then opens from a temporary link.
+    var o = openai();
+    if (o && typeof o.uploadFile === "function" && typeof o.getFileDownloadUrl === "function") {
+      var bytes = atob(base64);
+      var buffer = new Uint8Array(bytes.length);
+      for (var i = 0; i < bytes.length; i++) buffer[i] = bytes.charCodeAt(i);
+      var file = new File([buffer], filename, { type: "image/png" });
+      return Promise.resolve(o.uploadFile(file, { library: true })).then(function (uploaded) {
+        return o.getFileDownloadUrl({ fileId: uploaded.fileId });
+      }).then(function (link) {
+        var url = link && link.downloadUrl;
+        if (!url) throw new Error("no link");
+        if (state.bridge && hasCapability("openLinks")) return request("ui/open-link", { url: url }).then(function () { return "opened"; });
+        if (typeof o.openExternal === "function") { o.openExternal({ href: url, redirectUrl: false }); return "opened"; }
+        throw new Error("cannot open");
+      });
+    }
+    // 3. Show the image here, to keep with a long press or right click.
+    return Promise.reject(new Error("no host download"));
+  }
+
+  function previewBlock() {
+    var p = state.preview;
+    return el("div", { class: "preview", id: "png-preview" }, [
+      el("div", { class: "ptop" }, [
+        el("p", { class: "note", style: "color:inherit" }, [el("strong", { text: "Your image is ready. " }), "Press and hold it (or right-click) to save."]),
+        el("button", { class: "btn btn-icon", type: "button", "aria-label": "Close the image", onclick: function () { state.preview = null; render(); } }, icon("close"))
+      ]),
+      el("img", { src: p.dataUrl, alt: "Image of the MITA calendar for the month, to save", width: "1080", height: String(p.height || 1440) })
+    ]);
+  }
+
+  // The image: 1080 px wide, height from its content, light colours always
+  // (it is shared outside the chat), nothing smaller than 13 px.
+  function drawExport(payload, now) {
+    var month = payload.month;
+    var s = month.summary;
+    var cur = month.currency;
+    var W = 1080, M = 60;
+    var FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+    var INK = "#0d0d0d", INK2 = "#55544f", INK3 = "#7e7d77", LINE = "#e6e5df", NAVY = "#193C57", YELLOW = "#FFD25F", TEAL = "#14B8A6", TEALINK = "#0B6E64", RED = "#d03b3b", CARD = "#f5f4f0";
+    var FAM = { groceries: "#008300", dining: "#eb6834", transport: "#2a78d6", shopping: "#eda100", fun: "#e87ba4", health: "#1baf7a", home: "#6250d6", other: "#898781" };
+    var planned = month.plan_status === "generated";
+
+    // layout first, so nothing collides whatever the month holds
+    var headerH = 230;
+    var tiles = [];
+    if (planned) {
+      tiles.push(["Plan", money(s.total_planned, cur)]);
+      tiles.push(["Spent", money(s.total_spent, cur)]);
+      tiles.push(["Left to spend", s.left_to_spend !== null ? money(s.left_to_spend, cur) : "—"]);
+      tiles.push(["Protected savings", money(s.savings_set_aside, cur), "teal"]);
+      if (s.average_per_day !== null) tiles.push(["Average a day", money(s.average_per_day, cur), "accent"]);
+      tiles.push([month.month_position === "past" ? "Month" : "Days left", month.month_position === "past" ? "Ended" : String(s.days_remaining)]);
+    } else {
+      tiles.push(["Spent", money(s.total_spent, cur)]);
+      tiles.push(["Plan", "Not saved"]);
+      tiles.push([month.month_position === "past" ? "Month" : "Days left", month.month_position === "past" ? "Ended" : String(s.days_remaining)]);
+    }
+    var perRow = 3, tileH = 108, gap = 14;
+    var tileRows = Math.ceil(tiles.length / perRow);
+    var tilesH = tileRows * tileH + (tileRows - 1) * gap;
+    var noteH = planned && s.average_per_day !== null ? 44 : 14;
+    var blanks = leadingBlanks(month.days[0].date);
+    var gridRows = Math.ceil((blanks + month.days.length) / 7);
+    var cellGap = 8, cellH = 96;
+    var gridH = 34 + gridRows * cellH + (gridRows - 1) * cellGap;
+    var lines = month.categories.slice(0, 6);
+    var more = month.categories.length - lines.length;
+    var catRows = Math.ceil(lines.length / 2);
+    var catsH = lines.length ? 56 + catRows * 66 + (more > 0 ? 34 : 0) : 0;
+    var legendH = 64, footerH = 84;
+    var H = 24 + headerH + tilesH + noteH + 22 + gridH + 34 + catsH + legendH + footerH + 24;
+
+    var canvas = document.createElement("canvas");
+    canvas.width = W;
+    canvas.height = H;
+    var c = canvas.getContext("2d");
+    function font(weight, size) { c.font = weight + " " + size + "px " + FONT; }
+    function text(str, x, y, weight, size, color, align, maxWidth) {
+      font(weight, size);
+      c.fillStyle = color;
+      c.textAlign = align || "left";
+      c.textBaseline = "alphabetic";
+      if (maxWidth) c.fillText(str, x, y, maxWidth); else c.fillText(str, x, y);
+    }
+    function rrect(x, y, w, h, r) {
+      c.beginPath();
+      c.moveTo(x + r, y);
+      c.arcTo(x + w, y, x + w, y + h, r);
+      c.arcTo(x + w, y + h, x, y + h, r);
+      c.arcTo(x, y + h, x, y, r);
+      c.arcTo(x, y, x + w, y, r);
+      c.closePath();
+    }
+
+    c.fillStyle = "#FFF9F0";
+    c.fillRect(0, 0, W, H);
+    c.fillStyle = "#ffffff";
+    rrect(20, 20, W - 40, H - 40, 36);
+    c.fill();
+
+    // header
+    var y = 24;
+    drawMark(c, M, y + 46, 0.5);
+    text("MITA", M + 48, y + 75, "800", 30, NAVY);
+    text("Financial calendar", M + 132, y + 75, "500", 25, INK2);
+    text("Generated " + generatedText(now, month.timezone), W - M, y + 75, "500", 20, INK3, "right");
+    text(monthTitle(month), M, y + 166, "800", 60, INK);
+    text(planned ? "Plan and recorded spending · " + cur : "Recorded spending · no saved plan · " + cur, M, y + 206, "500", 24, INK2);
+    y += headerH;
+
+    // tiles
+    var tileW = (W - 2 * M - gap * (perRow - 1)) / perRow;
+    tiles.forEach(function (tile, i) {
+      var tx = M + (i % perRow) * (tileW + gap);
+      var ty = y + Math.floor(i / perRow) * (tileH + gap);
+      c.fillStyle = tile[2] === "accent" ? YELLOW : CARD;
+      rrect(tx, ty, tileW, tileH, 20);
+      c.fill();
+      text(tile[0], tx + 20, ty + 40, "600", 21, tile[2] === "accent" ? NAVY : INK2, "left", tileW - 40);
+      text(tile[1], tx + 20, ty + 84, "800", 33, tile[2] === "teal" ? TEALINK : (tile[2] === "accent" ? NAVY : INK), "left", tileW - 40);
+    });
+    y += tilesH;
+    if (planned && s.average_per_day !== null) {
+      text("Average a day = left to spend ÷ days left. Each date shows its own plan.", M, y + 34, "500", 19, INK3);
+    }
+    y += noteH + 22;
+
+    // calendar
+    var cols = 7;
+    var cellW = (W - 2 * M - cellGap * (cols - 1)) / cols;
+    weekdayHeaders(weekdayShort).forEach(function (name, i) {
+      text(name.toUpperCase(), M + i * (cellW + cellGap) + cellW / 2, y + 18, "700", 17, INK3, "center");
+    });
+    var top = y + 34;
+    var billDates = {};
+    month.bills.forEach(function (b) { billDates[b.date] = true; });
+    month.days.forEach(function (day, i) {
+      var slot = blanks + i;
+      var cx = M + (slot % 7) * (cellW + cellGap);
+      var cy = top + Math.floor(slot / 7) * (cellH + cellGap);
+      var future = day.day_kind === "future";
+      var today = day.day_kind === "today";
+      if (future) {
+        c.setLineDash([7, 6]);
+        c.strokeStyle = "#c9c8c1";
+        c.lineWidth = 2;
+        rrect(cx + 1, cy + 1, cellW - 2, cellH - 2, 16);
+        c.stroke();
+        c.setLineDash([]);
+      } else {
+        c.fillStyle = day.state === "over" ? "#fbeaea" : CARD;
+        rrect(cx, cy, cellW, cellH, 16);
+        c.fill();
+      }
+      if (today) {
+        c.strokeStyle = NAVY;
+        c.lineWidth = 4;
+        rrect(cx + 2, cy + 2, cellW - 4, cellH - 4, 15);
+        c.stroke();
+        c.fillStyle = YELLOW;
+        rrect(cx + cellW - 66, cy + 12, 54, 22, 7);
+        c.fill();
+        text("TODAY", cx + cellW - 39, cy + 28, "800", 13, NAVY, "center");
+      }
+      text(String(parseDate(day.date).getUTCDate()), cx + 13, cy + 30, "700", 22, today ? NAVY : INK);
+      if (!future) {
+        if (cents(day.spent) > 0) text(cellAmount(day.spent), cx + 13, cy + 64, "700", 21, INK, "left", cellW - 26);
+        if (day.state === "over" || day.state === "within") {
+          var ratio = Math.min(1, Number(day.spent_everyday) / Number(day.planned_everyday));
+          c.fillStyle = "#e4e3dc";
+          rrect(cx + 13, cy + cellH - 19, cellW - 26, 7, 3.5);
+          c.fill();
+          c.fillStyle = day.state === "over" ? RED : TEAL;
+          rrect(cx + 13, cy + cellH - 19, Math.max(7, (cellW - 26) * ratio), 7, 3.5);
+          c.fill();
+        }
+        if (day.state === "over" && !today) {
+          c.fillStyle = RED;
+          c.beginPath();
+          c.arc(cx + cellW - 20, cy + 23, 10, 0, Math.PI * 2);
+          c.fill();
+          text("!", cx + cellW - 20, cy + 30, "800", 16, "#ffffff", "center");
+        }
+      } else if (cents(day.planned) > 0) {
+        text("PLAN", cx + 13, cy + 58, "700", 13, INK3);
+        text(cellAmount(day.planned), cx + 13, cy + 82, "600", 20, INK2, "left", cellW - 26);
+      }
+      if (billDates[day.date]) {
+        c.fillStyle = INK3;
+        c.beginPath();
+        c.arc(cx + cellW - 18, cy + (today || day.state === "over" ? cellH - 34 : 22), 6, 0, Math.PI * 2);
+        c.fill();
+      }
+    });
+    y = top + gridRows * cellH + (gridRows - 1) * cellGap + 34;
+
+    // categories
+    if (lines.length) {
+      text("Categories", M, y + 30, "800", 27, INK);
+      var colW = (W - 2 * M - 40) / 2;
+      lines.forEach(function (line, i) {
+        var lx = M + (i % 2) * (colW + 40);
+        var ly = y + 86 + Math.floor(i / 2) * 66;
+        var setAside = line.group === "set_aside";
+        var color = setAside ? TEAL : FAM[familyOfCodes(line.category, line.category_codes)];
+        c.fillStyle = color;
+        c.beginPath();
+        c.arc(lx + 8, ly - 7, 8, 0, Math.PI * 2);
+        c.fill();
+        text(line.category_label, lx + 24, ly, "700", 21, INK, "left", colW - 250);
+        text(setAside ? "kept " + money(line.planned, cur) : money(line.spent, cur) + " / " + money(line.planned, cur), lx + colW, ly, "600", 19, INK2, "right", 240);
+        if (!setAside) {
+          var p = cents(line.planned), sp = cents(line.spent);
+          var r = p > 0 ? Math.min(1, sp / p) : (sp > 0 ? 1 : 0);
+          c.fillStyle = "#ebeae4";
+          rrect(lx, ly + 13, colW, 8, 4);
+          c.fill();
+          c.fillStyle = sp > p ? RED : color;
+          rrect(lx, ly + 13, Math.max(8, colW * r), 8, 4);
+          c.fill();
+        }
+      });
+      if (more > 0) text("+ " + plural(more, "more category", "more categories") + " in MITA", M, y + 86 + catRows * 66 + 4, "500", 19, INK3);
+      y += catsH;
+    }
+
+    // legend
+    var ly2 = y + 34;
+    c.fillStyle = CARD;
+    rrect(M, ly2 - 18, 34, 22, 6);
+    c.fill();
+    text("Spent", M + 44, ly2, "500", 19, INK2);
+    c.setLineDash([6, 5]);
+    c.strokeStyle = "#b3b2ab";
+    c.lineWidth = 2;
+    rrect(M + 128, ly2 - 17, 34, 20, 6);
+    c.stroke();
+    c.setLineDash([]);
+    text("Plan, not a forecast", M + 172, ly2, "500", 19, INK2);
+    c.fillStyle = RED;
+    rrect(M + 372, ly2 - 14, 34, 14, 7);
+    c.fill();
+    text("Over everyday plan", M + 416, ly2, "500", 19, INK2);
+    c.fillStyle = INK3;
+    c.beginPath();
+    c.arc(M + 620, ly2 - 7, 7, 0, Math.PI * 2);
+    c.fill();
+    text("Saved bill due", M + 634, ly2, "500", 19, INK2);
+    y += legendH;
+
+    // footer
+    c.strokeStyle = LINE;
+    c.lineWidth = 2;
+    c.beginPath();
+    c.moveTo(M, y + 8);
+    c.lineTo(W - M, y + 8);
+    c.stroke();
+    text("From your MITA account · " + month.timezone + " · " + cur, M, y + 48, "500", 19, INK3);
+    text("MITA can’t move money or access banks.", W - M, y + 48, "500", 19, INK3, "right");
+    return canvas;
+  }
+
+  function generatedText(now, timeZone) {
+    try {
+      return new Intl.DateTimeFormat(DATE_LOCALE, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: timeZone, timeZoneName: "short" }).format(now);
+    } catch (e) {
+      return now.toISOString().slice(0, 16).replace("T", " ") + " UTC";
+    }
+  }
+
+  // MITA's logomark (master vectors, Figma "Logo Variants" 2011:206), for the
+  // exported image only — never in the chat UI.
+  var MARK = [
+    ["#6B73FF", "M53.8103 34.5945L58.6007 27.9983C61.2338 24.3741 59.9143 19.5591 55.6717 17.3092C51.4291 15.0593 45.7949 16.1862 43.1618 19.8104L38.3714 26.4066L53.8083 34.5925L53.8103 34.5945ZM55.6737 17.3112C59.9163 19.5611 65.5464 18.4401 68.1835 14.81L72.97 8.22177L57.5331 0.0359039L52.7426 6.63007C50.1095 10.2543 51.4331 15.0633 55.6757 17.3132L55.6737 17.3112Z"],
+    ["#F44336", "M0 34.6284H8.67913C13.1077 34.6284 17.3583 30.7269 17.3583 25.9698C17.3583 30.7289 21.269 34.6284 26.0374 34.6284H34.7165V0H26.0374C21.267 0 17.3583 3.89945 17.3583 8.65859C17.3583 3.89945 13.4556 0 8.67913 0H0V34.6284ZM26.0314 17.3112C21.261 17.3112 17.3523 21.2126 17.3523 25.9698C17.3523 21.2106 13.4496 17.3112 8.67314 17.3112H26.0314Z"],
+    ["#14B8A6", "M6.14731e-05 36.3637V53.6828H8.68319V71H26.0435V53.6828H8.68319C13.5296 53.6828 17.3663 49.7555 17.3663 44.9445C17.3663 49.7136 21.279 53.607 26.0495 53.607H34.7326V36.2799C23.1204 36.2799 11.6342 36.3617 0.00605949 36.3617H-0.00193787L6.14731e-05 36.3637Z"],
+    ["#FFD25F", "M55.6837 62.2477V70.8903H72.9999V62.2477C72.9999 57.4985 69.1052 53.605 64.3368 53.605C69.0972 53.605 72.9999 49.7195 72.9999 44.9624V36.3278H47.0205C42.2601 36.3278 38.3574 40.2212 38.3574 44.9704V70.8883H47.0205C51.781 70.8883 55.6837 66.9948 55.6837 62.2457V62.2477ZM47.0205 53.605C51.781 53.605 55.6837 49.7195 55.6837 44.9624C55.6837 49.7116 59.5784 53.605 64.3468 53.605C59.5864 53.605 55.6837 57.4985 55.6837 62.2477C55.6837 57.4985 51.781 53.605 47.0205 53.605Z"]
+  ];
+  function drawMark(c, x, y, scale) {
+    if (typeof Path2D !== "function") return;
+    c.save();
+    c.translate(x, y);
+    c.scale(scale, scale);
+    MARK.forEach(function (part) {
+      c.fillStyle = part[0];
+      c.fill(new Path2D(part[1]));
+    });
+    c.restore();
+  }
+
+  // ---------------------------------------------------------------------
+  // Start
+  // ---------------------------------------------------------------------
+  function hydrateFromOpenAI() {
+    // ChatGPT also exposes the tool result as window.openai globals.
+    var o = openai();
+    if (!o || state.payload) return false;
+    var meta = o.toolResponseMetadata;
+    var payload = meta && meta[CALENDAR_KEY];
+    if (!isPayload(payload)) return false;
+    var view = (meta && meta[VIEW_KEY]) || {};
+    state.loading = false;
+    setPayload(payload, { focus: view.focus_date || null, category: view.category || null });
+    return true;
+  }
+
+  window.addEventListener("openai:set_globals", function () {
+    var o = openai();
+    if (o && o.displayMode) applyMode(o.displayMode);
+    if (!state.payload) hydrateFromOpenAI();
+    applyTheme();
+  }, { passive: true });
+
+  if (window.matchMedia) {
+    var scheme = window.matchMedia("(prefers-color-scheme: dark)");
+    var onScheme = function () { if (!state.hostContext.theme) applyTheme(); };
+    if (typeof scheme.addEventListener === "function") scheme.addEventListener("change", onScheme);
+  }
+
+  applyTheme();
+  render();
+  request("ui/initialize", {
+    appInfo: APP_INFO,
+    appCapabilities: { availableDisplayModes: MODES.slice() },
+    protocolVersion: PROTOCOL_VERSION
+  }, 8000).then(function (result) {
+    state.bridge = true;
+    state.hostCapabilities = (result && result.hostCapabilities) || {};
+    state.hostContext = (result && result.hostContext) || {};
+    notify("ui/notifications/initialized", {});
+    applyTheme();
+    if (state.hostContext.displayMode) state.mode = MODES.indexOf(state.hostContext.displayMode) !== -1 ? state.hostContext.displayMode : "inline";
+    if (!hydrateFromOpenAI()) render();
+    scheduleSize();
+  }, function () {
+    // No MCP Apps bridge: ChatGPT's globals are the only source.
+    var o = openai();
+    if (o && o.displayMode) state.mode = MODES.indexOf(o.displayMode) !== -1 ? o.displayMode : "inline";
+    if (!hydrateFromOpenAI()) {
+      state.loading = false;
+      if (!state.payload) state.error = "This chat could not open MITA's calendar. Ask ChatGPT to show it again.";
+      render();
+    }
+  });
+})();
+</script>
+</body>
+</html>

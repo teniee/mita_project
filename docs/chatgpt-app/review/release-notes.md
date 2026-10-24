@@ -2,6 +2,18 @@
 
 (Also in `plugin.template.json` → `publication.release_notes`.)
 
+**2.1.0 — your month on a calendar, in the chat**
+
+* "Show my financial calendar for November": an interactive calendar of the
+  user's own month opens in the conversation — each date's plan and recorded
+  spending, days over the everyday plan, saved bills on their dates, money set
+  aside for savings, and a summary with the safe amount a day.
+* Pick a date to see its expenses and categories, filter by category, move
+  between months, open it fullscreen, and save the month as an image.
+* Read-only: the calendar changes nothing; every figure comes from MITA's
+  records and calculations.
+* MITA's sign-in page shows how the calendar works with a fictional example.
+
 **2.0.0 — free v1: MITA keeps your records across conversations**
 
 * New users can create a MITA account on MITA's sign-in page while

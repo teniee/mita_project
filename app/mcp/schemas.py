@@ -842,3 +842,179 @@ class UsageAnalyticsOut(_Out):
         description="True when turning it off deleted the usage records already linked to the user."
     )
     what_is_recorded: str
+
+
+# --- get_calendar_month / show_financial_calendar ----------------------------
+
+CalendarGroup = Literal["commitment", "set_aside", "everyday"]
+DayKind = Literal["past", "today", "future"]
+DayState = Literal["over", "within", "unplanned", "quiet", "planned", "free"]
+
+
+class CalendarSummaryOut(_Out):
+    stated_monthly_income: Optional[Money] = Field(
+        description="Monthly income the user entered (self-reported); null when not stated.",
+        pattern=MONEY_PATTERN,
+    )
+    total_planned: Optional[Money] = Field(
+        description="The month's whole plan (get_budget_status total_planned). Null when MITA has no plan for the month.",
+        pattern=MONEY_PATTERN,
+    )
+    commitments_planned: Optional[Money] = Field(
+        description="Planned on commitment lines: rent, mortgage, utilities, debt repayment, medical insurance, school fees, online courses, and the categories of the user's saved regular payments (counted as the reviewed budget counts obligations).",
+        pattern=MONEY_PATTERN,
+    )
+    set_aside_planned: Optional[Money] = Field(
+        description="Planned for savings, savings goals and investments: never spendable.",
+        pattern=MONEY_PATTERN,
+    )
+    everyday_planned: Optional[Money] = Field(
+        description="Planned for everyday spending: total_planned minus commitments_planned minus set_aside_planned.",
+        pattern=MONEY_PATTERN,
+    )
+    total_spent: Money = money_field("All recorded spending in the month.")
+    commitments_spent: Money = money_field("Recorded spending on commitment lines.")
+    everyday_spent: Money = money_field(
+        "Recorded spending on every other line, including spending with no plan behind it."
+    )
+    total_remaining: Optional[Money] = Field(
+        description="total_planned minus total_spent (the whole plan, money set aside included).",
+        pattern=MONEY_PATTERN,
+    )
+    savings_set_aside: Optional[Money] = Field(
+        description="get_budget_forecast savings_set_aside: money the plan still sets aside; not spendable.",
+        pattern=MONEY_PATTERN,
+    )
+    left_to_spend: Optional[Money] = Field(
+        description="total_remaining minus savings_set_aside.",
+        pattern=MONEY_PATTERN,
+    )
+    average_per_day: Optional[Money] = Field(
+        description=(
+            "get_budget_forecast safe_daily_limit: left_to_spend divided by days_remaining — one "
+            "AVERAGE for each remaining day, not a budget for any particular date (each date's "
+            "plan is in days[].planned). Null for a past month or without a plan."
+        ),
+        pattern=MONEY_PATTERN,
+    )
+    days_elapsed: int = Field(description="Days of the month begun (today counts).")
+    days_remaining: int = Field(description="Days of the month after today.")
+    commitments_not_recorded: Optional[Money] = Field(
+        description=(
+            "Money still planned on commitment lines and not recorded as spent there. Until the "
+            "user records those bills, it is part of left_to_spend and average_per_day."
+        ),
+        pattern=MONEY_PATTERN,
+    )
+    planned_after_today: Optional[Money] = Field(
+        description=(
+            "The plan on the dates after today (every line except money set aside), as MITA's "
+            "automatic rebalancing left it. It can be lower than left_to_spend: rebalancing takes "
+            "money from later dates to cover a day that went over, while money left unspent on a "
+            "past date stays on that date."
+        ),
+        pattern=MONEY_PATTERN,
+    )
+    bills_due_after_today: Money = money_field(
+        "Saved regular payments that fall due after today in this month (as scheduled; MITA does not know whether one was paid early)."
+    )
+
+
+class CalendarLineOut(_Out):
+    category: str = Field(
+        description="Stored code of the budget line (as in get_budget_status)."
+    )
+    category_label: str = category_label_field()
+    category_codes: List[str]
+    group: CalendarGroup = Field(
+        description="commitment, set_aside or everyday: every line is in exactly one group, so the groups add up to total_planned."
+    )
+    planned: Money = money_field("Planned for this line in the month.")
+    spent: Money = money_field("Recorded on this line in the month.")
+    remaining: Money = money_field("planned minus spent; negative means over.")
+
+
+class CalendarDayOut(_Out):
+    date: dt.date = Field(description="Local day in the user's timezone.")
+    day_kind: DayKind = Field(description="Relative to the user's today.")
+    state: DayState = Field(
+        description=(
+            "Begun days: over (everyday spending above that date's everyday plan), within, "
+            "unplanned (spending on a date with no everyday plan; no verdict), quiet (nothing "
+            "planned or spent). Future dates: planned or free (no everyday plan). Never a forecast."
+        )
+    )
+    planned: Money = money_field(
+        "The date's spending plan: every line except money set aside."
+    )
+    planned_everyday: Money = money_field("The everyday part of planned.")
+    set_aside: Money = money_field(
+        "Savings and goal slices planned on this date (not spendable)."
+    )
+    spent: Optional[Money] = Field(
+        description="Recorded spending on this date; null for future dates.",
+        pattern=MONEY_PATTERN,
+    )
+    spent_everyday: Optional[Money] = Field(
+        description="The everyday part of spent; null for future dates.",
+        pattern=MONEY_PATTERN,
+    )
+    everyday_left: Optional[Money] = Field(
+        description="planned_everyday minus spent_everyday for a begun date with an everyday plan; negative means over.",
+        pattern=MONEY_PATTERN,
+    )
+
+
+class CalendarBillOut(_Out):
+    date: dt.date
+    name: Optional[str] = Field(
+        description="Merchant the user saved for this payment, if any."
+    )
+    category: str
+    category_label: str = category_label_field()
+    amount: Money = money_field("Amount the user saved for this payment.")
+    recurrence: Optional[Literal["monthly", "weekly"]] = Field(
+        description="Repeat rule the user saved; null for a one-time payment."
+    )
+    in_plan: bool = Field(
+        description="True when the month's plan holds money on this payment's line."
+    )
+
+
+class CalendarMonthOut(_Out):
+    year: int
+    month: int
+    month_position: MonthPosition
+    currency: str
+    timezone: str = Field(description="IANA timezone the dates are in.")
+    today: dt.date = Field(description="The user's local today.")
+    plan_status: PlanStatus
+    method: str
+    summary: CalendarSummaryOut
+    categories: List[CalendarLineOut] = Field(
+        description="The month's budget lines, largest plan first."
+    )
+    days: List[CalendarDayOut] = Field(description="Every date of the month, in order.")
+    bills: List[CalendarBillOut] = Field(
+        description="Dates the user's saved payments fall on this month."
+    )
+    notes: List[str]
+
+
+class CalendarViewOut(_Out):
+    year: int
+    month: int
+    month_position: MonthPosition
+    currency: str
+    plan_status: PlanStatus
+    focus_date: Optional[dt.date] = Field(
+        description="Date the calendar opens on, when one was asked for."
+    )
+    category: Optional[str] = Field(
+        description="Budget line the calendar is filtered to, when one was asked for and found."
+    )
+    summary: CalendarSummaryOut
+    shown: str = Field(
+        description="What the user now sees. The figures on screen are MITA's, not the arguments'."
+    )
+    notes: List[str]

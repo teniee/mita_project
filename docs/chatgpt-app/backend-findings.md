@@ -105,3 +105,34 @@ time a scope is added. Options: treat the registered scope as advisory in
 `SUPPORTED_SCOPES` and shown on the consent page; DCR is open, so the
 registered list adds no protection), or document "reconnect" in the release
 notes of such a version. Not changed before the merge.
+
+## F-8 (P1, money model) Paying a saved bill on its date drains the dates ahead
+
+Found while building the financial calendar (2026-10-24), reproduced locally
+through MITA's own tools (`scripts/mcp/calendar_widget_review.py`, account
+deleted afterwards): income 3,200, savings target 400, regular payments rent
+850 (1st), kindergarten 180 (5th), utilities 95 (18th), internet 30 (27th), the
+reviewed October budget saved, a realistic month of expenses recorded.
+
+* The layout puts bills where `CATEGORY_BEHAVIOR` says, not on their due date:
+  utilities on the 5th; obligation categories it does not know (`childcare`,
+  `subscriptions`, `insurance`…) spread over weekdays (kindergarten 8.18 a
+  weekday).
+* Recording the kindergarten fee (180) on the 5th, or utilities (95) on the
+  18th, makes that date's line "overspent", and
+  `realtime_rebalancer.rebalance_after_overspend` covers it by taking money
+  from later dates (up to 50 % per line per pass). The bill's own allocation on
+  the other dates is never released.
+* Money left unspent on a past date stays on that date.
+
+Result on 24 October: MITA's plan for 25–31 October held **€12.16** (the base
+layout held **€299.95**), while the forecast's safe daily amount was **€121.99
+a day** (left to spend €853.91 over 7 days) — both are MITA figures, for the same
+account and the same day. Line totals move too (utilities planned 190 = 95 + a
+95 credit; childcare 231.04).
+
+The calendar shows both figures, labelled (`planned_after_today`, the daily
+average, a note when the gap is material) and does not hide either. Fixing it is
+a model decision for the deferred forecast/plan task: lay bills out on their
+due dates from the saved payments, release a bill's allocation when it is paid,
+and decide what an underspent past date means (roll forward or stay).

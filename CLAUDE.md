@@ -1285,18 +1285,52 @@ Rules:
   - `scripts/mcp/check_leaked_secrets.py` compares live variables with all 33
     committed secret fingerprints and prints names only. It is owner-run,
     because reading production variables is owner-only.
+- **The financial calendar is an MCP App** (2026-10-24, MCP 2.2.0, 24 tools;
+  `docs/chatgpt-app/financial-calendar.md`). `get_calendar_month` (data, no
+  template) and `show_financial_calendar` (the ONLY tool with
+  `_meta.ui.resourceUri` → `ui://mita/financial-calendar-v1.html`); the
+  render tool recomputes from the account and never takes figures as
+  arguments. Rules:
+  - **One query, both tools, the sign-in example**: `queries/calendar.py`
+    (`build_calendar` is pure). Its figures equal `get_budget_status` and
+    `get_budget_forecast` for the same month (tested) — never a second
+    calculation. Lines are grouped once — set aside / commitments (SACRED
+    non-set-aside + saved payments' categories by `counts_in_month`, the
+    budget draft's rule) / everyday — and the groups add up to the plan.
+  - **A date's verdict is everyday-only**: over/within compares everyday
+    spending with that date's everyday plan; a date without one gets no
+    verdict; future dates show the plan, never a forecast. Bills are dated
+    markers, never added to a total.
+  - **The model gets a short view, the component the month**:
+    `ToolOutput(text, component_meta)` in `runtime.py`; `_meta["mita/calendar"]`
+    is delivered to the component only.
+  - **The component loads nothing and writes nothing**: empty CSP allowlist,
+    no remote URL, no fetch/XHR, no `innerHTML`, only `get_calendar_month`
+    and `list_transactions` through `tools/call` (tested on the source).
+    System fonts and host colours (OpenAI UI guidelines); MITA colour only on
+    accents; the exported image uses the master logomark (tested).
+  - Bump the URI's `-vN` for a breaking component change. `ui.domain` comes
+    from `MCP_WIDGET_DOMAIN` (required at submission; unset on staging).
+  - Known model gaps the calendar shows and does not hide: F-8 (rebalancing
+    drains the dates ahead when a bill is paid on another date than laid out),
+    unrecorded bills inside left-to-spend, F-2.
+  - Regressions: `tests_mcp/test_calendar.py`; the local MCP Apps host
+    `scripts/mcp/calendar_widget_review.py` (sign-up, tools, sandboxed iframe,
+    axe, PNG) → `docs/chatgpt-app/review/calendar-v1/`.
 - **The sign-in page is presentation over a fixed flow** (branch
   `feat/chatgpt-auth-ui`, 2026-10). `app/mcp/auth/pages.py` renders
   `/oauth/login` and its error pages; `login.py` owns the flow and must not
   change for looks. Rules:
   - **No JavaScript, nothing third-party** — the audit's XSS control. CSP
-    stays `default-src 'none'` with no `script-src`; `font-src 'self'` is
-    the only addition, for the three brand fonts in
+    stays `default-src 'none'` with no `script-src`; `font-src 'self'` and
+    `img-src 'self'` serve the three brand fonts in
     `app/mcp/auth/static/fonts/` (OFL subsets built by
-    `scripts/mcp/build_auth_fonts.py`), served by exact name from
-    `/oauth/assets/` with a content version. Motion is CSS and stops under
-    `prefers-reduced-motion`. A show/hide-password toggle would need script:
-    deliberately absent.
+    `scripts/mcp/build_auth_fonts.py`) and the hero photograph in
+    `static/images/` (WebP), by exact name from `/oauth/assets/` with a
+    content version. All depth and motion is CSS; under
+    `prefers-reduced-motion` every animation is off, and nothing but the
+    decorative flying expense starts invisible (tested). A show/hide-password
+    toggle would need script: deliberately absent.
   - **Brand values come from Figma**, not the website section above:
     `docs/brand/AUTH-UI-DESIGN.md`. The logo is the Figma master vector.
   - **Copy states facts only** (`data-inventory.md`). Example prompts must map
@@ -1317,22 +1351,24 @@ Rules:
     `Retry-After` and redirects; JSON for everything else; never echoes the
     request. A database or network failure on the sign-in page is a 503 page
     with no code issued, logging the exception class only.
-  - **Mobile first, one job per screen** (v3, owner brief 2026-10-23).
-    ChatGPT opens the page in a phone browser: headline ("Know what you can
-    safely spend each day." — "each day", never "today": `safe_daily_limit`
-    is per remaining day), one line of value, one example (safe per day,
-    spent this month, protected savings, days left; labelled "Fictional
-    example"; arithmetic in a closed `<details>`), then the form; three
-    limits and closed secondary details after it. No calendar, walkthrough
-    or prompt cards on this page (a spending calendar belongs in the
-    signed-in product — spec in `docs/brand/AUTH-UI-DESIGN.md`), no forecast
-    status (its rent pace is a known gap; `status` stays in the contract),
-    no entrance animation. Consent shows all five scope titles with the
-    details in a native `<details>`. The example's figures are what
-    `compute_forecast` returns (tested).
+  - **The premium hero, phone first** (v4, owner brief 2026-10-24; v3 was
+    rejected as generic and static). A navy hero (full-bleed on phones, a
+    panel beside the card from 1040 px): the inverted logo (monochrome Mita
+    yellow, Figma Logo Variants) and a "Connect ↓" pill to the form; the
+    headline ("Know what you can safely spend each day." — "each day", never
+    "today"); two lines of value; the example — an AI-generated photograph
+    (Figma AI, owner decision; "Illustration" in its alt text, never a
+    customer), the month as a CSS 3D slab and MITA's figures around it, all
+    labelled "Fictional example"; then the card, "What MITA adds" and closed
+    details. **The example is computed, never typed**: `app/mcp/auth/demo.py`
+    runs fictional inputs through `month_calendar`, `build_calendar` and the
+    forecast engine, and keeps its expenses inside each date's plan in
+    same-name categories so MITA's rebalancing would not change it (tested).
+    No forecast status. Consent shows all five scope titles with the details
+    in a native `<details>`. Claim table: `docs/brand/AUTH-UI-DESIGN.md`.
   - Regressions: `tests_mcp/test_auth_ui.py` (in the CI security gate);
     screenshots: `scripts/mcp/auth_ui_screenshots.py` →
-    `docs/chatgpt-app/review/auth-ui-v3/`; owner check on staging:
-    `docs/chatgpt-app/auth-ui-owner-test.md`. Locally the flow needs HTTPS
+    `docs/chatgpt-app/review/auth-ui-v4/`; owner check on staging:
+    `docs/chatgpt-app/calendar-owner-test.md`. Locally the flow needs HTTPS
     (the CSRF cookie is `__Host-`/`Secure`): a self-signed localhost
     certificate, never a relaxed cookie.

@@ -224,6 +224,20 @@ def month_forecast(
         return MonthForecast(year, month, position, False, None)
 
     planned, spent = _merged_buckets(db, ctx, year, month)
+    result = forecast_from_rows(planned, spent, year, month, ctx.today)
+    return MonthForecast(year, month, position, True, result)
+
+
+def forecast_from_rows(
+    planned: Dict[Tuple[date, str], Decimal],
+    spent: Dict[Tuple[date, str], Decimal],
+    year: int,
+    month: int,
+    today: date,
+) -> ForecastResult:
+    """The forecast engine over per-(day, category) plan and spend, regrouped
+    by budget line exactly as ``get_budget_forecast`` does. Shared with the
+    calendar so both report the same safe daily figure."""
     buckets = {category for _, category in planned}
     planned = regroup_by_day(planned, buckets)
     spent = regroup_by_day(spent, buckets)
@@ -237,7 +251,6 @@ def month_forecast(
         )
         for day, category in sorted(keys)
     ]
-    result = compute_forecast(
-        daily_plans=plan_data, goals=[], year=year, month=month, today=ctx.today
+    return compute_forecast(
+        daily_plans=plan_data, goals=[], year=year, month=month, today=today
     )
-    return MonthForecast(year, month, position, True, result)

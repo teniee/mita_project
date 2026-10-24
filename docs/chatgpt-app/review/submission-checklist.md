@@ -16,7 +16,8 @@ unchanged.
 |---|---|---|---|
 | Streamable HTTP MCP at `/mcp`, public HTTPS | STAGING VERIFIED, CHATGPT VERIFIED (v1) | `https://mita-mcp-staging-staging.up.railway.app/mcp`, `/health` version 2.0.0 | production: PRODUCTION NOT DONE (steps 6–7) |
 | Connected in real ChatGPT developer mode | CHATGPT VERIFIED (v2, all five scopes) | staging-acceptance-v2.md §8 (S-6): plugin recreated with DCR; v1 grant earlier (staging-acceptance.md §5.1) | an old DCR registration keeps its v1 scopes (F-7) |
-| 22 tools (12 read, 10 write), facts-only hints, no identity inputs, strict arguments | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED | `test_tool_contract.py`; staging: exactly 22 tools, smuggled `user_id` rejected (§2, §4); writes used in ChatGPT (§8) | — |
+| 24 tools (14 read, 10 write; 22 until MCP 2.2.0), facts-only hints, no identity inputs, strict arguments | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED (22) | `test_tool_contract.py`; staging: smuggled `user_id` rejected (§2, §4); writes used in ChatGPT (§8) | the two calendar tools in real ChatGPT: OWNER REQUIRED (`calendar-owner-test.md`) |
+| UI component: the interactive financial calendar (MCP Apps, `ui://mita/financial-calendar-v1.html`; render tool `show_financial_calendar`) | CODE READY, CI VERIFIED, LOCALLY VERIFIED (MCP Apps host harness) | `test_calendar.py`; `scripts/mcp/calendar_widget_review.py` (59 checks, axe WCAG 2.2 AA); `docs/chatgpt-app/financial-calendar.md` | real ChatGPT rendering, fullscreen and image save: OWNER REQUIRED; `MCP_WIDGET_DOMAIN` at submission: OWNER REQUIRED |
 | 8 original read tools unchanged | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED (v1) | every read tool exercised before and after a restart (§4) | — |
 | Account creation in the OAuth flow (shared e-mail/password policy, generic errors, per-IP limit) | CI VERIFIED, STAGING VERIFIED | `test_registration.py`; e2e_v2 sign-up (§2) | real ChatGPT: S-6 |
 | Profile, expenses, batch, corrections, retry safety (idempotency) | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED (profile, expenses, update, delete) | `test_transaction_writes.py`, `test_idempotency_concurrency.py` (forced race); retry → `already_recorded` on staging; §8 cases 1, 5–6, correction, deletion | retry is not observable from ChatGPT |
@@ -32,7 +33,7 @@ unchanged.
 | OAuth 2.1 (PRM, AS metadata, DCR, PKCE S256, resource binding, rotation, revocation) | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED (connection) | adversarial suite; staging e2e + 24 failure modes (§4) | — |
 | Exact figures; soft deletes; timezone | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED (v1) | v1: ChatGPT matched ground truth to the cent; v2: exact figures in e2e_v2 | — |
 | Negative cases (transfer, other user, trading) | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED | §8 cases 16–18; S-8 E: only the owner's records searched, nothing of anyone else (§11) | — |
-| Onboarding skill, starter prompts, listing (plugin 2.0.0) | CODE READY, CI VERIFIED (`--check`) | `build_plugin.py`, `test_plugin_package.py`, 56 golden prompts (en/ru/bg) | final ZIP: OWNER REQUIRED (step 12) |
+| Onboarding skill, starter prompts, listing (plugin 2.1.0) | CODE READY, CI VERIFIED (`--check`) | `build_plugin.py`, `test_plugin_package.py`, 72 golden prompts (en/ru/bg) | final ZIP: OWNER REQUIRED (step 12) |
 | Capacity (600k transactions) | VERIFIED locally | capacity-plan.md: p95 ≤ 20 ms per tool query, no new index | — |
 | Grant fingerprint secret separate from CSRF secret | CI VERIFIED, STAGING VERIFIED | `test_secret_separation.py` | — |
 | Cross-user isolation | CI VERIFIED, STAGING VERIFIED | `test_isolation.py`; forged ref refused on staging | — |

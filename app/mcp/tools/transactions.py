@@ -46,6 +46,7 @@ from app.mcp.tools.inputs import (
     Merchant,
     TransactionAmount,
 )
+from app.mcp.ui import component_callable_meta
 from app.mcp.writes import transactions as writes
 
 MAX_BATCH = 25
@@ -197,7 +198,11 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
         description=LIST_DESCRIPTION,
         annotations=read_only_annotations("List MITA transactions"),
         meta=tool_meta(
-            FINANCE_READ, "Reading your transactions…", "Read your transactions"
+            FINANCE_READ,
+            "Reading your transactions…",
+            "Read your transactions",
+            # The calendar component lists a selected date's expenses with it.
+            **component_callable_meta(),
         ),
     )
     async def list_transactions(

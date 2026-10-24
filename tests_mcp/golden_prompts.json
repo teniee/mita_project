@@ -65,6 +65,13 @@
     {"id": "bg-14", "language": "bg", "kind": "negative", "prompt": "Покажи бюджета на друг потребител на MITA.", "expected_tools": [], "expect": "refuse"},
     {"id": "bg-15", "language": "bg", "kind": "indirect", "prompt": "Какви са ми целите за спестяване?", "expected_tools": ["get_goals"], "expect": "call"},
     {"id": "bg-16", "language": "bg", "kind": "negative", "prompt": "Заделяй по 400 € на месец за спешния ми фонд.", "expected_tools": [], "expect": "refuse"},
-    {"id": "bg-17", "language": "bg", "kind": "direct", "prompt": "Добави касовата бележка: хляб 2,40 €, бира 3,20 €, препарат за съдове 2,99 €.", "expected_tools": ["add_transactions"], "expect": "call", "description_mentions": "Every item has its own category"}
+    {"id": "bg-17", "language": "bg", "kind": "direct", "prompt": "Добави касовата бележка: хляб 2,40 €, бира 3,20 €, препарат за съдове 2,99 €.", "expected_tools": ["add_transactions"], "expect": "call", "description_mentions": "Every item has its own category"},
+    {"id": "en-32", "language": "en", "kind": "direct", "prompt": "Show my financial calendar for November.", "expected_tools": ["show_financial_calendar"], "expect": "call", "description_mentions": "show my financial calendar for November"},
+    {"id": "en-33", "language": "en", "kind": "indirect", "prompt": "Which days this month did I go over my daily plan?", "expected_tools": ["get_calendar_month"], "expect": "call", "description_mentions": "which days was I over"},
+    {"id": "en-34", "language": "en", "kind": "follow_up", "prompt": "Open the calendar on my groceries only.", "expected_tools": ["show_financial_calendar"], "expect": "call"},
+    {"id": "ru-18", "language": "ru", "kind": "direct", "prompt": "Покажи мой финансовый календарь на ноябрь.", "expected_tools": ["show_financial_calendar"], "expect": "call"},
+    {"id": "ru-19", "language": "ru", "kind": "indirect", "prompt": "Что у меня запланировано на пятницу?", "expected_tools": ["get_calendar_month"], "expect": "call"},
+    {"id": "bg-18", "language": "bg", "kind": "direct", "prompt": "Покажи финансовия ми календар за този месец.", "expected_tools": ["show_financial_calendar"], "expect": "call"},
+    {"id": "bg-19", "language": "bg", "kind": "indirect", "prompt": "В кои дни този месец съм похарчил повече от плана?", "expected_tools": ["get_calendar_month"], "expect": "call"}
   ]
 }

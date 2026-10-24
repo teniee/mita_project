@@ -201,7 +201,15 @@ def statement_counter(engine):
 def operations() -> Dict[str, Callable]:
     from datetime import date
 
-    from app.mcp.queries import budget_draft, goals, history, ledger, plan, recurring
+    from app.mcp.queries import (
+        budget_draft,
+        calendar,
+        goals,
+        history,
+        ledger,
+        plan,
+        recurring,
+    )
     from app.mcp.queries import setup as setup_queries
 
     def summary(s, ctx):
@@ -236,6 +244,7 @@ def operations() -> Dict[str, Callable]:
         "goals": lambda s, ctx: goals.list_goals(s, ctx, ("active",)),
         "setup_status": lambda s, ctx: setup_queries.setup_state(s, ctx),
         "budget_preview": lambda s, ctx: budget_draft.build_draft(s, ctx, 2026, 10),
+        "calendar_month": lambda s, ctx: calendar.calendar_month(s, ctx, 2026, 10),
     }
 
 

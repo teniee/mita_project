@@ -1,5 +1,8 @@
 # Owner test — the new MITA sign-in page in ChatGPT (≈ 5 minutes, staging)
 
+> **Superseded on 2026-10-24** by `calendar-owner-test.md` (sign-in page v4
+> and the financial calendar). Kept as the record of the v3 test.
+
 Visual and UX check of the redesigned connection page, not another
 acceptance suite. Staging only: `https://mita-mcp-staging-staging.up.railway.app/mcp`.
 Use a fresh test address (for example `ui-1021@example.test`) — never a real

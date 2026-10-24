@@ -91,6 +91,11 @@ class McpSettings:
     apps_challenge_token: str = ""
     support_url: str = ""
     metrics_token: str = ""
+    # Dedicated origin for MITA's UI components in ChatGPT (`_meta.ui.domain`
+    # on the ui:// resource; app/mcp/ui). OpenAI requires one, unique to the
+    # app, at submission; unset, ChatGPT renders the components on its shared
+    # sandbox origin, which is what a developer-mode connector uses.
+    widget_domain: str = ""
     # Abuse controls
     tool_calls_per_minute: int = 60
     login_attempts_per_minute: int = 10
@@ -180,6 +185,7 @@ def load_settings() -> McpSettings:
         apps_challenge_token=_env("OPENAI_APPS_CHALLENGE_TOKEN"),
         support_url=_env("MCP_SUPPORT_URL"),
         metrics_token=_env("MCP_METRICS_TOKEN"),
+        widget_domain=_env("MCP_WIDGET_DOMAIN"),
         tool_calls_per_minute=_int_env("MCP_TOOL_CALLS_PER_MINUTE", 60),
         login_attempts_per_minute=_int_env("MCP_LOGIN_ATTEMPTS_PER_MINUTE", 10),
         registrations_per_hour=_int_env("MCP_REGISTRATIONS_PER_HOUR", 5),
@@ -193,6 +199,18 @@ def load_settings() -> McpSettings:
 def validate_settings(settings: McpSettings) -> None:
     if settings.access_token_ttl_seconds > 3600:
         raise McpConfigError("MCP_ACCESS_TOKEN_TTL_SECONDS must be at most 3600")
+    if settings.widget_domain:
+        parsed = urlparse(settings.widget_domain)
+        if (
+            parsed.scheme != "https"
+            or not parsed.netloc
+            or parsed.path not in {"", "/"}
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise McpConfigError(
+                "MCP_WIDGET_DOMAIN must be an https origin without path or query"
+            )
     for name, value in (
         ("MCP_DATA_SECRET", settings.data_secret),
         ("MCP_ANALYTICS_SECRET", settings.analytics_secret),

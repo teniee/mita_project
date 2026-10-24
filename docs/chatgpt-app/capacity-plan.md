@@ -49,6 +49,13 @@ forecast regroups lines in Python. p95: budget status 11.1 ms, forecast 10.0,
 summary 11.7, climate 22.2, every other tool ≤ 14.2 ms — within run-to-run
 noise of the table above on a shared laptop.
 
+**Re-run 2026-10-24 (MCP 2.2.0, same dataset, `--runs 2`).** The new
+`calendar_month` (`get_calendar_month` / `show_financial_calendar`): p50
+9.9 ms, p95 10.8 ms, p99 38.0 ms (cold first sample), 5 statements, heaviest
+1.0 ms on Bitmap Index Scan `uq_daily_plan_user_date_category` — the same
+reads as budget status plus the user's pending scheduled payments. Budget
+status p95 13.0 ms, forecast 8.2 ms. No index added.
+
 ## EXPLAIN (ANALYZE, BUFFERS) — heaviest statement per operation
 
 | Operation | Execution | Plan |

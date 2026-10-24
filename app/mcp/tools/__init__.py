@@ -7,6 +7,7 @@ from mcp.server.mcpserver import MCPServer
 from app.mcp.runtime import McpRuntime
 from app.mcp.tools import (
     budget,
+    calendar,
     feedback,
     goals,
     history,
@@ -29,6 +30,8 @@ READ_TOOLS = (
     "get_spending_history",
     "get_financial_climate",
     "preview_monthly_budget",
+    "get_calendar_month",
+    "show_financial_calendar",
 )
 
 WRITE_TOOLS = (
@@ -52,6 +55,7 @@ def register_tools(server: MCPServer, runtime: McpRuntime) -> None:
     setup.register(server, runtime)
     transactions.register(server, runtime)
     budget.register(server, runtime)
+    calendar.register(server, runtime)
     recurring.register(server, runtime)
     goals.register(server, runtime)
     history.register(server, runtime)

@@ -56,6 +56,7 @@ from app.mcp.observability import RequestLogMiddleware, metrics
 from app.mcp.ratelimit import OAuthEndpointRateLimit, SlidingWindowLimiter
 from app.mcp.runtime import McpRuntime
 from app.mcp.tools import register_tools
+from app.mcp.ui import apps_extension
 
 logger = logging.getLogger("app.mcp")
 
@@ -195,6 +196,7 @@ def build_service(
             version=MCP_SERVER_VERSION,
             auth_server_provider=provider,
             auth=auth,
+            extensions=[apps_extension(settings)],
         )
     else:
         verifier = JwtTokenVerifier(settings)
@@ -210,6 +212,7 @@ def build_service(
                 resource_server_url=settings.resource_url,
                 validate_token_resource=True,
             ),
+            extensions=[apps_extension(settings)],
         )
 
     server.analytics = analytics

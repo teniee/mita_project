@@ -87,6 +87,8 @@ TOOL_FEATURES: Dict[str, str] = {
     "get_budget_status": "budget_status",
     "get_budget_forecast": "forecast",
     "preview_monthly_budget": "budget_plan",
+    "get_calendar_month": "calendar",
+    "show_financial_calendar": "calendar",
     "save_monthly_budget": "budget_plan",
     "get_recurring_expenses": "recurring",
     "add_recurring_expense": "recurring",
