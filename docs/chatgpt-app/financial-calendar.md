@@ -178,8 +178,12 @@ except through the host's own download or file store.
   iframe with the spec's restrictive CSP, phone (WebKit) and desktop
   (Chromium), light/dark, fullscreen, a date's label and expenses, model
   context, the filter, keyboard, next/previous month, the PNG through
-  `ui/download-file` and without it, axe-core, read tools only, cleanup.
-  Screenshots: `docs/chatgpt-app/review/calendar-v1/`.
+  `ui/download-file` and without it, axe-core, read tools only, cleanup
+  (`e2e_v2.cleanup`). Screenshots: `docs/chatgpt-app/review/calendar-v1/`.
+  Against staging on 2026-10-24 (`dbdc118`): 58/58, the same figures; the
+  clean-up step was not run there (`staging.md` → "Left on staging").
+* `scripts/mcp/e2e_http.py` (MCP CI's container step): both tools called with
+  a read-only grant and checked against the ledger.
 * Real ChatGPT: owner-run (`calendar-owner-test.md`).
 
 ## Not supported (and not claimed)

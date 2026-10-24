@@ -22,7 +22,9 @@ What it does, against a RUNNING MCP service (local or staging, never production)
    and saves screenshots. The host chrome says "Local MCP Apps host — not
    ChatGPT": these are not ChatGPT screenshots.
 
-With --database-url the account is deleted at the end (everything cascades).
+With --database-url the account and its data are deleted at the end
+(``e2e_v2.cleanup``: ``transactions`` has no foreign key to ``users``, so
+deleting the user alone would leave its expenses behind).
 Never prints the token, password or e-mail. Refuses production hosts.
 
 Dev-only dependencies (not in requirements-mcp*): playwright==1.49.1 with
@@ -55,7 +57,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 sys.path.insert(0, str(ROOT / "scripts" / "mcp"))
 sys.path.insert(0, str(ROOT))
 from _target_guard import assert_writable_target  # noqa: E402
-from e2e_v2 import connect  # noqa: E402
+from e2e_v2 import _pg, cleanup, connect  # noqa: E402
 
 CALENDAR_URI = "ui://mita/financial-calendar-v1.html"
 # The spec's default when a resource declares no domains (SEP-1865, "Host
@@ -562,13 +564,22 @@ def run(args) -> None:
 
 
 def _delete(url: str, email: str) -> None:
-    import psycopg2  # local review only
-
-    conn = psycopg2.connect(url.replace("postgresql+asyncpg://", "postgresql://"))
-    with conn, conn.cursor() as cur:
-        cur.execute("DELETE FROM users WHERE email = %s", (email,))
-        check("review account deleted", cur.rowcount == 1)
-    conn.close()
+    with _pg(url) as conn, conn.cursor() as cur:
+        cur.execute("SELECT id FROM users WHERE email = %s", (email,))
+        user_id = cur.fetchone()[0]
+    cleanup(url, email)
+    with _pg(url) as conn, conn.cursor() as cur:
+        left = {}
+        for table, column in (
+            ("users", "id"),
+            ("transactions", "user_id"),
+            ("daily_plan", "user_id"),
+            ("scheduled_expenses", "user_id"),
+            ("goals", "user_id"),
+        ):
+            cur.execute(f"SELECT count(*) FROM {table} WHERE {column} = %s", (user_id,))
+            left[table] = cur.fetchone()[0]
+    check("review account and all its rows deleted", not any(left.values()), str(left))
 
 
 def _review(args, mcp: McpBridge, out: Path, today: date) -> None:

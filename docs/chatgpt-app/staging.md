@@ -1,4 +1,4 @@
-# MITA MCP — staging (observed 2026-10-03, v2 update 2026-10-13, credentials rotated and `1e24bf4` deployed 2026-10-23)
+# MITA MCP — staging (observed 2026-10-03, v2 update 2026-10-13, credentials rotated 2026-10-23, `dbdc118` — MCP 2.2.0 — deployed 2026-10-24)
 
 ## What exists
 
@@ -6,8 +6,8 @@
 |---|---|---|
 | Railway project | `mita-mcp-staging` (`497476f2-de93-44b7-b170-2b175c8d5621`) — **separate project**, no access to the production project's variables, services or database | STAGING VERIFIED |
 | Environment | `staging` (`0f67cf7a-5ce4-472e-a842-2e5448d64c08`) | STAGING VERIFIED |
-| MCP service | `mita-mcp-staging` (`833466fc-f7f2-4d51-8db1-48edfbb46057`), Dockerfile `deploy/mcp/Dockerfile`, healthcheck `/health`, restart ON_FAILURE ×5, **1 replica** (region `asia-southeast1-eqsg3a`), source `teniee/mita_project` @ `feat/chatgpt-auth-ui` **pinned to commit `1e24bf4`** (MCP 2.1.0, mobile-first sign-in page, set-aside money excluded from the safe daily figure) since 2026-10-23 18:02 UTC, deployment `dd8b4894-0c17-413e-920e-8a578ea2d831`. Deploy another commit by connecting the source again with it — not "Redeploy", which rebuilds the current one (before: `ee388c0` / `33783139` from 2026-10-23 12:12 UTC, `79efb1d` / `87d26668` 2.1.0 from 2026-10-18 — the re-pin of 2026-10-21 waited for Railway's build pause —, `461abcf` / `174528cf` 2.0.0 from 2026-10-13, `fcd7ae3` from 2026-10-11, `842d365` on which the v1 real-ChatGPT acceptance ran). Pushes do not redeploy it | STAGING VERIFIED |
-| Database | Railway Postgres 18 template (18.6), private network only, alembic `0039`. The MCP service connects as the least-privilege role `mita_mcp` (`scripts/mcp/mcp_service_role.sql`) on `postgres.railway.internal`; the read-only `mita_analytics_reader` exists (password not kept — reset before use). Both stored passwords were rotated on 2026-10-23 (see "Credential rotation"). Temporary TCP proxies used for migrations and checks (2026-10-03, 2026-10-13, 2026-10-18, three times on 2026-10-23) were removed and verified no longer serving Postgres | STAGING VERIFIED |
+| MCP service | `mita-mcp-staging` (`833466fc-f7f2-4d51-8db1-48edfbb46057`), Dockerfile `deploy/mcp/Dockerfile`, healthcheck `/health`, restart ON_FAILURE ×5, **1 replica** (region `asia-southeast1-eqsg3a`), source `teniee/mita_project` @ `feat/chatgpt-auth-ui` **pinned to commit `dbdc118`** (MCP 2.2.0: the financial calendar in ChatGPT and the v4 sign-in page) since 2026-10-24 20:10 UTC, deployment `7fd7783b-d910-4c7b-b32b-324fb693a751`. Deploy another commit by connecting the source again with it — not "Redeploy", which rebuilds the current one (before: `de96251` / `b4f6d2fd` from 2026-10-23 20:13 UTC — the v3 sign-in page, not approved, and `opentelemetry-api` 1.45.1 —, `1e24bf4` / `dd8b4894` from 2026-10-23 18:02 UTC, `ee388c0` / `33783139` from 2026-10-23 12:12 UTC, `79efb1d` / `87d26668` 2.1.0 from 2026-10-18 — the re-pin of 2026-10-21 waited for Railway's build pause —, `461abcf` / `174528cf` 2.0.0 from 2026-10-13, `fcd7ae3` from 2026-10-11, `842d365` on which the v1 real-ChatGPT acceptance ran). Pushes do not redeploy it | STAGING VERIFIED |
+| Database | Railway Postgres 18 template (18.6), private network only, alembic `0039`. The MCP service connects as the least-privilege role `mita_mcp` (`scripts/mcp/mcp_service_role.sql`) on `postgres.railway.internal`; the read-only `mita_analytics_reader` exists (password not kept — reset before use). Both stored passwords were rotated on 2026-10-23 (see "Credential rotation"). Temporary TCP proxies used for migrations and checks (2026-10-03, 2026-10-13, 2026-10-18, three times on 2026-10-23) were removed and verified no longer serving Postgres; none was opened on 2026-10-24 (no migration; see "Left on staging") | STAGING VERIFIED |
 | Public URL | `https://mita-mcp-staging-staging.up.railway.app` (Railway-managed TLS) | STAGING VERIFIED |
 | Custom domain | none (not needed for staging) | — |
 
@@ -47,6 +47,7 @@ From `app/mcp/config.py`, `app/mcp/__main__.py` and `app/core/config.py`.
 | `MCP_TOOL_CALLS_PER_MINUTE` / `MCP_LOGIN_ATTEMPTS_PER_MINUTE` / `MCP_OAUTH_REQUESTS_PER_MINUTE` / `MCP_REGISTRATIONS_PER_HOUR` | no (60 / 10 / 30 / 5) | per-replica rate limits (sign-ups per IP per hour) | literal | no |
 | `MCP_TRUSTED_PROXY_HOPS` | no (1) | `X-Forwarded-For` hops (Railway = 1) | literal | no |
 | `MCP_SUPPORT_URL` | no | link on the consent page | literal | no |
+| `MCP_WIDGET_DOMAIN` | no; required at submission | https origin (no path) for the calendar component's `_meta.ui.domain`; unset = the host's shared sandbox origin | the dedicated origin OpenAI asks for | no |
 | `OPENAI_APPS_CHALLENGE_TOKEN` | for OpenAI domain verification only | body of `/.well-known/openai-apps-challenge` | OpenAI dashboard | no |
 | `PORT` | no (8080) | listen port (domain targets 8080) | literal | no |
 | `LOG_LEVEL`, `FORWARDED_ALLOW_IPS` | no | logging / uvicorn proxy headers | literal | no |
@@ -91,6 +92,23 @@ before the rotation is invalid (reconnect); analytics pseudonyms restart.
 Result 2026-10-23: 8 app secrets, `DATABASE_URL`, the `postgres` and
 `mita_mcp` passwords rotated; both old passwords rejected; deployment
 `33783139` verified (HANDOFF.md). Production was not touched.
+
+## Left on staging (2026-10-24)
+
+The calendar review (`scripts/mcp/calendar_widget_review.py`) ran against
+staging through the public endpoints only, without the database: the TCP
+proxy its clean-up needs was not opened that day. Still there:
+
+* one fictional account `calendar-review-<8 hex>@example.com` (password not
+  kept; its own month: profile, four regular payments, October and November
+  plans, a goal, 26 expenses — 24 in October, 2 in September);
+* the DCR client registrations of that run and of the sign-in screenshot
+  run (no tokens apart from the review account's).
+
+Remove them the next time a proxy is open, with `e2e_v2.cleanup` per account
+(the `users` row alone is not enough: `transactions` has no foreign key to
+`users`), then delete OAuth clients that hold no tokens and were registered
+on 2026-10-24.
 
 ## Database
 

@@ -1144,6 +1144,15 @@ Rules:
   `scripts/mcp/e2e_v2.py` is the public acceptance conversation (sign-up →
   budget → writes → new connection → history → goal → feedback → negatives →
   analytics audit → cleanup); it refuses production hosts.
+- **A new read tool goes into `scripts/mcp/e2e_http.py`'s `TOOLS`.** The
+  container end-to-end step of MCP CI (the last one) fails unless every
+  published read tool is called with a read-only grant; the suite alone does
+  not catch it (MCP CI on `dbdc118` went red there).
+- **Deleting a test account is `e2e_v2.cleanup`, not `DELETE FROM users`.**
+  `transactions.user_id` has no foreign key to `users` (several legacy tables
+  neither), so deleting the user alone leaves its expenses behind;
+  `daily_plan`, `scheduled_expenses`, `goals` and the MCP/OAuth tables do
+  cascade.
 - **The MCP database role is least-privilege** (`scripts/mcp/mcp_service_role.sql`,
   owner-run after the migrations): exactly the tables and `users` columns the
   domain writers touch, no DDL. A new write path needs its grant there — an
@@ -1236,11 +1245,12 @@ Rules:
   over public HTTPS with `scripts/mcp/e2e_http.py` and
   `scripts/mcp/staging_failure_modes.py`; results in
   `docs/chatgpt-app/staging-acceptance.md`. Real-ChatGPT acceptance is owner-run.
-  Since 2026-10-23 18:02 UTC it runs `1e24bf4` (deployment `dd8b4894`, MCP
-  2.1.0, alembic 0039: the mobile-first sign-in page, set-aside money out of
-  `safe_daily_limit`); every staging secret and both database passwords were
-  rotated earlier that day after Railway's 2026-10-21 security incident
-  (`staging.md` → "Credential rotation"). It is connected as
+  Since 2026-10-24 20:10 UTC it runs `dbdc118` (deployment `7fd7783b`, MCP
+  2.2.0, alembic 0039: the financial calendar and the v4 sign-in page;
+  verified in `HANDOFF.md`; a fictional review account is still there,
+  `staging.md` → "Left on staging"); every staging secret and both database
+  passwords were rotated on 2026-10-23 after Railway's 2026-10-21 security
+  incident (`staging.md` → "Credential rotation"). It is connected as
   `mita_mcp`, so a missing grant shows up there before production; staging
   acceptance closed 2026-10-19 (`docs/chatgpt-app/HANDOFF.md`);
   `scripts/mcp/e2e_v2.py` results are in `staging-acceptance-v2.md`, whose §6

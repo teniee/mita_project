@@ -57,6 +57,8 @@ TOOLS = [
     ("get_spending_history", {}),
     ("get_financial_climate", {}),
     ("preview_monthly_budget", {}),  # writes nothing; needs the seeded income/currency
+    ("get_calendar_month", {}),
+    ("show_financial_calendar", {}),  # the component's tool: the model's short view
 ]
 
 
@@ -254,6 +256,15 @@ async def first_phase(args, base: str) -> None:
         results["list_transactions"]["matching_total"] == "42.17",
         results["list_transactions"]["matching_total"],
     )
+    for name in ("get_calendar_month", "show_financial_calendar"):
+        summary = results[name]["summary"]
+        check(
+            f"{name}: the month is the ledger (no plan saved)",
+            results[name]["plan_status"] == "not_generated"
+            and summary["total_spent"] == "42.17"
+            and summary["left_to_spend"] is None,
+            json.dumps(summary),
+        )
 
     Path(args.state).write_text(
         json.dumps(

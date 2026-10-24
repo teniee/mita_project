@@ -124,8 +124,14 @@ feedback the user asks to send (`product_feedback`) and, only for users who
 tick the box on the sign-in page, pseudonymous usage events
 (`analytics.events`; `data-inventory.md`, `product-analytics.md`). Decide
 and write into the Privacy Policy (`legal/policy-redline.md` §C):
-(a) the legal basis (the code treats usage statistics as consent: off by
-default, switchable in ChatGPT, turning it off deletes the linked events);
+(a) the legal basis (the code treats usage statistics as consent: off for an
+account that never answered, switchable in ChatGPT, turning it off deletes the
+linked events — but the box on the sign-in page is **pre-ticked**, so everyone
+who connects through ChatGPT is opted in unless they untick it; a pre-ticked
+box is not valid consent under the GDPR, CJEU C-673/17 *Planet49*. If consent
+is the basis, the box should start unticked: a one-line default in
+`login.py`/`pages.py`, not changed without you because it changes the sign-in
+page's behaviour);
 (b) how long feedback and linked events are kept while the account exists —
 nothing is purged automatically today, every **[OWNER]** cell in
 `data-inventory.md`; (c) who at MITA may read feedback text. Tell me the

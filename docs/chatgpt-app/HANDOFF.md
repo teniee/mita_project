@@ -11,7 +11,7 @@
 | Docs | `financial-calendar.md` (design, definitions, limits), `docs/brand/AUTH-UI-DESIGN.md` (v4 + claim table), `tool-catalog.md`, `backend-findings.md` F-8, `calendar-owner-test.md` |
 | Tests | MCP suite 578 passed, `test_calendar.py` 32, `test_auth_ui.py` rewritten for v4 (34); local MCP Apps host `calendar_widget_review.py` 59/59 incl. axe WCAG 2.2 AA (0 violations, 4 states); capacity re-run: calendar p95 10.8 ms; sign-in page axe 0 violations in 8 states |
 | Screenshots | `review/calendar-v1/` (local MCP Apps host — not ChatGPT), `review/auth-ui-v4/` |
-| Staging | see "Staging deployment of MCP 2.2.0" below |
+| Staging | `dbdc118` live since 2026-10-24 20:10 UTC (deployment `7fd7783b`), verified — see "Staging deployment of `dbdc118`" below |
 | Owner next | `calendar-owner-test.md` (S-9, S-10): refresh the staging app in ChatGPT, review the page and the calendar on the phone and the computer, report what Save as PNG does in ChatGPT |
 
 **Found, not fixed (owner decisions):** F-8 — MITA's automatic rebalancing
@@ -20,6 +20,22 @@ than the layout puts it (review account: €12.16 left on 25–31 Oct against a
 base of €299.95, while the safe daily average was €121.99). The calendar shows
 both figures, labelled. Starter prompts were left as the planned three (a
 calendar prompt would replace one — your call).
+
+### Staging deployment of `dbdc118` (MCP 2.2.0) — live since 2026-10-24 20:10 UTC
+
+| Item | Result (2026-10-24) |
+|---|---|
+| Deployment | `7fd7783b-d910-4c7b-b32b-324fb693a751`, created 20:09:37 UTC, SUCCESS 20:10:11 UTC; replaced `b4f6d2fd` (`de96251`, the v3 page, 2026-10-23 20:13 UTC) |
+| Source | `teniee/mita_project` @ `feat/chatgpt-auth-ui`, pinned to `dbdc118343133f1658b2dc29ef1598cb80d95e29` by connecting the source again with the SHA |
+| Health | `/health` ok, MCP 2.2.0; protected-resource metadata unchanged (five scopes); unauthenticated `/mcp` 401 |
+| Runtime | 1 replica, `mita_mcp` over the private network, alembic `0039` — no migration in this release; `MCP_WIDGET_DOMAIN` not set |
+| Sign-in page | 23 states rendered from staging (`auth_ui_screenshots.py`): 13 pixel-identical to `review/auth-ui-v4/` after the same WebP encoding, 8 differ only by anti-aliasing in the shadows of the tilted photo and floating cards (same content), the 2 motion frames by capture timing. Fonts and both hero images served from `/oauth/assets/` |
+| Calendar | `calendar_widget_review.py` against staging, public endpoints only: 58/58 — sign-up through the real page, the month entered through MITA's tools, `tools/list`, the `ui://` resource, render and data tools agree, inline/fullscreen/phone/desktop, light/dark, a date's figures and expenses, model context, filter, keyboard, next month, PNG through `ui/download-file` and without it, axe-core WCAG 2.2 AA 0 violations in 4 states, read tools only. Same figures as the local review (€121.99 a day, 7 days left, €12.16 planned on the dates ahead — F-8) |
+| Logs | 275 lines (148 deploy, 108 HTTP, 19 build): no e-mail, token, JWT, amount, merchant, DB URL, query string or error-level line; none of the service's 16 variable values of 12+ characters |
+| CI on `dbdc118` (run `40128512856`) | Backend and Mobile CI green; MCP CI green up to the container end-to-end step (lint, Bandit, dependency audit, plugin package, security gate, full suite, image build), which failed: `e2e_http.py` requires every published read tool to be called with a read-only grant and did not call the two calendar tools. Fixed in the next commit (both tools called, each checked against the ledger); scripts only, so staging stays on `dbdc118` |
+| Left on staging | one fictional review account and the DCR clients of the two runs: the TCP proxy for the clean-up was not opened (`staging.md` → "Left on staging") |
+| Also fixed | the calendar harness's clean-up deleted only the `users` row; `transactions` has no foreign key to `users`, so it now uses `e2e_v2.cleanup` and checks no row of the account remains |
+| PR #287, `main`, production | untouched: PR head `200c34d`, `main` `27ed25d`, no production deploy, migration, variable or secret change |
 
 ## Previous phase: mobile-first sign-in + safe-daily fix on staging (2026-10-23) — v3 reviewed and not approved
 
