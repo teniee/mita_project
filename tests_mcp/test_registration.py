@@ -5,6 +5,7 @@ person registers, the pending authorization continues to their new account,
 and the token works for tools — and nothing about anyone else leaks.
 """
 
+from datetime import datetime, timezone
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -13,7 +14,7 @@ from sqlalchemy import text
 from app.core.password_security import verify_password_sync
 from app.mcp.auth.login import REGISTRATION_FAILED
 from app.mcp.auth.scopes import SUPPORTED_SCOPES
-from tests_mcp.conftest import Harness, make_settings, structured
+from tests_mcp.conftest import PASSWORD, Harness, make_settings, structured
 from tests_mcp.test_oauth_flow import (
     REDIRECT,
     authorize,
@@ -162,6 +163,123 @@ async def test_unchecked_usage_statistics_links_nothing(
     assert enabled is False
     for event in analytics_sink.events:
         assert event.user_key is None and event.session_key is None
+
+
+# --- the usage-statistics box (owner decision 2026-10-25: unticked by default) ----
+
+
+async def _sign_in(http, login_url, email, password, *, usage=None):
+    page = await http.get(login_url)
+    req = parse_qs(urlparse(login_url).query)["req"][0]
+    data = {
+        "req": req,
+        "csrf": csrf_from(page.text),
+        "email": email,
+        "password": password,
+        "action": "allow",
+    }
+    if usage:
+        data["usage_stats"] = usage
+    return await http.post("/oauth/login", data=data)
+
+
+async def _usage_row(connection, user_id):
+    return (
+        await connection.execute(
+            text(
+                "SELECT usage_analytics_enabled, usage_analytics_updated_at "
+                "FROM mcp_user_profiles WHERE user_id = :u"
+            ),
+            {"u": user_id},
+        )
+    ).first()
+
+
+def _connected(analytics_sink):
+    return next(e for e in analytics_sink.events if e.event_name == "oauth_connected")
+
+
+async def test_the_box_starts_unticked_on_both_tabs(mcp):
+    async with mcp.http() as http:
+        _, _, login_url = await _login_url(http)
+        sign_in = await http.get(login_url)
+        sign_up = await http.get(login_url + "&mode=register")
+    box = '<input type="checkbox" name="usage_stats" value="1">'
+    assert box in sign_in.text and box in sign_up.text
+    assert "checked" not in sign_in.text and "checked" not in sign_up.text
+    keep = "Leaving it unticked keeps any choice I made before."
+    assert keep in sign_in.text and keep not in sign_up.text
+
+
+async def test_a_failed_attempt_keeps_the_box_as_the_person_left_it(mcp, seed):
+    user = await seed.user()
+    async with mcp.http() as http:
+        _, _, login_url = await _login_url(http)
+        ticked = await _sign_in(http, login_url, user.email, "wrong", usage="1")
+        _, _, login_url = await _login_url(http)
+        unticked = await _sign_in(http, login_url, user.email, "wrong")
+    assert ticked.status_code == unticked.status_code == 400
+    assert 'name="usage_stats" value="1" checked>' in ticked.text
+    assert 'name="usage_stats" value="1">' in unticked.text
+
+
+async def test_ticking_the_box_on_sign_in_opts_an_existing_account_in(
+    mcp, seed, connection, analytics_sink
+):
+    user = await seed.user()
+    async with mcp.http() as http:
+        _, _, login_url = await _login_url(http)
+        done = await _sign_in(http, login_url, user.email, PASSWORD, usage="1")
+    assert done.status_code == 302
+    assert (await _usage_row(connection, user.id))[0] is True
+    assert _connected(analytics_sink).user_key is not None
+
+
+async def test_an_unticked_box_on_sign_in_keeps_an_earlier_yes(
+    mcp, seed, connection, analytics_sink
+):
+    """Not a withdrawal: the account stays opted in and nothing is deleted
+    (withdrawing is set_usage_analytics(false), which deletes the linked
+    statistics)."""
+    user = await seed.user()
+    when = datetime(2026, 10, 1, 9, 0, tzinfo=timezone.utc)
+    await seed.profile(
+        user, usage_analytics_enabled=True, usage_analytics_updated_at=when
+    )
+    async with mcp.http() as http:
+        _, _, login_url = await _login_url(http)
+        done = await _sign_in(http, login_url, user.email, PASSWORD)
+    assert done.status_code == 302
+    assert tuple(await _usage_row(connection, user.id)) == (True, when)
+    assert _connected(analytics_sink).user_key is not None
+
+
+async def test_an_unticked_box_on_sign_in_keeps_an_earlier_no(
+    mcp, seed, connection, analytics_sink
+):
+    user = await seed.user()
+    await seed.profile(user, usage_analytics_enabled=False)
+    async with mcp.http() as http:
+        _, _, login_url = await _login_url(http)
+        done = await _sign_in(http, login_url, user.email, PASSWORD)
+    assert done.status_code == 302
+    assert (await _usage_row(connection, user.id))[0] is False
+    connected = _connected(analytics_sink)
+    assert connected.user_key is None and connected.session_key is None
+
+
+async def test_an_unticked_box_on_sign_in_records_no_choice(
+    mcp, seed, connection, analytics_sink
+):
+    """An account that never answered (e.g. made in the mobile app) is not
+    given an answer by the default state of a box."""
+    user = await seed.user()
+    async with mcp.http() as http:
+        _, _, login_url = await _login_url(http)
+        done = await _sign_in(http, login_url, user.email, PASSWORD)
+    assert done.status_code == 302
+    assert await _usage_row(connection, user.id) is None
+    assert _connected(analytics_sink).user_key is None
 
 
 async def test_taken_address_is_refused_generically_and_changes_nothing(

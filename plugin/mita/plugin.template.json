@@ -45,7 +45,7 @@
         "defaultPrompt": [
           "Set up my monthly budget from scratch.",
           "Record an expense I just made.",
-          "How am I doing financially this month?"
+          "Show my financial calendar for this month."
         ],
         "brandColor": "#193C57",
         "brandColorDark": "#FFD25F",
@@ -108,7 +108,7 @@
         "commerce_description": "This plugin does not sell products or subscriptions and does not process payments. It stores and analyzes the connected user's own MITA records."
       },
       "publication": {
-        "release_notes": "2.1.0 — An interactive calendar of your month in the chat: each date's plan and spending, bills due, money set aside and a safe amount a day; pick a date, filter categories, change month and save it as an image. 2.0.0 — Record, correct and delete expenses (also from a receipt photo read by ChatGPT), set up a financial profile, preview and save a monthly budget, recurring expenses, savings goals, spending history and an overview, and feedback to the MITA team. New users can create a MITA account on the sign-in page. No payment, transfer, trading or bank capability."
+        "release_notes": "2.1.0 — An interactive calendar of your month in the chat: each date's plan and spending, bills due, money set aside and a safe amount a day; pick a date, filter categories, change month and save it as an image. Usage statistics stay off until you tick the box on the sign-in page. 2.0.0 — Record, correct and delete expenses (also from a receipt photo read by ChatGPT), set up a financial profile, preview and save a monthly budget, recurring expenses, savings goals, spending history and an overview, and feedback to the MITA team. New users can create a MITA account on the sign-in page. No payment, transfer, trading or bank capability."
       },
       "onboardingSkill": "./skills/setup/SKILL.md"
     }

@@ -418,6 +418,16 @@ def view_html(widget: str) -> str:
 # --- the browser session -----------------------------------------------------------------
 
 
+NARROW_FIT = """() => {
+  const cut = [];
+  for (const node of document.querySelectorAll('.fit, .kpi dd, .tile dd, .btn')) {
+    if (node.offsetParent && node.scrollWidth > node.clientWidth + 1) cut.push(node.textContent.trim().slice(0, 24));
+  }
+  const doc = document.documentElement;
+  return {overflow: doc.scrollWidth - doc.clientWidth, cut: cut.slice(0, 8)};
+}"""
+
+
 class HostPage:
     def __init__(
         self,
@@ -856,7 +866,36 @@ def _review(args, mcp: McpBridge, out: Path, today: date) -> None:
         host.shot(out, "12-export-fallback", full=True)
         host.close()
 
-        # 6. Reduced motion and accessibility.
+        # 6. Narrow phones (a 360 dp Android's chat column is about 320 px):
+        #    nothing overflows sideways and no amount, tile or button is cut.
+        for width, height in ((320, 640), (360, 740)):
+            host = HostPage(
+                webkit,
+                mcp,
+                widget,
+                shown,
+                tool_input,
+                viewport={"width": width, "height": height},
+                mobile=True,
+            )
+            host.wait_for(".inline")
+            host.settle(400)
+            for mode in ("inline", "fullscreen"):
+                if mode == "fullscreen":
+                    host.frame.click("#open-full")
+                    host.wait_for(".full")
+                    host.settle(500)
+                fit = host.frame.evaluate(NARROW_FIT)
+                check(
+                    f"{mode} at {width} px: nothing cut off or overflowing",
+                    fit["overflow"] <= 0 and not fit["cut"],
+                    json.dumps(fit),
+                )
+            if width == 320:
+                host.frame_shot(out, "13-fullscreen-320")
+            host.close()
+
+        # 7. Reduced motion and accessibility.
         if args.axe:
             axe_source = Path(args.axe).read_text()
             for name, engine, viewport, theme, full in (

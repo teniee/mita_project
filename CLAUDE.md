@@ -1039,6 +1039,10 @@ Rules:
   no amounts, merchants, titles, free text or raw ids; keys only for users who
   ticked the consent box; written after the call, never able to fail it.
   `EventRecord.row()` is exactly what may be stored; `user_id` never is.
+  **The box starts unticked** (owner decision 2026-10-25): ticking is the
+  consent; on sign-in an unticked box keeps the account's earlier choice and
+  never deletes anything (`login._record_usage_choice`); only
+  `set_usage_analytics(false)` withdraws, and it deletes the linked events.
 - **Idempotency** (`app/mcp/idempotency.py`): the key record is inserted BEFORE
   the rows, in the same transaction, so a racing twin blocks on its primary key
   and replays (`tests_mcp/test_idempotency_concurrency.py` forces the race).
@@ -1323,7 +1327,17 @@ Rules:
     from `MCP_WIDGET_DOMAIN` (required at submission; unset on staging).
   - Known model gaps the calendar shows and does not hide: F-8 (rebalancing
     drains the dates ahead when a bill is paid on another date than laid out),
-    unrecorded bills inside left-to-spend, F-2.
+    unrecorded bills inside left-to-spend, F-2. **F-8's proposal awaits the
+    owner** (`docs/chatgpt-app/f8-money-model-proposal.md`, decisions D1–D4);
+    do not change the rebalancer, the forecast or the layout before that.
+    Today's behaviour is pinned with hand-checkable figures in
+    `tests_mcp/test_money_consistency.py` (`…_today` tests, the review month);
+    a model change must update those figures deliberately, and every scenario
+    there also checks status / forecast / calendar / stored rows / the mobile
+    API's figures against each other.
+  - **Money is never cut off on a narrow phone**: the component's `fitText`
+    shrinks, then rounds a date grid to whole euros (said under it), stacks
+    tiles and buttons; the harness checks 320 and 360 px.
   - Regressions: `tests_mcp/test_calendar.py`; the local MCP Apps host
     `scripts/mcp/calendar_widget_review.py` (sign-up, tools, sandboxed iframe,
     axe, PNG) → `docs/chatgpt-app/review/calendar-v1/`.

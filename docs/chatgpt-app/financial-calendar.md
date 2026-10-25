@@ -126,6 +126,12 @@ dedicated task. The calendar never adds a figure that would hide them.
   inverted in dark mode), the Today badge, savings (teal). Category colours by
   family in a fixed order (validated categorical palette, never by rank); red
   only for "over", always with an icon and words. Light and dark.
+* **Narrow phones** (a 360 dp Android's chat column is about 320 px): money is
+  never cut off. `fitText` gives a date grid whose amounts do not fit a smaller
+  size, then whole euros with "Amounts rounded to whole euros to fit this
+  screen" under it (a plan under €0.50 shows "<1", never "0"); the exact figure
+  stays in each date's label and detail. Summary tiles go two-up and the two
+  buttons stack. Checked at 320 and 360 px by the harness.
 * **Accessibility**: axe-core WCAG 2.2 AA, 0 violations inline/fullscreen ×
   light/dark (harness); each date is a button with a full label; selection and
   filter changes announced; reduced motion honoured.
@@ -173,7 +179,7 @@ except through the host's own download or file store.
   `get_budget_forecast`, no plan / past / future months, bill dates, groups,
   isolation, the render tool's split between model and component, the resource
   and its CSP, the component source rules, the master logomark in the image.
-* `scripts/mcp/calendar_widget_review.py` (59 checks): sign-up through the real
+* `scripts/mcp/calendar_widget_review.py` (65 checks with axe and clean-up; 320/360 px added 2026-10-25): sign-up through the real
   page, the month entered through MITA's tools, the component in a sandboxed
   iframe with the spec's restrictive CSP, phone (WebKit) and desktop
   (Chromium), light/dark, fullscreen, a date's label and expenses, model

@@ -151,7 +151,7 @@ class ConsentPage:
         error: Optional[str] = None,
         error_field: Optional[str] = None,
         email: str = "",
-        usage_stats: bool = True,
+        usage_stats: bool = False,
         status_code: int = 200,
     ) -> HTMLResponse:
         view = pages.LoginView(
@@ -222,21 +222,33 @@ class ConsentPage:
             return None
         return (client.client_name or "ChatGPT")[:100]
 
-    async def _record_usage_choice(self, session, user_id, enabled: bool) -> None:
-        """Store the checkbox answer given on this page for this account."""
-        now = datetime.now(timezone.utc)
+    async def _record_usage_choice(
+        self, session, user_id, ticked: bool, *, new_account: bool
+    ) -> bool:
+        """Store this page's usage-statistics answer; return the consent in force.
+
+        The box starts unticked and ticking it is the consent. On sign-in an
+        unticked box is not a withdrawal: the account keeps the choice it made
+        before, and nothing is deleted (withdrawing is set_usage_analytics(false)
+        in ChatGPT, which deletes the linked statistics). A new account that
+        leaves it unticked is recorded as "no".
+        """
         profile = await session.get(McpUserProfile, user_id)
+        if not ticked and not new_account:
+            return bool(profile is not None and profile.usage_analytics_enabled)
+        now = datetime.now(timezone.utc)
         if profile is None:
             session.add(
                 McpUserProfile(
                     user_id=user_id,
-                    usage_analytics_enabled=enabled,
+                    usage_analytics_enabled=ticked,
                     usage_analytics_updated_at=now,
                 )
             )
-        elif profile.usage_analytics_enabled != enabled:
-            profile.usage_analytics_enabled = enabled
+        elif profile.usage_analytics_enabled != ticked:
+            profile.usage_analytics_enabled = ticked
             profile.usage_analytics_updated_at = now
+        return ticked
 
     async def _issue_code(self, pending: dict, user: User) -> Response:
         code = await self.provider.create_authorization_code(pending, user)
@@ -363,11 +375,14 @@ class ConsentPage:
         if "@" not in email or not password:
             return fail(GENERIC_FAILURE, 400, "credentials")
 
+        consent = False
         async with self.session_scope() as session:
             check = await verify_login_credentials(session, email, password)
             user = check.user
             if check.ok:
-                await self._record_usage_choice(session, user.id, usage_stats)
+                consent = await self._record_usage_choice(
+                    session, user.id, usage_stats, new_account=False
+                )
 
         if not check.ok:
             logger.info(
@@ -384,7 +399,7 @@ class ConsentPage:
         self.analytics.milestone(
             "oauth_connected",
             user_id=user.id,
-            consent=usage_stats,
+            consent=consent,
             properties={"new_account": False},
         )
         return response
@@ -433,7 +448,9 @@ class ConsentPage:
                     )
                     session.add(user)
                     await session.flush()
-                    await self._record_usage_choice(session, user.id, usage_stats)
+                    await self._record_usage_choice(
+                        session, user.id, usage_stats, new_account=True
+                    )
         except IntegrityError:
             user = None  # lost a race with a concurrent sign-up for the same address
 

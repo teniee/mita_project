@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+from app.mcp.tools.calendar import SHOW_DESCRIPTION
+
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location(
     "build_plugin", ROOT / "scripts/mcp/build_plugin.py"
@@ -175,12 +177,28 @@ def test_skill_names_only_published_tools():
 
 
 def test_starter_prompts_are_the_planned_three():
+    """Set up, record, see: the calendar replaced "How am I doing financially
+    this month?" (owner, 2026-10-25) — it answers that question on screen."""
     plugin, _ = _docs()
     assert plugin["extensions"]["com.openai"]["interface"]["defaultPrompt"] == [
         "Set up my monthly budget from scratch.",
         "Record an expense I just made.",
-        "How am I doing financially this month?",
+        "Show my financial calendar for this month.",
     ]
+
+
+def test_the_calendar_starter_prompt_opens_the_interactive_calendar():
+    """The starter prompt is a golden prompt routed to the render tool, whose
+    description names the request, so ChatGPT shows the calendar component
+    rather than a text table."""
+    plugin, _ = _docs()
+    prompt = plugin["extensions"]["com.openai"]["interface"]["defaultPrompt"][2]
+    golden = json.loads((ROOT / "tests_mcp" / "golden_prompts.json").read_text())[
+        "prompts"
+    ]
+    entry = next(g for g in golden if g["prompt"] == prompt)
+    assert entry["expected_tools"] == ["show_financial_calendar"]
+    assert entry["description_mentions"] in SHOW_DESCRIPTION
 
 
 def test_listing_advertises_no_pricing_or_premium():

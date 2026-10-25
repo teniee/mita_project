@@ -69,6 +69,10 @@ USAGE_STATS_LABEL = (
     "Help improve MITA: record which features I use. MITA never records my "
     "conversations, amounts or merchant names. I can turn this off anytime."
 )
+# Sign-in only: the box starts unticked, and an unticked box is not a
+# withdrawal (that is set_usage_analytics(false), which deletes the linked
+# statistics). Owner decision 2026-10-25.
+USAGE_STATS_KEEP = "Leaving it unticked keeps any choice I made before."
 CANNOT_MOVE_MONEY = (
     "MITA cannot move money, make payments or connect to your bank, and it "
     "cannot buy investments or crypto."
@@ -632,7 +636,8 @@ class LoginView:
     # "credentials" (both sign-in fields, identically for every cause), or
     # None (about the form as a whole).
     error_field: Optional[str] = None
-    usage_stats: bool = True
+    # Unticked until the person ticks it: ticking is the consent.
+    usage_stats: bool = False
     support_url: str = ""
 
 
@@ -751,6 +756,11 @@ def _auth_card(view: LoginView) -> str:
         mode_field = ""
 
     checked = " checked" if view.usage_stats else ""
+    usage_label = (
+        USAGE_STATS_LABEL
+        if view.register
+        else f"{USAGE_STATS_LABEL} {USAGE_STATS_KEEP}"
+    )
     help_html = (
         f'<p class="help">Need help? <a href="{e(view.support_url)}" target="_blank" '
         'rel="noopener noreferrer">Contact MITA support</a></p>'
@@ -768,7 +778,7 @@ def _auth_card(view: LoginView) -> str:
 <input type="hidden" name="csrf" value="{e(view.csrf)}">
 {mode_field}{email}{password}
 {_consent(view)}
-<label class="check"><input type="checkbox" name="usage_stats" value="1"{checked}><span>{e(USAGE_STATS_LABEL)}</span></label>
+<label class="check"><input type="checkbox" name="usage_stats" value="1"{checked}><span>{e(usage_label)}</span></label>
 <div class="actions">
 <button class="btn btn-primary" type="submit" name="action" value="{submit_value}">{submit_label}</button>
 <button class="btn btn-quiet" type="submit" name="action" value="deny" formnovalidate>Cancel</button>

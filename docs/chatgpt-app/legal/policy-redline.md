@@ -84,8 +84,9 @@ Updated 2026-10-12 for the read/write v2 app (`app/mcp/`,
 Evidence: tool outputs whitelist in `app/mcp/serializers.py`; write tools in
 `app/mcp/tools/*`; analytics allow-list and consent in `app/mcp/analytics.py`;
 cascades in migrations 0037–0039. **[CONFIRM with counsel]**: legal basis
-for usage statistics (consent vs legitimate interest — the consent box is
-pre-ticked today) and retention periods for feedback and linked statistics.
+for usage statistics (consent vs legitimate interest — the consent box starts
+unticked since 2026-10-25, so ticking it is an affirmative act) and retention
+periods for feedback and linked statistics.
 
 Also list OpenAI as a recipient **for users who connect the ChatGPT app**,
 separately from the in-app AI features.

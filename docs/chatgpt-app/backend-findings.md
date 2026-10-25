@@ -136,3 +136,37 @@ average, a note when the gap is material) and does not hide either. Fixing it is
 a model decision for the deferred forecast/plan task: lay bills out on their
 due dates from the saved payments, release a bill's allocation when it is paid,
 and decide what an underspent past date means (roll forward or stay).
+
+**Root cause and proposal (2026-10-25, awaiting the owner):**
+`f8-money-model-proposal.md`. Of €948.05 MITA treated as overspending in that
+month, €206.49 was real; the rest was timing (bills paid on their due dates),
+naming (F-2) and pacing (a weekday-spread line spent in a few shops), because
+the rebalancer works per date and category and never uses the same line's other
+dates. Today's behaviour is pinned with hand-checkable figures in
+`tests_mcp/test_money_consistency.py`.
+
+## F-9 (P2, consistency) Two mobile figures disagree with ChatGPT's
+
+Found while writing `tests_mcp/test_money_consistency.py` (2026-10-25); pinned
+there, not changed.
+
+* **The app's day budget counts today's savings slice.** `GET
+  /api/budget/live_status` (the figure the app shows for today) sums every plan
+  row of the user's local day, set-aside lines included (the Savings line,
+  goal reservations). ChatGPT's `get_budget_status.today` and the safe daily
+  amount leave them out since the owner's 2026-10-23 decision. With €10 of
+  Savings planned today, ChatGPT says €10 of groceries, the app €20
+  (`test_the_app_s_day_budget_still_counts_today_s_savings_slice`). Its
+  `on_track` also compares spending with `monthly_income × day / 30`, not with
+  the plan.
+* **`GET /api/budget/forecast` reads the server's UTC date** for "today" and
+  for the default month (`compute_forecast(today=None)`), so for a user in
+  Sofia the days left differ by one from 21:00–22:00 UTC to midnight, and the
+  first hours of a month are read as the previous one. The app does not call
+  this endpoint today (it calls `live_status`, which already uses the local
+  day); `/budget/spent`, `/remaining` and `/daily` default their month from UTC
+  too when the app sends none.
+
+Fix with F-8's implementation: one local-day helper for the budget routes, and
+the set-aside rule in `live_status` (owner decision: the app's day figure
+should leave savings out, as ChatGPT's does).

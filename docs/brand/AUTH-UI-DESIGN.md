@@ -432,6 +432,7 @@ is not shown.
 | "You stay in control: Disconnect MITA in ChatGPT at any time; changing your MITA password also ends its access." | ChatGPT's app settings; grants are bound to the password (`fingerprint.py`) | — | Yes |
 | "What can I ask ChatGPT?": the safe-per-day question, "I spent €36.80 on groceries today.", "Help me build my monthly budget.", "Create an Emergency Fund goal for €3,000.", "How has my spending changed over the last six months?" | `get_budget_forecast`, `add_transaction`, `preview_monthly_budget` → `save_monthly_budget`, `create_savings_goal`, `get_spending_history` | — | Yes (tested map) |
 | "What MITA keeps, and what it doesn't": records stay in the account; receipt photos stay in ChatGPT; usage statistics optional, opting out deletes linked events | `data-inventory.md`, `product-analytics.md` | — | Yes |
+| The usage-statistics box starts unticked; on Sign in, "Leaving it unticked keeps any choice I made before." (owner decision 2026-10-25) | `login._record_usage_choice`, `test_registration.py` | — | Yes |
 
 ## Spending calendar — the signed-in product (design of 2026-10-23; built in ChatGPT on 2026-10-24 — docs/chatgpt-app/financial-calendar.md)
 

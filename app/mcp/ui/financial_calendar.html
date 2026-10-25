@@ -116,6 +116,14 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 .inote .ico{width:14px;height:14px}
 .inote .over{color:var(--color-text-danger);font-weight:600}
 .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+/* fitText(): money is never cut off on a narrow screen */
+.mini.tight .mcell span{font-size:9.5px;letter-spacing:-.02em}
+.grid.tight .cell .amt{font-size:10px;letter-spacing:-.02em}
+.grid.tight .cell .amt .pl{font-size:8.5px;letter-spacing:0}
+.kpis.stack,.tiles.stack{grid-template-columns:repeat(2,minmax(0,1fr))}
+.kpis.stack>:last-child:nth-child(odd),.tiles.stack>:last-child:nth-child(odd){grid-column:1/-1}
+.actions.stack{grid-template-columns:1fr}
+.fit-note{margin-top:6px;font-size:12px;color:var(--color-text-secondary)}
 .empty{margin-top:14px;padding:14px;border-radius:var(--border-radius-md);background:var(--color-background-secondary)}
 .empty h2{font-size:15px}
 .empty p{margin-top:4px}
@@ -134,7 +142,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 .lead .hero{margin-top:6px}
 .lead .hero-fig{font-size:40px}
 .lead .kpis{margin-top:12px}
-.disc{display:inline-flex;align-items:center;gap:6px;margin-top:10px;border:0;background:none;padding:0;font-size:13px;font-weight:650;cursor:pointer;color:var(--color-text-primary);text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--mita-yellow);text-decoration-thickness:2px}
+.disc{display:inline-flex;align-items:center;gap:6px;margin-top:4px;min-height:32px;border:0;background:none;padding:0;font-size:13px;font-weight:650;cursor:pointer;color:var(--color-text-primary);text-decoration:underline;text-underline-offset:3px;text-decoration-color:var(--mita-yellow);text-decoration-thickness:2px}
 .disc::after{content:"";width:6px;height:6px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform .2s ease}
 .disc[aria-expanded=true]::after{transform:translateY(1px) rotate(-135deg)}
 .calc{margin-top:8px;display:grid;gap:1px;font-size:13px;color:var(--color-text-secondary)}
@@ -341,7 +349,8 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     restored: false,
     showCalc: false,
     moreFilters: false,
-    wide: window.innerWidth >= WIDE
+    wide: window.innerWidth >= WIDE,
+    width: window.innerWidth
   };
 
   // ---------------------------------------------------------------------
@@ -524,8 +533,12 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   }
   if (typeof ResizeObserver === "function") {
     var observer = new ResizeObserver(function () {
-      var wide = window.innerWidth >= WIDE;
-      if (wide !== state.wide) { state.wide = wide; render(); }
+      // A new width can change what fits (rotation, fullscreen): lay out again.
+      if (window.innerWidth !== state.width) {
+        state.width = window.innerWidth;
+        state.wide = state.width >= WIDE;
+        render();
+      }
       scheduleSize();
     });
     observer.observe(document.documentElement);
@@ -745,6 +758,9 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     // Every cent where a cell has room; whole amounts from 100 on a phone.
     return window.innerWidth < 560 ? tinyAmount(value) : cellAmount(value);
   }
+  function amountValue(value) {
+    return el("span", { class: "v", "data-amount": value, text: fitAmount(value) });
+  }
   function tinyAmount(value) {
     var n = Number(value);
     return Math.abs(n) >= 100 ? wholeFormat.format(n) : plainFormat.format(n);
@@ -941,8 +957,43 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       var again = document.getElementById(focusId);
       if (again) again.focus({ preventScroll: true });
     }
+    fitText(root);
     if (state.mode === "fullscreen") window.scrollTo(0, scrollY);
     scheduleSize();
+  }
+
+  // Money is never cut off. A date grid whose amounts do not fit their cells
+  // (a 360 dp phone's chat column) first gets a smaller size, then whole
+  // euros, said under the grid; the exact figure stays in each date's label
+  // and detail. Summary tiles and buttons that do not fit go two-up / stack.
+  function fitText(scope) {
+    var grids = scope.querySelectorAll(".mini, .grid");
+    for (var i = 0; i < grids.length; i++) {
+      var grid = grids[i];
+      if (!clipped(grid, ".fit")) continue;
+      grid.classList.add("tight");
+      if (!clipped(grid, ".fit")) continue;
+      var values = grid.querySelectorAll("[data-amount]");
+      for (var j = 0; j < values.length; j++) values[j].textContent = wholeAmount(values[j].getAttribute("data-amount"));
+      var note = el("p", { class: "fit-note", text: grid.classList.contains("mini") ? "Amounts rounded to whole euros to fit this screen." : "Amounts rounded to whole euros to fit this screen; select a date for the exact figures." });
+      grid.parentNode.insertBefore(note, grid.nextSibling);
+    }
+    var boxes = scope.querySelectorAll(".kpis, .tiles");
+    for (var k = 0; k < boxes.length; k++) if (clipped(boxes[k], "dd")) boxes[k].classList.add("stack");
+    var rows = scope.querySelectorAll(".actions");
+    for (var r = 0; r < rows.length; r++) {
+      if (rows[r].scrollWidth > rows[r].clientWidth + 1 || clipped(rows[r], ".btn")) rows[r].classList.add("stack");
+    }
+  }
+  function wholeAmount(value) {
+    // A plan of a few cents is not "0".
+    var n = Number(value);
+    return n > 0 && n < 0.5 ? "<1" : wholeFormat.format(n);
+  }
+  function clipped(box, selector) {
+    var nodes = box.querySelectorAll(selector);
+    for (var i = 0; i < nodes.length; i++) if (nodes[i].scrollWidth > nodes[i].clientWidth + 1) return true;
+    return false;
   }
 
   function errorView() {
@@ -1061,10 +1112,11 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     month.days.forEach(function (day) {
       var model = cellModel(day);
       var classes = "mcell" + (day.day_kind === "future" ? " future" : "") + (day.day_kind === "today" ? " today" : "") + (model.state === "over" ? " over" : "");
-      var amount = "";
-      if (day.day_kind !== "future" && cents(day.spent) > 0) amount = tinyAmount(day.spent);
-      if (day.day_kind === "future" && cents(day.planned) > 0) amount = tinyAmount(day.planned);
-      var cell = el("div", { class: classes }, [el("b", { text: String(parseDate(day.date).getUTCDate()) }), el("span", { class: "num", text: amount })]);
+      var raw = null;
+      if (day.day_kind !== "future" && cents(day.spent) > 0) raw = day.spent;
+      if (day.day_kind === "future" && cents(day.planned) > 0) raw = day.planned;
+      var amount = raw === null ? "" : tinyAmount(raw);
+      var cell = el("div", { class: classes }, [el("b", { text: String(parseDate(day.date).getUTCDate()) }), el("span", { class: "num fit", "data-amount": raw, text: amount })]);
       if (model.begun && (model.state === "over" || model.state === "within")) {
         cell.appendChild(el("i", null, el("s", { style: "width:" + (model.ratio * 100).toFixed(1) + "%" })));
       }
@@ -1364,10 +1416,10 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     var amountNode;
     if (model.begun) {
       var shown = state.filter ? model.spent : day.spent;
-      amountNode = el("span", { class: "amt num", text: cents(shown) > 0 ? fitAmount(shown) : (cents(model.planned) > 0 ? "0.00" : "") });
+      amountNode = el("span", { class: "amt num fit" }, cents(shown) > 0 ? amountValue(shown) : (cents(model.planned) > 0 ? amountValue("0") : ""));
     } else {
       var plannedShown = state.filter ? model.planned : day.planned;
-      amountNode = el("span", { class: "amt num" }, cents(plannedShown) > 0 ? [el("span", { class: "pl", text: "plan" }), fitAmount(plannedShown)] : "");
+      amountNode = el("span", { class: "amt num fit" }, cents(plannedShown) > 0 ? [el("span", { class: "pl", text: "plan" }), amountValue(plannedShown)] : "");
     }
     var meter = null;
     if (model.begun && (model.state === "over" || model.state === "within")) {

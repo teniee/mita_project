@@ -33,7 +33,7 @@ unchanged.
 | OAuth 2.1 (PRM, AS metadata, DCR, PKCE S256, resource binding, rotation, revocation) | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED (connection) | adversarial suite; staging e2e + 24 failure modes (§4) | — |
 | Exact figures; soft deletes; timezone | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED (v1) | v1: ChatGPT matched ground truth to the cent; v2: exact figures in e2e_v2 | — |
 | Negative cases (transfer, other user, trading) | CI VERIFIED, STAGING VERIFIED, CHATGPT VERIFIED | §8 cases 16–18; S-8 E: only the owner's records searched, nothing of anyone else (§11) | — |
-| Onboarding skill, starter prompts, listing (plugin 2.1.0) | CODE READY, CI VERIFIED (`--check`) | `build_plugin.py`, `test_plugin_package.py`, 72 golden prompts (en/ru/bg) | final ZIP: OWNER REQUIRED (step 12) |
+| Onboarding skill, starter prompts (set up / record / "Show my financial calendar for this month.", 2026-10-25), listing (plugin 2.1.0) | CODE READY, CI VERIFIED (`--check`) | `build_plugin.py`, `test_plugin_package.py`, 73 golden prompts (en/ru/bg) | final ZIP: OWNER REQUIRED (step 12) |
 | Capacity (600k transactions) | VERIFIED locally | capacity-plan.md: p95 ≤ 20 ms per tool query, no new index | — |
 | Grant fingerprint secret separate from CSRF secret | CI VERIFIED, STAGING VERIFIED | `test_secret_separation.py` | — |
 | Cross-user isolation | CI VERIFIED, STAGING VERIFIED | `test_isolation.py`; forged ref refused on staging | — |

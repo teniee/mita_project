@@ -1,6 +1,20 @@
-# Handoff — MITA in ChatGPT (MCP), 2026-10-24
+# Handoff — MITA in ChatGPT (MCP), 2026-10-25
 
-## Current phase: the financial calendar in ChatGPT + sign-in page v4 (MCP 2.2.0)
+## Current phase: financial correctness, real-ChatGPT acceptance, staging stabilisation (2026-10-25)
+
+| Item | State |
+|---|---|
+| Brief | owner, 2026-10-25: no redesign; F-8 first (proposal before any change to the money model), consistency tests, the usage box unticked, staging clean-up, real-ChatGPT acceptance, the calendar as a starter prompt, usability defects only |
+| F-8 | root cause found and measured (`f8-money-model-proposal.md`): of €948.05 treated as overspending in the review month, €206.49 was real; the rest was timing, naming (F-2) and pacing, because the rebalancer works per date and category. Proposal R1–R5 with simulated figures; **awaiting the owner's decisions D1–D4 — nothing implemented** |
+| Consistency tests | `tests_mcp/test_money_consistency.py` (22): every scenario through the real tools and the real rebalancer, checked across `get_budget_status`, `get_budget_forecast`, `get_calendar_month`, `show_financial_calendar`, the stored rows (money conserved, spend cache equal to the ledger) and the mobile API's figures; today's F-8 behaviour pinned with hand-checkable numbers (`…_today`), including the review month exactly |
+| New finding | F-9: the app's day budget (`/budget/live_status`) still counts today's savings slice; `/budget/forecast` uses the server's UTC date |
+| Usage statistics | box unticked by default on both tabs (approved); a tick is the consent; on sign-in an unticked box keeps the earlier choice and deletes nothing; withdrawal stays `set_usage_analytics(false)` (deletes linked events). No production user ever saw the pre-ticked box (MCP is not in production) |
+| Starter prompts | set up / record / **"Show my financial calendar for this month."** (replaced "How am I doing financially this month?"); pinned as golden prompt en-35 → `show_financial_calendar` |
+| Usability | narrow phones (320/360 px): amounts were cut mid-number ("22.1" for 22.15), the Spent tile truncated, Save as PNG cut off; now a fit pass (smaller size, then whole euros said under the grid), tiles two-up, buttons stacked; the "How is this worked out?" toggle 32 px tall. Harness 65/65 with axe 0 violations in 4 states; sign-in page axe 0 in 8 states |
+| Owner acceptance in ChatGPT | rewritten `calendar-owner-test.md` (12 steps, screenshots, A/B/C for the PNG) — not yet run |
+| Owner next | 1. decide F-8 (D1–D4); 2. authorise database access for the staging clean-up; 3. run `calendar-owner-test.md` in ChatGPT |
+
+## Previous phase: the financial calendar in ChatGPT + sign-in page v4 (MCP 2.2.0)
 
 | Item | State |
 |---|---|

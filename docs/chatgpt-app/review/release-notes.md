@@ -13,6 +13,9 @@
 * Read-only: the calendar changes nothing; every figure comes from MITA's
   records and calculations.
 * MITA's sign-in page shows how the calendar works with a fictional example.
+* The calendar is one of the three starter prompts ("Show my financial calendar
+  for this month.").
+* Usage statistics are off until you tick the box on the sign-in page.
 
 **2.0.0 — free v1: MITA keeps your records across conversations**
 

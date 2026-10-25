@@ -17,7 +17,10 @@ migration `0039` (tables and views), `scripts/mcp/analytics_report.py`
   under `MCP_ANALYTICS_SECRET` (first 32 hex); `session_key` = the same HMAC of
   ChatGPT's anonymized conversation id (`_meta["openai/session"]`). Keys are
   written only for users who ticked the usage-statistics box on the MITA
-  consent page (or turned it on with `set_usage_analytics`). Everyone else
+  consent page (or turned it on with `set_usage_analytics`). The box starts
+  unticked (owner decision 2026-10-25). On sign-in an unticked box keeps the
+  account's earlier choice; it is never a withdrawal and never deletes
+  anything — withdrawing is `set_usage_analytics(false)`. Everyone else
   produces rows with both keys NULL: counted for volume and reliability,
   linked to nobody. Accounts that connected before this feature have no
   choice recorded and are treated as "off".
