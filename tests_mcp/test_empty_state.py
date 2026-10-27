@@ -38,6 +38,9 @@ async def test_new_account_has_no_invented_figures(mcp, seed):
         "planned": "0.00",
         "spent": "0.00",
         "remaining": "0.00",
+        "everyday_planned": "0.00",
+        "everyday_spent": "0.00",
+        "everyday_remaining": "0.00",
     }
 
     forecast = structured(await m.call(token, "get_budget_forecast"))

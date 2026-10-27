@@ -64,6 +64,9 @@ async def test_today_crosses_midnight_in_local_time(mcp, seed):
         "planned": "22.00",
         "spent": "5.00",
         "remaining": "17.00",
+        "everyday_planned": "22.00",
+        "everyday_spent": "5.00",
+        "everyday_remaining": "17.00",
     }
 
 
@@ -78,6 +81,9 @@ async def test_same_instant_is_a_different_day_for_a_utc_user(mcp, seed):
         "planned": "11.00",
         "spent": "5.00",
         "remaining": "6.00",
+        "everyday_planned": "11.00",
+        "everyday_spent": "5.00",
+        "everyday_remaining": "6.00",
     }
 
 

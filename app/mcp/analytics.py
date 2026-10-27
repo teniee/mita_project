@@ -40,7 +40,7 @@ from app.mcp import MCP_SERVER_VERSION
 
 logger = logging.getLogger("app.mcp.analytics")
 
-TOOL_CONTRACT_VERSION = "2.1"
+TOOL_CONTRACT_VERSION = "2.3"
 SURFACE = "chatgpt"
 
 TOOL_CALL_SUCCEEDED = "tool_call_succeeded"

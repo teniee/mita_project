@@ -1094,9 +1094,38 @@ Rules:
   those lines out. Status / projection still compare with the whole plan and
   their linear pace counts rent paid on the 1st as daily spending: known,
   deferred, not to be "fixed" for savings alone (it would read "danger" all
-  month for savers). Unrecorded future bills still count as spendable, and
-  the mobile `/api/scheduled-expenses` impact still counts savings (debt).
-  Exact figures: `tests_mcp/test_spendable_forecast.py`.
+  month for savers). The mobile `/api/scheduled-expenses` impact still
+  counts savings (debt). Exact figures: `tests_mcp/test_spendable_forecast.py`.
+- **Bills come first** (owner decision, 2026-10-25). `compute_forecast(...,
+  commitments=commitment_expectations(base, saved_due))` returns
+  `commitments_reserved` and `safe_daily_limit = (remaining − savings_set_aside
+  − commitments_reserved) / days_remaining`. A bill (`is_bill_line`: SACRED,
+  not set aside AND recordable — rent, mortgage, utilities — or a recordable
+  saved payment's category due this month) needs its **base**
+  plan (`monthly_plan_service.base_totals_by_category` / `month_base_plan`:
+  rebalancing backed out — a rebalancing credit is never a second bill) or the
+  saved payments due when more (`app/services/monthly_obligations.py`, the one
+  "due this month" rule, also the reviewed budget's); the reserve is that minus
+  what is recorded on the line, never below 0, never matched to a specific
+  transaction. Recordable = an expense can be stored under that category
+  (`VALID_TRANSACTION_CATEGORIES`): the engine's default "insurance medical"
+  allowance (every budget has one; `preview_monthly_budget` lists it as
+  flexible spending) can never be recorded against, so holding it would count
+  a paid bill twice — it is everyday money (refined 2026-10-26,
+  `docs/chatgpt-app/r3-bills-reserve.md`). Needs are computed per STORED
+  category and only then keyed by display line, so a saved `public_transport`
+  pass never takes the "transport public" allowance with it. MCP
+  (`queries/plan.month_commitments`, the calendar) and the mobile `GET
+  /api/budget/forecast` (user's local day since F-9) pass the same
+  commitments; `live_status.daily_budget` leaves set-aside lines out.
+  `queries/plan.bill_line_keys` is the one display-line rule: the calendar's
+  "Bills & commitments" group and `get_budget_status.today.everyday_*` (today
+  without bills). The calendar's
+  `left_to_spend` excludes the reserve. Negative averages are allowed (bills
+  due beyond what the plan leaves). Exact figures:
+  `tests_mcp/test_bills_reserve.py` (the scenario matrix),
+  `tests_mcp/test_money_consistency.py`, `test_calendar.py`,
+  `app/tests/test_budget_forecast_local_day.py`.
 - **One display name per category** (`app/mcp/categories.py`): every result
   carries `category_label`; budget status and the forecast put an expense
   category on its paired plan bucket's line ("Fuel" = `transport gas` +
@@ -1308,9 +1337,10 @@ Rules:
   - **One query, both tools, the sign-in example**: `queries/calendar.py`
     (`build_calendar` is pure). Its figures equal `get_budget_status` and
     `get_budget_forecast` for the same month (tested) — never a second
-    calculation. Lines are grouped once — set aside / commitments (SACRED
-    non-set-aside + saved payments' categories by `counts_in_month`, the
-    budget draft's rule) / everyday — and the groups add up to the plan.
+    calculation. Lines are grouped once — set aside / commitments (the
+    forecast's bills: `is_bill_line` + recordable saved payments' categories
+    by `counts_in_month`, the budget draft's rule) / everyday — and the groups
+    add up to the plan.
   - **A date's verdict is everyday-only**: over/within compares everyday
     spending with that date's everyday plan; a date without one gets no
     verdict; future dates show the plan, never a forecast. Bills are dated
@@ -1326,10 +1356,12 @@ Rules:
   - Bump the URI's `-vN` for a breaking component change. `ui.domain` comes
     from `MCP_WIDGET_DOMAIN` (required at submission; unset on staging).
   - Known model gaps the calendar shows and does not hide: F-8 (rebalancing
-    drains the dates ahead when a bill is paid on another date than laid out),
-    unrecorded bills inside left-to-spend, F-2. **F-8's proposal awaits the
-    owner** (`docs/chatgpt-app/f8-money-model-proposal.md`, decisions D1–D4);
-    do not change the rebalancer, the forecast or the layout before that.
+    drains the dates ahead when a bill is paid on another date than laid out)
+    and F-2. **F-8 stays MITA's behaviour** (owner decision 2026-10-25:
+    ChatGPT shows exactly what the app implements; R1, R2, R4, R5 not adopted;
+    `docs/chatgpt-app/f8-money-model-proposal.md`); unrecorded bills are held
+    out of left to spend since R3. Do not change the rebalancer or the layout
+    without a new owner decision.
     Today's behaviour is pinned with hand-checkable figures in
     `tests_mcp/test_money_consistency.py` (`…_today` tests, the review month);
     a model change must update those figures deliberately, and every scenario

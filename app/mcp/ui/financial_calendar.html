@@ -1250,6 +1250,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
           calcRow("Plan", money(s.total_planned, cur)),
           calcRow("− Spent", money(s.total_spent, cur)),
           calcRow("− Protected savings", money(s.savings_set_aside, cur)),
+          cents(s.commitments_reserved) > 0 ? calcRow("− Held for bills", money(s.commitments_reserved, cur)) : null,
           calcRow("= Left to spend", money(s.left_to_spend, cur), true),
           calcRow("÷ Days left", String(s.days_remaining)),
           calcRow("= On average a day", money(s.average_per_day, cur), true)
@@ -1272,7 +1273,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     }
     var tiles = el("dl", { class: "tiles" });
     if (planned) {
-      if (s.left_to_spend !== null) tiles.appendChild(tile("Left to spend", money(s.left_to_spend, cur), month.month_position === "past" ? "when the month ended" : "after protected savings"));
+      if (s.left_to_spend !== null) tiles.appendChild(tile("Left to spend", money(s.left_to_spend, cur), month.month_position === "past" ? "when the month ended" : "after savings and bills"));
       tiles.appendChild(tile("Spent", money(s.total_spent, cur), "of " + money(s.total_planned, cur) + " planned"));
       tiles.appendChild(tile("Protected savings", money(s.savings_set_aside, cur), "never counted as spendable", "savings", "shield"));
       if (wide) {
@@ -1313,17 +1314,19 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     var s = month.summary;
     var cur = month.currency;
     var items = [];
-    if (cents(s.commitments_not_recorded) > 0 && month.month_position !== "past") {
+    if (cents(s.commitments_reserved) > 0 && month.month_position !== "past") {
       items.push(el("p", { class: "callout" }, [icon("bill"), el("span", null, [
-        el("strong", { text: money(s.commitments_not_recorded, cur) }),
-        " planned for bills isn’t recorded as paid yet, so it is still inside Left to spend."
+        el("strong", { text: money(s.commitments_reserved, cur) }),
+        " is held for bills not recorded as paid yet, so it is not in Left to spend. Recording a bill releases what it doesn’t use."
       ])]));
     }
-    var left = cents(s.left_to_spend), ahead = cents(s.planned_after_today), unpaid = cents(s.commitments_not_recorded) || 0;
-    if (ahead !== null && left !== null && left - unpaid - ahead >= 100 && month.month_position === "current") {
+    // Left to spend is everyday money; compare it with the everyday plan ahead.
+    var left = cents(s.left_to_spend);
+    var ahead = month.days.reduce(function (sum, d) { return d.day_kind === "future" ? sum + cents(d.planned_everyday) : sum; }, 0);
+    if (s.planned_after_today !== null && left !== null && left - ahead >= 100 && month.month_position === "current") {
       items.push(el("p", { class: "callout" }, [icon("spread"), el("span", null, [
-        "MITA’s plan holds ", el("strong", { text: money(s.planned_after_today, cur) }),
-        " for the dates ahead after its automatic rebalancing, which moves money from later dates to cover a day that went over. Money left unspent on earlier dates stays on those dates; the daily average counts it too."
+        "MITA’s plan holds ", el("strong", { text: money((ahead / 100).toFixed(2), cur) }),
+        " of everyday money for the dates ahead after its automatic rebalancing, which moves money from later dates to cover a day that went over. Money left unspent on earlier dates stays on those dates; the daily average counts it too."
       ])]));
     }
     var outside = month.bills.filter(function (b) { return !b.in_plan && b.date >= month.today; });
@@ -1657,7 +1660,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   }
 
   function methodText(month) {
-    return "Figures come from your MITA account (" + month.currency + ", " + month.timezone + "). Each date shows MITA’s saved plan for it and, once begun, the expenses you recorded; dates ahead show the plan, never a forecast. A date is over when everyday spending passes that date’s everyday plan; bills and commitments are counted on their own. Protected savings are never counted as spendable. The daily average is left to spend divided by the days left.";
+    return "Figures come from your MITA account (" + month.currency + ", " + month.timezone + "). Each date shows MITA’s saved plan for it and, once begun, the expenses you recorded; dates ahead show the plan, never a forecast. A date is over when everyday spending passes that date’s everyday plan; bills and commitments are counted on their own. Protected savings, and what bills not yet recorded still need, are never counted as spendable. The daily average is left to spend divided by the days left.";
   }
 
   // ---------------------------------------------------------------------
@@ -1860,7 +1863,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     });
     y += tilesH;
     if (planned && s.average_per_day !== null) {
-      text("Average a day = left to spend ÷ days left. Each date shows its own plan.", M, y + 34, "500", 19, INK3);
+      text(cents(s.commitments_reserved) > 0 ? "Left to spend is after savings and " + money(s.commitments_reserved, cur) + " held for bills. Average a day = left ÷ days left." : "Average a day = left to spend ÷ days left. Each date shows its own plan.", M, y + 34, "500", 19, INK3, "left", W - 2 * M);
     }
     y += noteH + 22;
 

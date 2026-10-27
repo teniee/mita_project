@@ -1,7 +1,22 @@
 # F-8 — one money model for the plan, the ledger and the forecast (proposal, 2026-10-25)
 
-Status: **awaiting the owner's approval. Nothing in this document is implemented.**
-The tests that pin today's behaviour are in `tests_mcp/test_money_consistency.py`.
+Status, owner decisions of 2026-10-25:
+
+* **R3 approved and implemented** — unpaid bills are held out of the safe daily
+  amount (`commitments_reserved`), in ChatGPT and in the mobile API's forecast.
+  It is measured against each line's reviewed plan, so the double-held money of
+  §1 is never reserved twice. Refined 2026-10-26 to the bills MITA can see paid
+  (saved payments and the rent/mortgage/utilities lines): the engine's medical
+  insurance allowance below (134.40) is never recorded against, so holding it
+  would count the bill twice once paid — it stays everyday money. The review
+  month gives €117.70 a day (€30.00 held for the internet bill). Rule and
+  evidence: `r3-bills-reserve.md`.
+* **R1, R2, R4, R5 not adopted.** The owner's answer: ChatGPT must show exactly
+  what the app already implements. The shared rebalancer is unchanged and F-8
+  remains MITA's behaviour, shown labelled in the calendar.
+* Past months: rebuild only on edit (applies if a rule changes later).
+
+Today's behaviour is pinned in `tests_mcp/test_money_consistency.py`.
 
 ## 1. Root cause
 

@@ -7,7 +7,7 @@ from typing import Any, Dict, Optional
 logger = logging.getLogger(__name__)
 
 from fastapi import APIRouter, Body, Depends
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_user
@@ -26,13 +26,18 @@ from app.services.core.engine.budget_auto_adapter import adapt_category_weights
 from app.services.core.engine.budget_forecast_engine import (
     DailyPlanData,
     GoalData,
+    commitment_expectations,
     compute_forecast,
 )
 from app.services.core.engine.budget_logic import generate_budget_from_answers
 from app.services.core.engine.budget_mode_selector import resolve_budget_mode
 from app.services.core.engine.budget_suggestion_engine import suggest_budget_adjustments
 from app.services.core.income_classification_service import IncomeClassificationService
-from app.services.monthly_plan_service import ensure_month_plan_async
+from app.services.monthly_obligations import obligations_due
+from app.services.monthly_plan_service import (
+    base_totals_by_category,
+    ensure_month_plan_async,
+)
 from app.utils.response_wrapper import success_response
 
 from app.api.budget.services import fetch_remaining_budget  # isort:skip
@@ -363,9 +368,14 @@ async def get_budget_forecast(
     - all_categories: full per-category breakdown
     - goals: projection for each active savings goal
     """
-    now = datetime.now(timezone.utc)
-    target_year = year or now.year
-    target_month = month or now.month
+    from app.services.core.engine.expense_tracker import local_day_of
+
+    # "Today" and the default month are the USER's calendar day, as in
+    # ChatGPT's get_budget_forecast (F-9): at 01:00 on the 1st in Sofia the
+    # server's UTC date is still the previous month.
+    today_local = local_day_of(datetime.now(timezone.utc), user.timezone)
+    target_year = year or today_local.year
+    target_month = month or today_local.month
 
     # Validate year/month ranges
     if not (1 <= target_month <= 12):
@@ -434,12 +444,25 @@ async def get_budget_forecast(
         for g in goals
     ]
 
+    # ── What the month's bills still need (owner decision 2026-10-25) ────────
+    # The same rule as ChatGPT's get_budget_forecast: each bill's
+    # base plan, or the saved payments due on it when more; unpaid bills are
+    # kept out of the safe daily limit.
+    saved_due = await db.run_sync(
+        lambda sync_session: obligations_due(
+            sync_session, user.id, target_year, target_month
+        )
+    )
+    commitments = commitment_expectations(base_totals_by_category(plans), saved_due)
+
     # ── Run pure computation ──────────────────────────────────────────────────
     forecast = compute_forecast(
         daily_plans=plan_data,
         goals=goal_data,
         year=target_year,
         month=target_month,
+        today=today_local,
+        commitments=commitments,
     )
 
     return success_response(forecast.to_dict())
@@ -671,6 +694,7 @@ async def get_live_budget_status(
     db: AsyncSession = Depends(get_async_db),  # noqa: B008
 ):
     """Get real-time budget status"""
+    from app.core.category_priority import SET_ASIDE_CATEGORIES
     from app.core.date_utils import day_to_range
     from app.db.models import Transaction
     from app.services.core.engine.expense_tracker import (
@@ -693,6 +717,13 @@ async def get_live_budget_status(
     # (DailyPlan.date is timestamptz; an equality against a date misses rows
     # stored at non-midnight times).
     day_start, day_end = day_to_range(today_local)
+    # Today's spending plan: a line that sets money aside (savings, goal
+    # reservations, investments) is not something to spend today — the same
+    # rule as ChatGPT's get_budget_status.today (owner decision 2026-10-23, F-9).
+    spending_line = or_(
+        DailyPlan.category.is_(None),
+        func.lower(func.trim(DailyPlan.category)).notin_(sorted(SET_ASIDE_CATEGORIES)),
+    )
     result = await db.execute(
         select(
             func.coalesce(func.sum(DailyPlan.daily_budget), 0),
@@ -701,6 +732,7 @@ async def get_live_budget_status(
             DailyPlan.user_id == user.id,
             DailyPlan.date >= day_start,
             DailyPlan.date <= day_end,
+            spending_line,
         )
     )
     daily_budget_total, spent_today_total = result.one()

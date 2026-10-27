@@ -27,9 +27,10 @@ from calendar import monthrange
 from dataclasses import dataclass
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Dict, List, Optional
+from typing import Dict, List, Mapping, Optional
 
-from app.core.category_priority import is_set_aside
+from app.core.category_priority import is_sacred, is_set_aside
+from app.core.financial_constants import FinancialConstants
 
 logger = logging.getLogger(__name__)
 
@@ -167,13 +168,16 @@ class ForecastResult:
     # what the set-aside lines still hold: per line max(0, planned - deposited)
     savings_set_aside: Decimal
     current_daily_pace: Decimal  # total_spent / days_elapsed
-    safe_daily_limit: Decimal  # (remaining_budget - savings_set_aside) / days_remaining
+    # (remaining_budget - savings_set_aside - commitments_reserved) / days_remaining
+    safe_daily_limit: Decimal
     projected_month_end_spend: Decimal  # total_spent + pace * days_remaining
     projected_month_end_balance: Decimal  # total_planned - projected_spend
     status: str  # "on_track" | "warning" | "danger" | "no_data"
     categories_at_risk: List[CategoryForecast]  # sorted desc by overspend_ratio
     all_categories: List[CategoryForecast]  # sorted desc by monthly_planned
     goals: List[GoalForecast]
+    # what the month's bills still need: per bill max(0, expected - recorded)
+    commitments_reserved: Decimal = _ZERO
 
     def to_dict(self) -> Dict:
         return {
@@ -186,6 +190,7 @@ class ForecastResult:
             "total_spent": float(self.total_spent),
             "remaining_budget": float(self.remaining_budget),
             "savings_set_aside": float(self.savings_set_aside),
+            "commitments_reserved": float(self.commitments_reserved),
             "current_daily_pace": float(self.current_daily_pace),
             "safe_daily_limit": float(self.safe_daily_limit),
             "projected_month_end_spend": float(self.projected_month_end_spend),
@@ -392,6 +397,64 @@ def _still_set_aside(daily_plans: List[DailyPlanData]) -> Decimal:
     return sum((max(_ZERO, planned[c] - deposited[c]) for c in planned), _ZERO)
 
 
+def is_recordable(category: str) -> bool:
+    """True for a category an expense can be recorded under (MITA's expense
+    vocabulary, ``FinancialConstants.VALID_TRANSACTION_CATEGORIES``, income
+    aside). Recording a bill is how MITA knows it is paid, so only such a
+    category can hold money back as a bill."""
+    key = (category or "").strip().lower()
+    return key != "income" and key in FinancialConstants.VALID_TRANSACTION_CATEGORIES
+
+
+def is_bill_line(category: str) -> bool:
+    """An essential plan line that is a bill MITA can see paid: SACRED, not set
+    aside, and recordable — rent, mortgage, utilities. No expense is ever
+    recorded under the other SACRED names (the budget engine's medical
+    insurance allowance; school fees, debt repayment, online courses), so a
+    payment could never release them: they stay protected from rebalancing
+    but are everyday money, not bills (R3, docs/chatgpt-app/r3-bills-reserve.md)."""
+    return (
+        is_sacred(category) and not is_set_aside(category) and is_recordable(category)
+    )
+
+
+def commitment_expectations(
+    base_planned: Mapping[str, Decimal],
+    saved_due: Mapping[str, Decimal],
+) -> Dict[str, Decimal]:
+    """What each bill needs this month, before anything is recorded, keyed by
+    stored category.
+
+    Bills: essential lines MITA can see paid (``is_bill_line``: rent,
+    mortgage, utilities) and the recordable categories of the user's saved
+    payments due this month (``monthly_obligations.obligations_due``). Each
+    needs its category's reviewed plan — the base plan, before in-month
+    rebalancing, because a rebalancing credit to a bill's line is not a
+    second bill — or the saved payments due on it when they are more, never
+    both.
+    """
+    lines = {
+        c for c, amount in base_planned.items() if amount > _ZERO and is_bill_line(c)
+    } | {c for c, amount in saved_due.items() if amount > _ZERO and is_recordable(c)}
+    return {c: max(base_planned.get(c, _ZERO), saved_due.get(c, _ZERO)) for c in lines}
+
+
+def _still_reserved(
+    daily_plans: List[DailyPlanData], commitments: Mapping[str, Decimal]
+) -> Decimal:
+    """Per bill, what is not recorded yet: never below zero, so a bill paid in
+    full (or above its plan) holds nothing back, and spending beyond it has
+    already left the remaining budget through total_spent."""
+    recorded: Dict[str, Decimal] = {}
+    for p in daily_plans:
+        if p.category in commitments:
+            recorded[p.category] = recorded.get(p.category, _ZERO) + p.spent_amount
+    return sum(
+        (max(_ZERO, need - recorded.get(c, _ZERO)) for c, need in commitments.items()),
+        _ZERO,
+    )
+
+
 def _determine_status(
     projected_balance: Decimal,
     total_planned: Decimal,
@@ -427,6 +490,7 @@ def compute_forecast(
     year: int,
     month: int,
     today: Optional[date] = None,
+    commitments: Optional[Mapping[str, Decimal]] = None,
 ) -> ForecastResult:
     """
     Compute full budget forecast for a user for the given month.
@@ -437,6 +501,10 @@ def compute_forecast(
         year:         Target year.
         month:        Target month (1–12).
         today:        Override date.today() for testing. Defaults to date.today().
+        commitments:  ``commitment_expectations(...)`` for the month: what each
+                      bill needs. Unpaid bills are kept out of the
+                      safe daily limit (owner decision 2026-10-25). None = no
+                      reserve.
 
     Returns:
         ForecastResult with all projection metrics.
@@ -497,6 +565,8 @@ def compute_forecast(
 
     # Savings, goal reservations and investments: in the plan, not for spending.
     savings_set_aside = _still_set_aside(daily_plans)
+    # Bills planned and not recorded yet: in the plan, needed for the bills.
+    commitments_reserved = _still_reserved(daily_plans, commitments or {})
 
     days_remaining_d = Decimal(str(days_remaining))
 
@@ -510,7 +580,10 @@ def compute_forecast(
     # Safe limit: how much can be spent per remaining day and still end the
     # month at 0 without touching the money the plan sets aside.
     safe_daily_limit = (
-        _q((remaining_budget - savings_set_aside) / days_remaining_d)
+        _q(
+            (remaining_budget - savings_set_aside - commitments_reserved)
+            / days_remaining_d
+        )
         if days_remaining > 0
         else _ZERO
     )
@@ -569,4 +642,5 @@ def compute_forecast(
         categories_at_risk=categories_at_risk,
         all_categories=all_categories_sorted,
         goals=goal_forecasts,
+        commitments_reserved=commitments_reserved,
     )

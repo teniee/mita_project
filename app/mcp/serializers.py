@@ -247,6 +247,11 @@ def budget_status_out(ctx: UserContext, status: BudgetStatus) -> BudgetStatusOut
             planned=money(status.today.planned),
             spent=money(status.today.spent),
             remaining=money(status.today.planned - status.today.spent),
+            everyday_planned=money(status.today.everyday_planned),
+            everyday_spent=money(status.today.everyday_spent),
+            everyday_remaining=money(
+                status.today.everyday_planned - status.today.everyday_spent
+            ),
         )
     return BudgetStatusOut(
         year=status.year,
@@ -284,10 +289,11 @@ def budget_status_out(ctx: UserContext, status: BudgetStatus) -> BudgetStatusOut
 FORECAST_METHOD = (
     "Linear projection from MITA's forecast engine: spent so far divided by days "
     "elapsed (in the user's timezone), extended over the rest of the month, compared "
-    "with the month's plan. The safe daily limit never counts money the plan sets "
-    "aside for savings, goals or investments (savings_set_aside) as spendable. A bill "
-    "in the plan counts as spent only once it is recorded as an expense. It does not "
-    "include scheduled future expenses."
+    "with the month's plan. The safe daily limit never counts as spendable the money "
+    "the plan sets aside for savings, goals or investments (savings_set_aside) or the "
+    "money the month's bills still need (commitments_reserved: each commitment line's "
+    "reviewed plan, or its saved regular payments due this month when more, minus what "
+    "is recorded on it). A bill counts as paid once it is recorded as an expense."
 )
 
 
@@ -326,6 +332,7 @@ def forecast_out(
         total_spent=money(result.total_spent),
         remaining_budget=money(result.remaining_budget),
         savings_set_aside=money(result.savings_set_aside),
+        commitments_reserved=money(result.commitments_reserved),
         current_daily_pace=money(result.current_daily_pace),
         safe_daily_limit=money(result.safe_daily_limit),
         projected_month_end_spend=money(result.projected_month_end_spend),
@@ -455,18 +462,19 @@ def recurring_out(ctx: UserContext, view: RecurringView) -> RecurringOut:
 CALENDAR_METHOD = (
     "Each date shows MITA's saved plan for it and, once the day has begun, the "
     "expenses recorded on it (in the user's timezone). Plan lines are grouped as in "
-    "the summary: commitments (rent, mortgage, utilities, debt repayment, medical "
-    "insurance, school fees, online courses and the categories of saved regular "
-    "payments), money set aside (savings, goals, investments — never spendable) and "
+    "the summary: bills (rent, mortgage and utilities lines, and the categories of "
+    "saved regular payments that belong to the month), money set aside (savings, "
+    "goals, investments — never spendable) and "
     "everyday spending. A day's state compares everyday spending with that date's "
-    "everyday plan. Future dates show the plan, never a forecast. average_per_day is "
-    "the forecast engine's safe daily figure: an average for each remaining day, not "
-    "a budget for a particular date."
+    "everyday plan. Future dates show the plan, never a forecast. left_to_spend leaves "
+    "out money set aside and what bills not yet recorded still need "
+    "(commitments_reserved). average_per_day is the forecast engine's safe daily "
+    "figure: an average for each remaining day, not a budget for a particular date."
 )
-NOTE_COMMITMENTS_NOT_RECORDED = (
-    "{amount} {currency} planned for commitments is not recorded as paid yet. Until the "
-    "user records those bills as expenses it is part of left_to_spend and "
-    "average_per_day."
+NOTE_COMMITMENTS_RESERVED = (
+    "{amount} {currency} is held for bills not recorded as paid yet; it is not part of "
+    "left_to_spend or average_per_day. Recording a bill as an expense releases what "
+    "it does not use."
 )
 NOTE_BILLS_OUTSIDE_PLAN = (
     "{count} saved payment(s) this month fall on a category with no money in this "
@@ -480,7 +488,10 @@ def calendar_summary_out(cal: CalendarMonth) -> CalendarSummaryOut:
     forecast = cal.forecast
     month_open = cal.position != "past"
     left = (
-        cal.total_planned - cal.total_spent - forecast.savings_set_aside
+        cal.total_planned
+        - cal.total_spent
+        - forecast.savings_set_aside
+        - forecast.commitments_reserved
         if planned and forecast is not None
         else None
     )
@@ -507,8 +518,10 @@ def calendar_summary_out(cal: CalendarMonth) -> CalendarSummaryOut:
         ),
         days_elapsed=sum(1 for d in cal.days if d.kind != "future"),
         days_remaining=sum(1 for d in cal.days if d.kind == "future"),
-        commitments_not_recorded=(
-            money(cal.commitments_unrecorded) if planned else None
+        commitments_reserved=(
+            money(forecast.commitments_reserved)
+            if planned and forecast is not None
+            else None
         ),
         planned_after_today=(
             money(cal.planned_after_today) if planned and month_open else None
@@ -520,10 +533,11 @@ def calendar_summary_out(cal: CalendarMonth) -> CalendarSummaryOut:
 def _calendar_notes(ctx: UserContext, cal: CalendarMonth) -> List[str]:
     notes = _plan_notes(ctx, cal.plan_generated)
     if cal.plan_generated and cal.position != "past":
-        if cal.commitments_unrecorded > ZERO:
+        reserved = cal.forecast.commitments_reserved if cal.forecast else ZERO
+        if reserved > ZERO:
             notes.append(
-                NOTE_COMMITMENTS_NOT_RECORDED.format(
-                    amount=money(cal.commitments_unrecorded), currency=ctx.currency
+                NOTE_COMMITMENTS_RESERVED.format(
+                    amount=money(reserved), currency=ctx.currency
                 )
             )
         outside = sum(1 for b in cal.bills if not b.in_plan)

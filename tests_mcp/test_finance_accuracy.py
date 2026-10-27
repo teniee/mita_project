@@ -163,6 +163,9 @@ async def test_budget_status_exact_and_ignores_stale_plan_cache(m, ledger_user):
         "planned": "10.00",
         "spent": "0.00",
         "remaining": "10.00",
+        "everyday_planned": "10.00",
+        "everyday_spent": "0.00",
+        "everyday_remaining": "10.00",
     }
 
 

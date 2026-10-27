@@ -559,6 +559,18 @@ def month_base_plan(
     return plan
 
 
+def base_totals_by_category(rows) -> Dict[str, Decimal]:
+    """Per category, a month's BASE plan from rows a caller already holds:
+    real budget rows only, in-month rebalancing backed out (``month_base_plan``
+    summed by category). What the forecast's reserve for bills is measured
+    against — a rebalancing credit to a bill's line is not a second bill."""
+    totals: Dict[str, Decimal] = {}
+    for row in _budget_rows(rows):
+        category = row.category or ""
+        totals[category] = totals.get(category, ZERO) + _base_planned_amount(row)
+    return totals
+
+
 def replace_month_plan(
     db: Session,
     user_id: UUID,

@@ -9,11 +9,11 @@ ledger path runs (``rebuild_month_plan`` and the real-time rebalancer), then
 * the stored ``daily_plan`` rows (money conserved, the spend cache in step);
 * the mobile API's figures, computed the way its routes compute them from the
   same rows (the routes themselves need the API environment):
-  ``GET /api/budget/forecast`` — ``compute_forecast`` over the stored rows,
-  here with the user's local day (the route uses the server's UTC date and the
-  app does not call it; backend finding F-9) — the day figure the app
-  shows, ``GET /api/budget/live_status``: every plan row of the local day —
-  and the app calendar's day budget (the sum of a date's rows).
+  ``GET /api/budget/forecast`` — ``compute_forecast`` over the stored rows
+  with the user's local day, as the route computes it since F-9 — the app's
+  day figure, ``GET /api/budget/live_status``: the local day's plan rows
+  except money set aside (F-9) — and the app calendar's day budget (the sum
+  of a date's rows).
 
 The fixture month (``base_month``), Europe/Sofia, EUR, "today" Monday 19
 October 2026 (19 days begun, 12 left):
@@ -25,8 +25,9 @@ October 2026 (19 days begun, 12 left):
 
     plan 1,610.00 = commitments 900.00 + set aside 300.00 + everyday 410.00
 
-Tests named ``…_today`` pin behaviour the F-8 proposal would change
-(``docs/chatgpt-app/f8-money-model-proposal.md``, awaiting the owner): they
+Tests named ``…_today`` pin MITA's rebalancing as it is (F-8; the owner kept
+it on 2026-10-25 — R1, R2, R4 and R5 of
+``docs/chatgpt-app/f8-money-model-proposal.md`` were not adopted): they
 document it with figures anyone can check by hand, so a change is deliberate.
 """
 
@@ -137,6 +138,37 @@ def planned(rows: Rows, category: str, days=None) -> Decimal:
     )
 
 
+async def mobile_commitments(connection, user, month: int):
+    """What GET /api/budget/forecast passes the engine: the base plan of the
+    rows it loaded and the saved payments due (the same shared helpers)."""
+    from sqlalchemy.orm import Session
+
+    from app.db.models import DailyPlan
+    from app.services.core.engine.budget_forecast_engine import commitment_expectations
+    from app.services.monthly_obligations import obligations_due
+    from app.services.monthly_plan_service import base_totals_by_category, month_bounds
+
+    def build(sync_connection):
+        session = Session(bind=sync_connection)
+        try:
+            start, end = month_bounds(2026, month)
+            rows = (
+                session.query(DailyPlan)
+                .filter(
+                    DailyPlan.user_id == user.id,
+                    DailyPlan.date >= start,
+                    DailyPlan.date < end,
+                )
+                .all()
+            )
+            due = obligations_due(session, user.id, 2026, month)
+            return commitment_expectations(base_totals_by_category(rows), due)
+        finally:
+            session.close()
+
+    return await connection.run_sync(build)
+
+
 @dataclass
 class Look:
     status: dict
@@ -185,7 +217,12 @@ async def look(
     assert status["total_remaining"] == forecast["remaining_budget"]
     assert summary["total_remaining"] == forecast["remaining_budget"]
     assert summary["savings_set_aside"] == forecast["savings_set_aside"]
-    left = D(forecast["remaining_budget"]) - D(forecast["savings_set_aside"])
+    assert summary["commitments_reserved"] == forecast["commitments_reserved"]
+    left = (
+        D(forecast["remaining_budget"])
+        - D(forecast["savings_set_aside"])
+        - D(forecast["commitments_reserved"])
+    )
     assert D(summary["left_to_spend"]) == left
     if cal["month_position"] == "past":
         assert summary["average_per_day"] is None
@@ -223,21 +260,32 @@ async def look(
         year=2026,
         month=month,
         today=today,
+        commitments=await mobile_commitments(connection, user, month),
     )
     assert format(mobile.total_planned, ".2f") == forecast["total_planned"]
     assert format(mobile.total_spent, ".2f") == forecast["total_spent"]
     assert format(mobile.remaining_budget, ".2f") == forecast["remaining_budget"]
     assert format(mobile.savings_set_aside, ".2f") == forecast["savings_set_aside"]
+    reserved = forecast["commitments_reserved"]
+    assert format(mobile.commitments_reserved, ".2f") == reserved
     assert format(mobile.safe_daily_limit, ".2f") == forecast["safe_daily_limit"]
     assert mobile.days_remaining == forecast["days_remaining"]
     if cal["month_position"] == "current":
-        # The app's day figure sums every row of the local day; ChatGPT's
-        # "today" leaves set-aside slices out (owner decision 2026-10-23,
-        # applied to MCP only so far — F-9).
-        today_rows = [(c, p) for (d, c), (p, _s, _a) in rows.items() if d == today.day]
-        app_day = sum((p for _c, p in today_rows), D("0"))
-        set_aside_today = sum((p for c, p in today_rows if is_set_aside(c)), D("0"))
-        assert D(status["today"]["planned"]) == app_day - set_aside_today
+        # The app's day figure (live_status) and ChatGPT's "today" both leave
+        # set-aside slices out (owner decision 2026-10-23; F-9).
+        app_day = sum(
+            (
+                p
+                for (d, c), (p, _s, _a) in rows.items()
+                if d == today.day and not is_set_aside(c)
+            ),
+            D("0"),
+        )
+        assert D(status["today"]["planned"]) == app_day
+        # Today without bills (R3) is the calendar's everyday part of today.
+        cal_today = next(x for x in cal["days"] if x["day_kind"] == "today")
+        assert status["today"]["everyday_planned"] == cal_today["planned_everyday"]
+        assert status["today"]["everyday_spent"] == cal_today["spent_everyday"]
     return Look(status, forecast, cal, view, rows)
 
 
@@ -264,9 +312,9 @@ async def test_a_bill_paid_on_its_due_date_where_the_plan_holds_it_moves_nothing
         "410.00",  # 1,610.00 - 900.00 - 300.00 set aside
         "34.17",  # 410.00 / 12
     )
-    assert money(seen, "planned_after_today", "commitments_not_recorded") == (
+    assert money(seen, "planned_after_today", "commitments_reserved") == (
         "160.00",  # groceries 12 x 10 + dining out 24th and 31st
-        "0.00",
+        "0.00",  # both bills recorded
     )
     assert all(a == 0 for _p, _s, a in seen.rows.values())  # no rebalancing
     rent = seen.line("rent")
@@ -313,7 +361,9 @@ async def test_f8_a_bill_paid_on_its_due_date_away_from_its_layout_drains_later_
         31: D("5.00"),
     }
     assert seen.rows[(24, "dining out")][0] == D("10.00")
-    assert seen.summary["commitments_not_recorded"] == "85.00"
+    # The bill is paid, so nothing is held for it, although its line still
+    # plans 185.00 (the reserve is measured against the reviewed plan, 100.00).
+    assert seen.summary["commitments_reserved"] == "0.00"
     assert seen.status["today"]["planned"] == "5.00"  # today's groceries halved
     bill = next(b for b in seen.cal["bills"] if b["category"] == "utilities")
     assert (bill["date"], bill["in_plan"]) == ("2026-10-18", True)
@@ -336,11 +386,11 @@ async def test_f8_a_bill_paid_late_counts_as_overspending_on_the_day_paid_today(
     assert seen.rows[(3, "rent")][:2] == (D("180.00"), D("800.00"))
     assert planned(seen.rows, "groceries", days=range(20, 32)) == D("60.00")
     assert money(
-        seen, "left_to_spend", "planned_after_today", "commitments_not_recorded"
+        seen, "left_to_spend", "planned_after_today", "commitments_reserved"
     ) == (
         "410.00",
         "80.00",
-        "180.00",
+        "0.00",  # rent paid: the 180.00 credit is not a second rent
     )
 
 
@@ -365,11 +415,11 @@ async def test_f8_a_bill_paid_early_is_held_twice_today(mcp, seed, connection):
     assert seen.rows[(27, "subscriptions")][0] == D("30.00")
     assert [seen.rows[(d, "dining out")][0] for d in (17, 24, 31)] == [D("10.00")] * 3
     assert money(
-        seen, "left_to_spend", "planned_after_today", "commitments_not_recorded"
+        seen, "left_to_spend", "planned_after_today", "commitments_reserved"
     ) == (
         "410.00",  # 1,640.00 - 930.00 - 300.00
         "170.00",  # groceries 120 + dining out 20 + the 27th's 30
-        "30.00",
+        "0.00",  # paid early: the 27th's 30.00 is not held again
     )
     assert seen.line("subscriptions")["group"] == "commitment"
 
@@ -582,19 +632,22 @@ async def test_savings_and_goal_money_never_pay_for_overspending(mcp, seed, conn
     )
 
 
-async def test_the_app_s_day_budget_still_counts_today_s_savings_slice(
+async def test_today_s_savings_slice_is_not_today_s_spending_anywhere(
     mcp, seed, connection
 ):
-    """F-9 (open): with €10 of Savings planned today, ChatGPT's today is the
-    €10 of groceries; the mobile day figure (live_status) is €20."""
+    """F-9 (fixed): with €10 of Savings planned today, ChatGPT's today and the
+    mobile day figure (live_status, route test in app/tests) are both the €10
+    of groceries; the stored rows of the day hold €20."""
     m = mcp.at(NOW)
     user = await base_month(seed, extra={19: {SAVINGS: "10.00"}})
     token = m.token(user)
     await pay_bills_on_time(m, token)
     seen = await look(m, token, connection, user)
     assert seen.status["today"]["planned"] == "10.00"
-    app_day = sum((p for (d, _c), (p, _s, _a) in seen.rows.items() if d == 19), D("0"))
-    assert app_day == D("20.00")
+    stored_day = sum(
+        (p for (d, _c), (p, _s, _a) in seen.rows.items() if d == 19), D("0")
+    )
+    assert stored_day == D("20.00")
 
 
 async def test_a_corrected_then_deleted_expense_leaves_the_plan_as_it_was(
@@ -734,10 +787,11 @@ async def test_a_future_month(mcp, seed, connection):
     seen = await look(m, token, connection, user, month=11)
     assert seen.cal["month_position"] == "future"
     assert money(seen, "left_to_spend", "average_per_day", "planned_after_today") == (
-        "1100.00",  # 1,400.00 - 300.00
-        "36.67",  # 1,100.00 / 30
+        "300.00",  # 1,400.00 - 300.00 set aside - 800.00 rent held until recorded
+        "10.00",  # 300.00 / 30
         "1100.00",
     )
+    assert seen.summary["commitments_reserved"] == "800.00"
     assert all(x["spent"] is None for x in seen.cal["days"])
     assert {x["state"] for x in seen.cal["days"]} == {"planned"}
 
@@ -815,7 +869,14 @@ async def test_f8_review_month_as_today(mcp, seed, connection):
     """The account behind F-8, entered through MITA's tools exactly as the
     calendar review did on 24 October (income 3,200, savings target 400,
     rent / kindergarten / utilities / internet saved, the reviewed budget, a
-    goal, the month's expenses). The figures staging showed, reproduced."""
+    goal, the month's expenses). The plan and the dates staging showed,
+    reproduced. Since the bills' reserve (owner decision 2026-10-25) home
+    internet 30.00 (saved, due on the 27th, not recorded) is held, while the
+    paid utilities and kindergarten hold nothing although their lines show
+    190.00 and 231.04. Medical insurance 134.40 is the budget engine's
+    allowance in the reviewed plan, never recorded against, so it stays
+    everyday money: left 823.91 and 117.70 a day (before R3: 853.91 and
+    121.99; R3 with every SACRED line held: 689.51 and 98.50)."""
     m = mcp.at(REVIEW_NOW)
     user = await seed.user(income="0", onboarded=False, name=None, country="ZZ")
     token = m.token(user)
@@ -900,8 +961,8 @@ async def test_f8_review_month_as_today(mcp, seed, connection):
         "left_to_spend",
         "average_per_day",
         "planned_after_today",
-        "commitments_not_recorded",
-    ) == ("3160.84", "1869.09", "853.91", "121.99", "12.16", "289.61")
+        "commitments_reserved",
+    ) == ("3160.84", "1869.09", "823.91", "117.70", "12.16", "30.00")
     lines = {x["category"]: (x["planned"], x["spent"]) for x in seen.cal["categories"]}
     assert lines["utilities"] == ("190.00", "95.00")  # one 95.00 bill
     assert lines["childcare"] == ("231.04", "180.00")  # one 180.00 bill

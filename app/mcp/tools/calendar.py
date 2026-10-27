@@ -61,9 +61,9 @@ TERMS = (
     "planned_everyday: its everyday part) and, once begun, recorded spending; a "
     "day's state compares everyday spending with that date's everyday plan (over, "
     "within, unplanned, quiet; future dates planned or free — never a forecast). "
-    "The summary splits the plan into commitments (rent, mortgage, utilities, debt "
-    "repayment, medical insurance, school fees, online courses and the categories of "
-    "the user's saved regular payments), money set aside (savings, goals, "
+    "The summary splits the plan into commitments (bills: rent, mortgage and "
+    "utilities lines and the categories of the user's saved regular payments that "
+    "belong to the month), money set aside (savings, goals, "
     "investments — never spendable) and everyday spending, which add up to the "
     "plan; average_per_day is the safe daily figure of get_budget_forecast, an "
     "average for each remaining day — not a budget for a particular date. bills "
@@ -134,15 +134,17 @@ def _shown_text(ctx: UserContext, cal, line) -> str:
     parts: List[str] = [f"MITA's calendar for {name} is on screen ({ctx.currency})."]
     if cal.plan_generated and cal.forecast is not None:
         left = cal.forecast.remaining_budget
+        held = [
+            f"{money(amount)} {what}"
+            for amount, what in (
+                (cal.forecast.savings_set_aside, "set aside for savings"),
+                (cal.forecast.commitments_reserved, "held for bills not paid yet"),
+            )
+            if amount > Decimal("0")
+        ]
         parts.append(
             f"Plan {money(cal.total_planned)}, spent {money(cal.total_spent)}, "
-            f"left {money(left)}"
-            + (
-                f" ({money(cal.forecast.savings_set_aside)} of it set aside for savings)"
-                if cal.forecast.savings_set_aside > Decimal("0")
-                else ""
-            )
-            + "."
+            f"left {money(left)}" + (f" ({' and '.join(held)})" if held else "") + "."
         )
         remaining = sum(1 for d in cal.days if d.kind == "future")
         if cal.position != "past" and remaining:

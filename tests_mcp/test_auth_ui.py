@@ -32,8 +32,10 @@ from app.mcp.auth.scopes import SCOPE_DESCRIPTIONS, SCOPE_TITLES, SUPPORTED_SCOP
 from app.mcp.tools import PUBLISHED_TOOLS
 from app.services.core.engine.budget_forecast_engine import (
     DailyPlanData,
+    commitment_expectations,
     compute_forecast,
 )
+from app.services.monthly_obligations import due_in_month
 from tests_mcp.conftest import PASSWORD, Harness, make_settings
 from tests_mcp.test_oauth_flow import REDIRECT, authorize, csrf_from, pkce, register
 
@@ -647,18 +649,32 @@ def test_the_example_month_is_what_mitas_code_computes():
         DailyPlanData(day, category, amount, Decimal(0))
         for (day, category), amount in planned.items()
     ]
+    # The bills come first (owner decision 2026-10-25): each mandatory line's
+    # plan, or its saved payments due in October when more.
+    due = {}
+    for payment in demo.PAYMENTS:
+        amount = due_in_month(
+            payment.amount, payment.anchor, payment.recurrence, demo.YEAR, demo.MONTH
+        )
+        if amount > 0:
+            due[payment.category] = due.get(payment.category, Decimal(0)) + amount
     result = compute_forecast(
         daily_plans=plan_rows + spent_rows,
         goals=[],
         year=demo.YEAR,
         month=demo.MONTH,
         today=demo.TODAY,
+        commitments=commitment_expectations(
+            {k: Decimal(v) for k, v in demo.ALLOCATIONS.items()}, due
+        ),
     )
     f = pages.FIGURES
     assert demo.TODAY.strftime("%A") == "Monday"
     assert result.days_remaining == f.days_left == 12
     assert result.savings_set_aside == _money(f.savings) == Decimal("400.00")
-    assert result.safe_daily_limit == _money(f.per_day) == Decimal("62.10")
+    # Rent and utilities are recorded; the internet bill (30.00, 27 Oct) is held.
+    assert result.commitments_reserved == Decimal("30.00")
+    assert result.safe_daily_limit == _money(f.per_day) == Decimal("59.60")
     assert result.total_planned == Decimal("2340.00")
     assert result.total_spent == Decimal("1194.84")
     groceries = sum(

@@ -16,7 +16,7 @@ open MCP Apps standard (`io.modelcontextprotocol/ui`), which ChatGPT implements
 | Day expenses | existing `list_transactions` | The component lists a selected date's expenses with it (merchant names stay out of the month payload). |
 | Review harness | `scripts/mcp/calendar_widget_review.py` | A local MCP Apps host: real sign-up, real tools, the component in a sandboxed iframe under the spec's restrictive CSP. Not ChatGPT. |
 
-The tool count is 24 (22 + 2); MCP 2.2.0.
+The tool count is 24 (22 + 2); MCP 2.2.0, then 2.3.0 (2026-10-25: bills held out of left to spend and the daily average — `commitments_reserved`).
 
 ### Why a render tool that recomputes
 
@@ -39,7 +39,7 @@ groups add up to the plan:
 | Group | Lines |
 |---|---|
 | Protected savings (`set_aside`) | `SET_ASIDE_CATEGORIES`: savings, emergency savings, goal reservations, investments. Never spendable. |
-| Bills & commitments (`commitment`) | essentials MITA never takes money from (`CATEGORY_PRIORITY` SACRED and not set aside: rent, mortgage, utilities, debt repayment, medical insurance, school fees, online courses) plus the categories of the user's saved regular payments that belong to the month (`counts_in_month`: the reviewed budget's own rule — a repeating payment once running, a one-time payment in its month). |
+| Bills & commitments (`commitment`) | the forecast's bills (R3, `r3-bills-reserve.md`): the essential lines MITA can see paid (`is_bill_line`: rent, mortgage, utilities — SACRED, not set aside, recordable) plus the recordable categories of the user's saved regular payments that belong to the month (`counts_in_month`: the reviewed budget's own rule — a repeating payment once running, a one-time payment in its month). |
 | Everyday (`everyday`) | every other line, including spending with no plan behind it. |
 
 **Each date** (user's timezone):
@@ -57,11 +57,17 @@ the 1st and paid on the 3rd is a bill paid, not €850 of overspending on the 3r
 
 **Summary**: plan, commitments, set aside, everyday (they add up to the plan);
 spent (commitments + everyday); `total_remaining`; `savings_set_aside`;
-`left_to_spend` = remaining − set aside; `average_per_day` =
-`get_budget_forecast.safe_daily_limit` (an average for each remaining day — not
-a budget for any date); `days_remaining`; `commitments_not_recorded` (planned on
-commitment lines and not recorded yet — still inside left to spend);
-`planned_after_today` (the plan on the dates ahead); `bills_due_after_today`.
+`commitments_reserved` — what the month's bills still need (owner decision
+2026-10-25, refined 2026-10-26; the same figure as `get_budget_forecast`): for each bill,
+its **reviewed** plan (in-month rebalancing backed out, so a rebalancing credit
+is never a second bill) or the saved payments due on it this month when more
+(`monthly_obligations.due_in_month`, the reviewed budget's rule), minus what is
+recorded on it, never below 0; `left_to_spend` = remaining − set aside −
+commitments_reserved; `average_per_day` = `get_budget_forecast.safe_daily_limit`
+= left_to_spend ÷ days left (an average for each remaining day — not a budget
+for any date; negative when the bills due exceed what the plan leaves);
+`days_remaining`; `planned_after_today` (the plan on the dates ahead);
+`bills_due_after_today`.
 
 **Saved bills** fall on dates by the rule the user stated: monthly on the
 anchor's day (the month's last day when shorter), weekly on the weekday, one-time
@@ -83,8 +89,12 @@ amount is never added to any total (no double counting with the plan).
   layout put it elsewhere (rent/school fees on the 1st, other fixed categories
   on the 5th, obligation categories the layout does not know spread over
   weekdays) — that is what triggers the rebalancing above. F-8.
-* **Unrecorded bills are spendable until recorded** (known since 2026-10-23):
-  disclosed as `commitments_not_recorded`.
+* **Unrecorded bills** were spendable until recorded (known since
+  2026-10-23); since 2026-10-25 they are held (`commitments_reserved`) and out
+  of left to spend and the daily average, in ChatGPT and in the mobile API's
+  forecast. SACRED lines no expense is recorded under (the engine's medical
+  insurance allowance; school fees, debt repayment, online courses) are
+  everyday lines since 2026-10-26: held, they could never be released.
 * **F-2**: an expense category named differently from its plan line (`gas` vs
   `transport gas`) is shown on one line here but is unplanned spending to the
   rebalancer.

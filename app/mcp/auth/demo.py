@@ -27,6 +27,8 @@ from typing import Dict, List, Tuple
 
 from app.mcp.queries.calendar import CalendarMonth, SavedPayment, build_calendar
 from app.mcp.queries.plan import forecast_from_rows
+from app.services.core.engine.budget_forecast_engine import commitment_expectations
+from app.services.monthly_obligations import due_in_month
 from app.services.monthly_plan_service import month_calendar
 
 YEAR, MONTH = 2026, 10
@@ -110,8 +112,23 @@ def demo_month() -> CalendarMonth:
         spent=spent,
         payments=PAYMENTS,
         plan_generated=True,
-        forecast=forecast_from_rows(planned, spent, YEAR, MONTH, TODAY),
+        forecast=forecast_from_rows(
+            planned, spent, YEAR, MONTH, TODAY, demo_commitments()
+        ),
     )
+
+
+def demo_commitments() -> Dict[str, Decimal]:
+    """What the fictional bills still need, by MITA's rule
+    (``commitment_expectations``): the reviewed plan of each bill line
+    and the saved payments due in October."""
+    base = {k: Decimal(v) for k, v in ALLOCATIONS.items()}
+    due: Dict[str, Decimal] = {}
+    for p in PAYMENTS:
+        amount = due_in_month(p.amount, p.anchor, p.recurrence, YEAR, MONTH)
+        if amount > 0:
+            due[p.category] = due.get(p.category, Decimal("0")) + amount
+    return commitment_expectations(base, due)
 
 
 DEMO = demo_month()

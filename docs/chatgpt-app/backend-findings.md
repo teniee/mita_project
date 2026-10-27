@@ -137,7 +137,9 @@ a model decision for the deferred forecast/plan task: lay bills out on their
 due dates from the saved payments, release a bill's allocation when it is paid,
 and decide what an underspent past date means (roll forward or stay).
 
-**Root cause and proposal (2026-10-25, awaiting the owner):**
+**Root cause and proposal (2026-10-25; owner decided the same day: R3 —
+unpaid bills held out of the safe daily amount — implemented; no change to the
+rebalancer, "show exactly what the app implements"):**
 `f8-money-model-proposal.md`. Of €948.05 MITA treated as overspending in that
 month, €206.49 was real; the rest was timing (bills paid on their due dates),
 naming (F-2) and pacing (a weekday-spread line spent in a few shops), because
@@ -145,7 +147,7 @@ the rebalancer works per date and category and never uses the same line's other
 dates. Today's behaviour is pinned with hand-checkable figures in
 `tests_mcp/test_money_consistency.py`.
 
-## F-9 (P2, consistency) Two mobile figures disagree with ChatGPT's
+## F-9 (P2, consistency) Two mobile figures disagreed with ChatGPT's — fixed 2026-10-26
 
 Found while writing `tests_mcp/test_money_consistency.py` (2026-10-25); pinned
 there, not changed.
@@ -170,3 +172,34 @@ there, not changed.
 Fix with F-8's implementation: one local-day helper for the budget routes, and
 the set-aside rule in `live_status` (owner decision: the app's day figure
 should leave savings out, as ChatGPT's does).
+
+**Fixed 2026-10-26** (with R3, `docs/chatgpt-app/r3-bills-reserve.md`):
+`/api/budget/forecast` takes "today" and the default month from the user's
+calendar day (`local_day_of`) and holds the month's unpaid bills like
+ChatGPT; `live_status.daily_budget` leaves money set aside out. Route tests:
+`app/tests/test_budget_forecast_local_day.py`. Neither figure is on screen in
+the app today (it reads `monthly_budget`, `monthly_spent` and
+`transaction_count` from `live_status`, and never calls the forecast); the app
+is not released. `/budget/spent`, `/remaining` and `/daily` still default
+their month from UTC when the app sends none (the app sends one).
+
+## F-10 (consistency) The app's "Total Budget" was income — fixed 2026-10-27
+
+The app's "Live Budget Status" card (`daily_budget_screen.dart`,
+`BudgetProvider.totalBudget`) shows `GET /api/budget/live_status`
+`monthly_budget`, which is the user's **monthly income**, as "Total Budget",
+and "remaining" as income minus spent. ChatGPT reports the month's **plan**
+(`get_budget_status.total_planned`; income minus unallocated money) and plan
+minus spent. For the owner's real account: app €2,500, ChatGPT €2,325.
+`live_status.on_track` compares spending with `income × day / 30`, a
+placeholder baseline. Not visible to anyone today (the app is unreleased).
+
+**Fixed 2026-10-27 (label):** the Live Budget Status card now says "Monthly
+income" and "… % of monthly income spent" (`daily_budget_screen.dart`;
+`test/screens/daily_budget_screen_test.dart`). The figure is unchanged — it is
+income, and the main screen's "Current Balance / Remaining" is deliberately
+income − spent (its code comment says so). The month's plan is the calendar
+screen's "Total Budget" (the sum of the saved days) and ChatGPT's
+`total_planned`; nothing in the app now calls income a budget. Still open, not
+displayed anywhere: the field is named `monthly_budget`, and `on_track` uses
+income × day / 30.

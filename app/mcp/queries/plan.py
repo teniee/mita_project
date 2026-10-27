@@ -15,22 +15,30 @@ from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Iterable, List, Mapping, Optional, Set, Tuple
 
 from sqlalchemy.orm import Session
 
 from app.core.category_priority import is_set_aside
 from app.db.models import DailyPlan
-from app.mcp.categories import group_lines, regroup_by_day
+from app.mcp.categories import group_lines, line_key, regroup_by_day
 from app.mcp.queries import ledger
 from app.mcp.queries.periods import UserContext, month_days, month_position
 from app.services.core.engine.budget_forecast_engine import (
     DailyPlanData,
     ForecastResult,
+    commitment_expectations,
     compute_forecast,
+    is_bill_line,
+    is_recordable,
 )
 from app.services.core.engine.realtime_rebalancer import REALTIME_ADJUSTMENT_KEY
-from app.services.monthly_plan_service import month_bounds, month_has_plan
+from app.services.monthly_obligations import obligations_due
+from app.services.monthly_plan_service import (
+    month_base_plan,
+    month_bounds,
+    month_has_plan,
+)
 
 ZERO = Decimal("0.00")
 
@@ -99,6 +107,23 @@ class DayStatus:
     day: date
     planned: Decimal
     spent: Decimal
+    # the same day without bill lines (R3): what today's plan leaves for
+    # everything that is not a bill or money set aside
+    everyday_planned: Decimal = ZERO
+    everyday_spent: Decimal = ZERO
+
+
+def bill_line_keys(
+    codes: Iterable[str], buckets: Set[str], due_categories: Iterable[str]
+) -> Set[str]:
+    """The budget lines that are bills (R3, ``commitment_expectations``): the
+    lines holding an essential MITA can see paid (``is_bill_line``) and the
+    lines of the recordable categories of saved payments that count in the
+    month. The calendar's "Bills & commitments" group and ``today``'s
+    everyday figures use this one rule."""
+    return {line_key(c, buckets) for c in codes if is_bill_line(c)} | {
+        line_key(c, buckets) for c in due_categories if is_recordable(c)
+    }
 
 
 @dataclass(frozen=True)
@@ -162,25 +187,33 @@ def budget_status(
     today = None
     if position == "current":
         # Today's spending allocations: a line that sets money aside (savings,
-        # goal reservations) is not something to spend today.
+        # goal reservations) is not something to spend today; a bill line is
+        # not free to spend either (R3), so the everyday figures leave it out.
+        buckets = {c for _, c in planned}
+        bills = bill_line_keys(
+            {c for _, c in planned} | {c for _, c in spent},
+            buckets,
+            obligations_due(db, ctx.user_id, year, month),
+        )
+
+        def day_sum(amounts, everyday_only: bool) -> Decimal:
+            return sum(
+                (
+                    v
+                    for (d, c), v in amounts.items()
+                    if d == ctx.today
+                    and not is_set_aside(c)
+                    and not (everyday_only and line_key(c, buckets) in bills)
+                ),
+                ZERO,
+            )
+
         today = DayStatus(
             day=ctx.today,
-            planned=sum(
-                (
-                    v
-                    for (d, c), v in planned.items()
-                    if d == ctx.today and not is_set_aside(c)
-                ),
-                ZERO,
-            ),
-            spent=sum(
-                (
-                    v
-                    for (d, c), v in spent.items()
-                    if d == ctx.today and not is_set_aside(c)
-                ),
-                ZERO,
-            ),
+            planned=day_sum(planned, False),
+            spent=day_sum(spent, False),
+            everyday_planned=day_sum(planned, True),
+            everyday_spent=day_sum(spent, True),
         )
 
     first, last = month_days(year, month)
@@ -224,8 +257,33 @@ def month_forecast(
         return MonthForecast(year, month, position, False, None)
 
     planned, spent = _merged_buckets(db, ctx, year, month)
-    result = forecast_from_rows(planned, spent, year, month, ctx.today)
+    commitments = month_commitments(db, ctx, year, month, planned)
+    result = forecast_from_rows(planned, spent, year, month, ctx.today, commitments)
     return MonthForecast(year, month, position, True, result)
+
+
+def month_commitments(
+    db: Session,
+    ctx: UserContext,
+    year: int,
+    month: int,
+    planned: Mapping[Tuple[date, str], Decimal],
+) -> Dict[str, Decimal]:
+    """What each bill needs this month (``commitment_expectations``), computed
+    on the stored categories exactly as the mobile API computes it — the
+    reviewed plan, rebalancing backed out, or the saved payments due — and
+    then keyed by the budget line it is shown on. A bill shown on a paired
+    line ("public_transport" on "transport public") never takes that line's
+    everyday allowance with it."""
+    base: Dict[str, Decimal] = defaultdict(lambda: ZERO)
+    for (_, category), amount in month_base_plan(db, ctx.user_id, year, month).items():
+        base[category] += amount
+    needs = commitment_expectations(base, obligations_due(db, ctx.user_id, year, month))
+    buckets = {category for _, category in planned}
+    by_line: Dict[str, Decimal] = defaultdict(lambda: ZERO)
+    for category, need in needs.items():
+        by_line[line_key(category, buckets)] += need
+    return dict(by_line)
 
 
 def forecast_from_rows(
@@ -234,10 +292,12 @@ def forecast_from_rows(
     year: int,
     month: int,
     today: date,
+    commitments: Optional[Mapping[str, Decimal]] = None,
 ) -> ForecastResult:
     """The forecast engine over per-(day, category) plan and spend, regrouped
     by budget line exactly as ``get_budget_forecast`` does. Shared with the
-    calendar so both report the same safe daily figure."""
+    calendar so both report the same safe daily figure. ``commitments``:
+    ``month_commitments`` (unpaid bills are kept out of the safe daily figure)."""
     buckets = {category for _, category in planned}
     planned = regroup_by_day(planned, buckets)
     spent = regroup_by_day(spent, buckets)
@@ -252,5 +312,10 @@ def forecast_from_rows(
         for day, category in sorted(keys)
     ]
     return compute_forecast(
-        daily_plans=plan_data, goals=[], year=year, month=month, today=today
+        daily_plans=plan_data,
+        goals=[],
+        year=year,
+        month=month,
+        today=today,
+        commitments=commitments,
     )

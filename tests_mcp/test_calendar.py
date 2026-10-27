@@ -23,8 +23,9 @@ plan that day); 14 Oct groceries 52.10; 14 Oct 22:30 UTC dining 15.00 (01:30
 on the 15th in Sofia); 19 Oct groceries 22.50; a deleted 999.99 on 2 Oct.
 
     spent 970.00 (commitments 850.00, everyday 120.00), left 685.00,
-    set aside 300.00 -> left to spend 385.00 / 12 days = 32.08 a day,
-    commitments not recorded 180.00 (utilities 120 + insurance 60)
+    set aside 300.00, held for bills 210.00 (utilities 120 and insurance 60
+    not recorded yet; internet 30, a saved payment the plan does not cover)
+    -> left to spend 175.00 / 12 days = 14.58 a day
 
 Saved payments: insurance 60.00 monthly from 30 Sep (falls on 30 Oct);
 internet 30.00 monthly ("subscriptions") from 27 Oct, a category with no plan
@@ -150,11 +151,13 @@ async def test_the_month_summary_is_exact_and_adds_up_to_the_plan(mcp, seed):
         "everyday_spent": "120.00",
         "total_remaining": "685.00",
         "savings_set_aside": "300.00",
-        "left_to_spend": "385.00",
-        "average_per_day": "32.08",  # 385.00 / 12
+        "left_to_spend": "175.00",  # 685.00 - 300.00 - 210.00
+        "average_per_day": "14.58",  # 175.00 / 12
         "days_elapsed": 19,
         "days_remaining": 12,
-        "commitments_not_recorded": "180.00",
+        # utilities 120 + insurance 60 (planned, not recorded) + internet 30
+        # (saved, due on the 27th, no plan line): bills come first
+        "commitments_reserved": "210.00",
         # 20 Oct 30.00 + 23 Oct 45.00 + 31 Oct 85.00 (the Savings slices excluded)
         "planned_after_today": "160.00",
         "bills_due_after_today": "90.00",  # internet 30 (27th) + insurance 60 (30th)
@@ -304,7 +307,7 @@ async def test_saved_payments_fall_on_their_dates_and_say_whether_the_plan_has_t
         },
     ]
     notes = " ".join(out["notes"])
-    assert "180.00 EUR planned for commitments is not recorded as paid yet" in notes
+    assert "210.00 EUR is held for bills not recorded as paid yet" in notes
     assert "1 saved payment(s) this month fall on a category with no money" in notes
 
 
@@ -322,8 +325,11 @@ async def test_the_calendar_reports_the_same_figures_as_status_and_forecast(mcp,
     assert summary["average_per_day"] == forecast["safe_daily_limit"]
     assert summary["savings_set_aside"] == forecast["savings_set_aside"]
     assert summary["days_remaining"] == forecast["days_remaining"]
-    assert D(summary["left_to_spend"]) == D(forecast["remaining_budget"]) - D(
-        forecast["savings_set_aside"]
+    assert summary["commitments_reserved"] == forecast["commitments_reserved"]
+    assert D(summary["left_to_spend"]) == (
+        D(forecast["remaining_budget"])
+        - D(forecast["savings_set_aside"])
+        - D(forecast["commitments_reserved"])
     )
     today = by_date(cal)["2026-10-19"]
     assert (today["planned"], today["spent"]) == (
@@ -351,7 +357,7 @@ async def test_a_month_without_a_plan_shows_spending_and_no_plan_figures(mcp, se
         "savings_set_aside",
         "left_to_spend",
         "average_per_day",
-        "commitments_not_recorded",
+        "commitments_reserved",
         "planned_after_today",
     ):
         assert summary[key] is None, key
@@ -381,7 +387,11 @@ async def test_past_and_future_months(mcp, seed):
     # A future month: the safe daily figure over the whole month (30 days).
     assert nov["summary"]["days_remaining"] == 30
     assert nov["summary"]["planned_after_today"] == "33.00"  # every date is ahead
-    assert nov["summary"]["average_per_day"] == "1.10"  # 33.00 / 30
+    # The bills come first: insurance 60, internet 30 and the one-time 40
+    # (2 Nov) are due in November and the plan holds 33.00 for spending, so
+    # the average is negative: (33.00 - 130.00) / 30.
+    assert nov["summary"]["commitments_reserved"] == "130.00"
+    assert nov["summary"]["average_per_day"] == "-3.23"
     assert [b["date"] for b in nov["bills"]] == [
         "2026-11-02",  # the one-time payment, now in its month
         "2026-11-27",
@@ -438,12 +448,15 @@ async def test_show_returns_a_short_view_for_the_model_and_the_month_for_the_com
     )
     view = structured(result)
     assert (view["year"], view["month"], view["category"]) == (2026, 10, "groceries")
-    assert view["summary"]["average_per_day"] == "32.08"
+    assert view["summary"]["average_per_day"] == "14.58"
     text = result.content[0].text
     assert text == view["shown"]
     assert text.startswith("MITA's calendar for October 2026 is on screen (EUR).")
-    assert "Plan 1655.00, spent 970.00, left 685.00 (300.00 of it set aside" in text
-    assert "On average 32.08 a day for the 12 days left" in text
+    assert (
+        "Plan 1655.00, spent 970.00, left 685.00 (300.00 set aside for savings "
+        "and 210.00 held for bills not paid yet)." in text
+    )
+    assert "On average 14.58 a day for the 12 days left" in text
     assert "1 day went over the everyday plan." in text
     assert "Next saved bill: 30.00 on 2026-10-27." in text
     assert "Filtered to Groceries." in text
@@ -633,9 +646,12 @@ def test_a_bill_paid_on_another_day_than_planned_is_not_everyday_overspending():
         ("rent", "commitment"),
         ("mortgage", "commitment"),
         ("utilities", "commitment"),
-        ("debt repayment", "commitment"),
-        ("insurance medical", "commitment"),
-        ("school fees", "commitment"),
+        # SACRED names no expense is recorded under: never a rebalancing donor,
+        # but MITA cannot see them paid, so they are not bills (R3).
+        ("debt repayment", "everyday"),
+        ("insurance medical", "everyday"),
+        ("school fees", "everyday"),
+        ("courses online", "everyday"),
         (SAVINGS, "set_aside"),
         ("goal_savings", "set_aside"),
         ("investment contribution", "set_aside"),

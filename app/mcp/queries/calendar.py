@@ -15,11 +15,14 @@ the groups always add up to the plan (owner decision 2026-10-24):
 * **set aside** — savings, goal reservations, investments
   (``category_priority.SET_ASIDE_CATEGORIES``). Never spendable; shown apart
   from every day's spending plan, as in ``get_budget_status.today``.
-* **commitments** — the essentials MITA never takes money from
-  (``CATEGORY_PRIORITY`` SACRED and not set aside: rent, mortgage, utilities,
-  debt repayment, medical insurance, school fees, online courses) plus the
-  lines of the categories of the user's saved regular payments that belong
-  to the month (``counts_in_month``: the reviewed budget's own rule).
+* **commitments** — the bills of the forecast's reserve (R3,
+  ``budget_forecast_engine.commitment_expectations``): essential lines MITA
+  can see paid (``is_bill_line``: rent, mortgage, utilities) plus the lines
+  of the recordable categories of the user's saved regular payments that
+  belong to the month (``counts_in_month``: the reviewed budget's own rule).
+  Other SACRED names — the budget engine's medical-insurance allowance,
+  school fees, debt repayment, online courses — are never recorded against,
+  so they are everyday lines (still never a rebalancing donor).
 * **everyday** — every other line, including spending with no plan behind it.
 
 A day's ``over`` / ``within`` state compares EVERYDAY spending with that
@@ -41,12 +44,13 @@ from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
 
 from sqlalchemy.orm import Session
 
-from app.core.category_priority import is_sacred, is_set_aside
+from app.core.category_priority import is_set_aside
 from app.db.models import ScheduledExpense
 from app.mcp.categories import group_lines, line_key
 from app.mcp.queries import ledger, plan
 from app.mcp.queries.periods import UserContext, month_days
 from app.services.core.engine.budget_forecast_engine import ForecastResult
+from app.services.monthly_obligations import due_in_month
 from app.services.monthly_plan_service import month_has_plan
 
 ZERO = Decimal("0.00")
@@ -200,20 +204,6 @@ class CalendarMonth:
         return self._sum(GROUP_EVERYDAY, "spent")
 
     @property
-    def commitments_unrecorded(self) -> Decimal:
-        """Money still planned on commitment lines and not yet recorded as
-        spent there. It is inside the forecast's left-to-spend figure until
-        the bills are recorded (a known limit of the safe daily figure)."""
-        return sum(
-            (
-                max(ZERO, line.remaining)
-                for line in self.lines
-                if line.group == GROUP_COMMITMENT
-            ),
-            ZERO,
-        )
-
-    @property
     def planned_after_today(self) -> Decimal:
         """The plan on the dates after today (every line except money set
         aside). After MITA's automatic rebalancing it can hold less than what
@@ -278,12 +268,10 @@ def counts_in_month(payment: SavedPayment, year: int, month: int) -> bool:
     it is running (its next date before the end of the following month), a
     one-time payment only in its own month. A monthly bill saved after this
     month's date has passed (next date next month) is still this month's."""
-    first, last = month_days(year, month)
-    if payment.recurrence in (MONTHLY, WEEKLY):
-        index = year * 12 + (month - 1) + 2
-        horizon = date(index // 12, index % 12 + 1, 1)
-        return payment.anchor < horizon
-    return first <= payment.anchor <= last
+    return (
+        due_in_month(payment.amount, payment.anchor, payment.recurrence, year, month)
+        > ZERO
+    )
 
 
 # --- the pure builder -----------------------------------------------------------
@@ -347,15 +335,14 @@ def build_calendar(
     )
 
     grouped = group_lines(planned_by_cat, spent_by_cat)
-    commitment_keys = {
-        key
-        for key, _, codes, _, _ in grouped
-        if any(is_sacred(c) and not is_set_aside(c) for c in codes)
-    } | {
-        line_key(payment.category, buckets)
-        for payment in payments
-        if counts_in_month(payment, year, month)
-    }
+    # The forecast's bills (``commitment_expectations``): essential lines MITA
+    # can see paid, and the saved payments that belong to the month — the
+    # rule ``get_budget_status.today`` uses too (``plan.bill_line_keys``).
+    commitment_keys = plan.bill_line_keys(
+        [code for _, _, codes, _, _ in grouped for code in codes],
+        buckets,
+        [p.category for p in payments if counts_in_month(p, year, month)],
+    )
 
     lines: List[CalendarLine] = []
     group_of: Dict[str, str] = {}
@@ -480,14 +467,22 @@ def saved_payments(db: Session, ctx: UserContext) -> List[SavedPayment]:
 def calendar_month(
     db: Session, ctx: UserContext, year: int, month: int
 ) -> CalendarMonth:
-    """Five indexed reads inside the caller's READ ONLY transaction; never
-    materializes a month (``ensure_month_plan`` writes)."""
+    """Indexed reads inside the caller's READ ONLY transaction (plan, ledger,
+    base plan and saved payments for the bills' reserve); never materializes a
+    month (``ensure_month_plan`` writes)."""
     first, last = month_days(year, month)
     generated = month_has_plan(db, ctx.user_id, year, month)
     planned = plan.planned_by_day_and_category(db, ctx, year, month)
     spent = ledger.spend_by_day_and_category(db, ctx, first, last)
     forecast = (
-        plan.forecast_from_rows(planned, spent, year, month, ctx.today)
+        plan.forecast_from_rows(
+            planned,
+            spent,
+            year,
+            month,
+            ctx.today,
+            plan.month_commitments(db, ctx, year, month, planned),
+        )
         if generated
         else None
     )

@@ -208,10 +208,22 @@ class DayBudgetOut(_Out):
     date: dt.date
     planned: Money = money_field(
         "Sum of today's spending allocations. Money set aside for savings, goals "
-        "or investments is not included: it is not for spending."
+        "or investments is not included: it is not for spending. Bills planned "
+        "for today (rent, mortgage, utilities, saved regular payments) are "
+        "included and are not free to spend: see everyday_remaining."
     )
     spent: Money = money_field("Recorded spending today.")
     remaining: Money = money_field("planned minus spent for today.")
+    everyday_planned: Money = money_field(
+        "Today's plan without bills and money set aside: the everyday part, as "
+        "the calendar shows it for today (planned_everyday)."
+    )
+    everyday_spent: Money = money_field("Recorded spending today outside bills.")
+    everyday_remaining: Money = money_field(
+        "everyday_planned minus everyday_spent: what today's plan leaves for "
+        "everyday spending. The average a day for the rest of the month is "
+        "get_budget_forecast.safe_daily_limit."
+    )
 
 
 class BudgetStatusOut(_Out):
@@ -279,9 +291,14 @@ class ForecastOut(_Out):
         description="total_spent / days_elapsed.",
         pattern=MONEY_PATTERN,
     )
+    commitments_reserved: Optional[Money] = Field(
+        default=None,
+        description="Part of remaining_budget that the month's bills still need. Bills are the rent, mortgage and utilities lines and the categories of saved regular payments due this month; each needs its reviewed plan — or the saved payments due on it when more — minus what is recorded under that category, never below zero. Not spendable, so safe_daily_limit leaves it out. Other plan lines, including medical insurance, are everyday money: no expense is recorded under them, so MITA cannot see them paid.",
+        pattern=MONEY_PATTERN,
+    )
     safe_daily_limit: Optional[Money] = Field(
         default=None,
-        description="(remaining_budget minus savings_set_aside) / days_remaining: how much can be spent per day after today while keeping the money set aside untouched. Negative when spending has already used more than the plan leaves for spending.",
+        description="(remaining_budget minus savings_set_aside minus commitments_reserved) / days_remaining: how much can be spent per day after today while keeping the money set aside and the money the bills still need untouched. Negative when spending has already used more than the plan leaves for spending.",
         pattern=MONEY_PATTERN,
     )
     projected_month_end_spend: Optional[Money] = Field(
@@ -861,7 +878,7 @@ class CalendarSummaryOut(_Out):
         pattern=MONEY_PATTERN,
     )
     commitments_planned: Optional[Money] = Field(
-        description="Planned on commitment lines: rent, mortgage, utilities, debt repayment, medical insurance, school fees, online courses, and the categories of the user's saved regular payments (counted as the reviewed budget counts obligations).",
+        description="Planned on bill lines: rent, mortgage and utilities, and the categories of the user's saved regular payments that belong to the month (counted as the reviewed budget counts obligations) — the lines whose unpaid part commitments_reserved holds.",
         pattern=MONEY_PATTERN,
     )
     set_aside_planned: Optional[Money] = Field(
@@ -886,7 +903,7 @@ class CalendarSummaryOut(_Out):
         pattern=MONEY_PATTERN,
     )
     left_to_spend: Optional[Money] = Field(
-        description="total_remaining minus savings_set_aside.",
+        description="total_remaining minus savings_set_aside minus commitments_reserved.",
         pattern=MONEY_PATTERN,
     )
     average_per_day: Optional[Money] = Field(
@@ -899,10 +916,12 @@ class CalendarSummaryOut(_Out):
     )
     days_elapsed: int = Field(description="Days of the month begun (today counts).")
     days_remaining: int = Field(description="Days of the month after today.")
-    commitments_not_recorded: Optional[Money] = Field(
+    commitments_reserved: Optional[Money] = Field(
         description=(
-            "Money still planned on commitment lines and not recorded as spent there. Until the "
-            "user records those bills, it is part of left_to_spend and average_per_day."
+            "get_budget_forecast commitments_reserved: what the month's bills still need (each "
+            "commitment line's reviewed plan, or its saved payments due when more, minus what is "
+            "recorded on it). Kept out of left_to_spend and average_per_day until the bills are "
+            "recorded."
         ),
         pattern=MONEY_PATTERN,
     )

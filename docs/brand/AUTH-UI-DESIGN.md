@@ -189,7 +189,7 @@ savings and rent, utilities and internet as saved payments) laid out by
 `monthly_plan_service.month_calendar`; expenses within each date's plan and in
 categories whose plan line has the same name, so MITA's automatic rebalancing
 would not touch the plan (F-2, F-8); figures from `build_calendar` and the
-forecast engine: Monday 19 October, 12 days left, €62.10 a day, €400.00 kept,
+forecast engine: Monday 19 October, 12 days left, €59.60 a day (the internet bill held), €400.00 kept,
 groceries €189.85 of €420.00, Home internet €30.00 due 27 Oct (tested).
 
 **Where the buttons end** (page px; "below" = scroll needed). v4 trades the
@@ -217,7 +217,7 @@ Desktop is as in v3 (the card is the right-hand column).
 | "One conversation. Your whole month mapped out." | `show_financial_calendar` | the month, date by date | Yes |
 | "Track spending, plan each day and protect your savings, right inside ChatGPT." | `add_transaction(s)`, `preview_monthly_budget`/`save_monthly_budget`, `savings_set_aside`, `show_financial_calendar` | — | Yes |
 | The slab: spending per date, today, plan on the dates ahead, the bill due | `build_calendar` over the fictional month | `days[].spent`, `planned`, `day_kind`, `bills` | Yes — fictional, labelled, recomputed by a test |
-| "Safe to spend €62.10 a day · 12 days left" | `get_budget_forecast` | `safe_daily_limit`, `days_remaining` | Yes — fictional, recomputed |
+| "Safe to spend €59.60 a day · 12 days left" (since 2026-10-25 the €30.00 internet bill due on the 27th is held; €62.10 before) | `get_budget_forecast` | `safe_daily_limit`, `commitments_reserved`, `days_remaining` | Yes — fictional, recomputed |
 | "Savings kept €400.00" | `get_budget_forecast` | `savings_set_aside` | Yes — fictional, recomputed |
 | "Groceries €189.85 of €420.00 planned" | `get_budget_status` / `get_calendar_month` | the line's `spent` / `planned` | Yes — fictional, recomputed |
 | "Home internet €30.00 due 27 Oct" | `get_calendar_month` | `bills[]` from a saved monthly payment | Yes — fictional, recomputed |

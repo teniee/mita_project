@@ -259,6 +259,10 @@ async def test_the_forecast_tool_leaves_the_savings_line_out(mcp, seed):
         "planned": "30.00",
         "spent": "36.80",
         "remaining": "-6.80",
+        # no bill line today: the everyday part is the whole of today (R3)
+        "everyday_planned": "30.00",
+        "everyday_spent": "36.80",
+        "everyday_remaining": "-6.80",
     }
 
 
@@ -325,4 +329,9 @@ async def test_the_reviewed_budget_savings_target_is_not_spendable(mcp, seed):
     assert data["total_planned"] == preview["plan_total"] == "2325.00"
     assert data["remaining_budget"] == "1534.00"
     assert data["savings_set_aside"] == "400.00"
+    # Rent, the only bill, is recorded, so nothing is held. The reviewed plan's
+    # medical insurance line (105.00) is the budget engine's own allowance —
+    # Ana never stated insurance — and no expense is ever recorded under it,
+    # so it is everyday money, not a bill (R3, r3-bills-reserve.md).
+    assert data["commitments_reserved"] == "0.00"
     assert data["safe_daily_limit"] == "56.70"  # (1534.00 - 400.00) / 20

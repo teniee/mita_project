@@ -56,6 +56,23 @@ noise of the table above on a shared laptop.
 reads as budget status plus the user's pending scheduled payments. Budget
 status p95 13.0 ms, forecast 8.2 ms. No index added.
 
+**Re-run 2026-10-25 (MCP 2.3.0, bills held out of the safe daily amount, same
+dataset, `--runs 3`).** The reserve adds two indexed reads (the month's base
+plan and the user's pending saved payments): forecast p50 13.0 ms, p95 15.1 ms,
+5 statements (was 3); `calendar_month` p50 15.4 ms, p95 16.7 ms, 7 statements
+(was 5); budget status p95 9.9 ms. All within the 20 ms target. Financial
+climate p95 59.3 ms and the month summary vary run to run on this laptop
+(61.7 / 43.6 ms on 2026-10-24, before this change); not touched here. No index
+added.
+
+**Re-run 2026-10-27 (R3 final: bills = recordable saved payments + stated
+rent/mortgage/utilities; `get_budget_status.today` reads the saved payments
+for its bill-free figures; same dataset, `--runs 3`).** budget status p50
+9.1 ms, p95 10.4 ms; forecast p50 13.0 ms, p95 13.8 ms; `calendar_month` p50
+15.2 ms, p95 16.4 ms; budget preview p95 9.5 ms. Within the 20 ms target.
+Unchanged and still above it on this laptop: financial climate p95 58.0 ms,
+month summary p95 34.3 ms. No index added.
+
 ## EXPLAIN (ANALYZE, BUFFERS) — heaviest statement per operation
 
 | Operation | Execution | Plan |

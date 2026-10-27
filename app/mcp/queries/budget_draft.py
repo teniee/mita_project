@@ -34,6 +34,7 @@ from app.mcp.queries import ledger
 from app.mcp.queries import setup as setup_queries
 from app.mcp.queries.periods import UserContext, month_days
 from app.services.core.engine.calendar_engine import CATEGORY_BEHAVIOR
+from app.services.monthly_obligations import due_in_month, weekday_count
 from app.services.monthly_plan_service import (
     ProfileAllocation,
     allocations_from_profile,
@@ -142,8 +143,6 @@ def obligations_for_month(
     counts once per matching weekday of the month. One-time ones count only
     when dated inside the month.
     """
-    first, last = month_days(year, month)
-    horizon = date(*_months_after(year, month, 2), 1)
     rows = db.execute(
         select(
             ScheduledExpense.merchant,
@@ -163,24 +162,17 @@ def obligations_for_month(
     for merchant, category, amount, due, recurrence in rows:
         amount = Decimal(str(amount))
         name = (merchant or "").strip() or None
-        if recurrence == "monthly" and due < horizon:
-            found.append(Obligation(name, category, amount, "monthly"))
-        elif recurrence == "weekly" and due < horizon:
-            count = sum(
-                1
-                for day in range(1, last.day + 1)
-                if date(year, month, day).weekday() == due.weekday()
-            )
-            weekday = calendar.day_name[due.weekday()]
-            found.append(
-                Obligation(
-                    name, category, amount * count, f"weekly × {count} {weekday}s"
-                )
-            )
-        elif recurrence in (None, "once") and first <= due <= last:
-            found.append(
-                Obligation(name, category, amount, f"one-time on {due.isoformat()}")
-            )
+        counted = due_in_month(amount, due, recurrence, year, month)
+        if counted <= ZERO:
+            continue
+        if recurrence == "monthly":
+            basis = "monthly"
+        elif recurrence == "weekly":
+            count = weekday_count(year, month, due.weekday())
+            basis = f"weekly × {count} {calendar.day_name[due.weekday()]}s"
+        else:
+            basis = f"one-time on {due.isoformat()}"
+        found.append(Obligation(name, category, counted, basis))
     return found
 
 
