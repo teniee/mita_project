@@ -1,6 +1,7 @@
 # Full, exact dependency lock for the MCP image (generated from requirements-mcp.txt
 # in a clean virtualenv on 2026-10-03; regenerate with scripts/mcp/lock_deps.sh).
 # 2026-10-23: opentelemetry-api 1.45.0 -> 1.45.1 by hand for GHSA-xcq7-p3pf-p88h (same requirements).
+# 2026-10-27: dnspython 2.8.0 -> 2.9.0 by hand for CVE-2026-114605 (no dependencies; Python >=3.11, the image runs 3.12).
 annotated-types==0.8.0
 anyio==4.15.1
 asyncpg==0.30.0
@@ -9,7 +10,7 @@ bcrypt==4.2.0
 cffi==2.1.1
 click==8.5.0
 cryptography==50.0.2
-dnspython==2.8.0
+dnspython==2.9.0
 email_validator==2.2.0
 greenlet==3.5.3
 h11==0.16.0
