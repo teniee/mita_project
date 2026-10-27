@@ -5,9 +5,10 @@ escaped, the same protocol (codes, redirects, statuses), generic failures.
 What it adds and must keep true: labelled fields wired to their errors,
 password hints that are the policy, every granted scope in plain language,
 a page instead of JSON for a person on a refused /authorize, a page instead
-of a 500 when the database is down, only real, supported example prompts, and
-one labelled example whose figures are what MITA's forecast engine returns —
-headline, example and sign-in first, everything secondary after them, closed.
+of a 500 when the database is down, only real, supported example prompts —
+on the page, never behind a tap — and one labelled example whose figures are
+what MITA's forecast engine returns: the hero, the sentences to type and the
+sign-in form first, everything secondary after them, details closed.
 """
 
 import json
@@ -520,27 +521,43 @@ async def test_a_database_outage_at_sign_in_issues_no_code_and_logs_no_data(
 
 # --- the product story states only what MITA does ---------------------------------------
 
-# Every example prompt and the published tool that answers it.
+# Every sentence the page tells a person to type and the published tool that
+# answers it (rent, the lunch fix, dinner out and the last 30 days are golden
+# prompts en-07, en-09, en-12 and en-20).
 PROMPT_TOOLS = {
-    "Show my financial calendar for this month.": "show_financial_calendar",
+    "Help me build my monthly budget.": "preview_monthly_budget",
+    "I spent €36.80 on groceries today.": "add_transaction",
     # safe_daily_limit: what is left of the month's plan per day after today
     "How much can I safely spend per day?": "get_budget_forecast",
-    "I spent €36.80 on groceries today.": "add_transaction",
-    "Help me build my monthly budget.": "preview_monthly_budget",
     "Create an Emergency Fund goal for €3,000.": "create_savings_goal",
+    "Where did my money go in the last 30 days?": "get_spending_breakdown",
+    "Show my financial calendar for this month.": "show_financial_calendar",
+    "My rent is €700 every month on the first.": "add_recurring_expense",
+    "Oops, that lunch was €12, not €21.": "update_transaction",
+    "Can I afford dinner out tonight?": "get_budget_status",
     "How has my spending changed over the last six months?": "get_spending_history",
 }
 
-# "What MITA adds to ChatGPT": each line and the tool behind it.
-ADD_TOOLS = {
-    "Your records in every chat": (
-        "list_transactions",
-        "get_budget_status",
-        "get_goals",
-    ),
-    "Figures MITA works out": ("get_budget_forecast",),
-    "Your month on a calendar": ("show_financial_calendar", "get_calendar_month"),
-}
+# The page's last word, "With MITA, ChatGPT answers from your real month": the
+# tools that read the person's own recorded month.
+REAL_MONTH_TOOLS = (
+    "get_budget_status",
+    "get_budget_forecast",
+    "list_transactions",
+    "show_financial_calendar",
+)
+
+# Words for the people who build MITA, not the people who use it.
+JARGON = (
+    r"\bMCP\b",
+    r"\btools?\b",
+    r"\bAPI\b",
+    r"forecast engine",
+    r"\bOAuth\b",
+    r"\bendpoints?\b",
+    r"\bscopes?\b",
+    r"\btokens?\b",
+)
 
 
 async def test_the_page_shows_real_prompts_fictional_figures_and_no_overclaims(mcp):
@@ -551,13 +568,20 @@ async def test_the_page_shows_real_prompts_fictional_figures_and_no_overclaims(m
     for prompt, tool in PROMPT_TOOLS.items():
         assert prompt in words
         assert tool in PUBLISHED_TOOLS
-    assert {title for title, _ in pages.ADDS} == set(ADD_TOOLS)
-    for title, tools in ADD_TOOLS.items():
-        assert title in words
-        assert set(tools) <= set(PUBLISHED_TOOLS), title
+    assert "With MITA, ChatGPT answers from your real month" in words
+    assert set(REAL_MONTH_TOOLS) <= set(PUBLISHED_TOOLS)
     assert "Fictional example" in words
-    assert pages.DEMO_CAPTION in words and pages.DIFFERENCE in words
+    assert pages.DEMO_CAPTION in words and pages.MONTH_CAPTION in words
     assert "It does not store your ChatGPT conversations" in words
+    # The story is told in a person's words; the consent card names permissions.
+    story = visible_text(
+        "".join(
+            html.split(f'<section class="{name}"', 1)[1].split("</section>", 1)[0]
+            for name in ("hero", "ask", "trust", "month", "more", "close")
+        )
+    )
+    for word in JARGON:
+        assert not re.search(word, story, re.I), word
     # The forecast's status is not shown: its linear pace counts rent paid on
     # the 1st as daily spending, so it can mislead until that model is fixed.
     assert not re.search(r"\bon[ _]track\b|\bdanger\b", words, re.I)
@@ -577,6 +601,33 @@ async def test_the_page_shows_real_prompts_fictional_figures_and_no_overclaims(m
         r"\b(customers?|testimonial|families trust)\b",
     ):
         assert not re.search(claim, words, re.I), claim
+
+
+async def test_the_sentences_to_type_are_on_the_page_not_behind_a_tap(mcp):
+    """Four different abilities right after the hero and before the form,
+    the rest lower down, and the hero's own question nowhere else: each
+    sentence once. All quoted text on the page: none inside a <details>, none
+    a fake control."""
+    async with mcp.http() as http:
+        html = (await http.get(await _login_url(http))).text
+
+    def section(name: str) -> str:
+        return html.split(f'<section class="{name}"', 1)[1].split("</section>", 1)[0]
+
+    ask, more = section("ask"), section("more")
+    for part in (ask, more):
+        assert "<details" not in part and "<button" not in part and "<a " not in part
+    primary = [card.prompt for card in pages.PROMPT_CARDS]
+    assert len(primary) == 4 and all(card.result for card in pages.PROMPT_CARDS)
+    assert {pages.BUDGET_PROMPT, pages.AFFORD_PROMPT} <= set(primary)
+    assert pages.SAFE_PROMPT not in primary
+    assert f'<p class="q">{pages.e(pages.SAFE_PROMPT)}</p>' in section("hero")
+    assert len(set(pages.PROMPTS)) == len(pages.PROMPTS)
+    for prompt in primary:
+        assert f"<q>{pages.e(prompt)}</q>" in ask, prompt
+    for _, prompt in pages.MORE_PROMPTS:
+        assert f"<q>{pages.e(prompt)}</q>" in more, prompt
+    assert html.index('<section class="ask"') < html.index("<form ")
 
 
 async def test_the_photograph_is_self_hosted_and_never_a_customer(mcp):
@@ -745,19 +796,27 @@ async def test_the_example_calendar_shows_each_date_as_mita_computes_it(mcp):
     assert words.count("Fictional example") >= 2  # the label and the caption
 
 
-async def test_the_hero_logo_is_the_master_vector_in_the_inverted_variant(mcp):
+async def test_the_logo_is_the_master_vector_in_its_own_colours(mcp):
     async with mcp.http() as http:
         html = (await http.get(await _login_url(http))).text
-    hero = html.split('<section class="hero"', 1)[1].split("</section>", 1)[0]
-    logo = re.search(r'<svg class="logo-inv".*?</svg>', hero, re.S).group(0)
-    assert set(re.findall(r'fill="(#[0-9A-F]{6})"', logo)) == {pages.INVERTED_FILL}
-    master = re.findall(r' d="([^"]+)"', pages._MARK_PATHS + pages._WORDMARK_PATH)
-    assert re.findall(r' d="([^"]+)"', logo) == master
+    topbar = html.split('<header class="topbar">', 1)[1].split("</header>", 1)[0]
+    logo = re.search(r'<svg class="logo".*?</svg>', topbar, re.S).group(0)
+    master = pages._MARK_PATHS + pages._WORDMARK_PATH
+    assert re.findall(r' d="([^"]+)"', logo) == re.findall(r' d="([^"]+)"', master)
+    assert re.findall(r'fill="(#[0-9A-F]{6})"', logo) == re.findall(
+        r'fill="(#[0-9A-F]{6})"', master
+    )
 
 
-async def test_headline_example_and_sign_in_come_first_details_stay_closed(mcp):
-    """The phone's order: the hero (headline, value, the example, the jump to
-    the form), the sign-in form, then what MITA adds and closed details."""
+async def test_the_hero_the_sentences_and_sign_in_come_first_details_stay_closed(
+    mcp,
+):
+    """The phone's order is short — the person already chose to connect: the
+    hero (headline, value, a question and MITA's answer, the jump to the
+    form), four more things to ask, the sign-in form, what MITA keeps, the
+    month, the rest of what you can ask, one closing line. From
+    1040 px the hero and the questions are the main column, the form and what
+    MITA keeps the side."""
     async with mcp.http() as http:
         login_url = await _login_url(http)
         html = (await http.get(login_url)).text
@@ -765,20 +824,36 @@ async def test_headline_example_and_sign_in_come_first_details_stay_closed(mcp):
     order = [
         html.index('<h1 id="hero-title">'),
         html.index('<p class="lede">'),
-        html.index('<figure class="demo"'),
+        html.index('<figure class="proof"'),
         html.index('<div class="cta">'),
+        html.index('<section class="ask"'),
         html.index("<form "),
-        html.index('<section class="adds"'),
+        html.index('<section class="trust"'),
+        html.index('<section class="month"'),
         html.index('<section class="more"'),
+        html.index('<section class="close"'),
     ]
     assert order == sorted(order)
+    main, side = html.split('<div class="col col-main">', 1)[1].split(
+        '<div class="col col-side">', 1
+    )
+    assert '<section class="ask"' in main and "<form " not in main
+    assert "<form " in side.split('<section class="month"', 1)[0]
     headline = visible_text(html.split('<h1 id="hero-title">', 1)[1].split("</h1>")[0])
     assert headline == "Know what you can safely spend each day."
     assert 'href="#auth"' in html and 'id="auth"' in html
     details = re.findall(r"<details[^>]*>", html)
-    assert len(details) == 3 and not any(" open" in d for d in details)
-    # The removed v3 example and limits grid stay removed.
-    for gone in ('class="snap"', 'class="trust"', "How is €", "Clear limits"):
+    assert len(details) == 2 and not any(" open" in d for d in details)
+    # Removed and staying removed: the v3 example and limits grid, the v5 steps
+    # and the "Why connect MITA?" comparison.
+    for gone in (
+        'class="snap"',
+        "How is €",
+        "Clear limits",
+        'class="steps"',
+        "Why connect",
+        "Without MITA",
+    ):
         assert gone not in html
     # What to ask first: the calendar after signing in, a budget for a new account.
     assert f"Then try: “{pages.CALENDAR_PROMPT}”" in html
@@ -789,10 +864,11 @@ def test_the_layout_is_mobile_first():
     """The phone layout is the base; wider screens only add (min-width)."""
     css = pages._CSS
     base = css.split("@media")[0]
-    assert ".layout{display:grid;grid-template-columns:minmax(0,1fr);" in base
-    assert 'grid-template-areas:"hero" "auth" "adds" "more"' in base
+    assert ".layout,.col{display:grid;grid-template-columns:minmax(0,1fr);" in base
+    assert "grid-template-areas" not in base  # phones: one column, document order
     widths = re.findall(r"@media \((min|max)-width:(\d+)px\)", css)
     assert ("max", "359") in widths
     assert all(kind == "min" for kind, px in widths if px != "359")
     desktop = css.split("@media (min-width:1040px){", 1)[1]
     assert "minmax(400px,440px)" in desktop and "minmax(400px,440px)" not in base
+    assert '"main side" "more side"' in desktop

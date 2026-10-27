@@ -1407,24 +1407,31 @@ Rules:
     `Retry-After` and redirects; JSON for everything else; never echoes the
     request. A database or network failure on the sign-in page is a 503 page
     with no code issued, logging the exception class only.
-  - **The premium hero, phone first** (v4, owner brief 2026-10-24; v3 was
-    rejected as generic and static). A navy hero (full-bleed on phones, a
-    panel beside the card from 1040 px): the inverted logo (monochrome Mita
-    yellow, Figma Logo Variants) and a "Connect ↓" pill to the form; the
-    headline ("Know what you can safely spend each day." — "each day", never
-    "today"); two lines of value; the example — an AI-generated photograph
-    (Figma AI, owner decision; "Illustration" in its alt text, never a
-    customer), the month as a CSS 3D slab and MITA's figures around it, all
-    labelled "Fictional example"; then the card, "What MITA adds" and closed
-    details. **The example is computed, never typed**: `app/mcp/auth/demo.py`
-    runs fictional inputs through `month_calendar`, `build_calendar` and the
-    forecast engine, and keeps its expenses inside each date's plan in
-    same-name categories so MITA's rebalancing would not change it (tested).
-    No forecast status. Consent shows all five scope titles with the details
-    in a native `<details>`. Claim table: `docs/brand/AUTH-UI-DESIGN.md`.
-  - Regressions: `tests_mcp/test_auth_ui.py` (in the CI security gate);
-    screenshots: `scripts/mcp/auth_ui_screenshots.py` →
-    `docs/chatgpt-app/review/auth-ui-v4/`; owner check on staging:
-    `docs/chatgpt-app/calendar-owner-test.md`. Locally the flow needs HTTPS
-    (the CSRF cookie is `__Host-`/`Secure`): a self-signed localhost
-    certificate, never a relaxed cookie.
+  - **The final connect page** (v5.2, owner-approved 2026-10-26; audience
+    research and decisions in `docs/brand/AUTH-UI-AUDIENCE-AUDIT.md`). The
+    person already chose to connect, so the page is short: the hero (headline
+    "Know what you can safely spend each day." — "each day", never "today";
+    one line of value; the question "How much can I safely spend per day?"
+    and MITA's answer for the fictional month; Connect), four things to ask —
+    each a different ability, never the hero's question again — then the
+    sign-in card, "You stay in control" (four facts, the full wording in a
+    closed `<details>`), the month (an AI-generated photograph — Figma AI,
+    "Illustration" in its alt text, never a customer — and the calendar), the
+    rest of what you can ask, one closing line. Full-colour master logo. Cards
+    only for product UI (the answer, the form, the calendar). **The example is
+    computed, never typed**: `app/mcp/auth/demo.py` runs fictional inputs
+    through `month_calendar`, `build_calendar` and the forecast engine (R3:
+    €59.60 a day, the €30.00 internet bill held), and keeps its expenses inside
+    each date's plan in same-name categories so MITA's rebalancing would not
+    change it (tested). No forecast status. Every sentence a person is told to
+    type maps to a published tool and appears once (tested). Consent shows all
+    five scope titles with the details in a native `<details>`. Claim table:
+    `docs/brand/AUTH-UI-DESIGN.md`.
+  - Regressions: `tests_mcp/test_auth_ui.py` (in the CI security gate).
+    Screenshots: `scripts/mcp/auth_ui_preview.py --shots` (the real
+    `pages.login_page` with the service's headers; no OAuth server or
+    database; `--axe` runs axe-core) → `docs/chatgpt-app/review/auth-ui-v5.2/`;
+    the real flow: `scripts/mcp/auth_ui_screenshots.py` (needs HTTPS: the CSRF
+    cookie is `__Host-`/`Secure` — a self-signed localhost certificate, never
+    a relaxed cookie); owner check on staging:
+    `docs/chatgpt-app/calendar-owner-test.md`.

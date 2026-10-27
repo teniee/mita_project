@@ -1,25 +1,39 @@
-# Handoff — MITA in ChatGPT (MCP), 2026-10-25
+# Handoff — MITA in ChatGPT (MCP), 2026-10-26
 
-## Current phase: financial correctness, real-ChatGPT acceptance, staging stabilisation (2026-10-25)
+## Current phase: R3 finished locally + publication-readiness audit (2026-10-26)
+
+Nothing committed, pushed or deployed; production, `main` and PR #287 untouched.
+
+| Item | State |
+|---|---|
+| R3 (bills first) | finished locally: one rule for ChatGPT and the mobile API (`r3-bills-reserve.md`). A bill = a recordable saved payment's category that counts in the month, or a stated rent/mortgage/utilities line; the engine's medical-insurance allowance is everyday money (it is listed as flexible spending in the reviewed budget, no expense can be recorded against it, so holding it would count a paid bill twice). Needs per stored category, then keyed by display line (a saved pass no longer takes the transport allowance with it). The calendar's "Bills & commitments" group uses the same rule |
+| F-9 | fixed: `/api/budget/forecast` uses the user's calendar day; `live_status.daily_budget` leaves money set aside out. F-10 fixed: the app's income card says "Monthly income", not "Total Budget" |
+| Figures | review month 117.70 a day (30.00 held); owner's real run 56.70 (nothing held, rent recorded); sign-in example 59.60 (30.00 held) |
+| Tests (local, 2026-10-26/27) | full MCP suite 627 passed; full backend suite 1316 passed; capacity within 20 ms for status, forecast, calendar; `tests_mcp/test_bills_reserve.py` (17 scenarios + the paired-line case); route tests `app/tests/test_budget_forecast_local_day.py`; calendar review 65/65 (axe 0 violations) with refreshed `review/calendar-v1/`; sign-in page axe 0 violations, screenshots `review/auth-ui-v5.2/` |
+| Publication verdict | **NOT READY TO PUBLISH** — the P0 list is in `production-readiness.md` ("State on 2026-10-26" and the added steps) and `review/submission-checklist.md` (2026-10-26 update) |
+| Next | 1) owner review of R3's medical-insurance conclusion and the commit split; 2) commits; 3) staging carries the final code with `MCP_WIDGET_DOMAIN` (7e); 4) the owner's real-ChatGPT run (`calendar-owner-test.md`); 5) the owner-gated production steps |
+
+## Previous phase: financial correctness, real-ChatGPT acceptance, staging stabilisation (2026-10-25)
 
 | Item | State |
 |---|---|
 | Brief | owner, 2026-10-25: no redesign; F-8 first (proposal before any change to the money model), consistency tests, the usage box unticked, staging clean-up, real-ChatGPT acceptance, the calendar as a starter prompt, usability defects only |
-| F-8 | root cause found and measured (`f8-money-model-proposal.md`): of €948.05 treated as overspending in the review month, €206.49 was real; the rest was timing, naming (F-2) and pacing, because the rebalancer works per date and category. Proposal R1–R5 with simulated figures; **awaiting the owner's decisions D1–D4 — nothing implemented** |
+| F-8 | root cause found and measured (`f8-money-model-proposal.md`): of €948.05 treated as overspending in the review month, €206.49 was real; the rest was timing, naming (F-2) and pacing, because the rebalancer works per date and category. Owner decisions (2026-10-25): **no change to the rebalancer** — "show exactly what the app implements"; **R3 approved** (below); past months rebuild only on edit |
+| Bills first (R3) | implemented in the shared engine and refined 2026-10-26 (`r3-bills-reserve.md`): a bill is a recordable saved payment's category due this month or a stated rent/mortgage/utilities line; `commitments_reserved` = per bill its base plan (rebalancing backed out) or saved payments due when more, minus recorded; `safe_daily_limit = (remaining − savings − reserved) / days`. The engine's medical-insurance allowance is everyday money (never recordable, so held it would count a paid bill twice). ChatGPT (`get_budget_forecast`, the calendar) and the mobile `GET /api/budget/forecast` pass the same commitments; one "due this month" rule (`app/services/monthly_obligations.py`). Review month: 121.99 → 117.70 a day (98.50 with every SACRED line held); the sign-in example 62.10 → 59.60; scenario matrix `tests_mcp/test_bills_reserve.py` |
 | Consistency tests | `tests_mcp/test_money_consistency.py` (22): every scenario through the real tools and the real rebalancer, checked across `get_budget_status`, `get_budget_forecast`, `get_calendar_month`, `show_financial_calendar`, the stored rows (money conserved, spend cache equal to the ledger) and the mobile API's figures; today's F-8 behaviour pinned with hand-checkable numbers (`…_today`), including the review month exactly |
-| New finding | F-9: the app's day budget (`/budget/live_status`) still counts today's savings slice; `/budget/forecast` uses the server's UTC date |
+| Findings | F-9 fixed 2026-10-26: `/budget/live_status` leaves money set aside out of today's budget; `/api/budget/forecast` uses the user's calendar day. F-10 fixed 2026-10-27: the app's income card is labelled "Monthly income" |
 | Usage statistics | box unticked by default on both tabs (approved); a tick is the consent; on sign-in an unticked box keeps the earlier choice and deletes nothing; withdrawal stays `set_usage_analytics(false)` (deletes linked events). No production user ever saw the pre-ticked box (MCP is not in production) |
 | Starter prompts | set up / record / **"Show my financial calendar for this month."** (replaced "How am I doing financially this month?"); pinned as golden prompt en-35 → `show_financial_calendar` |
 | Usability | narrow phones (320/360 px): amounts were cut mid-number ("22.1" for 22.15), the Spent tile truncated, Save as PNG cut off; now a fit pass (smaller size, then whole euros said under the grid), tiles two-up, buttons stacked; the "How is this worked out?" toggle 32 px tall. Harness 65/65 with axe 0 violations in 4 states; sign-in page axe 0 in 8 states |
 | Owner acceptance in ChatGPT | rewritten `calendar-owner-test.md` (12 steps, screenshots, A/B/C for the PNG) — not yet run |
-| Owner next | 1. decide F-8 (D1–D4); 2. authorise database access for the staging clean-up; 3. run `calendar-owner-test.md` in ChatGPT |
+| Owner next | run `calendar-owner-test.md` in ChatGPT (13 steps) |
 
 ## Previous phase: the financial calendar in ChatGPT + sign-in page v4 (MCP 2.2.0)
 
 | Item | State |
 |---|---|
 | Brief | owner, 2026-10-24: v3 rejected (generic, static); a premium sign-in/marketing page and a genuinely interactive financial calendar rendered inside ChatGPT (MCP Apps) |
-| Owner decisions | hero photo generated with Figma AI (no real people, alt text "Illustration"); "fixed commitments" = plan lines (SACRED essentials + the categories of saved regular payments), reconciled to the plan |
+| Owner decisions | hero photo generated with Figma AI (no real people, alt text "Illustration"); "fixed commitments" = bills (stated rent/mortgage/utilities lines + the categories of saved regular payments), reconciled to the plan |
 | What changed | `get_calendar_month` + `show_financial_calendar` (24 tools, MCP 2.2.0), the `ui://mita/financial-calendar-v1.html` component, `queries/calendar.py`, `ToolOutput` in `runtime.py`, `MCP_WIDGET_DOMAIN`; the sign-in page v4 (`pages.py`, `demo.py`, hero photo); plugin listing 2.1.0 |
 | Unchanged | the OAuth flow (`login.py`, scopes, CSP, headers, no script on the sign-in page), every existing tool's figures, the forecast engine, production |
 | Docs | `financial-calendar.md` (design, definitions, limits), `docs/brand/AUTH-UI-DESIGN.md` (v4 + claim table), `tool-catalog.md`, `backend-findings.md` F-8, `calendar-owner-test.md` |

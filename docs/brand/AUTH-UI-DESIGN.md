@@ -102,37 +102,76 @@ Decisions, not brand facts. Contrast ratios are WCAG 2.x.
 * Fonts: WOFF2 subsets built by `scripts/mcp/build_auth_fonts.py` — Manrope
   and Sora variable (400–700) from the app's OFL files, Space Mono from
   google/fonts (SHA-256 pinned); 74 KB together, cached as immutable.
-* Motion (v4): CSS only and decorative — the photo settles, the month tilts
-  in, its dates appear, MITA's figures rise, one fictional expense flies into
-  today; the end state is the still design. Under `prefers-reduced-motion`
-  every animation and transition is off and the flying expense is hidden;
-  nothing else starts invisible (tested).
+* Motion (final page): CSS only — the question rises, MITA "types", the
+  answer settles with its figures and the groceries bar; rows rise as they
+  scroll in (`animation-timeline: view()`, behind `@supports`); from 560 px
+  the month tilts in and one fictional expense flies into today. Under
+  `prefers-reduced-motion` every animation and transition is off, the typing
+  dots and the flying expense are hidden; nothing else starts invisible
+  (tested).
 * Copy states facts from `docs/chatgpt-app/data-inventory.md`; demo figures
   are fictional and labelled so. No "bank-grade", "encrypted", "free" or
   similar claims (tested).
 * Mobile first: the base CSS is the phone layout; `min-width` queries only
-  add (560 px: wider cards, the three limits side by side; 1040 px: the
-  sign-in card as a right-hand column level with the logo). Order, from the
-  top: headline, one line of value, the example, the sign-in card, limits,
-  closed secondary details. Tested.
+  add (560 px: two-column questions and the tilted month; 1040 px: the
+  product column beside the sign-in column). Order, from the top: the hero
+  (headline, one line, the question and MITA's answer, Connect), four things
+  to ask, the sign-in card, "You stay in control", the month, more things to
+  ask, the closing line. Tested.
 * Permissions: the five scope titles are always on screen; each one's
   explanation and the full "cannot move money" sentence are in a native
   `<details>` ("View permission details"), closed by default. Tested.
 * The example's figures are what MITA's forecast engine returns for them
   (`test_the_example_is_what_the_forecast_engine_returns`), it is labelled
   "Fictional example", and its arithmetic is one tap away and tested.
-* No calendar on this page: a day-by-day calendar needs per-day data and
-  belongs in the signed-in product ("Spending calendar", below).
+* The month on this page is the fictional example only (`demo.py` through
+  `build_calendar`, labelled); the person's own calendar is the signed-in
+  product (`show_financial_calendar`).
 * No forecast status on the page — no "On track", "warning" or "danger"
   badge (owner decision 2026-10-23, tested). `get_budget_forecast` still
   returns `status` unchanged; its linear pace counts rent paid on the 1st as
   daily spending, so it can mislead until the forecast model is fixed in a
   dedicated task (below).
-* Review screenshots, produced by `scripts/mcp/auth_ui_screenshots.py`:
-  `docs/chatgpt-app/review/auth-ui-v3/` (current), `auth-ui-v2/` (mobile
-  first, `1e24bf4`) and `auth-ui/` (first version, `ee388c0`).
+* Review screenshots: `docs/chatgpt-app/review/auth-ui-v5.2/` (current,
+  `scripts/mcp/auth_ui_preview.py --shots`: the real `pages.login_page` with
+  the service's headers, no OAuth server or database); history in
+  `auth-ui-v4/`, `auth-ui-v3/`, `auth-ui-v2/`, `auth-ui/` (the real flow over
+  HTTPS: `scripts/mcp/auth_ui_screenshots.py`). The v5 and v5.1 review sets
+  were owner review rounds and are not kept in the repository.
 
-## Premium redesign (v4, 2026-10-24)
+## Final connect page (v5.2, 2026-10-26)
+
+Audience, research and the design decisions: `AUTH-UI-AUDIENCE-AUDIT.md`
+(v5, the v5.1 refinement and the v5.2 polish). The sections below it (v4, v3,
+v2) are history.
+
+### Visible claims and what supports them (final)
+
+| Claim on the page | Tool | Field / rule | True? |
+|---|---|---|---|
+| "Know what you can safely spend each day." | `get_budget_forecast` | `safe_daily_limit` — an amount per remaining day, never "today" | Yes |
+| "MITA remembers your budget, bills, savings and spending, so ChatGPT can answer with your real numbers." | every read tool | records the person saves in MITA; no bank connection | Yes |
+| "How much can I safely spend per day?" → "€59.60 a day · 12 days left" | `get_budget_forecast` | `safe_daily_limit` (the €30.00 internet bill held, `commitments_reserved`; €62.10 without R3), `days_remaining` | Yes — fictional, recomputed by a test |
+| "Savings kept €400.00 · never counted as spendable" | `get_budget_forecast` | `savings_set_aside` | Yes — fictional |
+| "Home internet €30.00 due 27 Oct" | `get_calendar_month` | `bills[]` from a saved monthly payment | Yes — fictional |
+| "Groceries €189.85 of €420.00 planned" | `get_budget_status` | the line's `spent` / `planned` | Yes — fictional |
+| Plan: "Help me build my monthly budget." → "A plan from your income, bills and savings target. You check it before it's saved." | `preview_monthly_budget`, `save_monthly_budget` | the draft is saved only with its token after the person agrees | Yes |
+| Track: "I spent €36.80 on groceries today." → "Saved to your month. Receipt photos work too." | `add_transaction`, `add_transactions` | ChatGPT reads the photo; MITA stores the lines | Yes |
+| See: "Show my financial calendar for this month." → "Your month, day by day, right in the chat." | `show_financial_calendar` | the MCP Apps component | Yes |
+| Decide: "Can I afford dinner out tonight?" → "Checked against what's left in your plan." | `get_budget_status` | `today.remaining` and each line's remaining | Yes |
+| More: rent, a €3,000 goal, a corrected lunch, the last 30 days, six months | `add_recurring_expense`, `create_savings_goal`, `update_transaction`, `get_spending_breakdown`, `get_spending_history` | golden prompts en-07, en-09, en-20 and the plugin tests | Yes |
+| "MITA can't move money or reach your bank" | all tools | `READ_ONLY_DISCLAIMER`; no payment, transfer or bank capability | Yes |
+| "Keeps money records, not your ChatGPT chats" | — | `data-inventory.md` | Yes |
+| "Receipt photos stay in ChatGPT" | `add_transactions` | the image is never sent to MITA | Yes |
+| "Disconnect any time in ChatGPT" | — | ChatGPT's own control; a MITA password change also ends access | Yes |
+| "Every day's plan and spending, bills on their dates and savings kept apart." | `show_financial_calendar` | groups and per-date fields | Yes |
+| "In ChatGPT you can save yours as an image." | the component | Save as PNG (`ui/download-file` or ChatGPT's file API) | Yes |
+| "With MITA, ChatGPT answers from your real month." | every read tool | the person's own saved records | Yes |
+
+Each typed sentence maps to its tool in `tests_mcp/test_auth_ui.py`
+(`PROMPT_TOOLS`), and each appears once on the page (tested).
+
+## Premium redesign (v4, 2026-10-24) — superseded
 
 The owner did not approve v3: technically sound, but visually generic, too
 static, emotionally disconnected, and it did not show what MITA can do. Brief:
@@ -238,7 +277,7 @@ desktop); text on navy ≥ 8:1. Review screenshots:
 frames). Not shown, as before: a forecast status, a "safe
 to spend today" figure.
 
-## Conversion redesign (v3, 2026-10-23)
+## Conversion redesign (v3, 2026-10-23) — superseded
 
 The owner's review of v2 live from ChatGPT: polished, but overloaded with
 explanations and examples — a new user could not tell within seconds what
@@ -289,7 +328,7 @@ the form (tabs, e-mail, password); the button follows the five permission
 titles and the usage-statistics choice, which must come before it, one
 short scroll down. Desktop is unchanged: the button is on the first screen.
 
-## Mobile-first refinement (v2, 2026-10-23, `1e24bf4`)
+## Mobile-first refinement (v2, 2026-10-23, `1e24bf4`) — superseded
 
 The owner's review of the first version: it felt desktop-first, and the
 daily-spending value of MITA was shown nowhere.

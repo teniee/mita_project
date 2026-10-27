@@ -1,4 +1,4 @@
-# Production readiness — MITA ChatGPT app (2026-10-11, v2 update 2026-10-13)
+# Production readiness — MITA ChatGPT app (2026-10-11, v2 update 2026-10-13, re-checked 2026-10-26)
 
 v1 (8 read-only tools) passed real-ChatGPT staging acceptance
 (staging-acceptance.md §5). v2 — free v1 read/write, 22 tools, migrations
@@ -17,6 +17,50 @@ under the same step numbers.
 **A** = autonomous preparation (done in the repo, no production change).
 **B** = owner action (credentials, DNS, legal, billing, verification or
 production access).
+
+## State on 2026-10-26 (read-only re-check; supersedes the facts below where they differ)
+
+| Fact | Evidence |
+|---|---|
+| `mita-production` still serves `3aa52b7` (#285, deployed 2026-09-29); `main` HEAD `27ed25d` (#286) is still undeployed; source `main`, `bash start.sh` (runs `alembic upgrade head`; aborts in production if it fails); 1 replica, us-east4; **still no healthcheck** | Railway deployment list and service config |
+| `mita-production-db` (Postgres 17): the public TCP proxy `shinkansen.proxy.rlwy.net:12880` → 5432 is **still ACTIVE** | Railway `list-tcp-proxies` |
+| Production has **no MCP service** (only `mita-production` and `mita-production-db`) | Railway environment |
+| Staging `mita-mcp-staging`: pinned to `dbdc118` (MCP 2.2.0, the v4 sign-in page, the usage box pre-ticked); `0efce5c`, `8f2621d`, R3 and the final connect page are not deployed; no `MCP_WIDGET_DOMAIN`, no `OPENAI_APPS_CHALLENGE_TOKEN` (variable names only); staging Postgres has **no** TCP proxy | Railway; `GET /health` → `"version":"2.2.0"` |
+| `https://mitafinance.com`: TLS alert (no certificate for the name); `www` and `mcp.mitafinance.com`: no DNS; HTTP serves the landing page only | `curl`, `openssl s_client`, `dig` |
+| API image (`requirements.txt`): `pip-audit` finds 200 known advisories in 9 packages (aiohttp 3.12.14, bleach 6.2.0, cryptography 44.0.1, pillow 11.0.0, pyjwt 2.10.1, python-dotenv 1.0.1, python-multipart 0.0.18, requests 2.32.4, starlette 0.47.2). The MCP image (`requirements-mcp.lock`): none | `pip-audit` |
+
+**Current OpenAI requirements that add to the steps below** (developers.openai.com
+`plugins/deploy/submission`, `plugins/reference`, plugin guidelines; checked
+2026-10-26): a UI plugin must set a dedicated, unique `_meta.ui.domain`
+(MITA: `MCP_WIDGET_DOMAIN`); website, support, privacy policy and terms URLs
+are all required (public HTTPS, same publisher); exactly 5 positive and 3
+negative test cases; a reviewer-accessible demo video; a dedicated reviewer
+account with sample data, no MFA or e-mail codes, kept available; developer
+verification; domain verification at `/.well-known/openai-apps-challenge`;
+the MCP URL cannot be changed after publication (choose the final hostname
+first); every tool sets `readOnlyHint`, `destructiveHint`, `openWorldHint`
+(MITA: tested); plugins must suit users aged 13–17 (Step 5).
+
+**Added steps:**
+
+* **6b. `MCP_WIDGET_DOMAIN`** on the production MCP service (`https://mcp.mitafinance.com`
+  or another origin MITA owns, unique to this plugin) — and on staging for
+  the acceptance run (below). Without it the calendar component is served
+  from ChatGPT's shared sandbox origin, which OpenAI does not accept at
+  submission.
+* **7e. Staging carries the final code before any production step:** deploy
+  the commits with R3 and the final connect page to `mita-mcp-staging`
+  (MCP 2.3.0), set `MCP_WIDGET_DOMAIN` there, run `scripts/mcp/e2e_http.py`
+  and `staging_failure_modes.py`, then the owner's real-ChatGPT run
+  (`calendar-owner-test.md`). No migration is needed (still `0039`).
+* **7f. API dependency upgrades** (security): raise the nine packages above
+  and run the backend suite and mobile CI before the merge that brings
+  ChatGPT accounts to production.
+* **12b. Release package:** plugin version and release notes to 2.3.0 (bills
+  held out of the daily amount); a test case for "Show my financial calendar
+  for this month." (the UI is the headline feature; exactly 5 positive cases
+  stay); the long description must not promise the MITA app ("…and in the
+  MITA app") until the app is released.
 
 ## Production as observed today (read-only)
 

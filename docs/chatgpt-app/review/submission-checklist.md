@@ -12,6 +12,23 @@ deployment `87d26668`, CI run `39155447750` (§9); real ChatGPT §8 and §11.
 **Staging acceptance closed 2026-10-19.** Every production row below is
 unchanged.
 
+## 2026-10-26 update (local; nothing deployed)
+
+| Requirement | Status | Evidence | Remaining |
+|---|---|---|---|
+| R3: unpaid bills held out of the safe daily amount, the same in ChatGPT and the mobile forecast | CODE READY, TESTED LOCALLY | `r3-bills-reserve.md`; `tests_mcp/test_bills_reserve.py` (the scenario matrix), `test_money_consistency.py`, `app/tests/test_budget_forecast_local_day.py` | commit; staging (7e); real ChatGPT |
+| F-9 (mobile figures: local day, savings out of today) | FIXED LOCALLY | `backend-findings.md` F-9 | commit |
+| Final connect page (v5.2) | CODE READY, TESTED LOCALLY (axe 0 violations) | `docs/chatgpt-app/review/auth-ui-v5.2/` | commit; staging; real ChatGPT |
+| `_meta.ui.domain` (`MCP_WIDGET_DOMAIN`) — OpenAI: required for a plugin with UI, unique | **OWNER REQUIRED** | unset on staging (variable names, 2026-10-26); no production MCP service | production-readiness 6b |
+| Staging runs the code to be submitted | **NOT DONE** | staging pinned to `dbdc118` (2.2.0, v4 page, usage box pre-ticked) | production-readiness 7e |
+| Real-ChatGPT acceptance of the calendar and the final page | **NOT DONE** | `calendar-owner-test.md` (updated) | after 7e |
+| Website, support, privacy, terms URLs (OpenAI: all four required, HTTPS) | **OWNER REQUIRED** | `https://mitafinance.com` TLS alert; no `www`, no `mcp.` DNS (2026-10-26) | steps 2–4 |
+| 5 positive + 3 negative test cases (OpenAI: exactly) | CODE READY | `plugin/mita/plugin.template.json` | add the calendar prompt among the 5 (12b) |
+| Demo video, reviewer account, developer verification, domain verification | **OWNER REQUIRED** | — | steps 8–11 |
+| API dependency advisories (pip-audit: 200 in 9 packages) | **NOT DONE** | production-readiness 7f | before the merge |
+
+## Original table (2026-10-11 / 2026-10-18)
+
 | Requirement | Status | Evidence | Remaining |
 |---|---|---|---|
 | Streamable HTTP MCP at `/mcp`, public HTTPS | STAGING VERIFIED, CHATGPT VERIFIED (v1) | `https://mita-mcp-staging-staging.up.railway.app/mcp`, `/health` version 2.0.0 | production: PRODUCTION NOT DONE (steps 6–7) |
