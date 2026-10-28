@@ -62,14 +62,26 @@ pushed with the Railway CLI (`--stdin`; the two v2 secrets on 2026-10-13);
 the local copies were deleted. No production value was used. All of them
 were rotated on 2026-10-23 after Railway's security incident (below).
 
-## Next deployment: MCP 2.3.0 (planned 2026-10-27, not executed)
+## MCP 2.3.0 — deployed 2026-10-28 (`2817bb6`, deployment `724189ec`)
 
-Exact plan and checks: `openai-compliance-2026-10-27.md` → "Staging
-deployment plan". In short: after the owner's approval, commit and push, and
-a green CI on that SHA, set `MCP_WIDGET_DOMAIN=https://mita-mcp-staging-staging.up.railway.app`
-with `--skip-deploys`, then connect the source again with the new
-`commitSha`. No migration (head stays `0039`), no new grant, no other
-variable. Rollback: re-pin `dbdc118`.
+`MCP_WIDGET_DOMAIN=https://mita-mcp-staging-staging.up.railway.app` set with
+`--skip-deploys` before the re-pin; no migration (head `0039`).
+
+## Next deployment: MCP 2.4.0, F-11 (NOT executed — owner approval first)
+
+`user-budget-lines.md`. Needs a migration and a grant, in this order (2.4.0
+reads `mcp_budget_lines`):
+
+1. Commit, push, green CI on that SHA.
+2. Temporary TCP proxy to the staging Postgres; from the operator machine
+   `alembic upgrade head` (`0039 → 0040`, one new table) as the owner.
+3. `GRANT SELECT, INSERT, UPDATE, DELETE ON mcp_budget_lines TO mita_mcp;`
+   (the line in `scripts/mcp/mcp_service_role.sql`); check it with
+   `has_table_privilege`.
+4. Remove the proxy; check Postgres no longer answers there.
+5. Re-pin `mita-mcp`; `/health` → `2.4.0`; `scripts/mcp/e2e_http.py` and
+   `staging_failure_modes.py`.
+6. Rollback: re-pin `2817bb6` (it ignores the table; `0040` can stay).
 
 ## Credential rotation (done 2026-10-23, after Railway's security incident)
 

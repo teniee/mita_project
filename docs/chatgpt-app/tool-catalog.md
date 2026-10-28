@@ -28,7 +28,7 @@ only from a signed preview, feedback only on explicit request.
 | `get_goals` | savings goals with deterministic projection (goals cannot be changed from ChatGPT) | status | finance:read |
 | `get_spending_history` | up to 12 local months, per-category totals, completeness, trend (≥ 3 complete months) | months, category, end_month | finance:read |
 | `get_financial_climate` | compact factual overview: averages, pace vs earlier months, plan adherence, late-month share, obligations, goals | months | finance:read |
-| `preview_monthly_budget` | a budget draft from stated facts and MITA's engine; returns a signed `draft_token`; **saves nothing** | month | finance:read |
+| `preview_monthly_budget` | a budget draft from stated facts and MITA's engine, keeping the user's own budget lines exactly (`budget_lines`: their label and amount, and which MITA lines they `replace`; `source: set_by_you`) and allocating only the money left; a plan over the income is refused with every part named; returns a signed `draft_token`; **saves nothing** | month, budget_lines, remove_lines | finance:read |
 | `get_calendar_month` | the month as data, date by date: each date's plan, spending and state, budget lines in groups (commitments / set aside / everyday), saved bills by date, a summary with the safe daily average; callable by the calendar component | year, month | finance:read |
 | `show_financial_calendar` | **the only tool bound to a UI component**: shows the interactive calendar (`ui://mita/financial-calendar-v1.html`); figures from the account, never from arguments; short view for the model, the month for the component (`_meta`) | year, month, focus_date, category | finance:read |
 
@@ -37,7 +37,7 @@ only from a signed preview, feedback only on explicit request.
 | Tool | Purpose | Destructive | Idempotent | How retries are safe | Scope |
 |---|---|---|---|---|---|
 | `update_financial_profile` | save stated income, currency, timezone, household size, savings target | yes (overwrites) | yes | same values → `unchanged` | finance:write |
-| `add_transaction` | record one expense | no | yes | `idempotency_key` → `already_recorded` | finance:write |
+| `add_transaction` | record one expense, under a category or one of the user's own budget lines (`budget_line`) | no | yes | `idempotency_key` → `already_recorded` | finance:write |
 | `add_transactions` | record up to 25 expenses, all or nothing | no | yes | `idempotency_key` | finance:write |
 | `update_transaction` | correct amount/category/date/merchant of one expense (`ref`) | yes | yes | same fields → `unchanged` | finance:write |
 | `delete_transaction` | soft-delete one expense (`ref`) | yes | yes | second call → `already_deleted` | finance:write |

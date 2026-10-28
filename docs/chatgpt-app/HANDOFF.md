@@ -1,5 +1,21 @@
 # Handoff — MITA in ChatGPT (MCP), 2026-10-27
 
+## F-11: user budget lines, waiting for owner review (2026-10-28)
+
+Staging still runs `2817bb6` (MCP 2.3.0, deployment `724189ec`,
+`MCP_WIDGET_DOMAIN` set). The owner's real-ChatGPT run stopped at onboarding:
+their own amounts ("fuel €200, cigarettes €200 …") could not be kept
+(`backend-findings.md` F-11). Fixed for the plugin only, **uncommitted and
+undeployed**: `user-budget-lines.md` (MCP 2.4.0, plugin 2.4.0, migration
+`0040` = one new MCP table).
+
+* Staging order, after the owner approves: commit, push, green CI; apply
+  `0040` from the operator machine (temporary TCP proxy, as for 0037–0039;
+  remove it afterwards); run the `mcp_budget_lines` grant from
+  `scripts/mcp/mcp_service_role.sql`; re-pin `mita-mcp`. 2.4.0 reads the new
+  table, so it must not start before `0040` and the grant.
+* Then resume the owner's acceptance: `calendar-owner-test.md` steps 20–25.
+
 ## Current phase: OpenAI publication-compliance audit (2026-10-27)
 
 Committed on 2026-10-28 as four commits on top of `1ffa2b6` (profile and

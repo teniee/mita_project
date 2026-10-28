@@ -50,6 +50,17 @@ tobacco category, and none is invented here: drinks bought in a shop count as
 is this rule — while the old hint "groceries for a supermarket" also pushed
 non-food lines into groceries; the hint now says "by what was bought".)
 
+## The user's own budget lines (F-11)
+
+"Fuel €200, cigarettes €200 a month": ChatGPT passes each in
+`preview_monthly_budget`'s `budget_lines` with the user's own name for it,
+and lists in `replaces` the MITA line it stands for when there is one (their
+"Fuel" is MITA's `transport gas`); cigarettes have none. MITA keeps the
+amounts exactly (`source: set_by_you`) and plans only the rest; ChatGPT never
+recomputes. One amount for several things → ask whether it is one line. Over
+the income → MITA names each part; ChatGPT asks what to change. Later, "I
+spent €7 on cigarettes" is recorded with `budget_line` so it counts there.
+
 ## Languages
 
 ChatGPT answers in the user's language; MITA stores canonical category codes

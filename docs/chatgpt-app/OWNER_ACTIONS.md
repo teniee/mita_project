@@ -41,8 +41,16 @@ MCP 2.3.0 (R3, the final connect page, the 2026-10-27 compliance fixes):
 
 | Item | Status |
 |---|---|
-| S-11 approve the 2.3.0 changes for commit, push and staging; then Claude sets `MCP_WIDGET_DOMAIN` on staging and re-pins the source (`openai-compliance-2026-10-27.md` → "Staging deployment plan") | OWNER DECISION — next action |
-| S-12 real-ChatGPT acceptance on the phone and the computer | OWNER REQUIRED — `calendar-owner-test.md` (19 steps), after S-11 |
+| S-11 approve the 2.3.0 changes for commit, push and staging; then Claude sets `MCP_WIDGET_DOMAIN` on staging and re-pins the source (`openai-compliance-2026-10-27.md` → "Staging deployment plan") | DONE (2026-10-28: `2817bb6`, deployment `724189ec`) |
+| S-12 real-ChatGPT acceptance on the phone and the computer | PAUSED at onboarding by F-11 (2026-10-28); resumes on 2.4.0 |
+
+MCP 2.4.0 (F-11: the user's own budget lines, `user-budget-lines.md`):
+
+| Item | Status |
+|---|---|
+| S-13 review F-11 and approve commit, push and staging | OWNER DECISION — next action |
+| S-14 staging: `0040` from the operator machine, the `mcp_budget_lines` grant, re-pin (`staging.md`) | Claude, after S-13 |
+| S-15 real-ChatGPT acceptance incl. steps 20–25 | OWNER REQUIRED — `calendar-owner-test.md`, after S-14 |
 
 Staging acceptance (v2) is closed; production is untouched. Keep staging
 running until production is live; teardown is in staging.md.
@@ -321,7 +329,7 @@ DEMO_RECORDING_URL=<video URL> python scripts/mcp/build_plugin.py --release
 
 ## Step 13 — Submit
 
-**O-15b** Upload `dist/plugin/mita-finance-2.3.0.zip` (Plugins → Upload,
+**O-15b** Upload `dist/plugin/mita-finance-2.4.0.zip` (Plugins → Upload,
 choosing the verified developer identity); connect the MCP server (the portal
 reads OAuth/DCR from `mcp.json`), complete domain verification and the tool
 scan; enter the review credentials in **Review details**; if the portal asks

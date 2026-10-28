@@ -253,6 +253,12 @@ The given order holds, with three corrections:
   tables and stay), then roll back.
 * **Done when:** production `/health` shows `alembic_revision` `0039` and
   the merge commit; mobile registration, login and adding an expense work.
+* **F-11 adds `0040` (2026-10-28, not merged or deployed):** one new
+  MCP-owned table, `mcp_budget_lines`, no change to any existing table (no
+  lock on existing data). Production needs its grant to `mita_mcp`
+  (`scripts/mcp/mcp_service_role.sql`) before MCP 2.4.0 runs there. Rollback:
+  the same trap as 0037 for the API (fix forward, or `alembic downgrade 0039`
+  from the new code: drops the table; user lines stay in plans as amounts).
 
 ### 8. Production review account
 * **Depends on:** 2 (mailbox on an owned domain). Testing it needs 6.

@@ -1,4 +1,4 @@
-# Owner acceptance in real ChatGPT — MITA 2.3.0 on staging (≈ 30 minutes)
+# Owner acceptance in real ChatGPT — MITA 2.4.0 on staging (≈ 40 minutes)
 
 Everything verified so far ran in a **local MCP Apps host** (a test page that
 behaves like ChatGPT, labelled "not ChatGPT"). Only this run shows what
@@ -9,10 +9,11 @@ starts empty on purpose.
 
 ## Before you start (not yet done on 2026-10-27)
 
-* Staging must run 2.3.0 with `MCP_WIDGET_DOMAIN` set to the staging origin
-  (plan: `openai-compliance-2026-10-27.md` → "Staging deployment plan").
-  Check: `https://mita-mcp-staging-staging.up.railway.app/health` says
-  `"version":"2.3.0"`. On 2026-10-27 it still says `2.2.0` (`dbdc118`).
+* Staging must run 2.4.0 (F-11, the user's own budget lines) with migration
+  `0040`, its grant and `MCP_WIDGET_DOMAIN` set to the staging origin
+  (`HANDOFF.md`). Check: `https://mita-mcp-staging-staging.up.railway.app/health`
+  says `"version":"2.4.0"`. On 2026-10-28 it says `2.3.0` (`2817bb6`), where
+  steps 20–25 cannot pass.
 * Server: `https://mita-mcp-staging-staging.up.railway.app/mcp`.
 * Use a **new fictional address** (for example `cal-1027@example.test`) and a
   password with upper and lower case, a digit and a symbol. Never a real
@@ -49,6 +50,17 @@ starts empty on purpose.
 Optional: "Show my financial calendar for next month" before saving next
 month's budget → the card says there is no saved plan and offers to ask
 ChatGPT to plan it.
+
+### F-11 — your own budget lines (a new fictional account)
+
+| # | Do | Pass when | 📸 | Result (phone / computer) |
+|---|---|---|---|---|
+| 20 | Income €2,000, savings €500, two loans saved as regular payments, then: "My budget for this month: fuel €200, cigarettes €200, coffee and walks €100, groceries €50. Plan the rest." | ChatGPT asks about anything ambiguous ("coffee and walks" one line?) instead of guessing. The preview shows each of your amounts **exactly**, as set by you; MITA's own Fuel and Groceries lines are not also there; MITA's other lines come from what is left; nothing is saved yet. | preview | |
+| 21 | Approve the save. | The result lists your lines as set by you; ChatGPT claims nothing else was kept. | result | |
+| 22 | New conversation: "How am I doing against my budget this month?" | Your lines as saved, labelled as yours; the loans held as bills, your lines not. | answer | |
+| 23 | "I bought cigarettes for €7." then step 22 again. | The €7 is on your Cigarettes line (spent €7 of €200); no other line changed. | answer | |
+| 24 | "Make fuel €250." | A preview where Fuel goes €200 → €250, listed as a change; save it. | preview | |
+| 25 | "Set cigarettes to €3,000." | Refused: over your income; ChatGPT shows income, bills, savings, your amounts and by how much, and asks what to change. Nothing saved. | answer | |
 
 ## What Claude checks after your run (server side, read-only)
 
