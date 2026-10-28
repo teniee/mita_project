@@ -35,10 +35,48 @@ MCP 2.2.0 (24 tools, the financial calendar component, sign-in page v4):
 | Item | Status |
 |---|---|
 | S-9 refresh the MITA staging app in ChatGPT developer mode (the tool list gains `get_calendar_month` and `show_financial_calendar`; no new scope, no reconnect needed unless ChatGPT asks) | OWNER REQUIRED — `calendar-owner-test.md` step A |
-| S-10 review the sign-in page v4 and the calendar in real ChatGPT (phone and desktop; fullscreen; Save as PNG) | OWNER REQUIRED — `calendar-owner-test.md` |
+| S-10 review the sign-in page v4 and the calendar in real ChatGPT (phone and desktop; fullscreen; Save as PNG) | SUPERSEDED by S-11/S-12 (staging still runs 2.2.0) |
+
+MCP 2.3.0 (R3, the final connect page, the 2026-10-27 compliance fixes):
+
+| Item | Status |
+|---|---|
+| S-11 approve the 2.3.0 changes for commit, push and staging; then Claude sets `MCP_WIDGET_DOMAIN` on staging and re-pins the source (`openai-compliance-2026-10-27.md` → "Staging deployment plan") | OWNER DECISION — next action |
+| S-12 real-ChatGPT acceptance on the phone and the computer | OWNER REQUIRED — `calendar-owner-test.md` (19 steps), after S-11 |
 
 Staging acceptance (v2) is closed; production is untouched. Keep staging
 running until production is live; teardown is in staging.md.
+
+## Added by the 2026-10-27 compliance audit (`openai-compliance-2026-10-27.md`)
+
+**O-12b Data residency of the OpenAI project.** "Projects with EU data
+residency cannot submit plugins with MCP servers." Submit from a project with
+global data residency (create one in the same organization if needed).
+
+**O-19 Usage policies — DONE (owner, 2026-10-28).** The owner verified the
+official page (https://openai.com/policies/usage-policies/): update dated
+2026-10-21, effective 2026-11-20, the previous policy in effect until then;
+new rules relevant to MITA: no tools giving tailored advice that requires a
+professional licence without a licensed professional, no automation of
+high-stakes actions in financial activities, credit or insurance without
+human review, stronger protections for children and teens. Result: PASS for
+MITA's current scope (`openai-compliance-2026-10-27.md` → A5). Re-check before
+adding any investment, credit, insurance, tax or legal guidance or any
+automated action on money. The age decision stays O-9c.
+
+**O-20 Countries.** "Only submit the plugin if you intend for it to be
+publicly available in the countries you define." Decide the list (or none)
+for `publication.countries`.
+
+**O-17 additions.** (d) A ChatGPT-created account can only be deleted in the
+MITA app, which is not released: until it is, the privacy policy and the
+support page must offer deletion on request through support. (e) Without
+consent MITA still counts tool calls linked to nobody: disclose that in the
+policy, or tell Claude to turn it off (one line in `analytics.py`).
+
+**O-21 (optional) Listing icons.** The four package icons are a hand-drawn
+approximation of the logomark; the Figma master (used on the sign-in page)
+would match the brand rules. Your call.
 
 ## Step 1 — Rotate historically exposed credentials
 
@@ -166,7 +204,12 @@ in the app enforces an age today.
    unchanged (rotating it splits every user's usage history).
    `MCP_WIDGET_DOMAIN`: the dedicated origin OpenAI requires for an app
    with UI (`_meta.ui.domain` on the calendar component; unique to MITA —
-   e.g. `https://mcp.mitafinance.com`, as OpenAI's submission form asks).
+   e.g. `https://mcp.mitafinance.com`). The service refuses to start in
+   production without it (since 2026-10-27).
+   Source: after publication OpenAI's directory talks to this service
+   directly and every deploy is live at once (tool metadata changes wait for
+   OpenAI's automated checks). Pin the source to reviewed commits, or turn on
+   "Wait for CI", rather than following `main` blindly.
    `DATABASE_URL`: use the least-privilege role — after Step 7, run
    `scripts/mcp/mcp_service_role.sql` as the database owner in
    `mita-production-db` (not Supabase; command in deployment.md) and build
@@ -262,7 +305,8 @@ prints exactly the token.
 ## Step 11 — Demo video
 
 **O-14** Record `review/demo-script.md` against production with the review
-account; upload unlisted.
+account, on the web and on a phone ("across supported platforms"); upload
+unlisted.
 
 ## Step 12 — Release package
 
@@ -271,15 +315,18 @@ account; upload unlisted.
 MCP_PUBLIC_URL=https://mcp.mitafinance.com WEBSITE_URL=https://mitafinance.com \
 SUPPORT_URL=https://mitafinance.com/support PRIVACY_URL=https://mitafinance.com/privacy \
 TERMS_URL=https://mitafinance.com/terms SUPPORT_EMAIL=<working address> \
-DEVELOPER_NAME="<verified org name>" CATEGORY="<dashboard category, e.g. Finance>" \
+DEVELOPER_NAME="<verified org name>" CATEGORY=Finance \
 DEMO_RECORDING_URL=<video URL> python scripts/mcp/build_plugin.py --release
 ```
 
 ## Step 13 — Submit
 
-**O-15b** Upload `dist/plugin/mita-finance-2.0.0.zip`; enter the review
-credentials in **Review details**; resolve automated findings; attest;
-submit.
+**O-15b** Upload `dist/plugin/mita-finance-2.3.0.zip` (Plugins → Upload,
+choosing the verified developer identity); connect the MCP server (the portal
+reads OAuth/DCR from `mcp.json`), complete domain verification and the tool
+scan; enter the review credentials in **Review details**; if the portal asks
+for annotation justifications, paste `review/annotation-justifications.md`;
+resolve automated findings; attest; submit.
 
 ## Optional
 

@@ -1,6 +1,24 @@
-# Handoff — MITA in ChatGPT (MCP), 2026-10-26
+# Handoff — MITA in ChatGPT (MCP), 2026-10-27
 
-## Current phase: R3 finished locally + publication-readiness audit (2026-10-26)
+## Current phase: OpenAI publication-compliance audit (2026-10-27)
+
+Committed on 2026-10-28 as four commits on top of `1ffa2b6` (profile and
+feedback contracts; plugin 2.3.0 and validator; widget-domain guard and
+startup logging; these docs) and pushed to `feat/chatgpt-auth-ui`. Staging is
+NOT deployed (still `dbdc118`); `main` (`27ed25d`), production and PR #287
+untouched.
+
+| Item | State |
+|---|---|
+| Matrix | `openai-compliance-2026-10-27.md`: every requirement re-read from OpenAI's current pages (sources S1–S15), status, evidence, action, priority. 75 applicable OpenAI requirements: 51 met (6 fixed), 2 met in code awaiting production values, 20 owner actions, 2 need real ChatGPT. Usage Policies (previous version in force until 2026-11-19; the 2026-10-21 update from 2026-11-20): PASS for MITA's current scope on the owner's verification of the official page (2026-10-28) — no licensed advice, no automated high-stakes financial action; this environment cannot fetch the page (HTTP 403) and no third-party summary is used |
+| Fixed (compliance) | `get_profile` = OpenAI's strict profile schema (it returned currency/timezone/onboarding and `name: null`; "an invalid response can prevent account connection"); `submit_feedback` destructive; `mcp.json` declares OAuth/DCR (the portal reads auth from it); plugin 2.3.0 with new release notes, the calendar as review case 3, expected refusals on the negatives; no "MITA app" promise while the app is "coming soon"; validator enforces the current submission-error rules; production refuses to start without `MCP_WIDGET_DOMAIN` |
+| Fixed (found while verifying) | every start logged one plain-text line with the sign-in example's fictional amounts (since `74ea5cf`); logging is now taken over before the domain import |
+| Outdated notes corrected | screenshots optional (no longer shown); annotation justifications contradictory in OpenAI's docs (texts prepared: `review/annotation-justifications.md`); auth in `mcp.json`; one directory with Codex; API audit 130 advisories, not 200; new: EU data-residency projects cannot submit; usage policies effective 2026-11-20 |
+| Tests (local) | full MCP suite 652 passed (627 before; 25 new); `build_plugin.py --check` valid; `e2e_http.py` against a local server (fresh DB at 0039): all PASS incl. restart and log checks; black/isort/ruff (both CI toolchains) and Bandit clean. No backend or mobile file changed |
+| Owner acceptance | `calendar-owner-test.md` rewritten for 2.3.0 and today's ChatGPT flow (19 steps, results blank) — needs staging 2.3.0 first |
+| Next | CI green on the pushed head → owner's go → staging 2.3.0 with `MCP_WIDGET_DOMAIN` (plan in the matrix doc) → real-ChatGPT run; owner-only P0s can start now (verification, global-residency project, domain + HTTPS + legal pages, age, retention/deletion text) |
+
+## Previous phase: R3 finished locally + publication-readiness audit (2026-10-26)
 
 Nothing committed, pushed or deployed; production, `main` and PR #287 untouched.
 

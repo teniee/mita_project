@@ -12,6 +12,22 @@ deployment `87d26668`, CI run `39155447750` (§9); real ChatGPT §8 and §11.
 **Staging acceptance closed 2026-10-19.** Every production row below is
 unchanged.
 
+## 2026-10-27 compliance audit (local; nothing deployed)
+
+Full matrix with sources: `../openai-compliance-2026-10-27.md` (75
+applicable OpenAI requirements: 51 met — 6 fixed; Usage Policies pass on
+the owner's check of the official page —, 2 met in code waiting for
+production values, 20 owner actions, 2 need real ChatGPT; plus the staging
+deploy). Corrections to the 2026-10-26 table below:
+
+| Row (2026-10-26) | Now |
+|---|---|
+| 5 positive + 3 negative "(OpenAI: exactly)" | still exactly; the calendar is now positive case 3 and every negative states its expected refusal (FIXED) |
+| `_meta.ui.domain` — OWNER REQUIRED | still owner (values); production now refuses to start without it |
+| API dependency advisories "200 in 9 packages" | 130 in the same 9 (`pip-audit --no-deps`); not an OpenAI gate; separate upgrade PR before the merge |
+| Demo video, reviewer account, verification, domain verification | still owner; video must cover web **and** phone; also O-12b (global data-residency project), O-19 (usage policies effective 2026-11-20), O-20 (countries) |
+| — | NEW, FIXED: `get_profile` now matches OpenAI's profile schema; `mcp.json` declares OAuth/DCR; `submit_feedback` is destructive; listing 2.3.0 without the "MITA app" promise; a startup log line with (fictional) amounts removed |
+
 ## 2026-10-26 update (local; nothing deployed)
 
 | Requirement | Status | Evidence | Remaining |

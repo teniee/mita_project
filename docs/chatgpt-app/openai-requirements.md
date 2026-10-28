@@ -1,5 +1,9 @@
 # OpenAI requirements for publishing MITA as a ChatGPT plugin (checked 2026-10-02)
 
+> **Superseded** by `openai-compliance-2026-10-27.md`, which re-reads the
+> current OpenAI documents. Kept for history; several rows below are outdated
+> (screenshots, profile schema, auth in `mcp.json`, annotation justifications).
+
 Sources (official only, fetched 2026-10-02):
 
 * Upload and submit your plugin — https://developers.openai.com/plugins/deploy/submission

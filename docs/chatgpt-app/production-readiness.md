@@ -18,6 +18,19 @@ under the same step numbers.
 **B** = owner action (credentials, DNS, legal, billing, verification or
 production access).
 
+## State on 2026-10-27 (read-only re-check + compliance audit; supersedes below)
+
+Requirements and their status: `openai-compliance-2026-10-27.md` (current
+OpenAI documents re-read; the requirement notes below are partly outdated).
+
+| Fact | Evidence |
+|---|---|
+| Production unchanged: `mita-production` on `3aa52b7` (deployment `d4c2547c`, 2026-09-29), source `main`, `checkSuites: false`, `bash start.sh`, **no healthcheck**; no MCP service; `mita-production-db` TCP proxy **ACTIVE** | Railway, read-only |
+| Staging unchanged: `dbdc118` (2.2.0), no `MCP_WIDGET_DOMAIN` | Railway; `/health` |
+| `mitafinance.com`: HTTPS still fails (TLS alert); no `www` / `mcp.` DNS; `/privacy`, `/terms`, `/support` = the landing page over HTTP | `curl`, `dig` |
+| API image: **130** advisories in the same 9 directly pinned packages (not 200); MCP lock: 0 | `pip-audit --no-deps` |
+| New since 2026-10-26 in OpenAI's docs or found against them: the profile tool's strict schema (fixed), auth declared in `mcp.json` (fixed), `submit_feedback` destructive (fixed), EU data-residency projects cannot submit (O-12b), usage policies effective 2026-11-20 (O-19), one directory with Codex, screenshots optional | compliance doc |
+
 ## State on 2026-10-26 (read-only re-check; supersedes the facts below where they differ)
 
 | Fact | Evidence |

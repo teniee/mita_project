@@ -47,7 +47,7 @@ From `app/mcp/config.py`, `app/mcp/__main__.py` and `app/core/config.py`.
 | `MCP_TOOL_CALLS_PER_MINUTE` / `MCP_LOGIN_ATTEMPTS_PER_MINUTE` / `MCP_OAUTH_REQUESTS_PER_MINUTE` / `MCP_REGISTRATIONS_PER_HOUR` | no (60 / 10 / 30 / 5) | per-replica rate limits (sign-ups per IP per hour) | literal | no |
 | `MCP_TRUSTED_PROXY_HOPS` | no (1) | `X-Forwarded-For` hops (Railway = 1) | literal | no |
 | `MCP_SUPPORT_URL` | no | link on the consent page | literal | no |
-| `MCP_WIDGET_DOMAIN` | no; required at submission | https origin (no path) for the calendar component's `_meta.ui.domain`; unset = the host's shared sandbox origin | the dedicated origin OpenAI asks for | no |
+| `MCP_WIDGET_DOMAIN` | production: yes (startup refuses without it, since 2026-10-27); staging: set it for the real-ChatGPT acceptance | https origin (no path; a trailing `/` is dropped) for the calendar component's `_meta.ui.domain`; unset = the host's shared sandbox origin | the service's own origin (staging: `https://mita-mcp-staging-staging.up.railway.app`) | no |
 | `OPENAI_APPS_CHALLENGE_TOKEN` | for OpenAI domain verification only | body of `/.well-known/openai-apps-challenge` | OpenAI dashboard | no |
 | `PORT` | no (8080) | listen port (domain targets 8080) | literal | no |
 | `LOG_LEVEL`, `FORWARDED_ALLOW_IPS` | no | logging / uvicorn proxy headers | literal | no |
@@ -61,6 +61,15 @@ secrets were generated fresh for staging with `generate_keys.py --out` and
 pushed with the Railway CLI (`--stdin`; the two v2 secrets on 2026-10-13);
 the local copies were deleted. No production value was used. All of them
 were rotated on 2026-10-23 after Railway's security incident (below).
+
+## Next deployment: MCP 2.3.0 (planned 2026-10-27, not executed)
+
+Exact plan and checks: `openai-compliance-2026-10-27.md` → "Staging
+deployment plan". In short: after the owner's approval, commit and push, and
+a green CI on that SHA, set `MCP_WIDGET_DOMAIN=https://mita-mcp-staging-staging.up.railway.app`
+with `--skip-deploys`, then connect the source again with the new
+`commitSha`. No migration (head stays `0039`), no new grant, no other
+variable. Rollback: re-pin `dbdc118`.
 
 ## Credential rotation (done 2026-10-23, after Railway's security incident)
 

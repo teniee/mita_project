@@ -1273,7 +1273,10 @@ Rules:
   for `opentelemetry-api` 1.45.1 on 2026-10-23 and `dnspython` 2.9.0 on
   2026-10-27), else regenerate with
   `scripts/mcp/lock_deps.sh`; then redeploy staging so it runs the fix.
-- **Owner-gated items** live in `docs/chatgpt-app/OWNER_ACTIONS.md`; readiness
+- **Owner-gated items** live in `docs/chatgpt-app/OWNER_ACTIONS.md`; the
+  current OpenAI requirement matrix (official sources, re-read 2026-10-27) in
+  `docs/chatgpt-app/openai-compliance-2026-10-27.md` — re-check OpenAI's
+  pages rather than trusting older notes; readiness
   table in `docs/chatgpt-app/review/submission-checklist.md`; pre-existing API
   defects found along the way in `docs/chatgpt-app/backend-findings.md`
   (second goal → 500, plan vs transaction category names).
@@ -1334,6 +1337,17 @@ Rules:
   and nothing tells ChatGPT what to do outside MITA. Real ChatGPT still offered
   to "prepare" a transfer through the user's bank after refusing — that is
   ChatGPT's own help, not a MITA capability; never answer it with a transfer tool.
+- **Budgeting arithmetic, never licensed advice or automated money actions.**
+  OpenAI's Usage Policies (update dated 2026-10-21, effective 2026-11-20,
+  owner-verified on the official page 2026-10-28) forbid tools that give
+  tailored advice requiring a professional licence without a licensed
+  professional, and automating high-stakes actions in financial activities,
+  credit or insurance without human review. MITA passes because it does
+  neither (`docs/chatgpt-app/openai-compliance-2026-10-27.md` → A5): figures
+  are arithmetic from the user's own records, writes are the user's requests
+  (destructive ones approved), rent/loans/insurance are only budget lines.
+  Adding investment, credit, insurance, tax or legal guidance, or any
+  automated action on money, needs a new usage-policy check first.
 - **`get_financial_summary.top_categories` is the top three only.** The rest
   of `spent_total` is named only by `get_spending_breakdown`. `other` is a real
   MITA category (`app/config/category_config.py`), so ChatGPT relabelling an
