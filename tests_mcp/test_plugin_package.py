@@ -45,6 +45,59 @@ def test_listing_states_mita_cannot_move_money():
     )
 
 
+def test_mcp_json_declares_oauth_with_dynamic_client_registration():
+    """The portal reads the server's authentication from mcp.json
+    (developers.openai.com/plugins/deploy/submission, "Configure
+    authentication for submission"); MITA's authorization server offers DCR."""
+    _, mcp = _docs()
+    server = mcp["mcpServers"]["mita-finance"]
+    assert server["extensions"]["com.openai"]["auth"] == {
+        "type": "oauth",
+        "client": {"mode": "dcr"},
+    }
+
+
+def test_listing_makes_no_promise_about_the_unreleased_app():
+    """mitafinance.com says the MITA app is "Coming soon": the listing, the
+    onboarding skill and the tool descriptions must not promise ChatGPT users
+    their records "in the MITA app". Change this when the app is in the stores."""
+    from app.mcp.tools.transactions import ADD_DESCRIPTION
+
+    plugin, _ = _docs()
+    ui = plugin["extensions"]["com.openai"]["interface"]
+    skill = (build_plugin.PLUGIN_DIR / "skills/setup/SKILL.md").read_text()
+    for where, text in (
+        ("longDescription", ui["longDescription"]),
+        (
+            "release_notes",
+            plugin["extensions"]["com.openai"]["publication"]["release_notes"],
+        ),
+        ("setup skill", skill),
+        ("add_transaction", ADD_DESCRIPTION),
+    ):
+        assert "MITA app" not in text.replace("\n", " "), where
+
+
+def test_review_cases_cover_the_ui_component():
+    """The calendar is the only UI component; review checks UI errors, so a
+    positive case exercises it with the calendar starter prompt."""
+    plugin, _ = _docs()
+    positive = plugin["extensions"]["com.openai"]["review"]["test_cases"]["positive"]
+    calendar = [
+        c for c in positive if c["tools_triggered"] == "show_financial_calendar"
+    ]
+    assert len(calendar) == 1
+    prompts = plugin["extensions"]["com.openai"]["interface"]["defaultPrompt"]
+    assert calendar[0]["prompt"] in prompts
+
+
+def test_release_notes_describe_the_package_version():
+    """OpenAI: release notes summarize the package version being submitted."""
+    plugin, _ = _docs()
+    notes = plugin["extensions"]["com.openai"]["publication"]["release_notes"]
+    assert notes.startswith(plugin["version"] + " ")
+
+
 def test_test_cases_reference_only_published_tools():
     from app.mcp.tools import PUBLISHED_TOOLS
 
@@ -121,6 +174,90 @@ def test_test_cases_reference_only_published_tools():
                 onboardingSkill="./skills/missing/SKILL.md"
             ),
             "onboardingSkill",
+        ),
+        # Current submission rules (developers.openai.com, 2026-10-27).
+        (lambda p, m: p.update(description="d" * 1025), "1..1024"),
+        (
+            lambda p, m: p["extensions"]["com.openai"]["interface"].update(
+                category="Budgeting"
+            ),
+            "category",
+        ),
+        (
+            lambda p, m: p["extensions"]["com.openai"]["interface"].update(
+                brandColor="#FFF0F0"
+            ),
+            "contrast",
+        ),
+        (
+            lambda p, m: p["extensions"]["com.openai"]["interface"].update(
+                brandColorDark="#303030"
+            ),
+            "contrast",
+        ),
+        (
+            lambda p, m: p["extensions"]["com.openai"]["interface"].update(
+                shortDescription="Budget,\nexpenses"
+            ),
+            "single line",
+        ),
+        (
+            lambda p, m: p["extensions"]["com.openai"]["interface"].update(
+                defaultPrompt=["Record an expense.", "Record  an expense."]
+            ),
+            "unique",
+        ),
+        (
+            lambda p, m: p["extensions"]["com.openai"]["publication"].update(
+                release_notes=" "
+            ),
+            "release_notes",
+        ),
+        (
+            lambda p, m: p["extensions"]["com.openai"]["review"].pop(
+                "demo_recording_url"
+            ),
+            "demo_recording_url",
+        ),
+        (
+            lambda p, m: p["extensions"]["com.openai"]["review"].update(
+                test_credentials={"username": "x"}
+            ),
+            "test_credentials",
+        ),
+        (
+            lambda p, m: p["extensions"]["com.openai"]["review"]["test_cases"][
+                "negative"
+            ][0].pop("expected_behavior"),
+            "negative case missing expected_behavior",
+        ),
+        (
+            lambda p, m: p["extensions"]["com.openai"]["interface"].update(
+                screenshots=["./assets/icon.svg"]
+            ),
+            "one per starter prompt",
+        ),
+        (
+            lambda p, m: m["mcpServers"]["mita-finance"].pop("extensions"),
+            "auth",
+        ),
+        (
+            lambda p, m: m["mcpServers"]["mita-finance"]["extensions"]["com.openai"][
+                "auth"
+            ].update(type="none"),
+            "oauth",
+        ),
+        (
+            lambda p, m: m["mcpServers"]["mita-finance"]["extensions"]["com.openai"][
+                "auth"
+            ]["client"].update(clientId="mita"),
+            "no client id",
+        ),
+        (
+            lambda p, m: m["mcpServers"]["mita-finance"].update(
+                headers={"Authorization": "Bearer x"}
+            ),
+            "headers",
         ),
     ],
 )

@@ -111,7 +111,7 @@ BREAKDOWN_DESCRIPTION = (
 ADD_DESCRIPTION = (
     "Record ONE expense the user made, e.g. 'Spent €36.80 at Lidl on groceries "
     "today'. Saves it in the user's MITA account (it is part of every future "
-    "conversation and the MITA app) and updates this month's budget plan. Use the "
+    "conversation) and updates this month's budget plan. Use the "
     "amount exactly as stated, in the user's MITA currency. If the amount or the "
     "category is unclear, ask before recording; never invent a merchant. For "
     "several expenses at once use add_transactions. For an expense read from a "

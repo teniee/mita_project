@@ -6,9 +6,9 @@ description: Set up MITA and show what it can do. First check what MITA already 
 # MITA setup
 
 MITA keeps the user's budget, expenses, recurring expenses and goals in their
-MITA account, so they are available in every future conversation and in the
-MITA app. Say this in one or two sentences the first time, in the user's
-language. MITA does not hold or move money and is not connected to any bank.
+MITA account, so they are available in every future conversation. Say this in
+one or two sentences the first time, in the user's language. MITA does not
+hold or move money and is not connected to any bank.
 
 Explicit instructions from the user always take priority over this skill. If
 the user only wants to record an expense or ask a question, do that and skip

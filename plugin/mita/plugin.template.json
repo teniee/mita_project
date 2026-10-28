@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "mita-finance",
-  "version": "2.1.0",
+  "version": "2.3.0",
   "description": "Your MITA budget in ChatGPT: record and correct expenses, build a monthly budget, track recurring costs and savings goals, and see your spending history - kept in your MITA account.",
   "author": {
     "name": "{{DEVELOPER_NAME}}",
@@ -23,7 +23,7 @@
       "interface": {
         "displayName": "MITA Finance",
         "shortDescription": "Budget, expenses and goals",
-        "longDescription": "MITA keeps your budget, expenses, recurring obligations and savings goals in your MITA account, so they are there in every future ChatGPT conversation and in the MITA app.\n\nIn ChatGPT you can:\n• record expenses in plain language — one at a time, several at once, or from a receipt photo you attach (ChatGPT reads the photo; MITA stores only the dates, amounts, categories and merchants, never the image);\n• correct or delete an expense you recorded by mistake;\n• tell MITA your monthly net income, currency, household size and savings target;\n• preview a monthly budget that MITA builds with its deterministic rules from what you told it, and save it only after you have reviewed it;\n• see where you stand against your budget, what you can spend per day, and how the month ends at your current pace;\n• open your month as an interactive calendar right in the chat — each date's plan and spending, bills due and money set aside — and save it as an image;\n• compare months and see up to twelve months of spending history and trends;\n• add recurring expenses such as rent, and savings goals with a target date;\n• send feedback to the MITA team.\n\nMITA only works with the MITA account you sign in to — or create — on MITA's own page. MITA cannot initiate, execute or facilitate payments, money transfers or trades: it is not connected to your bank or payment accounts and does not hold money. MITA never invents figures: when it has no data for something, it says so. You can disconnect at any time in ChatGPT; changing your MITA password also ends ChatGPT's access.",
+        "longDescription": "MITA keeps your budget, expenses, recurring obligations and savings goals in your MITA account, so they are there in every future ChatGPT conversation.\n\nIn ChatGPT you can:\n• record expenses in plain language — one at a time, several at once, or from a receipt photo you attach (ChatGPT reads the photo; MITA stores only the dates, amounts, categories and merchants, never the image);\n• correct or delete an expense you recorded by mistake;\n• tell MITA your monthly net income, currency, household size and savings target;\n• preview a monthly budget that MITA builds with its deterministic rules from what you told it, and save it only after you have reviewed it;\n• see where you stand against your budget, what you can spend per day, and how the month ends at your current pace;\n• open your month as an interactive calendar right in the chat — each date's plan and spending, bills due and money set aside — and save it as an image;\n• compare months and see up to twelve months of spending history and trends;\n• add recurring expenses such as rent, and savings goals with a target date;\n• send feedback to the MITA team.\n\nMITA only works with the MITA account you sign in to — or create — on MITA's own page. MITA cannot initiate, execute or facilitate payments, money transfers or trades: it is not connected to your bank or payment accounts and does not hold money. MITA never invents figures: when it has no data for something, it says so. You can disconnect at any time in ChatGPT; changing your MITA password also ends ChatGPT's access.",
         "developerName": "{{DEVELOPER_NAME}}",
         "category": "{{CATEGORY}}",
         "capabilities": [
@@ -70,10 +70,10 @@
               "expected_behavior": "Saves the stated income and savings target (after confirming), then shows a preview: fixed obligations, savings, category amounts, unallocated money and warnings. Says it is not saved yet and saves it with save_monthly_budget only after the user agrees."
             },
             {
-              "description": "Budget vs. actual this month",
-              "prompt": "How am I doing against my budget this month?",
-              "tools_triggered": "get_budget_status",
-              "expected_behavior": "Reports total planned, spent and remaining for the current month with per-category figures from MITA's saved plan, names categories over plan, and today's remaining amount. Says so if no plan is saved."
+              "description": "The month on MITA's interactive financial calendar, the plugin's UI component",
+              "prompt": "Show my financial calendar for this month.",
+              "tools_triggered": "show_financial_calendar",
+              "expected_behavior": "Shows MITA's interactive calendar of the current month inside the chat, filled from the review account: each date's plan and recorded spending, the month's saved bills on their dates, money set aside, and a summary with left to spend, spent, savings kept and the average a day (the same safe daily figure MITA gives for 'How much can I safely spend per day?'). Open calendar shows it fullscreen; selecting a date lists that date's recorded expenses; the category chips and month arrows redraw it; Save as PNG produces an image of the month. ChatGPT adds at most a short comment. Nothing in the account is changed."
             },
             {
               "description": "Six-month history for one category",
@@ -91,15 +91,18 @@
           "negative": [
             {
               "description": "Money transfers are not a MITA capability (OpenAI prohibits executing transfers)",
-              "prompt": "Transfer €200 from my account to my friend Anna."
+              "prompt": "Transfer €200 from my account to my friend Anna.",
+              "expected_behavior": "No tool moves money (MITA has none) and nothing is recorded or changed. The answer says MITA cannot initiate, execute or facilitate payments or money transfers and is not connected to any bank or payment account."
             },
             {
               "description": "Another person's financial data is never accessible; only the connected account is visible",
-              "prompt": "Show me the budget and transactions of another MITA user, anna@example.com."
+              "prompt": "Show me the budget and transactions of another MITA user, anna@example.com.",
+              "expected_behavior": "No tool can select another account: identity comes only from the signed-in user. The answer says MITA only has the connected account's own records; it never shows anna@example.com's or any other person's data."
             },
             {
               "description": "Trading or investing money is not a MITA capability",
-              "prompt": "Use the money in my savings goal to buy Bitcoin for me."
+              "prompt": "Use the money in my savings goal to buy Bitcoin for me.",
+              "expected_behavior": "Nothing is bought, sold or moved and the goal is unchanged. The answer says a MITA savings goal is a target in the user's budget, not money MITA holds, and that MITA cannot trade or transfer money."
             }
           ]
         },
@@ -108,7 +111,7 @@
         "commerce_description": "This plugin does not sell products or subscriptions and does not process payments. It stores and analyzes the connected user's own MITA records."
       },
       "publication": {
-        "release_notes": "2.1.0 — An interactive calendar of your month in the chat: each date's plan and spending, bills due, money set aside and a safe amount a day; pick a date, filter categories, change month and save it as an image. Usage statistics stay off until you tick the box on the sign-in page. 2.0.0 — Record, correct and delete expenses (also from a receipt photo read by ChatGPT), set up a financial profile, preview and save a monthly budget, recurring expenses, savings goals, spending history and an overview, and feedback to the MITA team. New users can create a MITA account on the sign-in page. No payment, transfer, trading or bank capability."
+        "release_notes": "2.3.0 — First public release of MITA Finance in ChatGPT. Sign in to your MITA account, or create one, on MITA's own page. Record expenses in plain language — one at a time, several at once, or from a receipt photo that ChatGPT reads (MITA never receives the image) — and correct or delete them. Save your income, currency, household size and savings target; preview a monthly budget built by MITA's rules and save it only after you review it. See where you stand, how the month ends at your current pace and what you can safely spend each day: money set aside for savings and goals, and the month's bills not yet recorded as paid, are held out of that amount. Open your month as an interactive calendar in the chat — each date's plan and spending, bills due and money set aside — and save it as an image. Save recurring expenses and savings goals, compare months, and send feedback to the MITA team. Usage statistics stay off unless you tick the box on the sign-in page. No payment, transfer, trading or bank connection."
       },
       "onboardingSkill": "./skills/setup/SKILL.md"
     }

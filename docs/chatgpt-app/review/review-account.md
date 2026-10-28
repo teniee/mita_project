@@ -28,7 +28,7 @@ ChatGPT tools) create equivalent data on local or staging for rehearsal.
 * No Premium needed: goals are free in ChatGPT. (The app's own goal screen
   still requires Premium — create the goal in ChatGPT.)
 
-## Data to enter (ChatGPT developer mode, production MCP, current month)
+## Data to enter (ChatGPT, custom connection to the production MCP, current month)
 
 Enter it in one conversation, confirming each write when ChatGPT asks:
 
@@ -62,6 +62,10 @@ Expected: `get_financial_summary` → spent 509.69 EUR, 12 transactions, stated
 income 4200.00, plan saved; `list_transactions` total 509.69;
 `get_recurring_expenses` → rent and StreamFlix monthly, insurance one-time;
 `get_goals` → Emergency fund 900/3000.
+
+With this data the review's calendar case (positive case 3) shows a filled
+month: rent and StreamFlix on their dates, the budget lines, the expenses on
+their days, and the savings set aside.
 
 ## Keep it current
 

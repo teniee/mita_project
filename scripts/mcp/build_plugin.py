@@ -12,25 +12,35 @@
     CATEGORY=Finance DEMO_RECORDING_URL=https://... \\
     python scripts/mcp/build_plugin.py --release
 
-Rules checked (developers.openai.com/plugins/deploy/submission, 2026-10-02):
-Agent Plugins schemas (vendored in plugin/schemas), display name and short
-description <= 30 chars, long description <= 4000, developer name <= 80,
-<= 20 capabilities of <= 120 chars, <= 3 unique starter prompts of <= 128
-chars without @mentions, skills/<name>/SKILL.md with name + description and
-onboardingSkill pointing at one of them, exactly 5
-positive test cases with tools_triggered + expected_behavior and exactly 3
-negative ones, every triggered tool exists, icons square >= 48 px and <= 5
-MiB, no app references or hooks (not yet submittable), HTTPS URLs.
+Rules checked (developers.openai.com/plugins/deploy/submission and
+/plugins/deploy/submission-errors, re-checked 2026-10-27):
+Agent Plugins schemas (vendored in plugin/schemas), package description
+<= 1024 chars, display name and short description <= 30 chars on one line,
+long description <= 4000, developer name <= 80, a dashboard category, <= 20
+one-line capabilities of <= 120 chars, <= 3 unique one-line starter prompts
+of <= 128 chars without @mentions, brand colours with >= 2:1 contrast (white
+/ #212121), skills/<name>/SKILL.md with name + description (plugin:skill <=
+64 chars) and onboardingSkill pointing at one of them, exactly 5 positive
+test cases with tools_triggered + expected_behavior and exactly 3 negative
+ones, every triggered tool exists, release notes and a demo recording URL,
+no reviewer credentials or instructions in the package, icons square >= 48
+px and <= 5 MiB, screenshots (optional) one per starter prompt at 706 px x
+400-860 px, no app references or hooks (not yet submittable), HTTPS URLs of
+<= 1024 chars, and mcp.json declaring OAuth with dynamic client
+registration under extensions["com.openai"].auth (the portal reads the
+server's authentication from it; a protected server must not say "none").
 """
 
 from __future__ import annotations
 
 import argparse
 import ast
+import copy
 import json
 import os
 import re
 import sys
+import unicodedata
 import zipfile
 from pathlib import Path
 from typing import Dict, List
@@ -77,6 +87,29 @@ CHECK_VALUES = {
 FORBIDDEN_HOSTS = re.compile(r"(^|\.)(example\.(invalid|com|org|test)|mita\.finance)$")
 
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
+MAX_LISTING_URL = 1024
+# The dashboard's categories (submission-errors: plugin_category_unknown).
+CATEGORIES = (
+    "Productivity",
+    "Creativity",
+    "Developer Tools",
+    "Business & Operations",
+    "Data & Analytics",
+    "Communication",
+    "Education & Research",
+    "Security",
+    "Finance",
+    "Healthcare",
+    "Travel",
+    "Entertainment",
+    "Other",
+)
+# Starter-prompt screenshots, when supplied (submission-errors).
+SCREENSHOT_WIDTH = 706
+SCREENSHOT_HEIGHTS = (400, 860)
+# Never in a package: reviewer access goes into the dashboard's form.
+FORBIDDEN_REVIEW_KEYS = ("test_credentials", "reviewer_instructions")
+HEX_COLOUR = re.compile(r"^#[0-9A-Fa-f]{6}$")
 
 
 class PluginError(Exception):
@@ -182,6 +215,94 @@ def check_image(path: Path, *, square: bool) -> None:
         raise PluginError(f"{path.name}: raster images must be at most 4096 px")
 
 
+def _jpeg_size(data: bytes) -> tuple[int, int]:
+    """Width and height from a JPEG's first start-of-frame marker."""
+    i = 2
+    while i + 9 < len(data):
+        if data[i] != 0xFF:
+            i += 1
+            continue
+        marker = data[i + 1]
+        if marker in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB):
+            height = int.from_bytes(data[i + 5 : i + 7], "big")
+            width = int.from_bytes(data[i + 7 : i + 9], "big")
+            return width, height
+        i += 2 + int.from_bytes(data[i + 2 : i + 4], "big")
+    raise PluginError("JPEG without a readable size")
+
+
+def check_screenshots(ui: dict) -> None:
+    """Optional, and shown only with UI: one PNG/JPEG per starter prompt,
+    exactly 706 px wide and 400-860 px tall (submission-errors)."""
+    shots = ui.get("screenshots") or []
+    if not shots:
+        return
+    if len(shots) != len(ui.get("defaultPrompt") or []):
+        raise PluginError("screenshots: provide exactly one per starter prompt")
+    for shot in shots:
+        path = PLUGIN_DIR / shot
+        check_image(path, square=False)
+        data = path.read_bytes()
+        if path.suffix.lower() == ".png":
+            width = int.from_bytes(data[16:20], "big")
+            height = int.from_bytes(data[20:24], "big")
+        elif path.suffix.lower() in (".jpg", ".jpeg"):
+            width, height = _jpeg_size(data)
+        else:
+            raise PluginError(f"{path.name}: screenshots must be PNG or JPEG")
+        low, high = SCREENSHOT_HEIGHTS
+        if width != SCREENSHOT_WIDTH or not low <= height <= high:
+            raise PluginError(
+                f"{path.name}: screenshots must be {SCREENSHOT_WIDTH} px wide and "
+                f"{low}-{high} px tall"
+            )
+
+
+def _relative_luminance(colour: str) -> float:
+    def channel(value: int) -> float:
+        c = value / 255
+        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+
+    r, g, b = (int(colour[i : i + 2], 16) for i in (1, 3, 5))
+    return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
+
+
+def contrast(a: str, b: str) -> float:
+    high, low = sorted((_relative_luminance(a), _relative_luminance(b)), reverse=True)
+    return (high + 0.05) / (low + 0.05)
+
+
+def _one_line(value: str) -> bool:
+    """Non-empty, more than whitespace, no line breaks or control characters."""
+    return bool(value.strip()) and not any(
+        unicodedata.category(ch) in ("Cc", "Zl", "Zp") for ch in value
+    )
+
+
+def _prompt_key(prompt: str) -> str:
+    return " ".join(unicodedata.normalize("NFKC", prompt).split()).casefold()
+
+
+def check_server_extension(server: dict) -> None:
+    """``extensions["com.openai"].auth`` on the MCP server: OAuth with dynamic
+    client registration, which is what MITA's authorization server offers
+    (developers.openai.com/plugins/build/plugins, "Configure MCP
+    authentication"). No client id or secret in a DCR declaration, and no
+    fixed headers (public submission rejects non-empty server headers)."""
+    if server.get("headers"):
+        raise PluginError("the MCP server must not declare headers")
+    auth = server.get("extensions", {}).get("com.openai", {}).get("auth")
+    if not isinstance(auth, dict) or auth.get("type") != "oauth":
+        raise PluginError(
+            'mcp.json must declare extensions["com.openai"].auth with type "oauth"'
+        )
+    client = auth.get("client")
+    if not isinstance(client, dict) or client.get("mode") != "dcr":
+        raise PluginError('mcp.json auth.client.mode must be "dcr"')
+    if set(client) != {"mode"} or "clientSecret" in json.dumps(auth):
+        raise PluginError("a DCR client declares no client id or credentials")
+
+
 SKILL_NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 
@@ -233,13 +354,24 @@ def check_skills(ext: dict) -> List[Path]:
 def validate(plugin: dict, mcp: dict, tools: List[str]) -> None:
     import jsonschema
 
-    for doc, schema in ((plugin, "agent-plugins-plugin"), (mcp, "agent-plugins-mcp")):
+    # The portable MCP schema does not model OpenAI's server extension, which
+    # OpenAI documents for mcp.json; it is checked on its own below.
+    portable_mcp = copy.deepcopy(mcp)
+    for server in portable_mcp.get("mcpServers", {}).values():
+        if isinstance(server, dict):
+            server.pop("extensions", None)
+    for doc, schema in (
+        (plugin, "agent-plugins-plugin"),
+        (portable_mcp, "agent-plugins-mcp"),
+    ):
         jsonschema.validate(
             doc, json.loads((SCHEMA_DIR / f"{schema}.schema.json").read_text())
         )
 
     if not re.fullmatch(r"\d+\.\d+\.\d+", plugin.get("version", "")):
         raise PluginError("version must be semantic (x.y.z)")
+    if not plugin.get("description") or len(plugin["description"]) > 1024:
+        raise PluginError("description must be 1..1024 characters")
     ext = plugin["extensions"]["com.openai"]
     if "apps" in ext or "hooks" in ext:
         raise PluginError("app references and hooks cannot currently be submitted")
@@ -251,26 +383,54 @@ def validate(plugin: dict, mcp: dict, tools: List[str]) -> None:
         "developerName": 80,
     }
     for key, limit in limits.items():
-        if not ui.get(key) or len(ui[key]) > limit:
+        if not ui.get(key) or not ui[key].strip() or len(ui[key]) > limit:
             raise PluginError(f"interface.{key} must be 1..{limit} characters")
+    for key in ("displayName", "shortDescription", "developerName"):
+        if not _one_line(ui[key]):
+            raise PluginError(f"interface.{key} must be a single line")
+    if ui.get("category") not in CATEGORIES:
+        raise PluginError(f"interface.category must be one of: {', '.join(CATEGORIES)}")
     caps = ui.get("capabilities", [])
-    if len(caps) > 20 or any(len(c) > 120 for c in caps):
-        raise PluginError("at most 20 capabilities of at most 120 characters")
+    if len(caps) > 20 or any(len(c) > 120 or not _one_line(c) for c in caps):
+        raise PluginError("at most 20 one-line capabilities of at most 120 characters")
     prompts = ui.get("defaultPrompt", [])
     if len(prompts) > 3:
         raise PluginError("at most 3 starter prompts (defaultPrompt)")
-    if any(not p or len(p) > 128 for p in prompts):
-        raise PluginError("default prompts must be 1..128 characters")
-    if len({p.strip().lower() for p in prompts}) != len(prompts):
+    if any(not p or len(p) > 128 or not _one_line(p) for p in prompts):
+        raise PluginError("default prompts must be one line of 1..128 characters")
+    if len({_prompt_key(p) for p in prompts}) != len(prompts):
         raise PluginError("starter prompts must be unique")
     if any("@" in p for p in prompts):
         raise PluginError("starter prompts must not @mention an app")
-    check_skills(ext)
+    for key, background in (("brandColor", "#FFFFFF"), ("brandColorDark", "#212121")):
+        colour = ui.get(key)
+        if colour is None:
+            continue
+        if not HEX_COLOUR.fullmatch(colour):
+            raise PluginError(f"interface.{key} must be #RRGGBB")
+        if contrast(colour, background) < 2:
+            raise PluginError(
+                f"interface.{key} needs 2:1 contrast against {background}"
+            )
+    for skill in check_skills(ext):
+        if len(f"{plugin['name']}:{skill.parent.name}") > 64:
+            raise PluginError("plugin and skill name together must be <= 64 chars")
     for key in ("websiteURL", "supportURL", "privacyPolicyURL", "termsOfServiceURL"):
-        if urlparse(ui.get(key, "")).scheme != "https":
-            raise PluginError(f"interface.{key} must be https")
+        value = ui.get(key, "")
+        if urlparse(value).scheme != "https" or len(value) > MAX_LISTING_URL:
+            raise PluginError(
+                f"interface.{key} must be https and <= {MAX_LISTING_URL} characters"
+            )
 
     review = ext["review"]
+    flat = json.dumps(ext)
+    for forbidden in FORBIDDEN_REVIEW_KEYS:
+        if f'"{forbidden}"' in flat:
+            raise PluginError(f"{forbidden} never goes into the package")
+    if urlparse(review.get("demo_recording_url", "")).scheme != "https":
+        raise PluginError("review.demo_recording_url must be an https URL")
+    if not ext.get("publication", {}).get("release_notes", "").strip():
+        raise PluginError("publication.release_notes is required for MCP review")
     positive = review["test_cases"]["positive"]
     negative = review["test_cases"]["negative"]
     if len(positive) != 5 or len(negative) != 3:
@@ -287,11 +447,17 @@ def validate(plugin: dict, mcp: dict, tools: List[str]) -> None:
             if name not in tools:
                 raise PluginError(f"tools_triggered names unknown tool {name!r}")
     for case in negative:
-        if not case.get("description") or not case.get("prompt"):
-            raise PluginError("negative case needs description and prompt")
+        # OpenAI asks for the prompt, why the plugin must not act, and the
+        # expected refusal or safe fallback.
+        for field in ("description", "prompt", "expected_behavior"):
+            if not case.get(field):
+                raise PluginError(f"negative case missing {field}")
     if review.get("commerce") is not False:
         raise PluginError("MITA's plugin must declare commerce: false")
 
+    for key in ("logo", "composerIcon"):
+        if key not in ui:
+            raise PluginError(f"interface.{key} is required for submission")
     for key, square in (
         ("composerIcon", True),
         ("composerIconDark", True),
@@ -300,13 +466,13 @@ def validate(plugin: dict, mcp: dict, tools: List[str]) -> None:
     ):
         if key in ui:
             check_image(PLUGIN_DIR / ui[key], square=square)
-    for shot in ui.get("screenshots", []):
-        check_image(PLUGIN_DIR / shot, square=False)
+    check_screenshots(ui)
 
     servers = mcp["mcpServers"]
     if len(servers) != 1:
         raise PluginError("exactly one MCP server expected")
     (server,) = servers.values()
+    check_server_extension(server)
     url = urlparse(server["url"])
     if (
         server["type"] != "streamable-http"

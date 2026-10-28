@@ -1167,8 +1167,16 @@ Rules:
 - **Plugin package** (`plugin/mita`): `onboardingSkill: "./skills/setup/SKILL.md"`;
   `build_plugin.py` packages `skills/` and validates SKILL.md front matter
   (name = directory, description), the onboarding path and the starter prompts
-  (<= 3, <= 128 chars, unique, no @mention). The listing never mentions
-  pricing, trials or Premium. `tests_mcp/golden_prompts.json` (en/ru/bg,
+  (<= 3, <= 128 chars, unique, no @mention), plus the current submission
+  rules (`docs/chatgpt-app/openai-compliance-2026-10-27.md`): category list,
+  brand contrast, one-line fields, release notes and demo URL, no reviewer
+  credentials, screenshot format, and `mcp.json` declaring
+  `extensions["com.openai"].auth = {"type": "oauth", "client": {"mode":
+  "dcr"}}` (the portal reads auth from it; the portable schema does not model
+  the extension, so the validator strips it before the schema check). The
+  listing never mentions pricing, trials or Premium, and never promises
+  records "in the MITA app" while the app is not in the stores (tested).
+  `tests_mcp/golden_prompts.json` (en/ru/bg,
   reviewer-authored, never from real users) must cover every published tool;
   its `description_mentions` pin trigger phrases in tool descriptions.
   Conversation rules: `docs/chatgpt-app/dialogue-contract.md`.
