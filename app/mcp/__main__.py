@@ -61,6 +61,24 @@ def pin_process_timezone() -> None:
     time.tzset()
 
 
+def import_build_service(level: str):
+    """Import the service with logging already taken over.
+
+    Importing it imports the domain layer, and the sign-in page computes its
+    fictional example through the forecast engine at import time; that engine
+    logs at INFO, which went out as a plain-text line with (fictional) amounts
+    before configure_logging() ran. So: let app.core.logging_config install
+    its handlers, take over, import, and take over again for anything the
+    import added."""
+    import app.core.logging_config  # noqa: F401 - runs its dictConfig now
+
+    configure_logging(level)
+    from app.mcp.server import build_service  # imports the domain layer
+
+    configure_logging(level)
+    return build_service
+
+
 def main() -> None:
     pin_process_timezone()
     try:
@@ -70,9 +88,7 @@ def main() -> None:
         print(f"mita-mcp: configuration error: {exc}", file=sys.stderr)
         sys.exit(2)
 
-    from app.mcp.server import build_service  # imports the domain layer
-
-    configure_logging(os.environ.get("LOG_LEVEL", "INFO").upper())
+    build_service = import_build_service(os.environ.get("LOG_LEVEL", "INFO").upper())
     from app.mcp.analytics import DatabaseSink
     from app.mcp.db import write_session
 

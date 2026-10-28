@@ -85,6 +85,42 @@ def test_config_requires_independent_strong_secrets(overrides, message):
         validate_settings(make_settings(**overrides))
 
 
+def _env_for(monkeypatch, environment: str) -> None:
+    monkeypatch.setenv("ENVIRONMENT", environment)
+    monkeypatch.setenv("MCP_PUBLIC_URL", "https://mcp.example.test")
+    monkeypatch.setenv("MCP_OAUTH_PRIVATE_KEY", make_settings().private_key_pem)
+    monkeypatch.setenv("MCP_LOGIN_CSRF_SECRET", "c" * 48)
+    monkeypatch.setenv("MCP_GRANT_FINGERPRINT_SECRET", "g" * 48)
+    monkeypatch.setenv("MCP_DATA_SECRET", "d" * 48)
+    monkeypatch.setenv("MCP_ANALYTICS_SECRET", "a" * 48)
+    monkeypatch.setenv("JWT_SECRET", "j" * 48)
+    monkeypatch.setenv("SECRET_KEY", "k" * 48)
+
+
+def test_production_refuses_to_start_without_a_widget_domain(monkeypatch):
+    """OpenAI accepts a plugin with UI only with a dedicated component origin
+    (_meta.ui.domain): the service that is submitted never runs without one."""
+    from app.mcp.config import load_settings
+
+    _env_for(monkeypatch, "production")
+    monkeypatch.delenv("MCP_WIDGET_DOMAIN", raising=False)
+    with pytest.raises(McpConfigError, match="MCP_WIDGET_DOMAIN"):
+        load_settings()
+    monkeypatch.setenv("MCP_WIDGET_DOMAIN", "https://mcp.example.test/")
+    assert load_settings().widget_domain == "https://mcp.example.test"
+    monkeypatch.setenv("MCP_WIDGET_DOMAIN", "https://mcp.example.test/ui")
+    with pytest.raises(McpConfigError, match="origin"):
+        load_settings()
+
+
+def test_staging_may_run_without_a_widget_domain(monkeypatch):
+    from app.mcp.config import load_settings
+
+    _env_for(monkeypatch, "staging")
+    monkeypatch.delenv("MCP_WIDGET_DOMAIN", raising=False)
+    assert load_settings().widget_domain == ""
+
+
 def test_staging_is_as_strict_as_production(monkeypatch):
     from app.mcp.config import load_settings
 

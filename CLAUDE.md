@@ -1245,6 +1245,10 @@ Rules:
   per record to stdout, keeps `app.*` at WARNING (domain code logs amounts at
   INFO, e.g. `compute_forecast`) and withholds message text from non-MCP
   loggers. Never log tokens, amounts, merchants, e-mails or tool arguments.
+  `__main__.import_build_service` takes over BEFORE importing the service:
+  the import computes the sign-in example through the forecast engine, whose
+  INFO line otherwise went out in plain text with (fictional) amounts
+  (`tests_mcp/test_startup_logging.py`).
 - **Lint like CI before pushing:** `black --check`, `isort --check` AND `ruff
   check` (MCP CI on `app/mcp tests_mcp scripts/mcp`, Backend CI on the whole
   repo). isort rejects a parenthesised import that black accepts.
@@ -1376,7 +1380,8 @@ Rules:
     System fonts and host colours (OpenAI UI guidelines); MITA colour only on
     accents; the exported image uses the master logomark (tested).
   - Bump the URI's `-vN` for a breaking component change. `ui.domain` comes
-    from `MCP_WIDGET_DOMAIN` (required at submission; unset on staging).
+    from `MCP_WIDGET_DOMAIN` (an origin; production refuses to start without
+    it since 2026-10-27; set it on staging for the real-ChatGPT run).
   - Known model gaps the calendar shows and does not hide: F-8 (rebalancing
     drains the dates ahead when a bill is paid on another date than laid out)
     and F-2. **F-8 stays MITA's behaviour** (owner decision 2026-10-25:

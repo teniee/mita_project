@@ -28,6 +28,8 @@ DEFAULT_ALLOWED_REDIRECT_PREFIXES: Tuple[str, ...] = (
 # redirect allow-list, and no localhost/test Host allowances. Staging is a
 # rehearsal of production, not a relaxed mode.
 PRODUCTION_ENVIRONMENTS = {"production", "prod", "staging"}
+# The environments OpenAI's directory talks to (submission, review, users).
+SUBMITTED_ENVIRONMENTS = {"production", "prod"}
 
 
 class McpConfigError(ValueError):
@@ -185,7 +187,8 @@ def load_settings() -> McpSettings:
         apps_challenge_token=_env("OPENAI_APPS_CHALLENGE_TOKEN"),
         support_url=_env("MCP_SUPPORT_URL"),
         metrics_token=_env("MCP_METRICS_TOKEN"),
-        widget_domain=_env("MCP_WIDGET_DOMAIN"),
+        # An origin, as _meta.ui.domain expects: no trailing slash.
+        widget_domain=_env("MCP_WIDGET_DOMAIN").rstrip("/"),
         tool_calls_per_minute=_int_env("MCP_TOOL_CALLS_PER_MINUTE", 60),
         login_attempts_per_minute=_int_env("MCP_LOGIN_ATTEMPTS_PER_MINUTE", 10),
         registrations_per_hour=_int_env("MCP_REGISTRATIONS_PER_HOUR", 5),
@@ -204,13 +207,20 @@ def validate_settings(settings: McpSettings) -> None:
         if (
             parsed.scheme != "https"
             or not parsed.netloc
-            or parsed.path not in {"", "/"}
+            or parsed.path
             or parsed.query
             or parsed.fragment
         ):
             raise McpConfigError(
                 "MCP_WIDGET_DOMAIN must be an https origin without path or query"
             )
+    elif settings.environment in SUBMITTED_ENVIRONMENTS:
+        # OpenAI: a plugin with UI is submitted only with a dedicated, unique
+        # component origin (_meta.ui.domain). Production never runs without.
+        raise McpConfigError(
+            "MCP_WIDGET_DOMAIN is required in production: the calendar component "
+            "needs a dedicated https origin (OpenAI's _meta.ui.domain)"
+        )
     for name, value in (
         ("MCP_DATA_SECRET", settings.data_secret),
         ("MCP_ANALYTICS_SECRET", settings.analytics_secret),
