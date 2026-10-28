@@ -1097,6 +1097,18 @@ Rules:
   without obligations carries a "default draft" warning. Never mandatory. After a save the visible
   `planned_amount` can differ from the preview by MITA's in-month
   redistribution; the BASE plan (adjustment backed out) is the reviewed one.
+- **The user's own budget lines** (F-11, owner decision 2026-10-28,
+  `docs/chatgpt-app/user-budget-lines.md`). "Fuel €200", "Cigarettes €200":
+  a free-form line `"my:<label>"` stored as a normal plan line and as the
+  category of the expenses recorded against it (`budget_line` on the
+  transaction tools). ChatGPT maps words to lines and says which MITA engine
+  lines a user line `replaces`; MITA never interprets words — never add a
+  category for a user's phrase. `mcp_budget_lines` (0040) keeps only
+  `replaces`. The engine keeps user lines exact and scales only its own;
+  bills + savings + user lines over the income is `PlanDoesNotFit`, never a
+  shrink. The rebalancer never takes from a user line nor covers one from other
+  lines. A user line is never a bill (not a recordable category). Tests:
+  `tests_mcp/test_user_budget_lines.py`, `app/tests/test_user_budget_lines.py`.
 - **Set-aside money is never spendable** (owner decision, 2026-10-23).
   `SET_ASIDE_CATEGORIES` (`app/core/category_priority.py`: the savings line,
   emergency savings, `goal_savings`, investment contributions) is narrower

@@ -137,6 +137,7 @@ async def test_budget_status_exact_and_ignores_stale_plan_cache(m, ledger_user):
         "remaining": "0.00",
         "percent_used": "100.0",
         "state": "within_budget",
+        "source": "fixed_payment",
     }
     assert rows["food"] == {
         "category": "food",
@@ -147,6 +148,7 @@ async def test_budget_status_exact_and_ignores_stale_plan_cache(m, ledger_user):
         "remaining": "250.00",
         "percent_used": "19.4",
         "state": "within_budget",
+        "source": "fixed_payment",
     }
     assert rows["shopping"] == {
         "category": "shopping",
@@ -157,6 +159,7 @@ async def test_budget_status_exact_and_ignores_stale_plan_cache(m, ledger_user):
         "remaining": "-30.00",
         "percent_used": None,
         "state": "unplanned_spending",
+        "source": None,
     }
     assert data["today"] == {
         "date": "2026-03-15",

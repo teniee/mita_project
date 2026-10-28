@@ -25,6 +25,13 @@ from collections import defaultdict
 from decimal import Decimal
 from typing import Dict, Iterable, List, Mapping, Optional, Set, Tuple
 
+from app.core.category_priority import is_set_aside
+from app.services.core.engine.user_budget_lines import (
+    ENGINE_BUCKETS,
+    is_user_line,
+    label_of,
+)
+
 UNCATEGORIZED = "uncategorized"
 
 # Plan buckets (``CATEGORY_BEHAVIOR``) plus the plan rows MITA writes besides
@@ -133,11 +140,45 @@ def label(code: Optional[str]) -> str:
     """
     if not code or code == UNCATEGORIZED:
         return "Uncategorized"
+    if is_user_line(code):
+        return label_of(code)  # the user's own words (F-11)
     found = EXPENSE_LABELS.get(code) or PLAN_LABELS.get(code)
     if found:
         return found
     text = code.replace("_", " ").strip()
     return text[:1].upper() + text[1:]
+
+
+# Who decides a budget line's amount.
+SET_BY_YOU = "set_by_you"
+CALCULATED_BY_MITA = "calculated_by_mita"
+FIXED_PAYMENT = "fixed_payment"
+SAVINGS = "savings"
+
+
+def source_of(code: str) -> str:
+    """A line the user set (F-11), money set aside, one of MITA's engine
+    lines, or a fixed payment (every other stored line: rent, utilities and
+    saved payments the plan was built with)."""
+    if is_user_line(code):
+        return SET_BY_YOU
+    if is_set_aside(code):
+        return SAVINGS
+    if code in ENGINE_BUCKETS:
+        return CALCULATED_BY_MITA
+    return FIXED_PAYMENT
+
+
+def line_source(codes: Iterable[str], planned: Decimal) -> Optional[str]:
+    """The source of a display line adding up several stored codes (a plan
+    bucket and the expenses recorded for it); None with nothing planned."""
+    if planned <= 0:
+        return None
+    sources = {source_of(code) for code in codes}
+    for source in (SET_BY_YOU, SAVINGS, CALCULATED_BY_MITA):
+        if source in sources:
+            return source
+    return FIXED_PAYMENT
 
 
 def goal_label(code: Optional[str]) -> str:

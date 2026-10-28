@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "mita-finance",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Your MITA budget in ChatGPT: record and correct expenses, build a monthly budget, track recurring costs and savings goals, and see your spending history - kept in your MITA account.",
   "author": {
     "name": "{{DEVELOPER_NAME}}",
@@ -111,7 +111,7 @@
         "commerce_description": "This plugin does not sell products or subscriptions and does not process payments. It stores and analyzes the connected user's own MITA records."
       },
       "publication": {
-        "release_notes": "2.3.0 — First public release of MITA Finance in ChatGPT. Sign in to your MITA account, or create one, on MITA's own page. Record expenses in plain language — one at a time, several at once, or from a receipt photo that ChatGPT reads (MITA never receives the image) — and correct or delete them. Save your income, currency, household size and savings target; preview a monthly budget built by MITA's rules and save it only after you review it. See where you stand, how the month ends at your current pace and what you can safely spend each day: money set aside for savings and goals, and the month's bills not yet recorded as paid, are held out of that amount. Open your month as an interactive calendar in the chat — each date's plan and spending, bills due and money set aside — and save it as an image. Save recurring expenses and savings goals, compare months, and send feedback to the MITA team. Usage statistics stay off unless you tick the box on the sign-in page. No payment, transfer, trading or bank connection."
+        "release_notes": "2.4.0 — First public release of MITA Finance in ChatGPT. Sign in to your MITA account, or create one, on MITA's own page. Record expenses in plain language — one at a time, several at once, or from a receipt photo that ChatGPT reads (MITA never receives the image) — and correct or delete them. Save your income, currency, household size and savings target; preview a monthly budget built by MITA's rules — keeping exactly the amounts you set for your own budget lines, with MITA planning the rest — and save it only after you review it. See where you stand, how the month ends at your current pace and what you can safely spend each day: money set aside for savings and goals, and the month's bills not yet recorded as paid, are held out of that amount. Open your month as an interactive calendar in the chat — each date's plan and spending, bills due and money set aside — and save it as an image. Save recurring expenses and savings goals, compare months, and send feedback to the MITA team. Usage statistics stay off unless you tick the box on the sign-in page. No payment, transfer, trading or bank connection."
       },
       "onboardingSkill": "./skills/setup/SKILL.md"
     }

@@ -309,6 +309,10 @@ def test_skill_names_only_published_tools():
         "insufficient_data",
         "category_label",  # a result field
         "ask_about_obligations",  # a suggested_next_step value
+        "budget_lines",  # an argument of preview_monthly_budget
+        "replaces",  # a field of a budget line
+        "set_by_you",  # a source value in its result
+        "budget_line",  # an argument of add_transaction
     }
     assert named and named <= set(PUBLISHED_TOOLS), named - set(PUBLISHED_TOOLS)
 

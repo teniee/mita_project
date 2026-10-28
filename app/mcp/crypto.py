@@ -8,7 +8,11 @@ label per purpose, and every value is bound to the authenticated user:
   has the same reference), opaque (no database id is visible), and useless to
   anyone else — decrypting under another user's id fails authentication;
 * **budget drafts** (``bd1_…``) and **list cursors** (``cur1_…``): a compact
-  binary payload plus a truncated HMAC over (purpose, user id, payload).
+  binary payload plus a truncated HMAC over (purpose, user id, payload);
+* **budget drafts with the user's own budget lines** (``bd2_…``, F-11): the
+  same claims plus the lines the user asked for, encrypted with AES-SIV (the
+  user id as associated data), so their names and amounts are never readable
+  in the token and it cannot be edited in transit.
 
 A reference or token that fails verification is reported as "not found" or
 "expired" — never as a different user's object. Ownership is still enforced
@@ -20,10 +24,11 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import json
 import struct
 from dataclasses import dataclass
 from datetime import date
-from typing import Optional
+from typing import Optional, Tuple
 from uuid import UUID
 
 from cryptography.exceptions import InvalidTag
@@ -33,6 +38,8 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 TRANSACTION_REF_PREFIX = "tx_"
 DRAFT_PREFIX = "bd1_"
+DRAFT_V2_PREFIX = "bd2_"
+MAX_DRAFT_TOKEN_CHARS = 8192
 CURSOR_PREFIX = "cur1_"
 MAC_BYTES = 16  # 128-bit truncated HMAC-SHA256
 
@@ -57,12 +64,25 @@ def _derive(secret: str, label: bytes, length: int) -> bytes:
     )
 
 
+# One requested budget line: (line key, amount as "200.00", replaced MITA
+# lines or None to keep the saved choice).
+DraftLine = Tuple[str, str, Optional[Tuple[str, ...]]]
+
+
 @dataclass(frozen=True)
 class DraftClaims:
     year: int
     month: int
     expires_at: int
     digest: bytes  # first 16 bytes of the draft's SHA-256
+    # The user's own budget lines asked for in the preview (F-11), and the
+    # lines asked to leave the plan. Empty for a bd1_ token.
+    lines: Tuple[DraftLine, ...] = ()
+    remove: Tuple[str, ...] = ()
+
+    @property
+    def has_request(self) -> bool:
+        return bool(self.lines or self.remove)
 
 
 @dataclass(frozen=True)
@@ -77,6 +97,7 @@ class DataKeys:
         if len(secret) < 32:
             raise ValueError("MCP_DATA_SECRET must be at least 32 characters")
         self._siv = AESSIV(_derive(secret, b"mita-mcp/transaction-ref/v1", 64))
+        self._draft_siv = AESSIV(_derive(secret, b"mita-mcp/budget-draft/v2", 64))
         self._mac_key = _derive(secret, b"mita-mcp/signed-token/v1", 32)
 
     # --- transaction references ---------------------------------------------
@@ -123,20 +144,63 @@ class DataKeys:
         payload = _DRAFT_LAYOUT.pack(
             claims.year, claims.month, claims.expires_at, claims.digest[:16]
         )
-        return self._seal(DRAFT_PREFIX, b"budget-draft", user_id, payload)
+        if not claims.has_request:
+            return self._seal(DRAFT_PREFIX, b"budget-draft", user_id, payload)
+        request = json.dumps(
+            {
+                "l": [
+                    [key, amount, list(replaces) if replaces is not None else None]
+                    for key, amount, replaces in claims.lines
+                ],
+                "r": list(claims.remove),
+            },
+            separators=(",", ":"),
+            ensure_ascii=False,
+        ).encode()
+        sealed = self._draft_siv.encrypt(
+            payload + request, [b"budget-draft/v2", user_id.bytes]
+        )
+        return DRAFT_V2_PREFIX + _b64(sealed)
 
     def open_budget_draft(self, user_id: UUID, token: str) -> Optional[DraftClaims]:
+        if isinstance(token, str) and token.startswith(DRAFT_V2_PREFIX):
+            return self._open_draft_v2(user_id, token)
         payload = self._open(
             DRAFT_PREFIX, b"budget-draft", user_id, token, _DRAFT_LAYOUT.size
         )
         if payload is None:
             return None
-        year, month, expires_at, digest = _DRAFT_LAYOUT.unpack(payload)
-        try:
-            date(year, month, 1)
-        except ValueError:
+        return _draft_claims(payload)
+
+    def _open_draft_v2(self, user_id: UUID, token: str) -> Optional[DraftClaims]:
+        if len(token) > MAX_DRAFT_TOKEN_CHARS:
             return None
-        return DraftClaims(year, month, expires_at, digest)
+        sealed = _unb64(token[len(DRAFT_V2_PREFIX) :])
+        if sealed is None or len(sealed) <= _DRAFT_LAYOUT.size + 16:
+            return None
+        try:
+            raw = self._draft_siv.decrypt(sealed, [b"budget-draft/v2", user_id.bytes])
+        except InvalidTag:
+            return None
+        claims = _draft_claims(raw[: _DRAFT_LAYOUT.size])
+        if claims is None:
+            return None
+        try:
+            request = json.loads(raw[_DRAFT_LAYOUT.size :].decode())
+            lines = tuple(
+                (
+                    str(key),
+                    str(amount),
+                    tuple(str(c) for c in replaces) if replaces is not None else None,
+                )
+                for key, amount, replaces in request["l"]
+            )
+            remove = tuple(str(key) for key in request["r"])
+        except (ValueError, KeyError, TypeError):
+            return None
+        return DraftClaims(
+            claims.year, claims.month, claims.expires_at, claims.digest, lines, remove
+        )
 
     def cursor(self, user_id: UUID, position: CursorPosition) -> str:
         payload = _CURSOR_LAYOUT.pack(
@@ -154,6 +218,15 @@ class DataKeys:
             return None
         spent_at_us, txn_bytes, filter_digest = _CURSOR_LAYOUT.unpack(payload)
         return CursorPosition(spent_at_us, UUID(bytes=txn_bytes), filter_digest)
+
+
+def _draft_claims(payload: bytes) -> Optional[DraftClaims]:
+    year, month, expires_at, digest = _DRAFT_LAYOUT.unpack(payload)
+    try:
+        date(year, month, 1)
+    except ValueError:
+        return None
+    return DraftClaims(year, month, expires_at, digest)
 
 
 def request_digest(*parts: object) -> str:

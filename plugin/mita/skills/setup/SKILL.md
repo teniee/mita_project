@@ -42,6 +42,14 @@ setup — never block them on it.
    `save_monthly_budget` and the `draft_token`. If they want different
    figures, change income, savings or obligations with the tools and preview
    again; never adjust the numbers yourself.
+   When the user gives their own monthly amount for something ("fuel €200",
+   "cigarettes €200"), pass it in `budget_lines` with their name for it; when
+   it is the same spending as one of MITA's own lines, say so in `replaces`.
+   MITA keeps it exactly and plans only the money left. If one amount covers
+   several things, ask whether it is one line. If MITA says the plan exceeds
+   the income, show each part and ask what to change. Call an amount the
+   user's only when its source is `set_by_you`; record later expenses for such
+   a line with `budget_line`.
 6. **Finish with the cheat sheet** below, translated into the user's language.
 
 ## Rules
@@ -68,6 +76,7 @@ RECORD SPENDING
 BUILD A BUDGET
 - "Build my budget for this month."
 - "I earn €2,500 and want to save €400."
+- "Fuel €200 and cigarettes €200 a month — plan the rest."
 
 CHECK POSITION
 - "How much can I safely spend today?"

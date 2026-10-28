@@ -18,6 +18,15 @@ MONEY_PATTERN = r"^-?\d+\.\d{2}$"
 
 PlanStatus = Literal["generated", "not_generated"]
 MonthPosition = Literal["past", "current", "future"]
+# Who decides a budget line's amount (app/mcp/categories.source_of).
+LineSource = Literal["set_by_you", "calculated_by_mita", "fixed_payment", "savings"]
+SOURCE_DESCRIPTION = (
+    "Who decides this line's amount: set_by_you (a budget line the user named "
+    "and set; its category starts with 'my:'; MITA keeps the amount exactly), "
+    "calculated_by_mita (MITA's allocation rules), fixed_payment (a bill or "
+    "other stated payment) or savings. Never call a calculated_by_mita line the "
+    "user's choice."
+)
 
 
 class _Out(BaseModel):
@@ -228,6 +237,9 @@ class CategoryBudgetOut(_Out):
         pattern=r"^\d+\.\d$",
     )
     state: Literal["within_budget", "over_budget", "unplanned_spending", "not_started"]
+    source: Optional[LineSource] = Field(
+        description=SOURCE_DESCRIPTION + " Null when nothing was planned on the line."
+    )
 
 
 class DayBudgetOut(_Out):
@@ -634,13 +646,38 @@ class ObligationOut(_Out):
 
 class AllocationOut(_Out):
     category: str = Field(
-        description="MITA plan category code, as the engine names it."
+        description=(
+            "Line code: MITA's plan category as the engine names it, or "
+            "'my:<label>' for a budget line the user set (its stable id: pass it "
+            "as budget_line when recording an expense for it)."
+        )
     )
     category_label: str = category_label_field()
     amount: Money = money_field("Monthly allocation.")
     layout: Literal["fixed", "spread", "clustered"] = Field(
         description="How MITA spreads it over the days: on one day, across weekdays, or on a few days."
     )
+    source: LineSource = Field(description=SOURCE_DESCRIPTION)
+    replaces: List[str] = Field(
+        description=(
+            "For a line the user set: MITA's own lines it takes the place of "
+            "(those are not in the plan). Empty otherwise."
+        )
+    )
+
+
+class PlanChangeOut(_Out):
+    category: str
+    category_label: str = category_label_field()
+    before: Optional[Money] = Field(
+        description="Monthly amount in the saved plan; null for a new line.",
+        pattern=MONEY_PATTERN,
+    )
+    after: Optional[Money] = Field(
+        description="Monthly amount after saving; null for a line that leaves the plan.",
+        pattern=MONEY_PATTERN,
+    )
+    source: LineSource = Field(description=SOURCE_DESCRIPTION)
 
 
 class DataSourceOut(_Out):
@@ -673,19 +710,33 @@ class BudgetPreviewOut(_Out):
         "Set aside for savings this month (the user's target, reduced only if it does not fit)."
     )
     category_allocations: List[AllocationOut] = Field(
-        description="Flexible spending by category, largest first, from MITA's allocation rules."
+        description=(
+            "Spending lines: the user's own budget lines first (source "
+            "set_by_you, exactly as they set them), then MITA's allocation of "
+            "the money left (calculated_by_mita), largest first."
+        )
+    )
+    user_set_total: Money = money_field(
+        "Sum of the user's own budget lines (source set_by_you)."
     )
     unallocated: Money = money_field(
-        "Flexible money MITA's rules leave unassigned to any category (free to spend)."
+        "Money MITA's rules leave unassigned to any line (free to spend)."
     )
     flexible_total: Money = money_field(
-        "Income minus fixed obligations minus savings: categories plus unallocated."
+        "Income minus fixed obligations, savings and the user's own lines: "
+        "MITA's lines plus unallocated."
     )
     plan_total: Money = money_field(
         "Everything the saved plan lays out over the month's days."
     )
     daily_flexible_average: Money = money_field(
-        "flexible_total divided by the days in the month."
+        "flexible_total plus user_set_total, divided by the days in the month."
+    )
+    changes: List[PlanChangeOut] = Field(
+        description=(
+            "When a plan for the month is already saved: every line whose amount "
+            "differs, before and after. Empty otherwise."
+        )
     )
     days_in_month: int
     days_remaining: Optional[int] = Field(
@@ -708,6 +759,12 @@ class BudgetPreviewOut(_Out):
     expires_at: dt.datetime
 
 
+class AmountSetOut(_Out):
+    category: str = Field(description="The line's stable id ('my:<label>').")
+    category_label: str = category_label_field()
+    amount: Money = money_field("The monthly amount the user set, saved exactly.")
+
+
 class BudgetSavedOut(_Out):
     status: Literal["saved", "replaced", "already_saved"] = Field(
         description="'replaced': an earlier plan for this month was replaced. 'already_saved': this exact plan was already in place."
@@ -716,6 +773,12 @@ class BudgetSavedOut(_Out):
     currency: str
     plan_total: Money = money_field("Total laid out over the month.")
     category_count: int
+    set_by_you: List[AmountSetOut] = Field(
+        description=(
+            "The user's own budget lines, saved exactly as set. Only these may be "
+            "described as kept from what the user said."
+        )
+    )
     notes: List[str]
 
 
@@ -977,6 +1040,9 @@ class CalendarLineOut(_Out):
     planned: Money = money_field("Planned for this line in the month.")
     spent: Money = money_field("Recorded on this line in the month.")
     remaining: Money = money_field("planned minus spent; negative means over.")
+    source: Optional[LineSource] = Field(
+        description=SOURCE_DESCRIPTION + " Null when nothing was planned on the line."
+    )
 
 
 class CalendarDayOut(_Out):

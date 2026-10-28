@@ -1,22 +1,25 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Annotated, List, Optional
+from typing import Annotated, List, Literal, Optional
 
 from mcp.server.mcpserver import Context, MCPServer
 from mcp_types import CallToolResult
-from pydantic import Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.mcp import analytics
 from app.mcp.auth.scopes import FINANCE_READ, FINANCE_WRITE
+from app.mcp.categories import CALCULATED_BY_MITA, PLAN_LABELS, SET_BY_YOU
 from app.mcp.categories import label as category_label
-from app.mcp.crypto import DraftClaims
+from app.mcp.categories import source_of
+from app.mcp.crypto import MAX_DRAFT_TOKEN_CHARS
 from app.mcp.queries import budget_draft, ledger, plan
 from app.mcp.queries import setup as setup_queries
 from app.mcp.queries.periods import load_user_context, month_days, resolve_month
 from app.mcp.runtime import McpRuntime
 from app.mcp.schemas import (
     AllocationOut,
+    AmountSetOut,
     BudgetPreviewOut,
     BudgetSavedOut,
     BudgetStatusOut,
@@ -25,6 +28,7 @@ from app.mcp.schemas import (
     ForecastOut,
     HistoryUsedOut,
     ObligationOut,
+    PlanChangeOut,
 )
 from app.mcp.serializers import (
     budget_status_out,
@@ -40,7 +44,9 @@ from app.mcp.tools.common import (
     tool_meta,
     write_annotations,
 )
+from app.mcp.tools.inputs import money as money_input
 from app.mcp.writes import budget as budget_writes
+from app.services.core.engine.user_budget_lines import ENGINE_BUCKETS, MAX_LABEL_CHARS
 
 Year = Annotated[
     Optional[int],
@@ -111,15 +117,68 @@ PREVIEW_DESCRIPTION = (
     "'Build my budget for this month' or to change an existing plan. MITA computes "
     "it from what the user stated (monthly net income, monthly savings target), "
     "their saved recurring obligations and MITA's deterministic allocation rules; "
-    "recorded history only adds warnings. It returns fixed obligations, savings, "
-    "category allocations, unallocated money, a daily average, assumptions, warnings "
-    "and data sources. Show the figures to the user; if they confirm, call "
-    "save_monthly_budget with the draft_token. Never present a preview as saved, "
-    "and never recompute or edit the numbers yourself. Needs income and currency "
-    "(see get_setup_status); for a first budget, ask about regular payments such as "
-    "rent first — without them the preview is a default draft and says so. "
-    + READ_ONLY_DISCLAIMER
+    "recorded history only adds warnings. When the user states their own monthly "
+    "amount for something ('fuel €200', 'cigarettes €200', 'cat food €60'), pass "
+    "it in budget_lines with the user's own name for it as label: MITA keeps it "
+    "exactly as a line of the user's (source set_by_you, category 'my:<label>') "
+    "and allocates only the money left to its own lines. If it is the same "
+    "spending as one of MITA's own lines (the user's 'Fuel' and MITA's "
+    "'transport gas', also shown as Fuel), list that line in replaces so it is "
+    "not budgeted twice; leave replaces out when MITA has no such line. If one "
+    "amount covers several things, ask whether it is one line. A saved plan's "
+    "own lines are kept; to change one, send it again with the new amount; "
+    "remove_lines takes lines out (MITA's lines they replaced come back); "
+    "changes lists what differs from the saved plan. If bills, savings and the "
+    "user's lines exceed the income, MITA refuses and names each part: ask the "
+    "user what to change. It returns fixed obligations, savings, category "
+    "allocations (each with its source), unallocated money, a daily average, "
+    "assumptions, warnings and data sources. Show the figures to the user; if "
+    "they confirm, call save_monthly_budget with the draft_token. Never present a "
+    "preview as saved, never call an amount the user's unless its source is "
+    "set_by_you, and never recompute, split or edit the numbers yourself. Needs "
+    "income and currency (see get_setup_status); for a first budget, ask about "
+    "regular payments such as rent first — without them the preview is a default "
+    "draft and says so. " + READ_ONLY_DISCLAIMER
 )
+
+EngineLine = Literal[tuple(sorted(ENGINE_BUCKETS))]  # type: ignore[valid-type]
+
+REPLACES_HELP = (
+    "MITA's own lines this line takes the place of, so the same spending is not "
+    "budgeted twice: "
+    + ", ".join(f"'{code}' ({PLAN_LABELS[code]})" for code in sorted(ENGINE_BUCKETS))
+    + ". Leave it out when MITA has no line for it (cigarettes, cat food); for a "
+    "line the user already has, leaving it out keeps the earlier choice."
+)
+
+
+MAX_BUDGET_LINES = 20
+
+
+class BudgetLineIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    label: Annotated[
+        str,
+        Field(
+            min_length=1,
+            max_length=MAX_LABEL_CHARS + 3,
+            description=(
+                "The user's own name for the line, as they said it ('Fuel', "
+                "'Cigarettes', 'Coffee and walks'), or an existing line's id "
+                "('my:Fuel'). The same name, in any letter case, is the same line."
+            ),
+        ),
+    ]
+    amount: money_input(
+        "The monthly amount the user set for this line, in their MITA currency, "
+        "exactly as they said it (at most two decimal places)."
+    )
+    replaces: Annotated[
+        Optional[List[EngineLine]],
+        Field(max_length=len(ENGINE_BUCKETS), description=REPLACES_HELP),
+    ] = None
+
 
 NO_OBLIGATIONS_WARNING = (
     "No regular payments (rent, utilities, loans, subscriptions) are saved, so this "
@@ -130,11 +189,13 @@ NO_OBLIGATIONS_WARNING = (
 SAVE_DESCRIPTION = (
     "Save the monthly budget the user reviewed and confirmed, using the draft_token "
     "from preview_monthly_budget. Saves exactly that previewed plan and nothing "
-    "else; if the user's income, savings target or obligations changed since the "
-    "preview, it refuses and you must preview again. It replaces any existing plan "
-    "for that month (existing_plan in the preview says so), keeps savings-goal "
-    "reservations, and recalculates the month with the recorded expenses. Only call "
-    "it after the user said yes to the shown plan. " + NO_MONEY_MOVEMENT
+    "else — including the user's own budget lines, which stay theirs (set_by_you "
+    "in the result) — and if the user's income, savings target, obligations or "
+    "budget lines changed since the preview, it refuses and you must preview "
+    "again. It replaces any existing plan for that month (existing_plan in the "
+    "preview says so), keeps savings-goal reservations, and recalculates the "
+    "month with the recorded expenses. Only call it after the user said yes to "
+    "the shown plan. " + NO_MONEY_MOVEMENT
 )
 
 
@@ -151,6 +212,13 @@ def preview_out(
         "Each category is spread over the month's days by MITA's usual pattern "
         "(rent on the 1st, groceries on weekdays, dining on a few days).",
     ]
+    if alloc.manual:
+        assumptions.append(
+            "The user's own budget lines are kept exactly and MITA never moves "
+            "money into or out of them; MITA allocates only the money left after "
+            "bills, savings and those lines, and lowers its own lines (never the "
+            "user's) when that money is not enough."
+        )
     if draft.obligations:
         assumptions.append("Repeating obligations count in full for the month.")
     if ctx.household_size is not None:
@@ -196,6 +264,7 @@ def preview_out(
             )
     if not setup_queries.savings_set(ctx):
         warnings.append("No monthly savings target is set, so nothing is set aside.")
+    warnings.extend(draft.notes)
 
     income_source = (
         "stated by the user" if ctx.income_confirmed else "entered in the MITA app"
@@ -219,7 +288,12 @@ def preview_out(
         ),
         DataSourceOut(
             input="category_allocations",
-            source="MITA budget engine (deterministic rules)",
+            source=(
+                "the user's own budget lines, and MITA budget engine "
+                "(deterministic rules) for the rest"
+                if alloc.manual
+                else "MITA budget engine (deterministic rules)"
+            ),
         ),
         DataSourceOut(
             input="history",
@@ -231,7 +305,41 @@ def preview_out(
             ),
         ),
     ]
-    categories = sorted(alloc.discretionary.items(), key=lambda kv: (-kv[1], kv[0]))
+
+    def by_size(item):
+        return (-item[1], item[0])
+
+    categories = [
+        AllocationOut(
+            category=key,
+            category_label=category_label(key),
+            amount=money(amount),
+            layout=budget_draft.layout_of(key),
+            source=SET_BY_YOU,
+            replaces=list(draft.replaces.get(key, ())),
+        )
+        for key, amount in sorted(alloc.manual.items(), key=by_size)
+    ] + [
+        AllocationOut(
+            category=category,
+            category_label=category_label(category),
+            amount=money(amount),
+            layout=budget_draft.layout_of(category),
+            source=CALCULATED_BY_MITA,
+            replaces=[],
+        )
+        for category, amount in sorted(alloc.discretionary.items(), key=by_size)
+    ]
+    changes = [
+        PlanChangeOut(
+            category=change.category,
+            category_label=category_label(change.category),
+            before=optional_money(change.before),
+            after=optional_money(change.after),
+            source=source_of(change.category),
+        )
+        for change in draft.changes
+    ]
     return BudgetPreviewOut(
         status="preview",
         month=month_label,
@@ -250,15 +358,8 @@ def preview_out(
         ],
         fixed_obligations_total=money(draft.fixed_total),
         savings_allocation=money(alloc.savings),
-        category_allocations=[
-            AllocationOut(
-                category=category,
-                category_label=category_label(category),
-                amount=money(amount),
-                layout=budget_draft.layout_of(category),
-            )
-            for category, amount in categories
-        ],
+        category_allocations=categories,
+        user_set_total=money(draft.user_set_total),
         unallocated=money(alloc.unallocated),
         flexible_total=money(alloc.discretionary_total),
         plan_total=money(draft.plan_total),
@@ -277,6 +378,7 @@ def preview_out(
         assumptions=assumptions,
         warnings=warnings,
         data_sources=sources,
+        changes=changes,
         draft_token=token,
         expires_at=datetime.fromtimestamp(expires, tz=timezone.utc),
     )
@@ -372,14 +474,50 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
                 description="YYYY-MM: the current month (default) or the next one.",
             ),
         ] = None,
+        budget_lines: Annotated[
+            Optional[List[BudgetLineIn]],
+            Field(
+                max_length=MAX_BUDGET_LINES,
+                description=(
+                    "Budget lines the user named and set, each with its monthly "
+                    "amount exactly as they said it. MITA keeps them and allocates "
+                    "only what is left."
+                ),
+            ),
+        ] = None,
+        remove_lines: Annotated[
+            Optional[
+                List[
+                    Annotated[str, Field(min_length=1, max_length=MAX_LABEL_CHARS + 3)]
+                ]
+            ],
+            Field(
+                max_length=MAX_BUDGET_LINES,
+                description=(
+                    "The user's own lines (name or 'my:' id) to take out of the "
+                    "month's plan."
+                ),
+            ),
+        ] = None,
     ) -> Annotated[CallToolResult, BudgetPreviewOut]:
         def body(session, user_ctx):
             y, m = budget_draft.target_month(user_ctx, month)
-            draft = budget_draft.build_draft(session, user_ctx, y, m)
+            request = budget_draft.DraftRequest(
+                tuple(
+                    (
+                        line.label,
+                        line.amount,
+                        tuple(line.replaces) if line.replaces is not None else None,
+                    )
+                    for line in budget_lines or []
+                ),
+                tuple(remove_lines or []),
+            )
+            draft = budget_draft.build_draft(session, user_ctx, y, m, request)
             now = runtime.clock()
             expires = int((now + budget_draft.DRAFT_TTL).timestamp())
             token = runtime.data_keys.budget_draft(
-                user_ctx.user_id, DraftClaims(y, m, expires, draft.digest)
+                user_ctx.user_id, draft.request.claims(y, m, expires, draft.digest)
             )
             analytics.emit(
                 "budget_previewed",
@@ -412,7 +550,7 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
             str,
             Field(
                 min_length=10,
-                max_length=200,
+                max_length=MAX_DRAFT_TOKEN_CHARS,
                 description="The draft_token from preview_monthly_budget, unchanged.",
             ),
         ],
@@ -442,8 +580,9 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
                     notes.append(
                         "Expenses already recorded this month were applied to the "
                         "new plan; where a day was already over plan, MITA moved "
-                        "money between categories (its automatic redistribution, as "
-                        "in the app). The saved base plan is the one reviewed."
+                        "money between its own categories (its automatic "
+                        "redistribution, as in the app; never into or out of the "
+                        "user's own lines). The saved base plan is the one reviewed."
                     )
                 after = setup_queries.setup_state(
                     s, load_user_context(s, user_ctx.user_id, now=call.now)
@@ -456,6 +595,14 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
                     currency=user_ctx.currency,
                     plan_total=money(draft.plan_total),
                     category_count=len(draft.allocation.allocations),
+                    set_by_you=[
+                        AmountSetOut(
+                            category=key,
+                            category_label=category_label(key),
+                            amount=money(amount),
+                        )
+                        for key, amount in sorted(draft.allocation.manual.items())
+                    ],
                     notes=notes,
                 )
 

@@ -7,14 +7,14 @@ from typing import Annotated, List, Optional
 
 from mcp.server.mcpserver import Context, MCPServer
 from mcp_types import CallToolResult
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.mcp import analytics, idempotency
 from app.mcp.auth.scopes import FINANCE_READ, FINANCE_WRITE
 from app.mcp.categories import label as category_label
 from app.mcp.crypto import CursorPosition
 from app.mcp.errors import ValidationError
-from app.mcp.queries import ledger
+from app.mcp.queries import budget_lines, ledger
 from app.mcp.queries import setup as setup_queries
 from app.mcp.queries.periods import resolve_date_range
 from app.mcp.runtime import McpRuntime
@@ -48,8 +48,23 @@ from app.mcp.tools.inputs import (
 )
 from app.mcp.ui import component_callable_meta
 from app.mcp.writes import transactions as writes
+from app.services.core.engine.user_budget_lines import MAX_LABEL_CHARS
 
 MAX_BATCH = 25
+
+BUDGET_LINE_HELP = (
+    "One of the user's own budget lines (a line of theirs with source set_by_you "
+    "and category 'my:<label>' in get_budget_status or the budget preview), by "
+    "its id ('my:Cigarettes') or its name: the expense counts against that line. "
+    "Send it instead of category when the expense belongs to such a line."
+)
+
+BudgetLine = Annotated[
+    Optional[str],
+    Field(min_length=1, max_length=MAX_LABEL_CHARS + 3, description=BUDGET_LINE_HELP),
+]
+
+LINE_OR_CATEGORY = "Send either category or budget_line for the expense, not both."
 
 StartDate = Annotated[
     Optional[date],
@@ -117,7 +132,9 @@ ADD_DESCRIPTION = (
     "several expenses at once use add_transactions. For an expense read from a "
     "receipt photo in this chat, set entry_method 'receipt_image'; MITA never "
     "receives the image. The result includes a `ref` to correct the expense with "
-    "update_transaction. " + NO_MONEY_MOVEMENT
+    "update_transaction. If the user has their own budget line for this spending "
+    "(e.g. their 'Cigarettes' line), record it with budget_line instead of "
+    "category so it counts against that line. " + NO_MONEY_MOVEMENT
 )
 
 ADD_MANY_DESCRIPTION = (
@@ -129,15 +146,17 @@ ADD_MANY_DESCRIPTION = (
     "category: give each receipt line the category of what it is, not of the shop — "
     "a supermarket receipt can mix groceries with household goods (shopping) or "
     "medicine (healthcare). MITA has no alcohol or tobacco category: drinks bought "
-    "in a shop count as groceries unless the user picks another category. "
-    + NO_MONEY_MOVEMENT
+    "in a shop count as groceries unless the user picks another category; an item "
+    "that belongs to one of the user's own budget lines (e.g. their 'Cigarettes' "
+    "line) takes budget_line instead of category. " + NO_MONEY_MOVEMENT
 )
 
 UPDATE_DESCRIPTION = (
     "Correct one recorded expense the user says is wrong — amount, category, date or "
     "merchant — identified by its `ref`. Changes only the fields sent and overwrites "
-    "their previous values; the month's budget plan is recalculated. Confirm which "
-    "expense the user means first (use list_transactions to find it). "
+    "their previous values; the month's budget plan is recalculated. To move it to "
+    "one of the user's own budget lines, send budget_line instead of category. "
+    "Confirm which expense the user means first (use list_transactions to find it). "
     + NO_MONEY_MOVEMENT
 )
 
@@ -154,9 +173,30 @@ class ExpenseItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     amount: TransactionAmount
-    category: Annotated[ExpenseCategory, Field(description=CATEGORY_HELP)]
+    category: Annotated[Optional[ExpenseCategory], Field(description=CATEGORY_HELP)] = (
+        None
+    )
+    budget_line: BudgetLine = None
     date: ExpenseDate = None
     merchant: Merchant = None
+
+    @model_validator(mode="after")
+    def _one_target(self) -> "ExpenseItem":
+        if (self.category is None) == (self.budget_line is None):
+            raise ValueError(LINE_OR_CATEGORY)
+        return self
+
+
+def _line_key(session, user_ctx, name: str) -> str:
+    """The key of the user's budget line called ``name`` (F-11)."""
+    key = budget_lines.existing_key(session, user_ctx, name)
+    if key is None:
+        raise ValidationError(
+            f"The user has no budget line called '{name}'. Their lines are in "
+            "get_budget_status (source set_by_you); a new one is set with "
+            "preview_monthly_budget."
+        )
+    return key
 
 
 def _filter_digest(start, end, category, merchant) -> bytes:
@@ -327,18 +367,28 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
         entry: str,
         tool: str,
     ) -> TransactionsRecordedOut:
-        expenses = [
-            writes.Expense(
-                amount=item.amount,
-                category=item.category,
-                day=item.date,
-                merchant=item.merchant,
-            )
-            for item in items
-        ]
-
         def write(s) -> TransactionsRecordedOut:
             writes.require_currency(user_ctx, setup_queries.currency_set(user_ctx))
+            expenses = [
+                writes.Expense(
+                    amount=item.amount,
+                    category=(
+                        _line_key(s, user_ctx, item.budget_line)
+                        if item.budget_line is not None
+                        else item.category
+                    ),
+                    day=item.date,
+                    merchant=item.merchant,
+                )
+                for item in items
+            ]
+            # The user's own lines, for the note below — read before anything
+            # is written, so a failure here never follows a commit.
+            lines = (
+                budget_lines.stored_lines(s, user_ctx)
+                if any(item.budget_line is None for item in items)
+                else {}
+            )
             request = {
                 "items": [
                     [str(e.amount), e.category, str(e.day or ""), e.merchant or ""]
@@ -384,6 +434,15 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
                     )
                 if entry == "receipt_image":
                     analytics.emit("receipt_flow_completed", item_count=len(rows))
+                if lines:
+                    names = ", ".join(
+                        f"{category_label(key)} ({key})" for key in sorted(lines)
+                    )
+                    notes.append(
+                        f"The user has their own budget lines: {names}. An expense "
+                        "that belongs to one counts there only when recorded with "
+                        "budget_line; correct it with update_transaction if needed."
+                    )
             total = sum((Decimal(str(r.amount)) for r in rows), Decimal("0.00"))
             return TransactionsRecordedOut(
                 status=status,
@@ -411,17 +470,25 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
     async def add_transaction(
         ctx: Context,
         amount: TransactionAmount,
-        category: Annotated[ExpenseCategory, Field(description=CATEGORY_HELP)],
         idempotency_key: IdempotencyKey,
+        category: Annotated[
+            Optional[ExpenseCategory], Field(description=CATEGORY_HELP)
+        ] = None,
+        budget_line: BudgetLine = None,
         date: ExpenseDate = None,
         merchant: Merchant = None,
         entry_method: EntryMethod = "conversation",
     ) -> Annotated[CallToolResult, TransactionsRecordedOut]:
-        item = ExpenseItem(
-            amount=amount, category=category, date=date, merchant=merchant
-        )
-
         async def body(session, user_ctx, call):
+            if (category is None) == (budget_line is None):
+                raise ValidationError(LINE_OR_CATEGORY)
+            item = ExpenseItem(
+                amount=amount,
+                category=category,
+                budget_line=budget_line,
+                date=date,
+                merchant=merchant,
+            )
             return await _record(
                 session,
                 user_ctx,
@@ -501,6 +568,7 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
         category: Annotated[
             Optional[ExpenseCategory], Field(description=CATEGORY_HELP)
         ] = None,
+        budget_line: BudgetLine = None,
         date: ExpenseDate = None,
         merchant: Annotated[
             Optional[str],
@@ -514,12 +582,15 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
             if (
                 amount is None
                 and category is None
+                and budget_line is None
                 and date is None
                 and merchant is None
             ):
                 raise ValidationError(
                     "Send at least one field to change: amount, category, date or merchant."
                 )
+            if category is not None and budget_line is not None:
+                raise ValidationError(LINE_OR_CATEGORY)
 
             def write(s) -> TransactionChangeOut:
                 txn_id, row = writes.resolve_ref(s, user_ctx, keys, ref)
@@ -528,12 +599,17 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
                         "This expense was deleted; it can no longer be changed."
                     )
                 before = _recorded(keys, user_ctx, row)
+                new_category = (
+                    _line_key(s, user_ctx, budget_line)
+                    if budget_line is not None
+                    else category
+                )
                 writes.apply_update(
                     s,
                     user_ctx,
                     txn_id,
                     amount=amount,
-                    category=category,
+                    category=new_category,
                     day=date,
                     merchant=merchant,
                     merchant_sent=merchant is not None,

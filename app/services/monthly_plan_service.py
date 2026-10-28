@@ -39,7 +39,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timezone
 from decimal import Decimal
-from typing import Dict, Optional, Tuple
+from typing import Dict, Iterable, Optional, Tuple
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
@@ -356,6 +356,14 @@ def _find_template_month(
     return template
 
 
+def latest_plan_month_before(
+    db: Session, user_id: UUID, year: int, month: int
+) -> Optional[Tuple[int, int]]:
+    """The most recent month before ``(year, month)`` with a real budget — the
+    month the rollover would carry forward (``_find_template_month``)."""
+    return _find_template_month(db, user_id, year, month)
+
+
 # ---------------------------------------------------------------------------
 # Reconstructing allocations for a user with no prior month
 # ---------------------------------------------------------------------------
@@ -382,6 +390,8 @@ class ProfileAllocation:
     discretionary_total: Decimal
     unallocated: Decimal
     region: Optional[str]
+    # Budget lines the user set themselves (F-11), exactly as set.
+    manual: Dict[str, Decimal] = field(default_factory=dict)
 
 
 def allocations_from_profile(
@@ -390,13 +400,18 @@ def allocations_from_profile(
     savings_goal: Decimal,
     region: Optional[str],
     fixed_expenses: Optional[Dict[str, Decimal]] = None,
+    manual_allocations: Optional[Dict[str, Decimal]] = None,
+    replaced_buckets: Iterable[str] = (),
 ) -> ProfileAllocation:
     """The smallest answers dict ``generate_budget_from_answers`` accepts — the
     function onboarding calls — and its result as a month's allocation.
 
     Raises ValueError when fixed expenses exceed income (the engine's rule).
     Used by the rollover fallback (no fixed expenses, as before) and by the
-    ChatGPT app's reviewed budget (fixed = the user's recurring obligations).
+    ChatGPT app's reviewed budget (fixed = the user's recurring obligations;
+    ``manual_allocations`` = budget lines the user set, kept exactly, with
+    ``replaced_buckets`` = MITA's own lines they take the place of — F-11).
+    With user lines that do not fit, raises ``PlanDoesNotFit``.
     """
     from app.services.core.engine.budget_logic import generate_budget_from_answers
 
@@ -417,6 +432,18 @@ def allocations_from_profile(
         "spending_habits": {},
         "goals": {"savings_goal_amount_per_month": float(savings_goal)},
     }
+    manual = {
+        str(line): Decimal(str(amount))
+        for line, amount in (manual_allocations or {}).items()
+        if Decimal(str(amount)) > ZERO
+    }
+    if manual:
+        answers["manual_allocations"] = {
+            line: format(amount, "f") for line, amount in manual.items()
+        }
+    replaced = sorted(set(replaced_buckets))
+    if replaced:
+        answers["replaced_buckets"] = replaced
 
     budget = generate_budget_from_answers(answers)
     breakdown = budget.get("discretionary_breakdown") or {}
@@ -429,6 +456,8 @@ def allocations_from_profile(
     discretionary_total = Decimal(str(budget.get("discretionary_total") or 0))
 
     allocations: Dict[str, Decimal] = dict(fixed)
+    for line, amount in manual.items():
+        allocations[line] = allocations.get(line, ZERO) + amount
     for category, amount in discretionary.items():
         allocations[category] = allocations.get(category, ZERO) + amount
     if goal_amount > ZERO:
@@ -445,6 +474,7 @@ def allocations_from_profile(
         discretionary_total=discretionary_total,
         unallocated=max(ZERO, discretionary_total - sum(discretionary.values(), ZERO)),
         region=region,
+        manual=manual,
     )
 
 

@@ -269,6 +269,7 @@ def budget_status_out(ctx: UserContext, status: BudgetStatus) -> BudgetStatusOut
                 remaining=money(c.remaining),
                 percent_used=percent(c.spent, c.planned) if c.planned > 0 else None,
                 state=_category_state(c.planned, c.spent),  # type: ignore[arg-type]
+                source=c.source,  # type: ignore[arg-type]
             )
             for c in status.categories
         ],
@@ -580,6 +581,7 @@ def calendar_month_out(ctx: UserContext, cal: CalendarMonth) -> CalendarMonthOut
                 planned=money(line.planned),
                 spent=money(line.spent),
                 remaining=money(line.remaining),
+                source=line.source,  # type: ignore[arg-type]
             )
             for line in cal.lines
         ],

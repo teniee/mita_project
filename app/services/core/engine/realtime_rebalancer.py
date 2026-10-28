@@ -10,6 +10,9 @@ PHILOSOPHY:
 - Savings are SACRED: never take from savings_goal or savings_emergency.
 - Take from DISCRETIONARY (dining, entertainment) first.
 - Never wipe out any category — max 50% cut per category per rebalance.
+- A budget line the USER set (F-11, ``user_budget_lines``) keeps the amount
+  they set: it is never a donor, and an overspend in it is not covered from
+  other lines — it stays visible as overspending.
 """
 
 from __future__ import annotations
@@ -25,6 +28,7 @@ from sqlalchemy.orm import Session
 
 from app.core.category_priority import get_category_level, is_sacred
 from app.db.models.daily_plan import DailyPlan
+from app.services.core.engine.user_budget_lines import is_user_line
 from app.services.redistribution_audit_log import record_redistribution_event
 
 logger = logging.getLogger(__name__)
@@ -169,6 +173,12 @@ def rebalance_after_overspend(
     plan.overspent_category = overspent_category
     plan.overspend_amount = overspend_amount
 
+    if is_user_line(overspent_category):
+        # The user set this line's monthly amount: covering it from other
+        # lines would raise it above what they set.
+        plan.uncovered = overspend_amount
+        return plan
+
     year = transaction_date.year
     month = transaction_date.month
     last_day = monthrange(year, month)[1]
@@ -223,11 +233,12 @@ def rebalance_after_overspend(
         plan.uncovered = overspend_amount
         return plan
 
-    # 2. Group by category, excluding SACRED and the overspent category itself
+    # 2. Group by category, excluding SACRED, the user's own lines and the
+    #    overspent category itself
     future_by_cat: Dict[str, List[DailyPlan]] = {}
     for entry in future_entries:
         cat = entry.category or ""
-        if is_sacred(cat) or cat == overspent_category:
+        if is_sacred(cat) or cat == overspent_category or is_user_line(cat):
             continue
         future_by_cat.setdefault(cat, []).append(entry)
 

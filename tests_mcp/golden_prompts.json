@@ -73,6 +73,13 @@
     {"id": "ru-18", "language": "ru", "kind": "direct", "prompt": "Покажи мой финансовый календарь на ноябрь.", "expected_tools": ["show_financial_calendar"], "expect": "call"},
     {"id": "ru-19", "language": "ru", "kind": "indirect", "prompt": "Что у меня запланировано на пятницу?", "expected_tools": ["get_calendar_month"], "expect": "call"},
     {"id": "bg-18", "language": "bg", "kind": "direct", "prompt": "Покажи финансовия ми календар за този месец.", "expected_tools": ["show_financial_calendar"], "expect": "call"},
-    {"id": "bg-19", "language": "bg", "kind": "indirect", "prompt": "В кои дни този месец съм похарчил повече от плана?", "expected_tools": ["get_calendar_month"], "expect": "call"}
+    {"id": "bg-19", "language": "bg", "kind": "indirect", "prompt": "В кои дни този месец съм похарчил повече от плана?", "expected_tools": ["get_calendar_month"], "expect": "call"},
+    {"id": "en-36", "language": "en", "kind": "direct", "prompt": "My budget: fuel €200, cigarettes €200 and food for my cat €60 a month. Plan the rest.", "expected_tools": ["get_setup_status", "preview_monthly_budget"], "expect": "call", "description_mentions": "keeps it exactly as a line of the user's"},
+    {"id": "en-37", "language": "en", "kind": "ambiguous", "prompt": "Put €100 a month on coffee, walks and leisure.", "expected_tools": [], "expect": "clarify"},
+    {"id": "en-38", "language": "en", "kind": "follow_up", "prompt": "Make my fuel line €250.", "expected_tools": ["preview_monthly_budget"], "expect": "call", "description_mentions": "send it again with the new amount"},
+    {"id": "en-39", "language": "en", "kind": "follow_up", "prompt": "Remove my cigarettes line from the budget.", "expected_tools": ["preview_monthly_budget"], "expect": "call", "description_mentions": "remove_lines takes lines out"},
+    {"id": "en-40", "language": "en", "kind": "direct", "prompt": "I bought cigarettes for €7.", "expected_tools": ["add_transaction"], "expect": "call", "description_mentions": "record it with budget_line instead of category"},
+    {"id": "ru-20", "language": "ru", "kind": "direct", "prompt": "Бензин 200 €, сигареты 200 € в месяц — остальное распредели сам.", "expected_tools": ["get_setup_status", "preview_monthly_budget"], "expect": "call"},
+    {"id": "bg-20", "language": "bg", "kind": "direct", "prompt": "Гориво 200 €, цигари 200 € на месец — останалото разпредели ти.", "expected_tools": ["get_setup_status", "preview_monthly_budget"], "expect": "call"}
   ]
 }

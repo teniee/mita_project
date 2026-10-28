@@ -1,4 +1,4 @@
-"""Per-user state of the ChatGPT app (MCP service) — migrations 0038 and 0039.
+"""Per-user state of the ChatGPT app (MCP service) — migrations 0038–0040.
 
 Written only by MCP tools and the ChatGPT consent page. Income, currency,
 timezone and monthly savings remain canonical on ``users``; these tables hold
@@ -120,3 +120,28 @@ class AnalyticsIdentity(Base):
     )
     user_key = Column(String(32), nullable=False, unique=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=_now)
+
+
+class McpBudgetLine(Base):
+    """A budget line the user named and set in ChatGPT (F-11, migration 0040).
+
+    The line's amounts live in ``daily_plan`` under ``line_key``
+    (``"my:<label>"``) like any other plan line, and expenses recorded against
+    it carry the same key (``app/services/core/engine/user_budget_lines.py``).
+    This row keeps only what rebuilding a month later must know: which of
+    MITA's own lines the user's line takes the place of (``replaces``, engine
+    line codes chosen in the conversation), so MITA never budgets the same
+    spending twice. Cascades with the user.
+    """
+
+    __tablename__ = "mcp_budget_lines"
+
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    line_key = Column(String(50), primary_key=True)
+    replaces = Column(JSONB, nullable=False, default=list)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=_now)
+    updated_at = Column(
+        DateTime(timezone=True), nullable=False, default=_now, onupdate=_now
+    )

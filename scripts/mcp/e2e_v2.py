@@ -290,6 +290,49 @@ async def run(base: str, database_url: Optional[str]) -> None:
                 "saved plan equals the preview total",
                 after["total_planned"] == preview["plan_total"],
             )
+            # F-11: a budget line the user names and sets is kept exactly.
+            mine = await s.call(
+                "preview_monthly_budget",
+                {"budget_lines": [{"label": "Cigarettes", "amount": "40.00"}]},
+            )
+            set_lines = {
+                a["category"]: (a["amount"], a["source"])
+                for a in mine["category_allocations"]
+            }
+            check(
+                "own budget line previewed as set by the user",
+                set_lines.get("my:Cigarettes") == ("40.00", "set_by_you"),
+            )
+            kept = await s.call(
+                "save_monthly_budget", {"draft_token": mine["draft_token"]}
+            )
+            check(
+                "own budget line saved",
+                [(a["category"], a["amount"]) for a in kept["set_by_you"]]
+                == [("my:Cigarettes", "40.00")],
+            )
+            smoked = await s.call(
+                "add_transaction",
+                {
+                    "amount": "7.00",
+                    "budget_line": "Cigarettes",
+                    "idempotency_key": uuid.uuid4().hex,
+                },
+            )
+            check(
+                "expense recorded against the user's line",
+                smoked["transactions"][0]["category"] == "my:Cigarettes",
+            )
+            lines = {
+                c["category"]: c
+                for c in (await s.call("get_budget_status"))["categories"]
+            }
+            check(
+                "status shows the user's line",
+                lines["my:Cigarettes"]["planned"] == "40.00"
+                and lines["my:Cigarettes"]["spent"] == "7.00"
+                and lines["my:Cigarettes"]["source"] == "set_by_you",
+            )
             key = uuid.uuid4().hex
             one = await s.call(
                 "add_transaction",
@@ -323,7 +366,7 @@ async def run(base: str, database_url: Optional[str]) -> None:
             )
             check(
                 "batch recorded",
-                batch["count"] == 2 and batch["month_to_date_spent"] == "99.80",
+                batch["count"] == 2 and batch["month_to_date_spent"] == "106.80",
             )
             lines = (await s.call("get_budget_status"))["categories"]
             labels = [c["category_label"] for c in lines]
@@ -375,7 +418,7 @@ async def run(base: str, database_url: Optional[str]) -> None:
             summary = await s.call("get_financial_summary")
             check(
                 "persisted: month spending",
-                summary["spent_total"] == "99.80",
+                summary["spent_total"] == "106.80",  # incl. the €7 on the user's line
                 summary["spent_total"],
             )
             check("persisted: saved plan", summary["plan_status"] == "generated")

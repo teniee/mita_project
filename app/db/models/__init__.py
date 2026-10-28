@@ -22,6 +22,7 @@ from .installment import (
 )
 from .mcp_app import (
     AnalyticsIdentity,
+    McpBudgetLine,
     McpIdempotencyKey,
     McpUserProfile,
     ProductFeedback,
@@ -50,6 +51,7 @@ from .waitlist import WaitlistEntry
 __all__ = [
     "Base",
     "McpOAuthClient",
+    "McpBudgetLine",
     "McpIdempotencyKey",
     "McpUserProfile",
     "ProductFeedback",

@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 
 from app.core.category_priority import is_set_aside
 from app.db.models import DailyPlan
-from app.mcp.categories import group_lines, line_key, regroup_by_day
+from app.mcp.categories import group_lines, line_key, line_source, regroup_by_day
 from app.mcp.queries import ledger
 from app.mcp.queries.periods import UserContext, month_days, month_position
 from app.services.core.engine.budget_forecast_engine import (
@@ -96,6 +96,9 @@ class CategoryStatus:
     spent: Decimal
     label: str = ""
     codes: Tuple[str, ...] = ()
+    # Who decides the line's amount (categories.line_source); None for
+    # spending with nothing planned.
+    source: Optional[str] = None
 
     @property
     def remaining(self) -> Decimal:
@@ -175,6 +178,7 @@ def budget_status(
                 spent=line_spent,
                 label=name,
                 codes=tuple(codes),
+                source=line_source(codes, line_planned),
             )
             for key, name, codes, line_planned, line_spent in group_lines(
                 planned_by_cat, spent_by_cat

@@ -46,7 +46,7 @@ from sqlalchemy.orm import Session
 
 from app.core.category_priority import is_set_aside
 from app.db.models import ScheduledExpense
-from app.mcp.categories import group_lines, line_key
+from app.mcp.categories import group_lines, line_key, line_source
 from app.mcp.queries import ledger, plan
 from app.mcp.queries.periods import UserContext, month_days
 from app.services.core.engine.budget_forecast_engine import ForecastResult
@@ -138,6 +138,7 @@ class CalendarLine:
     group: str
     planned: Decimal
     spent: Decimal
+    source: Optional[str] = None  # categories.line_source
 
     @property
     def remaining(self) -> Decimal:
@@ -362,6 +363,7 @@ def build_calendar(
                 group=group,
                 planned=line_planned,
                 spent=line_spent,
+                source=line_source(codes, line_planned),
             )
         )
     lines.sort(key=lambda line: (-line.planned, -line.spent, line.key))
