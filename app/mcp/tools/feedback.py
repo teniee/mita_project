@@ -59,8 +59,10 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
         name="submit_feedback",
         title="Send feedback to the MITA team",
         description=FEEDBACK_DESCRIPTION,
+        # Destructive: a sent message cannot be taken back (OpenAI counts
+        # "sending messages ... you can't undo"), so the host asks first.
         annotations=write_annotations(
-            "Send feedback to the MITA team", destructive=False, idempotent=True
+            "Send feedback to the MITA team", destructive=True, idempotent=True
         ),
         meta=tool_meta(FEEDBACK_WRITE, "Sending your feedback…", "Sent your feedback"),
     )

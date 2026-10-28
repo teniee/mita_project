@@ -70,7 +70,7 @@ All line numbers refer to `27ed25d`.
 
 | Tool | Sources |
 |---|---|
-| `get_profile` | `users` (name, masked email, currency, timezone, onboarding flag, stated income) |
+| `get_profile` | `users` (name, masked e-mail; since 2026-10-27 exactly OpenAI's profile fields — currency, timezone and onboarding state moved out) |
 | `list_transactions` | ledger |
 | `get_spending_breakdown` | ledger |
 | `get_financial_summary` | ledger + plan allocation + stated income |

@@ -148,7 +148,7 @@ async def test_token_without_user_subject_is_401(mcp, seed):
 async def test_valid_token_succeeds(mcp, seed):
     user = await seed.user()
     data = structured(await mcp.call(mcp.token(user), "get_profile"))
-    assert data["timezone"] == "UTC"
+    assert data["id"].startswith("prf_")
 
 
 async def test_missing_scope_is_forbidden_with_reauth_hint(mcp, seed):

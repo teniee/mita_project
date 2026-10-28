@@ -12,11 +12,11 @@ from app.mcp.serializers import profile_out
 from app.mcp.tools.common import READ_ONLY_DISCLAIMER, read_only_annotations, tool_meta
 
 DESCRIPTION = (
-    "Identify the MITA account connected to this chat: a stable profile id, display "
-    "name, masked e-mail, the currency MITA uses for this user's amounts, and the "
-    "timezone MITA uses for days and months. Use it to confirm which account is "
-    "connected or to learn the currency/timezone before interpreting other results. "
-    "Returns no financial figures. " + READ_ONLY_DISCLAIMER
+    "Identify the MITA account connected to this chat: a stable, opaque profile id, "
+    "the display name (when the user set one) and a masked e-mail address. Use it to "
+    "confirm which account is connected. Returns no financial figures; every MITA "
+    "result with amounts names their currency, and get_setup_status shows the "
+    "currency and timezone the user stated. " + READ_ONLY_DISCLAIMER
 )
 
 

@@ -1,4 +1,4 @@
-# MITA in ChatGPT — tool catalog (v2.2, 24 tools)
+# MITA in ChatGPT — tool catalog (v2.3, 24 tools)
 
 Generated from the live tool list (`app/mcp/tools`); the semantics column is
 pinned by `tests_mcp/test_tool_contract.EXPECTED`. Every tool: identity from
@@ -8,7 +8,8 @@ its description, and an output schema. Every category in a result comes with
 `category_label`, MITA's one display name for it (`app/mcp/categories.py`).
 
 **Confirmation.** ChatGPT asks the user before write tools; `destructiveHint`
-(overwrite or delete) makes that an explicit approval. The tools themselves
+(overwrite, delete, or a send that cannot be taken back) makes that an
+explicit approval. Justifications per tool: `review/annotation-justifications.md`. The tools themselves
 add their own guards: corrections need the expense's `ref`, a budget is saved
 only from a signed preview, feedback only on explicit request.
 
@@ -16,7 +17,7 @@ only from a signed preview, feedback only on explicit request.
 
 | Tool | Purpose | Inputs | Scope |
 |---|---|---|---|
-| `get_profile` | which MITA account is connected; currency and timezone (`openai/profile` tool) | — | profile:read |
+| `get_profile` | which MITA account is connected: opaque id, display name (when set), masked e-mail — exactly OpenAI's profile schema (`openai/profile` tool; since 2026-10-27 no currency/timezone: those are in `get_setup_status`) | — | profile:read |
 | `get_setup_status` | what MITA already knows, what is missing, plan/records counts, next step | — | profile:read |
 | `get_financial_summary` | one month: income stated, plan, spent, remaining, top 3 categories | year, month | finance:read |
 | `list_transactions` | expenses for a range with opaque `ref`s; keyset paging (`next_cursor`) | start_date, end_date, category, merchant, limit, cursor | finance:read |
@@ -43,7 +44,7 @@ only from a signed preview, feedback only on explicit request.
 | `save_monthly_budget` | save exactly the reviewed draft (`draft_token`); may replace the month's plan | yes | yes | same draft → `already_saved` | finance:write |
 | `add_recurring_expense` | save a repeating obligation with a computed next due date | no | yes | `idempotency_key` | finance:write |
 | `create_savings_goal` | create a goal with the user's exact title; a target date sets the monthly amount aside; the goal cannot be changed afterwards | no | yes | `idempotency_key` | finance:write |
-| `submit_feedback` | send the user's feedback to the MITA team (explicit request only) | no | yes | `idempotency_key` | feedback:write |
+| `submit_feedback` | send the user's feedback to the MITA team (explicit request only) | yes (a sent message cannot be taken back; since 2026-10-27) | yes | `idempotency_key` | feedback:write |
 | `set_usage_analytics` | turn usage statistics on/off (off deletes linked usage data) | yes | yes | same value → same state | profile:write |
 
 `idempotentHint` is true for the create tools only because their arguments

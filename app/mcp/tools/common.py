@@ -34,8 +34,9 @@ def write_annotations(
 ) -> ToolAnnotations:
     """Changes the signed-in user's own MITA data, nothing outside it.
 
-    ``destructive``: the tool may delete or overwrite data the user already has
-    (OpenAI: the host then asks for explicit approval). ``idempotent``: calling
+    ``destructive``: the tool may delete or overwrite data the user already has,
+    or send something that cannot be taken back (OpenAI: the host then asks for
+    explicit approval). ``idempotent``: calling
     it again with the same arguments has no further effect — for create tools
     that is only true because the arguments include an idempotency key.
     """

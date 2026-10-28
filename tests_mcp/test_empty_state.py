@@ -65,7 +65,8 @@ async def test_new_account_has_no_invented_figures(mcp, seed):
     assert txns["transactions"] == [] and txns["matching_total"] == "0.00"
 
     profile = structured(await m.call(token, "get_profile"))
-    assert profile["name"] is None and profile["has_completed_onboarding"] is False
+    # No name set: omitted, never null (OpenAI's profile schema has no null).
+    assert set(profile) == {"id", "nickname"}
 
     for tool in ("get_financial_summary", "get_budget_status", "get_budget_forecast"):
         _no_placeholders((await m.call(token, tool)).content[0].text)

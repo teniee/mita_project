@@ -1025,9 +1025,22 @@ Rules:
   commit — that must never be flushed). Reuse the domain writers; a batch uses
   `expense_tracker.add_transactions_to_ledger` (no commit) + one commit.
 - **Annotations are facts.** `test_tool_contract.EXPECTED` lists every tool's
-  read/destructive/idempotent semantics; overwrite or delete ⇒ destructive.
+  read/destructive/idempotent semantics; overwrite, delete or a send that
+  cannot be taken back ⇒ destructive (`submit_feedback` since 2026-10-27:
+  OpenAI counts "sending messages … you can't undo"). Justification text per
+  tool: `docs/chatgpt-app/review/annotation-justifications.md` — keep it in
+  step with `EXPECTED`.
   Create tools take an `idempotency_key` (scoped by user, operation and the
   hashed `openai/session`), which is what makes `idempotentHint` true.
+- **The profile tool returns OpenAI's standard profile, nothing else.**
+  `get_profile` carries `_meta["openai/profile"]: true`, so its result must
+  match OpenAI's profile schema (`id`, optional `name`/`email`/`nickname`,
+  `additionalProperties: false`; "an invalid response can prevent account
+  connection"). `ProfileOut` publishes exactly that schema and leaves an
+  unset name out (never null); currency and timezone live in
+  `get_setup_status` and every money result. Never add a field to
+  `ProfileOut`; `test_tool_contract.py` validates real responses against
+  OpenAI's schema.
 - **One account system, one policy.** The ChatGPT sign-up page and mobile
   `/register` share `app/core/email_policy.py`, `app/core/password_policy.py`,
   `app/core/financial_constants.py` and `app/services/user_registration.py`

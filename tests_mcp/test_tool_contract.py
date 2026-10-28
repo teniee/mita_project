@@ -63,7 +63,9 @@ EXPECTED = {
     "save_monthly_budget": ("write", True, True, FINANCE_WRITE, False),
     "add_recurring_expense": ("write", False, True, FINANCE_WRITE, True),
     "create_savings_goal": ("write", False, True, FINANCE_WRITE, True),
-    "submit_feedback": ("write", False, True, FEEDBACK_WRITE, True),
+    # Sends the user's words to the MITA team; a sent message cannot be taken
+    # back (OpenAI: "sending messages ... you can't undo" is destructive).
+    "submit_feedback": ("write", True, True, FEEDBACK_WRITE, True),
     # Turning it off deletes the usage data already linked to the user.
     "set_usage_analytics": ("write", True, True, PROFILE_WRITE, False),
 }
@@ -154,6 +156,49 @@ async def test_profile_tool_is_marked_for_multi_account(tools):
     assert (profile.input_schema or {}).get("properties", {}) == {}
     others = [t.name for t in tools if (t.meta or {}).get("openai/profile")]
     assert others == ["get_profile"]
+
+
+# OpenAI's profile response schema, verbatim from
+# developers.openai.com/plugins/build/auth ("Support multiple accounts",
+# checked 2026-10-27): a declared profile tool that returns anything else can
+# prevent account connection.
+OPENAI_PROFILE_SCHEMA = {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "type": "object",
+    "properties": {
+        "id": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "name": {"type": "string"},
+        "email": {"type": "string"},
+        "nickname": {"type": "string"},
+    },
+    "required": ["id"],
+    "additionalProperties": False,
+}
+
+
+async def test_profile_output_schema_is_openais_standard_profile(tools):
+    schema = next(t for t in tools if t.name == "get_profile").output_schema
+    assert schema["additionalProperties"] is False
+    assert schema["required"] == ["id"]
+    assert set(schema["properties"]) <= set(OPENAI_PROFILE_SCHEMA["properties"])
+    for name, spec in schema["properties"].items():
+        assert spec["type"] == OPENAI_PROFILE_SCHEMA["properties"][name]["type"]
+    assert schema["properties"]["id"]["minLength"] == 1
+    assert schema["properties"]["id"]["pattern"] == "\\S"
+
+
+@pytest.mark.parametrize("name", ["Ivan Petrov", None])
+async def test_profile_response_validates_against_openais_schema(mcp, seed, name):
+    import jsonschema
+
+    user = await seed.user(name=name)
+    result = await mcp.call(mcp.token(user), "get_profile")
+    assert not result.is_error
+    jsonschema.validate(result.structured_content, OPENAI_PROFILE_SCHEMA)
+    # The text item carries the same profile as JSON (OpenAI: for compatibility).
+    import json
+
+    assert json.loads(result.content[0].text) == result.structured_content
 
 
 async def test_descriptions_are_specific_and_state_their_limits(tools):

@@ -11,7 +11,7 @@ from __future__ import annotations
 import datetime as dt
 from typing import List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_serializer
 
 Money = str  # validated by MONEY_PATTERN in tests_mcp; kept a plain alias for schema clarity
 MONEY_PATTERN = r"^-?\d+\.\d{2}$"
@@ -43,21 +43,47 @@ def category_label_field() -> object:
 # --- get_profile -----------------------------------------------------------
 
 
+def _standard_profile_schema(schema: dict) -> None:
+    """Publish exactly OpenAI's profile response schema: ``name`` is a string
+    when present (absent, never null) and only ``id`` is required."""
+    schema["properties"]["name"] = {
+        "type": "string",
+        "description": schema["properties"]["name"]["description"],
+    }
+    schema["required"] = ["id"]
+
+
 class ProfileOut(_Out):
+    """The ``openai/profile`` tool's result. OpenAI validates it against its
+    standard profile schema (``id`` plus optional ``name``, ``email``,
+    ``nickname``; nothing else) and an invalid response can prevent account
+    connection (developers.openai.com/plugins/build/auth, "Support multiple
+    accounts"). Currency and timezone are in get_setup_status and every result
+    that needs them, not here."""
+
+    model_config = ConfigDict(
+        extra="forbid", json_schema_extra=_standard_profile_schema
+    )
+
     id: str = Field(
-        description="Stable, opaque identifier of this MITA profile (not the account's database id)."
+        min_length=1,
+        pattern=r"\S",
+        description=(
+            "Opaque MITA profile id: unique, unchanged across token refresh, "
+            "reconnection and name changes, never reassigned; not the account's "
+            "database id."
+        ),
     )
     name: Optional[str] = Field(
-        description="Display name the user set in MITA, if any."
+        default=None,
+        description="Display name the user set in MITA; omitted when none is set.",
     )
     nickname: str = Field(description="Masked e-mail address, to tell accounts apart.")
-    currency: str = Field(
-        description="ISO 4217 code MITA uses for this user's amounts."
-    )
-    timezone: str = Field(
-        description="IANA timezone MITA uses for this user's days and months."
-    )
-    has_completed_onboarding: bool
+
+    @model_serializer(mode="wrap")
+    def _omit_absent(self, handler):
+        # An unset name is left out: the standard schema has no null.
+        return {k: v for k, v in handler(self).items() if v is not None}
 
 
 # --- list_transactions -----------------------------------------------------

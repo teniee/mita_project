@@ -107,11 +107,8 @@ def _plan_notes(ctx: UserContext, plan_generated: bool) -> List[str]:
 def profile_out(ctx: UserContext) -> ProfileOut:
     return ProfileOut(
         id=profile_id(ctx.user_id),
-        name=ctx.name,
+        name=(ctx.name or "").strip() or None,
         nickname=mask_email(ctx.email),
-        currency=ctx.currency,
-        timezone=ctx.timezone,
-        has_completed_onboarding=ctx.has_onboarded,
     )
 
 

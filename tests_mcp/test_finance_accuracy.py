@@ -331,12 +331,9 @@ async def test_private_fields_never_returned(m, ledger_user):
 async def test_profile(m, seed):
     user = await seed.user(tz="Europe/Sofia", currency="EUR", name="Ivan")
     data = structured(await m.call(m.token(user), "get_profile"))
-    assert (
-        data["name"] == "Ivan"
-        and data["currency"] == "EUR"
-        and data["timezone"] == "Europe/Sofia"
-    )
-    assert data["has_completed_onboarding"] is True
+    # OpenAI's standard profile response: nothing beyond id/name/nickname.
+    assert set(data) == {"id", "name", "nickname"}
+    assert data["name"] == "Ivan"
     assert data["nickname"].endswith("@example.test") and "***" in data["nickname"]
     assert data["id"].startswith("prf_") and str(user.id) not in data["id"]
     again = structured(await m.call(m.token(user), "get_profile"))
