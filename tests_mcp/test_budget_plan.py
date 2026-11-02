@@ -116,6 +116,7 @@ async def test_preview_is_the_canonical_engine_and_writes_nothing(m, ana, connec
             "category_label": "Rent",
             "amount": "700.00",
             "basis": "monthly",
+            "due_dates": ["2026-10-01"],  # the 1st, in full (F-8)
         }
     ]
     assert preview["fixed_obligations_total"] == "700.00"
@@ -456,6 +457,12 @@ async def test_how_obligations_are_counted(m, ana, seed):
         ("SafeCar", "240.00", "one-time on 2026-10-20"),
     }
     assert preview["fixed_obligations_total"] == "980.00"
+    dates = {o["name"]: o["due_dates"] for o in preview["fixed_obligations"]}
+    assert dates == {
+        "Rent": ["2026-10-01"],
+        "Gym": ["2026-10-05", "2026-10-12", "2026-10-19", "2026-10-26"],
+        "SafeCar": ["2026-10-20"],
+    }
 
 
 async def test_recorded_history_only_adds_warnings(m, ana, seed):

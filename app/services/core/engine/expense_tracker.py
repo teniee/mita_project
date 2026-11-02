@@ -11,12 +11,15 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.db.models import DailyPlan, Transaction, User
+from app.services.core.engine.bill_timing import consume_bill_timing, retime_bill_lines
+from app.services.core.engine.budget_forecast_engine import commitment_expectations
 from app.services.core.engine.calendar_updater import calculate_day_status
 from app.services.core.engine.realtime_rebalancer import (
     RebalancePlan,
     check_and_rebalance,
     consume_realtime_adjustment,
 )
+from app.services.monthly_obligations import obligations_due
 from app.services.redistribution_audit_log import record_redistribution_event
 
 logger = logging.getLogger(__name__)
@@ -164,6 +167,26 @@ def _record_creation_redistribution(
             )
 
 
+def month_bill_categories(
+    db: Session, user_id: UUID, month_start: date, rows: Sequence[DailyPlan]
+) -> frozenset:
+    """The month's bill lines — the bills R3 holds out of the safe daily
+    amount (``commitment_expectations``): the recordable categories of the
+    user's saved payments that count in the month, and the rent / mortgage /
+    utilities lines of the base plan. ``rows`` must carry their base
+    allocations (adjustments backed out)."""
+    base: Dict[str, Decimal] = defaultdict(lambda: Decimal("0.00"))
+    for row in rows:
+        metadata = row.plan_json if isinstance(row.plan_json, dict) else {}
+        if (
+            row.goal_id is None
+            and metadata.get(TRANSACTION_GENERATED_PLAN_KEY) is not True
+        ):
+            base[row.category or ""] += Decimal(row.planned_amount or 0)
+    due = obligations_due(db, user_id, month_start.year, month_start.month)
+    return frozenset(commitment_expectations(base, due))
+
+
 def rebuild_month_plan(
     db: Session,
     user_id: UUID,
@@ -175,10 +198,13 @@ def rebuild_month_plan(
     """Rebuild one month from its base allocations and active ledger.
 
     Real-time redistribution writes a signed adjustment into each affected
-    DailyPlan row. Rebuild first consumes every adjustment in the month,
-    restoring the pre-rebalance allocations, then recomputes spend from all
-    non-deleted transactions and replays each local-day/category overspend
-    exactly once in deterministic order.
+    DailyPlan row, and so does bill timing. Rebuild first consumes every
+    adjustment in the month, restoring the reviewed (base) allocations, then
+    recomputes spend from all non-deleted transactions; moves each bill
+    line's own money to the dates its payments were recorded on
+    (``bill_timing``: a bill paid early, late or in parts is not
+    overspending); and replays each remaining local-day/category overspend
+    exactly once in deterministic order, never taking from a bill line.
     """
     lock_user_ledger(db, user_id)
 
@@ -203,7 +229,7 @@ def rebuild_month_plan(
 
     rows_by_key = {}
     for row in rows:
-        adjustment = consume_realtime_adjustment(row)
+        adjustment = consume_realtime_adjustment(row) + consume_bill_timing(row)
         if adjustment:
             restored = Decimal(row.planned_amount or 0) - adjustment
             row.planned_amount = restored
@@ -254,6 +280,11 @@ def rebuild_month_plan(
 
     db.flush()
 
+    # A bill's money stays on its own line: paying it on another date than
+    # the plan put it on moves that money, never other lines' (F-8).
+    bills = month_bill_categories(db, user_id, month_start, rows)
+    retime_bill_lines(rows_by_key, totals, bills)
+
     rebalance_results = {}
     for day, category in sorted(totals):
         # rows_by_key already holds every plan row in this month, loaded FOR
@@ -267,6 +298,7 @@ def rebuild_month_plan(
             commit=False,
             record_audit=False,
             month_rows=rows_by_key,
+            protected=bills,
         )
         if result is not None:
             rebalance_results[(day, category)] = result

@@ -147,6 +147,18 @@ the rebalancer works per date and category and never uses the same line's other
 dates. Today's behaviour is pinned with hand-checkable figures in
 `tests_mcp/test_money_consistency.py`.
 
+**Corrected for bills 2026-11-02 (owner decision, MCP 2.5.0,
+`bill-due-dates.md`):** saved bills are planned in full on their due dates
+(reviewed budget and month rollover); paying one on time, early, late or in
+parts moves only that bill line's own money (`bill_timing`), never
+overspending in itself; bill lines are never rebalancing donors. On the review
+month: utilities 190.00 → 95.00, kindergarten 231.04 → 180.00, internet 9.17 →
+30.00, money moved between lines 904.32 → 656.19, the plan for 25–31 Oct 12.16
+→ 61.53 (left to spend and the daily figure unchanged). What still drains the
+dates ahead is everyday spending: F-2 names and groceries' pace (R1/R2 for
+everyday lines, not adopted). Plans saved before 2.5.0 keep their layout
+until the user saves the month again.
+
 ## F-9 (P2, consistency) Two mobile figures disagreed with ChatGPT's — fixed 2026-10-26
 
 Found while writing `tests_mcp/test_money_consistency.py` (2026-10-25); pinned
@@ -253,3 +265,28 @@ words, MITA does the money); one MCP table (`mcp_budget_lines`, migration
 `user-budget-lines.md`. An earlier, wider implementation (mobile screen, REST
 endpoints, a global Tobacco category, a `daily_plan` provenance column) was
 withdrawn before commit.
+
+## F-12 (product) MITA's automatic lines do not fit the person — found in real ChatGPT, 2026-11-02
+
+**Not fixed; recorded for a separate decision.** In the owner's staging month
+(income 2,000, savings 500, bills 370, their own lines 600) MITA allocated the
+remaining 530.00 by its income-tier weights: public transport 151.63 to a
+person who drives their own car, medical insurance 60.65 to a person who pays
+none, groceries 50 (the user's own line) felt too low to them, and dining out
+75.10 / entertainment 86.65 may be too small. These are
+`generate_budget_from_answers`'s default buckets; nothing asks the person
+whether a bucket applies to them, and F-11's `replaces` covers only lines the
+user names themselves.
+
+Keep apart from the bills: the car loan's 270.00 is a saved payment
+(`transportation`, label "Transport"), not a transport allowance — it is
+neither Fuel (the user's own line) nor MITA's Public transport bucket.
+
+Options for the owner (none started): ChatGPT asks, before the first save,
+which of MITA's buckets do not apply (a "remove line" request the preview
+already supports for the user's lines, extended to MITA's buckets: their money
+goes to the remaining lines or stays unallocated); or the engine drops
+transport-public when the person states a car and medical insurance unless
+stated. Either changes the shared engine's allocation and needs an owner
+decision (ChatGPT mirrors the app).
+

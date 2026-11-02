@@ -141,16 +141,23 @@ Rules for anyone touching this:
   "if the month is missing, generate it" in a router.
 - **Not a second budget algorithm.** Totals come from the user's own last
   persisted month, or from `generate_budget_from_answers`; layout comes from
-  `distribute_budget_over_days`; rows are written by `save_calendar_for_user`;
-  spend is accrued by `rebuild_month_plan`. All pre-existing, all canonical.
+  `distribute_budget_over_days` — except the user's saved bills, placed in
+  full on their due dates (`monthly_obligations.dated_obligations` →
+  `bills_on_due_dates`, the reviewed budget's rule; owner decision
+  2026-11-02); rows are written by `save_calendar_for_user`; spend is accrued
+  by `rebuild_month_plan`. All canonical.
 - **Never guard on "does the month have rows".** `rebuild_month_plan` creates
   `planned_amount = 0` rows tagged `_mita_transaction_generated_v1` for spend
   with no plan behind it, and the rebalancer can credit one to a non-zero
   amount. `GoalBudgetSyncService` writes `goal_savings` rows too. Guard on a
   real allocation — that is what `month_has_plan` does.
 - **Roll forward the BASE plan.** `_mita_realtime_adjustment_v1` records an
-  in-month rebalance and is backed out before a month is carried forward;
-  otherwise a one-off overspend would permanently reshape every later month.
+  in-month rebalance and `_mita_bill_timing_v1` a bill's money moved to the
+  date it was paid (`bill_timing`); both are backed out before a month is
+  carried forward or rebuilt; otherwise a one-off overspend or an early bill
+  would permanently reshape every later month. A row is a real allocation by
+  its BASE amount (`_budget_rows`): a due-date row emptied by an early payment
+  still is one.
 - **Serialize with `lock_user_ledger`.** The same per-user
   `pg_advisory_xact_lock` every ledger mutation takes — a second lock would
   deadlock. The mobile app fires several budget reads in one `Future.wait` on
@@ -1097,6 +1104,10 @@ Rules:
   without obligations carries a "default draft" warning. Never mandatory. After a save the visible
   `planned_amount` can differ from the preview by MITA's in-month
   redistribution; the BASE plan (adjustment backed out) is the reviewed one.
+  Saved obligations are laid out in full on their due dates
+  (`ObligationOut.due_dates`; `month_calendar(…, bills)`), never spread; a
+  preview whose only difference from the saved month is that layout says so
+  (`LAYOUT_ONLY_NOTE`).
 - **The user's own budget lines** (F-11, owner decision 2026-10-28,
   `docs/chatgpt-app/user-budget-lines.md`). "Fuel €200", "Cigarettes €200":
   a free-form line `"my:<label>"` stored as a normal plan line and as the
@@ -1145,7 +1156,12 @@ Rules:
   commitments; `live_status.daily_budget` leaves set-aside lines out.
   `queries/plan.bill_line_keys` is the one display-line rule: the calendar's
   "Bills & commitments" group and `get_budget_status.today.everyday_*` (today
-  without bills). The calendar's
+  without bills). The same bills (`expense_tracker.month_bill_categories`)
+  are never rebalancing donors, and what is recorded under one is matched to
+  its dated rows in date order and moves only that line's money
+  (`bill_timing.retime_bill_lines`, owner decision 2026-11-02,
+  `docs/chatgpt-app/bill-due-dates.md`): a bill paid early, late or in parts
+  is not overspending; only spending beyond the line's whole month is. The calendar's
   `left_to_spend` excludes the reserve. Negative averages are allowed (bills
   due beyond what the plan leaves). Exact figures:
   `tests_mcp/test_bills_reserve.py` (the scenario matrix),
@@ -1419,18 +1435,26 @@ Rules:
   - Bump the URI's `-vN` for a breaking component change. `ui.domain` comes
     from `MCP_WIDGET_DOMAIN` (an origin; production refuses to start without
     it since 2026-10-27; set it on staging for the real-ChatGPT run).
-  - Known model gaps the calendar shows and does not hide: F-8 (rebalancing
-    drains the dates ahead when a bill is paid on another date than laid out)
-    and F-2. **F-8 stays MITA's behaviour** (owner decision 2026-10-25:
-    ChatGPT shows exactly what the app implements; R1, R2, R4, R5 not adopted;
-    `docs/chatgpt-app/f8-money-model-proposal.md`); unrecorded bills are held
-    out of left to spend since R3. Do not change the rebalancer or the layout
-    without a new owner decision.
-    Today's behaviour is pinned with hand-checkable figures in
-    `tests_mcp/test_money_consistency.py` (`…_today` tests, the review month);
-    a model change must update those figures deliberately, and every scenario
-    there also checks status / forecast / calendar / stored rows / the mobile
-    API's figures against each other.
+  - **Bills on their due dates** (owner decision 2026-11-02, MCP 2.5.0,
+    `docs/chatgpt-app/bill-due-dates.md`): R4 adopted, plus a bill line's own
+    money following its payment and bill lines never donors. Each bill has a
+    `state` (recorded / overdue / due_today / upcoming / later) matched by
+    category in date order — "recorded", never "paid": MITA cannot link an
+    expense to a saved payment (explicit matching needs the `bill_payments`
+    proposal, an owner decision and a migration). `REMINDER_DAYS` = 5 is a
+    reminder in the calendar only — never an allocation, never a push, e-mail
+    or scheduled job. Plans saved before 2.5.0 keep their layout until the
+    user saves the month again (no silent rewrite).
+  - Known model gaps the calendar shows and does not hide: everyday
+    overspending still drains later dates (F-8 for everyday lines: R1, R2 for
+    everyday lines and R5 not adopted) and F-2. Do not change the everyday
+    rebalancing without a new owner decision.
+    Behaviour is pinned with hand-checkable figures in
+    `tests_mcp/test_money_consistency.py` (the review month, the bill cases)
+    and `tests_mcp/test_bill_due_dates.py` (the owner's November); a model
+    change must update those figures deliberately, and every scenario there
+    also checks status / forecast / calendar / stored rows / the mobile API's
+    figures against each other.
   - **Money is never cut off on a narrow phone**: the component's `fitText`
     shrinks, then rounds a date grid to whole euros (said under it), stacks
     tiles and buttons; the harness checks 320 and 360 px.

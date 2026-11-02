@@ -13,7 +13,7 @@ from typing import List, Optional, Sequence
 from app.mcp.categories import goal_label
 from app.mcp.categories import label as category_label
 from app.mcp.crypto import DataKeys
-from app.mcp.queries.calendar import CalendarMonth
+from app.mcp.queries.calendar import REMINDER_DAYS, CalendarMonth
 from app.mcp.queries.goals import GoalView
 from app.mcp.queries.ledger import CategoryTotal, LedgerPage
 from app.mcp.queries.periods import UserContext, days_elapsed, month_days
@@ -561,6 +561,24 @@ def _day_out(day) -> CalendarDayOut:
     )
 
 
+def _bill_out(bill) -> CalendarBillOut:
+    occurrence = bill.occurrence
+    return CalendarBillOut(
+        date=occurrence.day,
+        name=occurrence.merchant,
+        category=occurrence.category,
+        category_label=category_label(occurrence.category),
+        amount=money(occurrence.amount),
+        recurrence=occurrence.recurrence,  # type: ignore[arg-type]
+        in_plan=bill.in_plan,
+        state=bill.state,  # type: ignore[arg-type]
+        days_until=bill.days_until,
+        recorded=money(bill.recorded),
+        recorded_dates=list(bill.recorded_on),
+        reminder_from=bill.reminder_from,
+    )
+
+
 def calendar_month_out(ctx: UserContext, cal: CalendarMonth) -> CalendarMonthOut:
     return CalendarMonthOut(
         year=cal.year,
@@ -586,18 +604,9 @@ def calendar_month_out(ctx: UserContext, cal: CalendarMonth) -> CalendarMonthOut
             for line in cal.lines
         ],
         days=[_day_out(day) for day in cal.days],
-        bills=[
-            CalendarBillOut(
-                date=bill.occurrence.day,
-                name=bill.occurrence.merchant,
-                category=bill.occurrence.category,
-                category_label=category_label(bill.occurrence.category),
-                amount=money(bill.occurrence.amount),
-                recurrence=bill.occurrence.recurrence,  # type: ignore[arg-type]
-                in_plan=bill.in_plan,
-            )
-            for bill in cal.bills
-        ],
+        bills=[_bill_out(bill) for bill in cal.bills],
+        reminders=[_bill_out(bill) for bill in cal.reminders],
+        reminder_days=REMINDER_DAYS,
         notes=_calendar_notes(ctx, cal),
     )
 
@@ -639,6 +648,7 @@ def calendar_view_out(
         focus_date=focus_date,
         category=category,
         summary=calendar_summary_out(cal),
+        reminders=[_bill_out(bill) for bill in cal.reminders],
         shown=shown,
         notes=list(notes) + _calendar_notes(ctx, cal),
     )

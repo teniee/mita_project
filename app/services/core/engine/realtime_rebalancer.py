@@ -13,6 +13,11 @@ PHILOSOPHY:
 - A budget line the USER set (F-11, ``user_budget_lines``) keeps the amount
   they set: it is never a donor, and an overspend in it is not covered from
   other lines — it stays visible as overspending.
+- The month's bill lines (``protected``: the bills R3 holds — saved payments'
+  categories and rent / mortgage / utilities) are never donors either. A bill
+  paid on another date than its row is not overspending at all: the ledger
+  rebuild first moves the line's own money to the payment's date
+  (``bill_timing``, owner decision 2026-11-02, F-8).
 """
 
 from __future__ import annotations
@@ -21,7 +26,7 @@ import logging
 from calendar import monthrange
 from datetime import date, datetime
 from decimal import ROUND_DOWN, Decimal
-from typing import Dict, List, Optional
+from typing import AbstractSet, Dict, List, Optional
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -150,6 +155,7 @@ def rebalance_after_overspend(
     commit: bool = True,
     record_audit: bool = True,
     month_rows: Optional[Dict] = None,
+    protected: AbstractSet[str] = frozenset(),
 ) -> RebalancePlan:
     """
     Core algorithm: redistribute future budget after overspend.
@@ -165,6 +171,8 @@ def rebalance_after_overspend(
             month. A month rebuild already holds every row under the same
             advisory lock, so re-selecting them per (day, category) bucket
             costs two extra round trips each with no new information.
+        protected: categories that are never donors this month besides the
+            SACRED ones and the user's own lines — the month's bill lines.
 
     Returns:
         RebalancePlan with summary of what was changed
@@ -233,12 +241,17 @@ def rebalance_after_overspend(
         plan.uncovered = overspend_amount
         return plan
 
-    # 2. Group by category, excluding SACRED, the user's own lines and the
-    #    overspent category itself
+    # 2. Group by category, excluding SACRED, the user's own lines, the month's
+    #    bill lines and the overspent category itself
     future_by_cat: Dict[str, List[DailyPlan]] = {}
     for entry in future_entries:
         cat = entry.category or ""
-        if is_sacred(cat) or cat == overspent_category or is_user_line(cat):
+        if (
+            is_sacred(cat)
+            or cat == overspent_category
+            or is_user_line(cat)
+            or cat in protected
+        ):
             continue
         future_by_cat.setdefault(cat, []).append(entry)
 
@@ -404,6 +417,7 @@ def check_and_rebalance(
     commit: bool = True,
     record_audit: bool = True,
     month_rows: Optional[Dict] = None,
+    protected: AbstractSet[str] = frozenset(),
 ) -> Optional[RebalancePlan]:
     """
     Check if category is overspent on given date, trigger rebalance if so.
@@ -411,6 +425,7 @@ def check_and_rebalance(
 
     ``month_rows`` lets a caller that already holds the month's plan rows
     (see rebuild_month_plan) skip the per-bucket lookups entirely.
+    ``protected``: the month's bill lines, never donors (rebuild_month_plan).
     """
     if month_rows is None:
         # DailyPlan.date is DateTime — match by date range covering the full day
@@ -466,4 +481,5 @@ def check_and_rebalance(
         commit=commit,
         record_audit=record_audit,
         month_rows=month_rows,
+        protected=protected,
     )

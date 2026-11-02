@@ -62,6 +62,33 @@ ChatGPT to plan it.
 | 24 | "Make fuel €250." | A preview where Fuel goes €200 → €250, listed as a change; save it. | preview | |
 | 25 | "Set cigarettes to €3,000." | Refused: over your income; ChatGPT shows income, bills, savings, your amounts and by how much, and asks what to change. Nothing saved. | answer | |
 
+### 2.5.0 — bills on their due dates and reminders (phone first)
+
+Before: `https://mita-mcp-staging-staging.up.railway.app/health` says
+`"version":"2.5.0"`; refresh the connector (the calendar's data changed) and
+start a **new** conversation. Steps 26–31 use **your own staging account**
+(nothing in them records money); steps 32–34 record payments, so do them on a
+**new fictional account** set up like yours (income €2,000, savings €500,
+Phone €30 on the 10th, Car loan €270 on the 15th, Laptop loan €70 on the 25th,
+your five lines). Your November plan was saved before 2.5.0, so its bills are
+still spread over other dates until step 26.
+
+| # | Do | Pass when | 📸 | Result (phone / computer) |
+|---|---|---|---|---|
+| 26 | "Show my November budget again and save it." | The preview lists Phone due 10 Nov, Car loan 15 Nov, Laptop loan 25 Nov; no amount changes; it says saving changes only the day-by-day plan (each bill in full on its due date). Your five lines exactly as before. Approve the save. | preview | |
+| 27 | "Show my financial calendar for this month." (inline, phone) | Bill marks on 10, 15 and 25 Nov. From 5 Nov a "Bill reminders" card ("Phone payment in 5 days" … "due tomorrow" … "due today: €30.00"); before 5 Nov none. Nothing cut off. | inline card | |
+| 28 | Open calendar → tap **15 Nov**. | "Bills due on this date": Car loan €270.00 with its state; **Everyday plan €38.99 + Bills due €270.00 = Plan for the date €308.99** (as long as no expense has moved everyday money from the 15th). | the date | |
+| 29 | Tap **20 Nov**, then **25 Nov**. | 20 Nov: "Coming up: Laptop loan in 5 days" — and no €70 in that date's plan. 25 Nov: Laptop loan €70.00 due; Plan for the date = everyday + €70.00. | both | |
+| 30 | Scroll to "Bills this month"; switch the phone to dark mode; rotate the phone. | Three bills with their state and due date; readable in dark; nothing overlaps or is cut off; the date grid still selectable. | list, dark | |
+| 31 | "Which bills are coming up?" | ChatGPT names the bills and dates the calendar shows (from the tool's reminders), not other figures. | answer | |
+| 32 | (fictional account) On or after 10 Nov: "I paid my phone bill, €30, today." Show the calendar again. | Phone: **Recorded**, today's date; "Held for bills" falls by €30.00; Spent rises by €30.00; **Left to spend and the average a day do not change**; no "redistributed" note. | before/after | |
+| 33 | (fictional account) Before 15 Nov: "I paid the car loan, €270, today." Show the calendar; tap 15 Nov and today. | Car loan: **Recorded <today>, N days early**; 15 Nov holds only its everyday plan (no second €270); today's date lists it under "Bills recorded on this date". | both dates | |
+| 34 | (fictional account) After 25 Nov without recording the laptop loan: show the calendar. | "Laptop loan payment overdue" with "€70.00 was due Wed 25 Nov, not recorded in MITA"; still held for bills. | reminder | |
+
+Save as PNG (step 14) again on the phone: the image shows the bill dots; on
+ChatGPT Desktop for macOS the "right-click to save" fallback opens DevTools
+(known, 2026-11-02) — use the browser or the phone there.
+
 ## What Claude checks after your run (server side, read-only)
 
 With the test address you send: the account's figures recomputed from the
@@ -83,10 +110,11 @@ there was one; the device and app/browser version; the test address.
   timezone.
 * The starter prompts and the onboarding skill come from the plugin package,
   which a custom connector does not use; they are typed here.
-* MITA's plan and its daily average can disagree when bills are paid on a
-  date other than where the plan put them (F-8; owner decision 2026-10-25:
-  ChatGPT shows exactly what the app implements). The calendar shows both,
-  labelled.
+* MITA's plan for the dates ahead and its daily average can still differ:
+  everyday overspending is covered from later dates (F-8 for everyday lines,
+  kept by the owner). Bills no longer cause it since 2.5.0 (each is planned on
+  its due date and moves only its own money when paid). The calendar shows
+  both figures, labelled.
 * Bills held out of the average (R3, `r3-bills-reserve.md`): saved regular
   payments and stated rent/mortgage/utilities until recorded; the plan's
   medical-insurance allowance is everyday money.

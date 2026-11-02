@@ -24,6 +24,7 @@
   --fam-groceries:#008300;--fam-dining:#eb6834;--fam-transport:#2a78d6;--fam-shopping:#eda100;
   --fam-fun:#e87ba4;--fam-health:#1baf7a;--fam-home:#6250d6;--fam-other:#898781;
   --over:#d03b3b;--over-bg:rgba(208,59,59,.09);--within:#14B8A6;--track:rgba(13,13,13,.08);
+  --remind:#8a5300;--remind-mark:#c27a00;--remind-bg:rgba(237,161,0,.15);--recorded-bg:rgba(20,184,166,.12);
   --color-background-primary:#ffffff;--color-background-secondary:#f6f5f2;--color-background-tertiary:#ecebe6;
   --color-text-primary:#0d0d0d;--color-text-secondary:#5c5b57;--color-text-tertiary:#76756f;
   --color-text-danger:#b3261e;--color-border-primary:rgba(13,13,13,.14);--color-border-secondary:rgba(13,13,13,.08);
@@ -39,6 +40,7 @@
   --fam-groceries:#2c9b2c;--fam-dining:#d95926;--fam-transport:#3987e5;--fam-shopping:#c98500;
   --fam-fun:#d55181;--fam-health:#199e70;--fam-home:#9085e9;--fam-other:#898781;
   --over:#e66767;--over-bg:rgba(230,103,103,.15);--within:#2cc5b4;--track:rgba(255,255,255,.10);--mita-teal-ink:#5EEAD4;
+  --remind:#f2b33d;--remind-mark:#f2b33d;--remind-bg:rgba(242,179,61,.16);--recorded-bg:rgba(44,197,180,.14);
   --color-background-primary:#212121;--color-background-secondary:#2a2a2a;--color-background-tertiary:#343434;
   --color-text-primary:#f2f2f0;--color-text-secondary:#c3c2b7;--color-text-tertiary:#a3a29b;
   --color-text-danger:#ff8a80;--color-border-primary:rgba(255,255,255,.16);--color-border-secondary:rgba(255,255,255,.08);
@@ -110,7 +112,14 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 .mcell i{position:absolute;left:5px;right:5px;bottom:3px;height:3px;border-radius:2px;background:var(--track)}
 .mcell i>s{display:block;height:100%;border-radius:2px;background:var(--within);text-decoration:none}
 .mcell.over i>s{background:var(--over)}
-.mcell .mbill{position:absolute;right:4px;top:4px;width:5px;height:5px;border-radius:50%;background:var(--color-text-secondary)}
+.mcell .mbill{position:absolute;right:4px;top:4px;width:6px;height:6px;border-radius:50%;background:var(--color-text-secondary)}
+.mcell .mbill.recorded{background:var(--mita-teal)}
+.mcell .mbill.overdue{background:var(--over)}
+.mcell .mbill.upcoming{background:var(--remind-mark)}
+.mcell .mbill.due_today{background:var(--mita-navy)}
+:root[data-theme=dark] .mcell .mbill.due_today{background:var(--mita-yellow)}
+.mcell.today .mbill.due_today{background:var(--mita-navy)}
+.mcell.win::before,.cell.win::before{content:"";position:absolute;left:6px;right:6px;top:2px;height:3px;border-radius:2px;background:var(--remind-mark)}
 .inote{margin-top:10px;display:flex;flex-wrap:wrap;gap:4px 12px;font-size:13px;color:var(--color-text-secondary)}
 .inote span{display:inline-flex;align-items:center;gap:5px}
 .inote .ico{width:14px;height:14px}
@@ -190,12 +199,18 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 .cell .marks{display:flex;align-items:center;gap:3px;min-height:8px}
 .cell .marks .dot{width:6px;height:6px}
 .cell .bill{width:12px;height:12px;color:var(--color-text-secondary);margin-left:auto}
+.cell .bill.recorded{color:var(--mita-teal-ink)}
+.cell .bill.overdue{color:var(--over);stroke-width:2.6}
+.cell .bill.upcoming{color:var(--remind-mark);stroke-width:2.6}
+.cell .bill.due_today{color:var(--color-text-primary);stroke-width:2.6}
 .cell .flag{display:inline-flex;color:var(--over)}
 .cell .flag .ico{width:12px;height:12px;stroke-width:2.6}
 .cell.dim .amt,.cell.dim .marks{opacity:.35}
 .legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:10px 2px 2px;font-size:12px;color:var(--color-text-secondary)}
 .legend span{display:inline-flex;align-items:center;gap:6px}
 .legend .ico{width:13px;height:13px}
+.legend .ico.upcoming{color:var(--remind-mark)}
+.sw.win{height:4px;width:14px;background:var(--remind-mark)}
 .sw{width:14px;height:10px;border-radius:3px;background:var(--color-background-tertiary);display:inline-block}
 .sw.plan{background:transparent;border:1px dashed var(--color-text-tertiary)}
 .sw.overm{background:var(--over)}
@@ -234,6 +249,44 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 .line .meta.over{color:var(--color-text-danger);font-weight:650}
 .shield{color:var(--mita-teal-ink)}
 .method{margin-top:14px;font-size:12px;color:var(--color-text-secondary);line-height:1.55}
+/* bills: reminders, states, the month's list */
+.bstate{display:inline-flex;align-items:center;gap:4px;min-height:22px;padding:2px 8px;border-radius:var(--border-radius-full);font-size:12px;font-weight:700;line-height:1.2;white-space:nowrap;border:1px solid transparent}
+.bstate .ico{width:12px;height:12px;stroke-width:2.6}
+.bstate.recorded{color:var(--mita-teal-ink);background:var(--recorded-bg)}
+.bstate.overdue{color:var(--color-text-danger);background:var(--over-bg)}
+.bstate.due_today{color:var(--mita-navy);background:var(--mita-yellow)}
+.bstate.upcoming{color:var(--remind);background:var(--remind-bg)}
+.bstate.later{color:var(--color-text-secondary);border-color:var(--color-border-primary)}
+.reminders{display:grid;gap:6px;margin-top:12px}
+.reminders h2{font-size:12px;font-weight:750;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:.05em}
+.rem{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:var(--border-radius-md);background:var(--color-background-secondary);border-left:4px solid var(--color-border-primary);min-width:0}
+.rem>.ico{margin-top:2px;width:16px;height:16px}
+.rem .body{min-width:0;flex:1 1 auto}
+.rem .t{display:block;font-size:14px;font-weight:700;line-height:1.3;overflow-wrap:anywhere}
+.rem .s{display:block;margin-top:2px;font-size:12.5px;line-height:1.4;color:var(--color-text-secondary);overflow-wrap:anywhere}
+.rem .a{flex:none;font-size:14px;font-weight:720;white-space:nowrap;text-align:right}
+.rem.overdue{border-left-color:var(--over)}
+.rem.overdue>.ico{color:var(--over)}
+.rem.due_today{border-left-color:var(--mita-navy)}
+:root[data-theme=dark] .rem.due_today{border-left-color:var(--mita-yellow)}
+.rem.upcoming{border-left-color:var(--remind-mark)}
+.rem.upcoming>.ico{color:var(--remind)}
+.rem.recorded{border-left-color:var(--mita-teal)}
+.rem.recorded>.ico{color:var(--mita-teal-ink)}
+.more-rem{font-size:12.5px;color:var(--color-text-secondary)}
+.billrows{list-style:none;padding:0;margin:0;display:grid;gap:0}
+.billrows li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:9px 0;border-bottom:1px solid var(--color-border-secondary);font-size:14px}
+.billrows li:last-child{border-bottom:0}
+.billrows .nm{display:flex;align-items:center;gap:8px;min-width:0;font-weight:650}
+.billrows .nm>span{overflow-wrap:anywhere}
+.billrows .amtc{font-weight:650;white-space:nowrap;text-align:right}
+.billrows .sub{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:12.5px;color:var(--color-text-secondary)}
+.split{display:grid;gap:2px;margin-top:8px;font-size:13px;color:var(--color-text-secondary)}
+.split div{display:flex;justify-content:space-between;gap:12px}
+.split div.eq{border-top:1px dashed var(--color-border-primary);padding-top:4px;margin-top:2px;color:var(--color-text-primary);font-weight:650}
+.bills-card{margin-top:14px;padding:16px;border-radius:var(--border-radius-xl);background:var(--color-background-primary);border:1px solid var(--color-border-secondary);box-shadow:var(--shadow-md)}
+.bills-card h2{font-size:17px}
+.bills-card .note{margin-top:4px}
 .preview{margin-top:14px;padding:12px;border-radius:var(--border-radius-lg);background:var(--color-background-secondary)}
 .preview .ptop{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .preview img{display:block;width:100%;max-width:420px;height:auto;margin:8px auto 0;border-radius:12px;box-shadow:var(--shadow-md)}
@@ -265,7 +318,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   .hero-fig{font-size:32px}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.cell[aria-selected=true]{transform:none}}
-@media (forced-colors:active){.cell,.fchip,.btn,.line,.mcell{border:1px solid CanvasText}.bar>i,.cell .meter>i,.mcell i>s{background:Highlight}}
+@media (forced-colors:active){.cell,.fchip,.btn,.line,.mcell,.bstate,.rem{border:1px solid CanvasText}.bar>i,.cell .meter>i,.mcell i>s,.mcell.win::before,.cell.win::before{background:Highlight}}
 </style>
 </head>
 <body>
@@ -772,6 +825,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   }
   var longDate = new Intl.DateTimeFormat(DATE_LOCALE, { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
   var shortDate = new Intl.DateTimeFormat(DATE_LOCALE, { day: "numeric", month: "short", timeZone: "UTC" });
+  var dayShort = new Intl.DateTimeFormat(DATE_LOCALE, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
   var monthFormat = new Intl.DateTimeFormat(DATE_LOCALE, { month: "long", year: "numeric", timeZone: "UTC" });
   var monthOnly = new Intl.DateTimeFormat(DATE_LOCALE, { month: "long", timeZone: "UTC" });
   var weekdayShort = new Intl.DateTimeFormat(DATE_LOCALE, { weekday: "short", timeZone: "UTC" });
@@ -825,6 +879,108 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     return state.payload.month.bills.filter(function (b) { return b.date === iso; });
   }
 
+  // --- bills: due dates, reminders, what is recorded (MITA's fields) ---
+  var REMIND_DEFAULT = 5;
+  var STATE_ORDER = { overdue: 0, due_today: 1, upcoming: 2, later: 3, recorded: 4 };
+  function reminderDays(month) {
+    return typeof month.reminder_days === "number" ? month.reminder_days : REMIND_DEFAULT;
+  }
+  function billState(bill) {
+    return STATE_ORDER[bill.state] === undefined ? "later" : bill.state;
+  }
+  function billName(bill) {
+    return bill.name || bill.category_label;
+  }
+  function daysBetween(fromIso, toIso) {
+    return Math.round((parseDate(toIso) - parseDate(fromIso)) / 86400000);
+  }
+  function mostUrgent(bills) {
+    return bills.slice().sort(function (a, b) { return STATE_ORDER[billState(a)] - STATE_ORDER[billState(b)]; })[0] || null;
+  }
+  // Bills not recorded yet whose reminder window holds this date: due after
+  // it, at most reminder_days later. From today on only. A reminder, never
+  // money: the bill's money stays on its due date.
+  function windowBills(iso) {
+    var month = state.payload.month;
+    if (iso < month.today) return [];
+    var seen = {};
+    return month.bills.concat(month.reminders || []).filter(function (b) {
+      var key = b.date + "|" + b.category + "|" + b.amount + "|" + billName(b);
+      if (seen[key]) return false;
+      seen[key] = true;
+      return billState(b) !== "recorded" && b.date > iso && daysBetween(iso, b.date) <= reminderDays(month);
+    });
+  }
+  // A band on a date only while the reminder is live: the bill is due within
+  // reminder_days of today, and the date lies between today and the due date.
+  function activeWindow(iso) {
+    var limit = reminderDays(state.payload.month);
+    return windowBills(iso).some(function (b) { return typeof b.days_until === "number" && b.days_until <= limit; });
+  }
+  function recordedHere(iso) {
+    return state.payload.month.bills.filter(function (b) {
+      return b.date !== iso && (b.recorded_dates || []).indexOf(iso) !== -1;
+    });
+  }
+  // The owner's wording: "Upcoming: Laptop €70, due Nov 25", "… in 3 days",
+  // "… due tomorrow", "… due today: €70", "… overdue".
+  function billTitle(bill, cur) {
+    var name = billName(bill);
+    var amount = money(bill.amount, cur);
+    switch (billState(bill)) {
+      case "overdue": return name + " payment overdue";
+      case "due_today": return name + " payment due today: " + amount;
+      case "upcoming":
+        if (bill.days_until === 1) return name + " payment due tomorrow";
+        if (bill.days_until >= reminderDays(state.payload.month)) return "Upcoming: " + name + " " + amount + ", due " + shortDate.format(parseDate(bill.date));
+        return name + " payment in " + bill.days_until + " days";
+      case "recorded": return name + " recorded";
+      default: return name + " " + amount + ", due " + shortDate.format(parseDate(bill.date));
+    }
+  }
+  function timingText(bill) {
+    var dates = bill.recorded_dates || [];
+    if (!dates.length) return "";
+    var on = dates.map(function (d) { return shortDate.format(parseDate(d)); }).join(" and ");
+    var last = dates[dates.length - 1];
+    if (last < bill.date) return "recorded " + on + ", " + plural(daysBetween(last, bill.date), "day", "days") + " early";
+    if (dates[0] > bill.date) return "recorded " + on + ", " + plural(daysBetween(bill.date, dates[0]), "day", "days") + " late";
+    return "recorded " + on;
+  }
+  function billSub(bill, cur) {
+    var stateName = billState(bill);
+    var recorded = cents(bill.recorded) || 0;
+    var due = dayShort.format(parseDate(bill.date));
+    if (stateName === "recorded") return money(bill.recorded, cur) + " under " + bill.category_label + ", " + timingText(bill);
+    var left = moneyCents(cents(bill.amount) - recorded, cur);
+    var parts = [];
+    if (recorded > 0) parts.push(money(bill.recorded, cur) + " of " + money(bill.amount, cur) + " " + timingText(bill));
+    if (stateName === "overdue") parts.push(left + " was due " + due + ", not recorded in MITA");
+    else parts.push((recorded > 0 ? left + " left, due " : "Due ") + due);
+    if (!bill.in_plan) parts.push("not in this month’s plan");
+    return parts.join(" · ");
+  }
+  function billChip(bill) {
+    var stateName = billState(bill);
+    var text;
+    var mark = null;
+    if (stateName === "recorded") { text = "Recorded"; mark = "check"; }
+    else if (stateName === "overdue") { text = "Overdue"; mark = "alert"; }
+    else if (stateName === "due_today") text = "Due today";
+    else if (stateName === "upcoming") text = bill.days_until === 1 ? "Tomorrow" : "In " + bill.days_until + " days";
+    else text = "Scheduled";
+    return el("span", { class: "bstate " + stateName }, [mark ? icon(mark) : null, text]);
+  }
+  function billSpoken(bill, cur) {
+    var stateName = billState(bill);
+    var base = billName(bill) + " " + money(bill.amount, cur);
+    if (stateName === "recorded") return base + " due, recorded";
+    if (stateName === "overdue") return base + " was due, overdue, not recorded";
+    if (stateName === "due_today") return base + " due today";
+    if (stateName === "upcoming") return base + " due in " + plural(bill.days_until, "day", "days");
+    return base + " due";
+  }
+
   function lineGroup(key) {
     var line = lineByKey(key);
     return line ? line.group : "everyday";
@@ -874,8 +1030,11 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     } else {
       parts.push(prefix + (cents(model.planned) > 0 ? "planned " + money(model.planned, cur) : "nothing planned"));
     }
-    var bills = billsOn(day.date);
-    if (bills.length) parts.push(plural(bills.length, "saved bill due", "saved bills due"));
+    var cur2 = m.currency;
+    billsOn(day.date).forEach(function (bill) { parts.push(billSpoken(bill, cur2)); });
+    windowBills(day.date).forEach(function (bill) {
+      parts.push("reminder: " + billName(bill) + " " + money(bill.amount, cur2) + " due in " + plural(daysBetween(day.date, bill.date), "day", "days"));
+    });
     return parts.join(", ");
   }
 
@@ -1075,8 +1234,52 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   }
 
   function nextBill(month) {
-    var upcoming = month.bills.filter(function (b) { return b.date > month.today; });
+    var upcoming = month.bills.filter(function (b) { return b.date > month.today && billState(b) !== "recorded"; });
     return upcoming[0] || null;
+  }
+
+  // Bills to act on now: due within reminder_days, due today, or past due and
+  // not recorded (MITA's reminders list). Inline shows the first two.
+  function remindersBlock(month, limit) {
+    var items = month.reminders || [];
+    if (!items.length) return null;
+    var cur = month.currency;
+    var box = el("section", { class: "reminders", "aria-label": "Bill reminders" }, el("h2", { text: "Bill reminders" }));
+    (limit ? items.slice(0, limit) : items).forEach(function (bill) {
+      var stateName = billState(bill);
+      box.appendChild(el("div", { class: "rem " + stateName }, [
+        icon(stateName === "overdue" ? "alert" : stateName === "recorded" ? "check" : "bill"),
+        el("span", { class: "body" }, [
+          el("span", { class: "t", text: billTitle(bill, cur) }),
+          el("span", { class: "s", text: billSub(bill, cur) })
+        ]),
+        el("span", { class: "a num", text: money(bill.amount, cur) })
+      ]));
+    });
+    if (limit && items.length > limit) {
+      box.appendChild(el("p", { class: "more-rem", text: "+ " + plural(items.length - limit, "more bill", "more bills") + " — open the calendar to see them." }));
+    }
+    return box;
+  }
+
+  // Every bill of the month with its state, after the calendar.
+  function billsCard(month) {
+    if (!month.bills.length) return null;
+    var cur = month.currency;
+    var box = el("section", { class: "bills-card", "aria-labelledby": "bills-title" }, [
+      el("h2", { id: "bills-title", text: "Bills this month" }),
+      el("p", { class: "note", text: "Each saved bill is planned in full on its due date and announced " + reminderDays(month) + " days before. A bill counts as recorded when expenses you recorded under its category cover it — MITA can’t tell which bill an expense paid." })
+    ]);
+    var list = el("ul", { class: "billrows" });
+    month.bills.forEach(function (bill) {
+      list.appendChild(el("li", null, [
+        el("span", { class: "nm" }, [icon("bill"), el("span", { text: billName(bill) + " · " + dayShort.format(parseDate(bill.date)) })]),
+        el("span", { class: "amtc num", text: money(bill.amount, cur) }),
+        el("span", { class: "sub" }, [billChip(bill), el("span", { text: billSub(bill, cur) })])
+      ]));
+    });
+    box.appendChild(list);
+    return box;
   }
 
   // --- inline card: the month at a glance, two actions ---
@@ -1116,21 +1319,25 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       if (day.day_kind !== "future" && cents(day.spent) > 0) raw = day.spent;
       if (day.day_kind === "future" && cents(day.planned) > 0) raw = day.planned;
       var amount = raw === null ? "" : tinyAmount(raw);
+      if (activeWindow(day.date)) classes += " win";
       var cell = el("div", { class: classes }, [el("b", { text: String(parseDate(day.date).getUTCDate()) }), el("span", { class: "num fit", "data-amount": raw, text: amount })]);
       if (model.begun && (model.state === "over" || model.state === "within")) {
         cell.appendChild(el("i", null, el("s", { style: "width:" + (model.ratio * 100).toFixed(1) + "%" })));
       }
-      if (billsOn(day.date).length) cell.appendChild(el("u", { class: "mbill" }));
+      var due = mostUrgent(billsOn(day.date));
+      if (due) cell.appendChild(el("u", { class: "mbill " + billState(due) }));
       grid.appendChild(cell);
     });
     card.appendChild(grid);
     card.appendChild(el("p", { class: "vh", text: inlineSummaryText(month) }));
 
+    var reminders = remindersBlock(month, 2);
+    if (reminders) card.appendChild(reminders);
     var notes = el("p", { class: "inote" });
     var over = month.days.filter(function (d) { return d.state === "over"; }).length;
     if (over) notes.appendChild(el("span", { class: "over" }, [icon("alert"), plural(over, "day", "days") + " over the everyday plan"]));
-    var bill = nextBill(month);
-    if (bill) notes.appendChild(el("span", null, [icon("bill"), (bill.name || bill.category_label) + " " + money(bill.amount, cur) + " due " + shortDate.format(parseDate(bill.date))]));
+    var bill = reminders ? null : nextBill(month);
+    if (bill) notes.appendChild(el("span", null, [icon("bill"), billName(bill) + " " + money(bill.amount, cur) + " due " + shortDate.format(parseDate(bill.date))]));
     if (notes.childNodes.length) card.appendChild(notes);
 
     if (month.plan_status !== "generated") card.appendChild(noPlanCallout(month));
@@ -1146,7 +1353,8 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 
   function inlineSummaryText(month) {
     var over = month.days.filter(function (d) { return d.state === "over"; }).map(function (d) { return shortDate.format(parseDate(d.date)); });
-    return monthTitle(month) + " calendar. " + (over.length ? "Over the everyday plan on " + over.join(", ") + "." : "No date over the everyday plan.") + " Open the calendar for each date.";
+    var reminders = (month.reminders || []).map(function (b) { return billTitle(b, month.currency) + "."; }).join(" ");
+    return monthTitle(month) + " calendar. " + (over.length ? "Over the everyday plan on " + over.join(", ") + "." : "No date over the everyday plan.") + (reminders ? " " + reminders : "") + " Open the calendar for each date.";
   }
 
   function kpi(label, value, cls) {
@@ -1192,12 +1400,16 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     if (state.error) wrap.appendChild(el("p", { class: "error", role: "alert", text: state.error }));
     wrap.appendChild(summaryBlock(month, state.wide));
     if (month.plan_status !== "generated") wrap.appendChild(noPlanCallout(month));
+    var reminders = remindersBlock(month, 0);
+    if (reminders) wrap.appendChild(reminders);
     wrap.appendChild(filterBar(month));
     if (state.filter) wrap.appendChild(filterBanner(month));
     var main = el("div", { class: "main" });
     main.appendChild(calendarBlock(month));
     main.appendChild(detailBlock(month));
     wrap.appendChild(main);
+    var bills = billsCard(month);
+    if (bills) wrap.appendChild(bills);
     wrap.appendChild(breakdownBlock(month));
     if (!state.wide && month.plan_status === "generated") wrap.appendChild(planBlock(month));
     if (state.preview) wrap.appendChild(previewBlock());
@@ -1413,6 +1625,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     if (day.day_kind === "today") classes.push("today");
     if (model.state === "over") classes.push("over");
     if (state.filter && model.empty) classes.push("dim");
+    if (activeWindow(day.date)) classes.push("win");
     var selected = state.selected === day.date;
     var number = parseDate(day.date).getUTCDate();
     var head = el("span", { class: "d" }, [el("span", { text: String(number) }), day.day_kind === "today" ? el("span", { class: "tday", text: "Today" }) : null]);
@@ -1429,14 +1642,19 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       meter = el("span", { class: "meter", "aria-hidden": "true" }, el("i", { style: "width:" + (model.ratio * 100).toFixed(1) + "%" }));
     }
     var marks = el("span", { class: "marks", "aria-hidden": "true" });
+    var due = mostUrgent(billsOn(day.date));
+    // A phone's cell holds three dots, or one dot beside the bill or "over"
+    // icon, or the two icons alone: the bill is never the one cut off.
+    var icons = (model.state === "over" ? 1 : 0) + (due ? 1 : 0);
+    var room = state.width < 560 ? [3, 1, 0][icons] : 3;
     if (!state.filter) {
       dayLines(day.date)
         .filter(function (l) { return lineGroup(l.key) !== "set_aside" && (model.begun ? cents(l.spent) > 0 : cents(l.planned) > 0); })
-        .slice(0, 3)
+        .slice(0, room)
         .forEach(function (l) { marks.appendChild(dot(familyColor(l.key))); });
     }
     if (model.state === "over") marks.appendChild(el("span", { class: "flag" }, icon("alert")));
-    if (billsOn(day.date).length) marks.appendChild(icon("bill", "bill"));
+    if (due) marks.appendChild(icon("bill", "bill " + billState(due)));
     return el("button", {
       class: classes.join(" "), type: "button", role: "gridcell", id: "day-" + day.date,
       "data-date": day.date, "aria-selected": selected ? "true" : "false",
@@ -1453,6 +1671,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       el("span", null, [el("i", { class: "sw plan" }), "Plan, not a forecast"]),
       el("span", null, [el("i", { class: "sw overm" }), "Over the everyday plan"]),
       el("span", null, [icon("bill"), "Saved bill due"]),
+      el("span", null, [el("i", { class: "sw win" }), "Bill due within " + reminderDays(state.payload.month) + " days"]),
       el("span", null, [el("i", { class: "sw todaym" }), "Today"])
     ]);
   }
@@ -1549,17 +1768,52 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       ]));
     }
 
+    // Mandatory payments for this date: bills due, bills recorded here for
+    // another due date, bills whose reminder window holds this date.
     var bills = billsOn(day.date);
     if (bills.length) {
-      var list = el("ul", { class: "rows" });
+      var dueTotal = bills.reduce(function (sum, b) { return sum + cents(b.amount); }, 0);
+      var list = el("ul", { class: "billrows" });
       bills.forEach(function (bill) {
-        var what = (bill.recurrence ? bill.recurrence : "one-time") + (bill.in_plan ? "" : " · not in this month’s plan");
         list.appendChild(el("li", null, [
-          el("span", { class: "who" }, [icon("bill"), el("span", null, [el("span", { style: "display:block", text: bill.name || bill.category_label }), el("span", { class: "what", text: what })])]),
-          el("span", { class: "amtc num", text: money(bill.amount, cur) })
+          el("span", { class: "nm" }, [icon("bill"), el("span", { text: billName(bill) + " · " + (bill.recurrence || "one-time") })]),
+          el("span", { class: "amtc num", text: money(bill.amount, cur) }),
+          el("span", { class: "sub" }, [billChip(bill), el("span", { text: billSub(bill, cur) })])
         ]));
       });
-      panel.appendChild(el("section", null, [el("h3", { text: "Saved bills due" }), list]));
+      var section = el("section", null, [el("h3", { text: "Bills due on this date" }), list]);
+      if (day.day_kind !== "past") {
+        section.appendChild(el("div", { class: "split num" }, [
+          el("div", null, [el("span", { text: "Everyday plan" }), el("span", { text: money(day.planned_everyday, cur) })]),
+          el("div", null, [el("span", { text: "Bills due" }), el("span", { text: moneyCents(dueTotal, cur) })]),
+          el("div", { class: "eq" }, [el("span", { text: "Plan for the date" }), el("span", { text: money(day.planned, cur) })])
+        ]));
+      }
+      panel.appendChild(section);
+    }
+    var paidHere = recordedHere(day.date);
+    if (paidHere.length) {
+      var paidList = el("ul", { class: "billrows" });
+      paidHere.forEach(function (bill) {
+        paidList.appendChild(el("li", null, [
+          el("span", { class: "nm" }, [icon("check"), el("span", { text: billName(bill) + " · due " + dayShort.format(parseDate(bill.date)) })]),
+          el("span", { class: "amtc num", text: money(bill.amount, cur) }),
+          el("span", { class: "sub" }, [billChip(bill), el("span", { text: billSub(bill, cur) })])
+        ]));
+      });
+      panel.appendChild(el("section", null, [el("h3", { text: "Bills recorded on this date" }), paidList]));
+    }
+    var coming = windowBills(day.date);
+    if (coming.length) {
+      var comingList = el("ul", { class: "billrows" });
+      coming.forEach(function (bill) {
+        comingList.appendChild(el("li", null, [
+          el("span", { class: "nm" }, [icon("bill", "upcoming"), el("span", { text: billName(bill) + " in " + plural(daysBetween(day.date, bill.date), "day", "days") })]),
+          el("span", { class: "amtc num", text: money(bill.amount, cur) }),
+          el("span", { class: "sub" }, [el("span", { text: "Due " + dayShort.format(parseDate(bill.date)) + ". Already held for it — no money is planned for it on this date." })])
+        ]));
+      });
+      panel.appendChild(el("section", null, [el("h3", { text: "Coming up" }), comingList]));
     }
 
     var lines = dayLines(day.date).filter(function (l) { return cents(l.planned) > 0 || cents(l.spent) > 0; });
@@ -1660,7 +1914,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   }
 
   function methodText(month) {
-    return "Figures come from your MITA account (" + month.currency + ", " + month.timezone + "). Each date shows MITA’s saved plan for it and, once begun, the expenses you recorded; dates ahead show the plan, never a forecast. A date is over when everyday spending passes that date’s everyday plan; bills and commitments are counted on their own. Protected savings, and what bills not yet recorded still need, are never counted as spendable. The daily average is left to spend divided by the days left.";
+    return "Figures come from your MITA account (" + month.currency + ", " + month.timezone + "). Each date shows MITA’s saved plan for it and, once begun, the expenses you recorded; dates ahead show the plan, never a forecast. A date is over when everyday spending passes that date’s everyday plan; bills and commitments are counted on their own. Protected savings, and what bills not yet recorded still need, are never counted as spendable. The daily average is left to spend divided by the days left. Saved bills are planned in full on their due dates and announced " + reminderDays(month) + " days before; a bill counts as recorded when expenses recorded under its category cover it (MITA matches by category and date, not to a particular bill).";
   }
 
   // ---------------------------------------------------------------------
@@ -1679,6 +1933,14 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
         parts.push("Selected " + day.date + ": spent " + day.spent + " " + cur + ", everyday " + day.spent_everyday + " of a " + day.planned_everyday + " plan (" + day.state + ").");
       }
     }
+    if (day) {
+      billsOn(day.date).forEach(function (bill) {
+        parts.push("Bill due that date: " + billName(bill) + " " + bill.amount + " " + cur + " (" + billState(bill) + ", " + bill.recorded + " recorded).");
+      });
+    }
+    (month.reminders || []).forEach(function (bill) {
+      parts.push("Reminder: " + billTitle(bill, cur) + ".");
+    });
     if (state.filter) {
       var line = lineByKey(state.filter);
       if (line) parts.push("Filtered to " + line.category_label + ".");
@@ -1874,8 +2136,12 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       text(name.toUpperCase(), M + i * (cellW + cellGap) + cellW / 2, y + 18, "700", 17, INK3, "center");
     });
     var top = y + 34;
+    var BILL_DOT = { recorded: TEAL, overdue: RED, due_today: NAVY, upcoming: "#b07000", later: INK3 };
     var billDates = {};
-    month.bills.forEach(function (b) { billDates[b.date] = true; });
+    month.bills.forEach(function (b) {
+      var current = billDates[b.date];
+      if (!current || STATE_ORDER[billState(b)] < STATE_ORDER[current]) billDates[b.date] = billState(b);
+    });
     month.days.forEach(function (day, i) {
       var slot = blanks + i;
       var cx = M + (slot % 7) * (cellW + cellGap);
@@ -1928,7 +2194,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
         text(cellAmount(day.planned), cx + 13, cy + 82, "600", 20, INK2, "left", cellW - 26);
       }
       if (billDates[day.date]) {
-        c.fillStyle = INK3;
+        c.fillStyle = BILL_DOT[billDates[day.date]] || INK3;
         c.beginPath();
         c.arc(cx + cellW - 18, cy + (today || day.state === "over" ? cellH - 34 : 22), 6, 0, Math.PI * 2);
         c.fill();

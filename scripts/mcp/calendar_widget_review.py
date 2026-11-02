@@ -420,7 +420,7 @@ def view_html(widget: str) -> str:
 
 NARROW_FIT = """() => {
   const cut = [];
-  for (const node of document.querySelectorAll('.fit, .kpi dd, .tile dd, .btn')) {
+  for (const node of document.querySelectorAll('.fit, .kpi dd, .tile dd, .btn, .cell .marks, .rem .a, .bstate, .billrows .amtc, .split span')) {
     if (node.offsetParent && node.scrollWidth > node.clientWidth + 1) cut.push(node.textContent.trim().slice(0, 24));
   }
   const doc = document.documentElement;
@@ -660,6 +660,28 @@ def _review(args, mcp: McpBridge, out: Path, today: date) -> None:
                 json.dumps(log["sizes"][-3:]),
             )
             host.shot(out, f"01-inline-phone-{theme}", full=True)
+            reminders = month_data["reminders"]
+            shown_rows = host.frame.query_selector_all(".reminders .rem")
+            check(
+                f"inline ({theme}): the bill reminders are MITA's (at most two)",
+                len(shown_rows) == min(2, len(reminders))
+                and all(
+                    (r["name"] or r["category_label"]) in row.inner_text()
+                    for r, row in zip(reminders, shown_rows)
+                ),
+                json.dumps([r["name"] for r in reminders]),
+            )
+            windows = host.frame.query_selector_all(".mcell.win")
+            # a live reminder (a bill due within reminder_days of today, after
+            # today) bands the days from today to its due date
+            expected = any(
+                b["state"] == "upcoming" and b["days_until"] >= 1 for b in reminders
+            )
+            check(
+                f"inline ({theme}): reminder windows mark the dates before bills",
+                bool(windows) == expected,
+                f"{len(windows)} windows, expected {expected}",
+            )
             check(
                 f"inline ({theme}): no console error",
                 not host.console,
@@ -730,6 +752,51 @@ def _review(args, mcp: McpBridge, out: Path, today: date) -> None:
             bool(context) and target in context[-1]["content"][0]["text"],
         )
         host.frame_shot(out, "04-fullscreen-phone-day")
+        # a bill's due date: the mandatory payments, their state and the split
+        ahead = [b for b in payload["month"]["bills"] if b["date"] >= today.isoformat()]
+        bill_day = (ahead or payload["month"]["bills"] or [None])[0]
+        if bill_day is not None:
+            host.frame.click(f'[data-date="{bill_day["date"]}"]')
+            host.wait_for("#day-detail h2")
+            host.settle(600)
+            detail = host.frame.inner_text("#day-detail")
+            name = bill_day["name"] or bill_day["category_label"]
+            check(
+                "a bill's date shows the bill, its state and the plan's split",
+                # headings are upper-cased by CSS, and inner_text says so
+                "bills due on this date" in detail.lower()
+                and name in detail
+                and (
+                    bill_day["date"] < today.isoformat()
+                    or "plan for the date" in detail.lower()
+                ),
+                detail[:600] + "\n" + "\n".join(host.console),
+            )
+            cell_icon = host.frame.query_selector(
+                f'[data-date="{bill_day["date"]}"] .ico.bill'
+            )
+            check(
+                "the bill's date carries a visible bill mark in its state",
+                cell_icon is not None
+                and bill_day["state"] in (cell_icon.get_attribute("class") or ""),
+            )
+            host.frame_shot(out, "04b-fullscreen-phone-bill-date")
+            if payload["month"]["reminders"]:
+                check(
+                    "fullscreen lists every reminder",
+                    len(host.frame.query_selector_all(".full .reminders .rem"))
+                    == len(payload["month"]["reminders"]),
+                )
+            check(
+                "fullscreen lists the month's bills with their state",
+                len(host.frame.query_selector_all(".bills-card .billrows li"))
+                == len(payload["month"]["bills"]),
+            )
+            host.frame.evaluate(
+                "() => document.getElementById('bills-title').scrollIntoView()"
+            )
+            host.settle(300)
+            host.shot(out, "04c-fullscreen-phone-bills")
         groceries = next(
             (c for c in payload["month"]["categories"] if c["category"] == "groceries"),
             None,
@@ -868,7 +935,7 @@ def _review(args, mcp: McpBridge, out: Path, today: date) -> None:
 
         # 6. Narrow phones (a 360 dp Android's chat column is about 320 px):
         #    nothing overflows sideways and no amount, tile or button is cut.
-        for width, height in ((320, 640), (360, 740)):
+        for width, height in ((320, 640), (360, 740), (390, 844)):
             host = HostPage(
                 webkit,
                 mcp,
@@ -891,8 +958,8 @@ def _review(args, mcp: McpBridge, out: Path, today: date) -> None:
                     fit["overflow"] <= 0 and not fit["cut"],
                     json.dumps(fit),
                 )
-            if width == 320:
-                host.frame_shot(out, "13-fullscreen-320")
+            if width in (320, 390):
+                host.frame_shot(out, f"13-fullscreen-{width}")
             host.close()
 
         # 7. Reduced motion and accessibility.

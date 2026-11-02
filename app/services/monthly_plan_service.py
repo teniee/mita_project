@@ -25,7 +25,10 @@ existing canonical path:
   ``generate_budget_from_answers`` — the same function onboarding calls;
 * those totals are laid out over the target month's days by
   ``distribute_budget_over_days`` — the same distributor onboarding calls, with
-  the same weekday/weekend and fixed/spread/clustered behavior;
+  the same weekday/weekend and fixed/spread/clustered behavior — except the
+  user's saved bills, which are placed in full on their due dates
+  (``monthly_obligations.dated_obligations``, the rule the reviewed budget
+  uses too; owner decision 2026-11-02, F-8);
 * the rows are written by ``save_calendar_for_user`` — the same upsert
   onboarding calls;
 * spend for the new month is accrued by ``rebuild_month_plan`` — the same ledger
@@ -39,7 +42,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timezone
 from decimal import Decimal
-from typing import Dict, Iterable, Optional, Tuple
+from typing import Dict, Iterable, Optional, Sequence, Tuple
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
@@ -48,6 +51,7 @@ from sqlalchemy.orm import Session
 from app.db.models.daily_plan import DailyPlan
 from app.db.models.user import User
 from app.services.calendar_service_real import save_calendar_for_user
+from app.services.core.engine.bill_timing import bill_timing_of
 from app.services.core.engine.calendar_engine import (
     CATEGORY_BEHAVIOR,
     CalendarDay,
@@ -61,8 +65,12 @@ from app.services.core.engine.expense_tracker import (
     user_timezone_of,
 )
 from app.services.core.engine.realtime_rebalancer import REALTIME_ADJUSTMENT_KEY
+from app.services.monthly_obligations import dated_obligations
 
 logger = logging.getLogger(__name__)
+
+# (due date, category, amount): one date a saved bill is due on in a month.
+DatedBill = Tuple[date, str, Decimal]
 
 ZERO = Decimal("0.00")
 
@@ -166,22 +174,29 @@ def _base_planned_amount(row: DailyPlan) -> Decimal:
     would make a one-off August overspend permanently shrink the September
     dining budget and permanently inflate whatever category absorbed it — the
     cut would compound every month, and a PROTECTED category shaved as a
-    last-resort donor would never recover. Read through it.
+    last-resort donor would never recover. Read through it — and through the
+    bill-timing delta (``bill_timing``: a bill's money moved to the date it
+    was paid), which is just as derived.
     """
     planned = Decimal(str(row.planned_amount or 0))
     metadata = row.plan_json if isinstance(row.plan_json, dict) else {}
     raw_adjustment = metadata.get(REALTIME_ADJUSTMENT_KEY)
-    if raw_adjustment is None:
-        return planned
     try:
-        return planned - Decimal(str(raw_adjustment))
+        timing = bill_timing_of(metadata)
+    except Exception:  # noqa: BLE001 - a corrupt marker must not lose the row
+        logger.warning("monthly_plan: unreadable bill timing on plan row %s", row.id)
+        timing = ZERO
+    if raw_adjustment is None:
+        return planned - timing
+    try:
+        return planned - Decimal(str(raw_adjustment)) - timing
     except Exception:  # noqa: BLE001 - a corrupt marker must not lose the row
         logger.warning(
             "monthly_plan: unreadable realtime adjustment %r on plan row %s",
             raw_adjustment,
             row.id,
         )
-        return planned
+        return planned - timing
 
 
 def _month_rows(db: Session, user_id: UUID, year: int, month: int):
@@ -207,13 +222,17 @@ def _budget_rows(rows) -> list:
       and re-creates them per month from the goal's own target date. A month
       that has only goal rows has no budget, and copying a goal row forward
       would double-book the contribution once goal sync ran on the new month.
+
+    Judged on the BASE allocation: a bill's due-date row whose money moved to
+    the day the bill was paid early (``bill_timing``) shows 0 and is still
+    the reviewed plan's row.
     """
     return [
         row
         for row in rows
         if row.goal_id is None
         and not _is_transaction_generated(row)
-        and Decimal(str(row.planned_amount or 0)) != 0
+        and _base_planned_amount(row) != 0
     ]
 
 
@@ -512,19 +531,43 @@ def _profile_allocations(user: User) -> Dict[str, Decimal]:
 # ---------------------------------------------------------------------------
 
 
+def bills_on_due_dates(
+    allocations: Dict[str, Decimal], bills: Sequence[DatedBill]
+) -> Dict[date, Dict[str, Decimal]]:
+    """Each saved bill's money, in full, on its due date: ``{day: {category:
+    amount}}``. Bills of one category are placed in date order and never
+    beyond that category's allocation (a plan holds no money a bill line was
+    not given); a bill whose category has no allocation is not placed."""
+    left = {category: amount for category, amount in allocations.items()}
+    placed: Dict[date, Dict[str, Decimal]] = {}
+    for day, category, amount in sorted(bills, key=lambda b: (b[0], b[1], -b[2])):
+        room = left.get(category, ZERO)
+        share = min(Decimal(str(amount)), room)
+        if share <= ZERO:
+            continue
+        left[category] = room - share
+        on_day = placed.setdefault(day, {})
+        on_day[category] = on_day.get(category, ZERO) + share
+    return placed
+
+
 def _build_month_calendar(
     year: int,
     month: int,
     allocations: Dict[str, Decimal],
     frequencies: Optional[Dict[str, int]] = None,
+    bills: Sequence[DatedBill] = (),
 ) -> Dict[str, Dict[str, Decimal]]:
     """``{"YYYY-MM-DD": {category: Decimal}}`` for one month.
 
-    Delegates every placement decision to ``distribute_budget_over_days``: which
-    days a "fixed" category lands on, which weekdays a "spread" one covers, and
-    which deterministic pseudo-random days a "clustered" one clusters into.
-    Amounts stay Decimal end to end; the distributor splits each total into
-    integer cents that re-sum to it exactly.
+    The user's saved bills are placed in full on their due dates
+    (``bills_on_due_dates``; owner decision 2026-11-02, F-8). Every other
+    placement decision — and the rest of a bill's category, if its line holds
+    more than the bills — is ``distribute_budget_over_days``'s: which days a
+    "fixed" category lands on, which weekdays a "spread" one covers, and which
+    deterministic pseudo-random days a "clustered" one clusters into. Amounts
+    stay Decimal end to end; the distributor splits each total into integer
+    cents that re-sum to it exactly.
     """
     frequencies = frequencies or {}
     days_in_month = calendar_module.monthrange(year, month)[1]
@@ -532,11 +575,29 @@ def _build_month_calendar(
         CalendarDay(date(year, month, day_number))
         for day_number in range(1, days_in_month + 1)
     ]
+    dated = bills_on_due_dates(
+        allocations,
+        [
+            (day, category, amount)
+            for day, category, amount in bills
+            if (day.year, day.month) == (year, month)
+        ],
+    )
+    on_dates: Dict[str, Decimal] = {}
+    for by_category in dated.values():
+        for category, amount in by_category.items():
+            on_dates[category] = on_dates.get(category, ZERO) + amount
 
     for category, total in allocations.items():
-        if total <= ZERO:
+        rest = total - on_dates.get(category, ZERO)
+        if rest <= ZERO:
             continue
-        distribute_budget_over_days(days, category, total, frequencies.get(category))
+        distribute_budget_over_days(days, category, rest, frequencies.get(category))
+    for day in days:
+        for category, amount in dated.get(day.date, {}).items():
+            day.planned_budget[category] = (
+                Decimal(str(day.planned_budget.get(category, ZERO))) + amount
+            )
 
     calendar_map: Dict[str, Dict[str, Decimal]] = {}
     for day in days:
@@ -551,15 +612,20 @@ def _build_month_calendar(
 
 
 def month_calendar(
-    year: int, month: int, allocations: Dict[str, Decimal]
+    year: int,
+    month: int,
+    allocations: Dict[str, Decimal],
+    bills: Sequence[DatedBill] = (),
 ) -> Dict[str, Dict[str, Decimal]]:
-    """Public layout of a month's allocations by the canonical distributor.
+    """Public layout of a month's allocations by the canonical distributor,
+    with ``bills`` — ``(due date, category, amount)`` of the user's saved
+    payments in the month — placed in full on their due dates.
 
     Refuses (ValueError) a layout that does not re-sum to the allocations to
     the cent — the same conservation guarantee ``_materialize_month`` applies.
     """
     _validate_month(year, month)
-    calendar_map = _build_month_calendar(year, month, allocations, {})
+    calendar_map = _build_month_calendar(year, month, allocations, {}, bills)
     intended = sum((a for a in allocations.values() if a > ZERO), ZERO)
     laid_out = sum(
         (
@@ -841,7 +907,13 @@ def _materialize_month(
             "nothing to generate",
         )
 
-    calendar_map = _build_month_calendar(year, month, allocations, frequencies)
+    # The user's saved bills go on their due dates in the new month too, as
+    # in a reviewed budget (owner decision 2026-11-02, F-8).
+    bills = [
+        (occurrence.day, occurrence.category, occurrence.amount)
+        for occurrence in dated_obligations(db, user_id, year, month)
+    ]
+    calendar_map = _build_month_calendar(year, month, allocations, frequencies, bills)
     if not calendar_map:
         return _not_generated(
             year, month, "allocations produced no positive daily amounts"

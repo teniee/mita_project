@@ -295,6 +295,11 @@ async def test_saved_payments_fall_on_their_dates_and_say_whether_the_plan_has_t
             "amount": "30.00",
             "recurrence": "monthly",
             "in_plan": False,
+            "state": "later",  # today is 19 Oct: more than five days ahead
+            "days_until": 8,
+            "recorded": "0.00",
+            "recorded_dates": [],
+            "reminder_from": "2026-10-22",
         },
         {
             "date": "2026-10-30",
@@ -304,8 +309,14 @@ async def test_saved_payments_fall_on_their_dates_and_say_whether_the_plan_has_t
             "amount": "60.00",
             "recurrence": "monthly",
             "in_plan": True,
+            "state": "later",
+            "days_until": 11,
+            "recorded": "0.00",
+            "recorded_dates": [],
+            "reminder_from": "2026-10-25",
         },
     ]
+    assert out["reminders"] == [] and out["reminder_days"] == 5
     notes = " ".join(out["notes"])
     assert "210.00 EUR is held for bills not recorded as paid yet" in notes
     assert "1 saved payment(s) this month fall on a category with no money" in notes

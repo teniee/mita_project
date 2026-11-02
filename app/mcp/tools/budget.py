@@ -209,8 +209,9 @@ def preview_out(
         budget_draft.region_note(ctx.region),
         "Category shares come from MITA's standard allocation rules for this "
         "income; they are a starting plan, not an assessment of the user.",
-        "Each category is spread over the month's days by MITA's usual pattern "
-        "(rent on the 1st, groceries on weekdays, dining on a few days).",
+        "Each saved bill is planned in full on its due date; every other "
+        "category is spread over the month's days by MITA's usual pattern "
+        "(groceries on weekdays, dining on a few days).",
     ]
     if alloc.manual:
         assumptions.append(
@@ -353,6 +354,7 @@ def preview_out(
                 category_label=category_label(o.category),
                 amount=money(o.amount),
                 basis=o.basis,
+                due_dates=list(o.due_dates),
             )
             for o in draft.obligations
         ],

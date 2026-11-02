@@ -5,6 +5,9 @@ model: the user's stated monthly net income; their saved repeating
 obligations (scheduled expenses); their monthly savings target; the canonical
 engine (``monthly_plan_service.allocations_from_profile`` →
 ``generate_budget_from_answers``, laid out by ``distribute_budget_over_days``).
+Each saved obligation is planned in full on its due dates
+(``monthly_obligations.due_dates_in_month``; owner decision 2026-11-02, F-8),
+never spread over other days.
 Recorded history only produces warnings: it never changes an allocation.
 No regional cost data, no income-class labels, no LLM.
 
@@ -43,7 +46,7 @@ from app.mcp.queries import setup as setup_queries
 from app.mcp.queries.periods import UserContext, month_days
 from app.services.core.engine.calendar_engine import CATEGORY_BEHAVIOR
 from app.services.core.engine.user_budget_lines import PlanDoesNotFit, is_user_line
-from app.services.monthly_obligations import due_in_month, weekday_count
+from app.services.monthly_obligations import due_dates_in_month
 from app.services.monthly_plan_service import (
     ProfileAllocation,
     allocations_from_profile,
@@ -70,6 +73,9 @@ class Obligation:
     category: str
     amount: Decimal  # counted in this month
     basis: str
+    # the dates it is due on in the month, each for ``unit_amount``
+    due_dates: Tuple[date, ...] = ()
+    unit_amount: Decimal = ZERO
 
 
 @dataclass(frozen=True)
@@ -235,18 +241,28 @@ def obligations_for_month(
     for merchant, category, amount, due, recurrence in rows:
         amount = Decimal(str(amount))
         name = (merchant or "").strip() or None
-        counted = due_in_month(amount, due, recurrence, year, month)
+        dates = tuple(due_dates_in_month(due, recurrence, year, month))
+        counted = amount * len(dates)
         if counted <= ZERO:
             continue
         if recurrence == "monthly":
             basis = "monthly"
         elif recurrence == "weekly":
-            count = weekday_count(year, month, due.weekday())
-            basis = f"weekly × {count} {calendar.day_name[due.weekday()]}s"
+            basis = f"weekly × {len(dates)} {calendar.day_name[due.weekday()]}s"
         else:
             basis = f"one-time on {due.isoformat()}"
-        found.append(Obligation(name, category, counted, basis))
+        found.append(Obligation(name, category, counted, basis, dates, amount))
     return found
+
+
+def dated_bills(obligations: List[Obligation]) -> List[Tuple[date, str, Decimal]]:
+    """``(due date, category, amount)`` for every date an obligation is due
+    on: what ``month_calendar`` places in full on those dates."""
+    return [
+        (day, item.category, item.unit_amount)
+        for item in obligations
+        for day in item.due_dates
+    ]
 
 
 def history_before(
@@ -459,7 +475,15 @@ def build_draft(
             "stated monthly net income, so MITA cannot build a budget. Check both "
             "with the user."
         ) from None
-    calendar_map = month_calendar(year, month, allocation.allocations)
+    calendar_map = month_calendar(
+        year, month, allocation.allocations, dated_bills(obligations)
+    )
+    if (
+        saved
+        and saved_totals == allocation.allocations
+        and saved != _entries(calendar_map)
+    ):
+        notes.append(LAYOUT_ONLY_NOTE.format(month=f"{year:04d}-{month:02d}"))
     changes = tuple(
         LineChange(
             category, saved_totals.get(category), allocation.allocations.get(category)
@@ -486,6 +510,21 @@ def build_draft(
         changes=changes,
         notes=tuple(notes + _same_name_notes(allocation)),
     )
+
+
+LAYOUT_ONLY_NOTE = (
+    "No amount differs from the plan saved for {month}. Saving this preview "
+    "changes only the day-by-day plan: each saved bill is planned in full on "
+    "its due date (the saved plan spread some of them over other dates)."
+)
+
+
+def _entries(calendar_map) -> Dict[Tuple[date, str], Decimal]:
+    return {
+        (date.fromisoformat(day), category): Decimal(str(amount))
+        for day, categories in calendar_map.items()
+        for category, amount in categories.items()
+    }
 
 
 def _by_category(plan: Dict[Tuple[date, str], Decimal]) -> Dict[str, Decimal]:

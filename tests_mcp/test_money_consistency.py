@@ -25,10 +25,14 @@ October 2026 (19 days begun, 12 left):
 
     plan 1,610.00 = commitments 900.00 + set aside 300.00 + everyday 410.00
 
-Tests named ``…_today`` pin MITA's rebalancing as it is (F-8; the owner kept
-it on 2026-10-25 — R1, R2, R4 and R5 of
-``docs/chatgpt-app/f8-money-model-proposal.md`` were not adopted): they
-document it with figures anyone can check by hand, so a change is deliberate.
+Bills (owner decision 2026-11-02, F-8; ``docs/chatgpt-app/bill-due-dates.md``):
+a bill line's own money follows its payment — recorded on its due date, early,
+late or in parts — and a bill line is never a donor; everyday lines keep the
+per-date rebalancing (R1, R2 for everyday lines and R5 of
+``docs/chatgpt-app/f8-money-model-proposal.md`` are still not adopted). Every
+figure here can be checked by hand, so a change is deliberate. The tests that
+pinned the old behaviour (``…_today``) were rewritten on 2026-11-02 with the
+old figures in their docstrings.
 """
 
 from __future__ import annotations
@@ -325,15 +329,15 @@ async def test_a_bill_paid_on_its_due_date_where_the_plan_holds_it_moves_nothing
     )
 
 
-async def test_f8_a_bill_paid_on_its_due_date_away_from_its_layout_drains_later_dates_today(
+async def test_a_bill_paid_on_its_due_date_away_from_an_old_layout_moves_only_its_own_money(
     mcp, seed, connection
 ):
-    """Utilities are laid out on the 5th; the saved bill is due on the 18th
-    and paid then. Today the 18th counts as €100 of overspending: €20 comes
-    from dining out (50 % of 24th + 31st) and €65 from groceries (50 % of
-    each day 19th-31st); €15 stays uncovered. The 5th still holds €100, so the
-    line plans €185 for one €100 bill and the dates ahead drop from 160 to 80.
-    The month's arithmetic is untouched (left 410.00)."""
+    """Utilities laid out on the 5th (a plan saved before bills went on their
+    due dates); the saved bill is due on the 18th and paid then. The line's
+    own €100 moves from the 5th to the 18th: nothing else moves, the dates
+    ahead keep 160.00. (Until 2026-11-02 the 18th counted as €100 of
+    overspending: €85 was taken from dining out and groceries ahead, the line
+    planned €185 and the dates ahead fell to 80.00.)"""
     m = mcp.at(NOW)
     user = await base_month(seed)
     await seed.scheduled(
@@ -350,54 +354,58 @@ async def test_f8_a_bill_paid_on_its_due_date_away_from_its_layout_drains_later_
     assert money(seen, "left_to_spend", "average_per_day", "planned_after_today") == (
         "410.00",
         "34.17",
-        "80.00",
+        "160.00",
     )
-    assert planned(seen.rows, "utilities") == D("185.00")
-    assert seen.rows[(5, "utilities")][0] == D("100.00")
-    assert seen.rows[(18, "utilities")][:2] == (D("85.00"), D("100.00"))
+    assert planned(seen.rows, "utilities") == D("100.00")
+    assert seen.rows[(5, "utilities")][0] == D("0.00")
+    assert seen.rows[(18, "utilities")][:2] == (D("100.00"), D("100.00"))
     assert {d: seen.rows[(d, "groceries")][0] for d in (18, 19, 31)} == {
         18: D("10.00"),
-        19: D("5.00"),
-        31: D("5.00"),
+        19: D("10.00"),
+        31: D("10.00"),
     }
-    assert seen.rows[(24, "dining out")][0] == D("10.00")
-    # The bill is paid, so nothing is held for it, although its line still
-    # plans 185.00 (the reserve is measured against the reviewed plan, 100.00).
+    assert seen.rows[(24, "dining out")][0] == D("20.00")
+    assert all(a == 0 for _p, _s, a in seen.rows.values())  # no redistribution
     assert seen.summary["commitments_reserved"] == "0.00"
-    assert seen.status["today"]["planned"] == "5.00"  # today's groceries halved
+    assert seen.status["today"]["planned"] == "10.00"
     bill = next(b for b in seen.cal["bills"] if b["category"] == "utilities")
-    assert (bill["date"], bill["in_plan"]) == ("2026-10-18", True)
+    assert (bill["date"], bill["in_plan"], bill["state"]) == (
+        "2026-10-18",
+        True,
+        "recorded",
+    )
+    assert (bill["recorded"], bill["recorded_dates"]) == ("100.00", ["2026-10-18"])
 
 
-async def test_f8_a_bill_paid_late_counts_as_overspending_on_the_day_paid_today(
+async def test_a_bill_paid_late_moves_its_own_money_to_the_day_paid(
     mcp, seed, connection
 ):
-    """Rent planned on the 1st and paid on the 3rd: today the whole €800 is
-    overspending on the 3rd; €40 (dining out, 50 % of 10/17/24/31) and €140
-    (groceries, 50 % of each day 4th-31st) are moved there, €620 uncovered.
-    The 1st keeps its €800, so rent plans €980 for one €800 payment."""
+    """Rent planned on the 1st and paid on the 3rd: rent's own €800 moves to
+    the 3rd; nothing is overspending and no other line gives. (Until
+    2026-11-02 the whole €800 counted as overspending on the 3rd: €180 was
+    taken from dining out and groceries ahead and rent planned €980.)"""
     m = mcp.at(NOW)
     user = await base_month(seed)
     token = m.token(user)
     await spend(m, token, 3, "800.00", "rent")
     await spend(m, token, 5, "100.00", "utilities")
     seen = await look(m, token, connection, user)
-    assert planned(seen.rows, "rent") == D("980.00")
-    assert seen.rows[(3, "rent")][:2] == (D("180.00"), D("800.00"))
-    assert planned(seen.rows, "groceries", days=range(20, 32)) == D("60.00")
+    assert planned(seen.rows, "rent") == D("800.00")
+    assert seen.rows[(1, "rent")][0] == D("0.00")
+    assert seen.rows[(3, "rent")][:2] == (D("800.00"), D("800.00"))
+    assert planned(seen.rows, "groceries", days=range(20, 32)) == D("120.00")
+    assert all(a == 0 for _p, _s, a in seen.rows.values())
     assert money(
         seen, "left_to_spend", "planned_after_today", "commitments_reserved"
-    ) == (
-        "410.00",
-        "80.00",
-        "0.00",  # rent paid: the 180.00 credit is not a second rent
-    )
+    ) == ("410.00", "160.00", "0.00")
+    assert seen.day(3)["state"] == "within"  # groceries 10 planned, nothing spent
 
 
-async def test_f8_a_bill_paid_early_is_held_twice_today(mcp, seed, connection):
+async def test_a_bill_paid_early_is_held_once(mcp, seed, connection):
     """Home internet (€30, a saved bill due on the 27th, planned that day) paid
-    on the 15th: today €30 moves from dining out (17th/24th/31st, 10 each) to
-    the 15th while the 27th keeps its €30."""
+    on the 15th: the 27th's €30 moves to the 15th; dining out keeps its €20 on
+    the 17th, 24th and 31st. (Until 2026-11-02 €30 was taken from dining out
+    while the 27th kept its €30 — the bill planned twice.)"""
     m = mcp.at(NOW)
     user = await base_month(seed, extra={27: {"subscriptions": "30.00"}})
     await seed.scheduled(
@@ -411,23 +419,32 @@ async def test_f8_a_bill_paid_early_is_held_twice_today(mcp, seed, connection):
     await pay_bills_on_time(m, token)
     await spend(m, token, 15, "30.00", "subscriptions")
     seen = await look(m, token, connection, user)
-    assert planned(seen.rows, "subscriptions") == D("60.00")
-    assert seen.rows[(27, "subscriptions")][0] == D("30.00")
-    assert [seen.rows[(d, "dining out")][0] for d in (17, 24, 31)] == [D("10.00")] * 3
+    assert planned(seen.rows, "subscriptions") == D("30.00")
+    assert seen.rows[(27, "subscriptions")][0] == D("0.00")
+    assert seen.rows[(15, "subscriptions")][:2] == (D("30.00"), D("30.00"))
+    assert [seen.rows[(d, "dining out")][0] for d in (17, 24, 31)] == [D("20.00")] * 3
+    assert all(a == 0 for _p, _s, a in seen.rows.values())
     assert money(
         seen, "left_to_spend", "planned_after_today", "commitments_reserved"
     ) == (
         "410.00",  # 1,640.00 - 930.00 - 300.00
-        "170.00",  # groceries 120 + dining out 20 + the 27th's 30
+        "160.00",  # groceries 120 + dining out 40; the 27th's 30 was paid
         "0.00",  # paid early: the 27th's 30.00 is not held again
     )
     assert seen.line("subscriptions")["group"] == "commitment"
+    bill = next(b for b in seen.cal["bills"] if b["category"] == "subscriptions")
+    assert (bill["date"], bill["state"], bill["recorded_dates"]) == (
+        "2026-10-27",
+        "recorded",
+        ["2026-10-15"],
+    )
 
 
 async def test_two_bills_in_one_category(mcp, seed, connection):
     """Two saved subscriptions (12 on the 10th, 10 on the 15th), each planned
-    on its date. Paid apart: nothing moves. Paid together on the 10th: today
-    the 10th is €10 over and dining out (17th/24th/31st) covers it."""
+    on its date. Paid apart: nothing moves. Paid together on the 10th: the
+    15th's €10 moves to the 10th; both bills show as recorded. (Until
+    2026-11-02 the 10th was €10 over and dining out covered it.)"""
     extra = {10: {"subscriptions": "12.00"}, 15: {"subscriptions": "10.00"}}
     m = mcp.at(NOW)
     apart = await base_month(seed, extra=extra)
@@ -455,11 +472,13 @@ async def test_two_bills_in_one_category(mcp, seed, connection):
     token = m.token(together)
     await spend(m, token, 10, "22.00", "subscriptions")
     seen = await look(m, token, connection, together)
-    assert planned(seen.rows, "subscriptions") == D("32.00")  # today: held twice
-    assert sorted(seen.rows[(d, "dining out")][0] for d in (17, 24, 31)) == [
-        D("16.66"),
-        D("16.67"),
-        D("16.67"),
+    assert planned(seen.rows, "subscriptions") == D("22.00")
+    assert seen.rows[(10, "subscriptions")][:2] == (D("22.00"), D("22.00"))
+    assert seen.rows[(15, "subscriptions")][0] == D("0.00")
+    assert [seen.rows[(d, "dining out")][0] for d in (17, 24, 31)] == [D("20.00")] * 3
+    assert [(b["amount"], b["state"], b["recorded"]) for b in seen.cal["bills"]] == [
+        ("12.00", "recorded", "12.00"),
+        ("10.00", "recorded", "10.00"),
     ]
 
 
@@ -874,18 +893,24 @@ REVIEW_SPENDING = [
 ]
 
 
-async def test_f8_review_month_as_today(mcp, seed, connection):
+async def test_f8_review_month(mcp, seed, connection):
     """The account behind F-8, entered through MITA's tools exactly as the
     calendar review did on 24 October (income 3,200, savings target 400,
     rent / kindergarten / utilities / internet saved, the reviewed budget, a
-    goal, the month's expenses). The plan and the dates staging showed,
-    reproduced. Since the bills' reserve (owner decision 2026-10-25) home
-    internet 30.00 (saved, due on the 27th, not recorded) is held, while the
-    paid utilities and kindergarten hold nothing although their lines show
-    190.00 and 231.04. Medical insurance 134.40 is the budget engine's
-    allowance in the reviewed plan, never recorded against, so it stays
-    everyday money: left 823.91 and 117.70 a day (before R3: 853.91 and
-    121.99; R3 with every SACRED line held: 689.51 and 98.50)."""
+    goal, the month's expenses). Home internet 30.00 (saved, due on the 27th,
+    not recorded) is held (R3); medical insurance 134.40 is the budget
+    engine's allowance, never recorded against, so it stays everyday money:
+    left 823.91 and 117.70 a day.
+
+    Since 2026-11-02 (owner decision, F-8) the reviewed budget plans each
+    bill in full on its due date and a bill line is never a donor: the bills,
+    paid on their dates, move nothing; utilities and kindergarten plan one
+    bill each (95.00, 180.00 — they were 190.00 and 231.04) and the internet
+    bill keeps its 30.00 (it was cut to 9.17). The plan for 25-31 Oct is
+    282.25 before the month's expenses (299.95 with the old layout) and 61.53
+    after them (12.16): what still drains it is everyday spending recorded
+    under the API's names (F-2) and groceries' pace — the per-date rule for
+    everyday lines, kept by the owner."""
     m = mcp.at(REVIEW_NOW)
     user = await seed.user(income="0", onboarded=False, name=None, country="ZZ")
     token = m.token(user)
@@ -952,7 +977,7 @@ async def test_f8_review_month_as_today(mcp, seed, connection):
         ),
         D("0"),
     )
-    assert base_ahead == D("299.95")
+    assert base_ahead == D("282.25")
     items = [
         {"amount": a, "category": c, "date": date(2026, 10, d).isoformat()}
         for d, a, c in REVIEW_SPENDING
@@ -971,8 +996,14 @@ async def test_f8_review_month_as_today(mcp, seed, connection):
         "average_per_day",
         "planned_after_today",
         "commitments_reserved",
-    ) == ("3160.84", "1869.09", "823.91", "117.70", "12.16", "30.00")
+    ) == ("3160.84", "1869.09", "823.91", "117.70", "61.53", "30.00")
     lines = {x["category"]: (x["planned"], x["spent"]) for x in seen.cal["categories"]}
-    assert lines["utilities"] == ("190.00", "95.00")  # one 95.00 bill
-    assert lines["childcare"] == ("231.04", "180.00")  # one 180.00 bill
-    assert lines["subscriptions"] == ("9.17", "0.00")  # a 30.00 bill due on the 27th
+    assert lines["utilities"] == ("95.00", "95.00")  # one 95.00 bill, on the 18th
+    assert lines["childcare"] == ("180.00", "180.00")  # one 180.00 bill, on the 5th
+    assert lines["subscriptions"] == ("30.00", "0.00")  # due on the 27th, kept
+    bills = ("rent", "childcare", "utilities", "subscriptions")
+    assert all(a == 0 for (_d, c), (_p, _s, a) in seen.rows.items() if c in bills)
+    # What still moves between lines is everyday spending: expenses recorded
+    # under the API's names (F-2) and groceries bought in a few large shops.
+    moved = sum((a for _p, _s, a in seen.rows.values() if a > 0), D("0"))
+    assert moved == D("656.19")  # 904.32 before bills kept their own money

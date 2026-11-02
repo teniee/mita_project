@@ -67,7 +67,13 @@ TERMS = (
     "investments — never spendable) and everyday spending, which add up to the "
     "plan; average_per_day is the safe daily figure of get_budget_forecast, an "
     "average for each remaining day — not a budget for a particular date. bills "
-    "are the dates the user's saved payments fall on this month."
+    "are the dates the user's saved payments fall on this month: the plan holds "
+    "each bill's full amount on its due date, and each bill has a state "
+    "(recorded, overdue = past due and not recorded, due_today, upcoming = due "
+    "within reminder_days, later) with what is recorded against it — matched by "
+    "category in date order, so 'recorded' means recorded under the bill's "
+    "category, not proof that this particular bill was paid. reminders lists the "
+    "bills to mention now (due soon, today, or past due and not recorded)."
 )
 
 GET_DESCRIPTION = (
@@ -128,6 +134,29 @@ def _match_category(cal, wanted: Optional[str]):
     return None
 
 
+def _reminder_text(bill) -> str:
+    """One reminder as the model reads it, e.g. 'Laptop loan 70.00 due
+    2026-11-25 (in 3 days)'."""
+    o = bill.occurrence
+    name = o.merchant or bill.line
+    when = o.day.isoformat()
+    if bill.state == "overdue":
+        status = f"was due {when}, not recorded"
+    elif bill.state == "due_today":
+        status = "due today"
+    elif bill.days_until == 1:
+        status = f"due tomorrow ({when})"
+    else:
+        status = f"due {when} (in {bill.days_until} days)"
+    left = o.amount - bill.recorded
+    part = (
+        f", {money(bill.recorded)} recorded, {money(left)} not yet"
+        if Decimal("0") < bill.recorded < o.amount
+        else ""
+    )
+    return f"{name} {money(o.amount)} {status}{part}"
+
+
 def _shown_text(ctx: UserContext, cal, line) -> str:
     """The sentence the model reads (and a client without UI shows)."""
     name = _month_name(cal.year, cal.month)
@@ -162,12 +191,20 @@ def _shown_text(ctx: UserContext, cal, line) -> str:
             "MITA has no saved plan for this month, so the calendar shows recorded "
             f"spending only ({money(cal.total_spent)})."
         )
-    upcoming = [b for b in cal.bills if b.occurrence.day > cal.today]
-    if upcoming:
-        first = upcoming[0].occurrence
-        parts.append(
-            f"Next saved bill: {money(first.amount)} on {first.day.isoformat()}."
-        )
+    reminders = [_reminder_text(bill) for bill in cal.reminders]
+    if reminders:
+        parts.append("Bills: " + "; ".join(reminders) + ".")
+    else:
+        upcoming = [
+            b
+            for b in cal.bills
+            if b.occurrence.day > cal.today and b.state != "recorded"
+        ]
+        if upcoming:
+            first = upcoming[0].occurrence
+            parts.append(
+                f"Next saved bill: {money(first.amount)} on {first.day.isoformat()}."
+            )
     if line is not None:
         parts.append(f"Filtered to {line.label}.")
     return " ".join(parts)

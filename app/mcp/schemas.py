@@ -642,6 +642,12 @@ class ObligationOut(_Out):
     basis: str = Field(
         description="How it was counted, e.g. 'monthly', 'weekly × 4 Mondays', 'one-time on 2026-10-20'."
     )
+    due_dates: List[dt.date] = Field(
+        description=(
+            "The dates it is due on this month. The plan holds its full amount on "
+            "each of these dates and nowhere else."
+        )
+    )
 
 
 class AllocationOut(_Out):
@@ -955,6 +961,7 @@ class UsageAnalyticsOut(_Out):
 CalendarGroup = Literal["commitment", "set_aside", "everyday"]
 DayKind = Literal["past", "today", "future"]
 DayState = Literal["over", "within", "unplanned", "quiet", "planned", "free"]
+BillState = Literal["recorded", "overdue", "due_today", "upcoming", "later"]
 
 
 class CalendarSummaryOut(_Out):
@@ -1024,7 +1031,7 @@ class CalendarSummaryOut(_Out):
         pattern=MONEY_PATTERN,
     )
     bills_due_after_today: Money = money_field(
-        "Saved regular payments that fall due after today in this month (as scheduled; MITA does not know whether one was paid early)."
+        "Saved regular payments that fall due after today in this month, as scheduled (a bill already recorded early is still counted here; see bills[].state)."
     )
 
 
@@ -1077,7 +1084,9 @@ class CalendarDayOut(_Out):
 
 
 class CalendarBillOut(_Out):
-    date: dt.date
+    date: dt.date = Field(
+        description="Due date. The plan holds the bill's full amount on this date and nowhere else (until it is recorded on another date)."
+    )
     name: Optional[str] = Field(
         description="Merchant the user saved for this payment, if any."
     )
@@ -1089,6 +1098,29 @@ class CalendarBillOut(_Out):
     )
     in_plan: bool = Field(
         description="True when the month's plan holds money on this payment's line."
+    )
+    state: BillState = Field(
+        description=(
+            "Relative to the user's today: recorded (expenses recorded under the bill's "
+            "category cover it), overdue (due date passed, not recorded — MITA cannot "
+            "know whether it was paid outside MITA), due_today, upcoming (due within "
+            "reminder_days) or later."
+        )
+    )
+    days_until: int = Field(
+        description="Days from the user's today to the due date; negative once it has passed."
+    )
+    recorded: Money = money_field(
+        "Spending recorded under the bill's category this month and matched to this due "
+        "date (by category, in date order: a payment covers the bill due on its own date, "
+        "then earlier unpaid ones, then later ones). Not proof that this particular bill "
+        "was paid: MITA does not link an expense to a saved payment."
+    )
+    recorded_dates: List[dt.date] = Field(
+        description="Dates of the recorded expenses counted in recorded (one before the due date = recorded early, after = late)."
+    )
+    reminder_from: dt.date = Field(
+        description="First day of the bill's reminder window (reminder_days before its due date). A reminder only: no money is planned on those days for the bill."
     )
 
 
@@ -1107,7 +1139,17 @@ class CalendarMonthOut(_Out):
     )
     days: List[CalendarDayOut] = Field(description="Every date of the month, in order.")
     bills: List[CalendarBillOut] = Field(
-        description="Dates the user's saved payments fall on this month."
+        description="Dates the user's saved payments fall on this month, with their state."
+    )
+    reminders: List[CalendarBillOut] = Field(
+        description=(
+            "Bills to remind the user of now: due within reminder_days of today (this "
+            "month or early next month), due today, or — for the current month — past due "
+            "and not recorded. Ordered by due date."
+        )
+    )
+    reminder_days: int = Field(
+        description="How many days before its due date a bill is announced (a reminder, not an allocation)."
     )
     notes: List[str]
 
@@ -1125,6 +1167,9 @@ class CalendarViewOut(_Out):
         description="Budget line the calendar is filtered to, when one was asked for and found."
     )
     summary: CalendarSummaryOut
+    reminders: List[CalendarBillOut] = Field(
+        description="get_calendar_month reminders: bills due soon, due today or past due and not recorded."
+    )
     shown: str = Field(
         description="What the user now sees. The figures on screen are MITA's, not the arguments'."
     )

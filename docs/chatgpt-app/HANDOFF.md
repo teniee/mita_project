@@ -1,6 +1,23 @@
-# Handoff — MITA in ChatGPT (MCP), 2026-11-02
+# Handoff — MITA in ChatGPT (MCP), 2026-11-03
 
-## Current state: staging ready for the owner's real-ChatGPT acceptance (2026-11-02)
+## Current state: F-8 for bills — due dates, reminders, paying them (MCP 2.5.0, 2026-11-03)
+
+Owner brief 2026-11-02 after the real-ChatGPT run (OAuth, 24 tools, F-11 and
+the calendar passed; PNG saving works in the browser, not through ChatGPT
+Desktop's right-click): fixed payments must sit on their due dates, be
+announced before they are due, and never count as overspending when paid.
+
+| Item | State |
+|---|---|
+| Root cause | the layout never used due dates (`distribute_budget_over_days` by `CATEGORY_BEHAVIOR`: the owner's phone `utilities` on the 5th, the loans spread over weekdays — reproduced to the cent: 52.00 / 38.99 / 51.96), and the rebalancer judged each date alone, so a bill paid on its date drained other lines' later dates; non-SACRED bills were donors |
+| Fix (shared engine, no migration) | bills in full on their due dates (`monthly_obligations.due_dates_in_month`, `bills_on_due_dates`; reviewed budget + rollover); `bill_timing`: a bill line's own money follows its payment in date order (early / late / parts), recorded as `_mita_bill_timing_v1`, never redistribution; bill lines never donors; everyday lines unchanged. Rule: `bill-due-dates.md` |
+| Calendar | per-bill `state`, `recorded`, `recorded_dates`, `days_until`, `reminder_from`; `reminders` (5 days ahead, today, overdue; across the month end); component: reminder strip, bill marks by state, live-window band, the date's bills and plan split, "Bills this month", PNG dots by state |
+| Payment status | "recorded" by category in date order, never "paid" — MITA cannot link an expense to a saved payment; `bill_payments` proposal written, not implemented (owner decision + migration) |
+| Owner's November | not rewritten; the money rule applies from the next expense; due-date layout after "show my November budget again and save it" (amounts unchanged) — `calendar-owner-test.md` steps 26–34 |
+| Tests | MCP suite 714 passed (21 new in `test_bill_due_dates.py`, 5 pinned F-8 tests rewritten with old and new figures); local MCP Apps host 76/76 incl. axe 0 violations ×4, 320/360/390 px, PNG; lint (both toolchains), Bandit, plugin package valid |
+| Separate finding | F-12: MITA's default lines (public transport, medical insurance…) do not fit the person — recorded, not changed |
+
+## Previous state: staging ready for the owner's real-ChatGPT acceptance (2026-11-02)
 
 Staging runs `0af8435` (deployment `ef207e6e`, MCP 2.4.0, alembic `0040`,
 `MCP_WIDGET_DOMAIN` set). `main` (`27ed25d`), production and PR #287

@@ -1,5 +1,12 @@
 # F-8 — one money model for the plan, the ledger and the forecast (proposal, 2026-10-25)
 
+**Update 2026-11-02 (owner decision after the real-ChatGPT run):** R4 is
+adopted — saved bills are planned in full on their due dates — together with
+the part of R2 that bills need: a bill line's own money follows its payment
+(early, late, in parts) before any other line is touched, and a bill line is
+never a donor. R1, R2 for everyday lines and R5 remain not adopted. Rule,
+evidence and tests: `bill-due-dates.md`.
+
 Status, owner decisions of 2026-10-25:
 
 * **R3 approved and implemented** — unpaid bills are held out of the safe daily

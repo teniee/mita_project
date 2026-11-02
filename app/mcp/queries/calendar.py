@@ -30,6 +30,17 @@ date's everyday plan: rent planned on the 1st and paid on the 3rd is a
 commitment paid, not €850 of overspending on the 3rd. A date with no everyday
 plan is never "over" (the dashboard rule: no allocation, no verdict).
 
+Saved bills (owner decision 2026-11-02, F-8; docs/chatgpt-app/bill-due-dates.md)
+are planned in full on their due dates. Each bill date carries what is
+recorded against it — spending recorded under the bill's category this month,
+matched to the category's bill dates in date order (``bill_timing.settle``,
+the rule the ledger moves the bill's money by) — and its state relative to
+the user's today: ``recorded``, ``overdue`` (past and not recorded),
+``due_today``, ``upcoming`` (within ``REMINDER_DAYS``) or ``later``. MITA's
+data has no link between an expense and a saved payment, so "recorded" means
+recorded under the bill's category, never proof that a particular bill was
+paid.
+
 The pure ``build_calendar`` takes plain inputs so the sign-in page's
 fictional example runs through exactly this code (tests_mcp/test_auth_ui.py).
 """
@@ -49,8 +60,9 @@ from app.db.models import ScheduledExpense
 from app.mcp.categories import group_lines, line_key, line_source
 from app.mcp.queries import ledger, plan
 from app.mcp.queries.periods import UserContext, month_days
+from app.services.core.engine.bill_timing import settle
 from app.services.core.engine.budget_forecast_engine import ForecastResult
-from app.services.monthly_obligations import due_in_month
+from app.services.monthly_obligations import due_dates_in_month, due_in_month
 from app.services.monthly_plan_service import month_has_plan
 
 ZERO = Decimal("0.00")
@@ -63,6 +75,18 @@ ALL_GROUPS = (GROUP_SET_ASIDE, GROUP_COMMITMENT, GROUP_EVERYDAY)
 # ScheduledExpenseIn: recurrence in {"once", "weekly", "monthly"} or null.
 MONTHLY = "monthly"
 WEEKLY = "weekly"
+
+# A bill is announced this many calendar days before its due date (owner
+# decision 2026-11-02). A reminder window, never an allocation: the bill's
+# money stays on its due date.
+REMINDER_DAYS = 5
+
+BILL_RECORDED = "recorded"
+BILL_OVERDUE = "overdue"
+BILL_DUE_TODAY = "due_today"
+BILL_UPCOMING = "upcoming"
+BILL_LATER = "later"
+REMINDER_STATES = (BILL_OVERDUE, BILL_DUE_TODAY, BILL_UPCOMING)
 
 
 @dataclass(frozen=True)
@@ -150,6 +174,30 @@ class CalendarBill:
     occurrence: BillOccurrence
     line: str
     in_plan: bool  # the month's plan holds money on this bill's line
+    # Spending recorded under the bill's category this month and matched to
+    # this date (category and date order, ``bill_timing.settle``).
+    recorded: Decimal = ZERO
+    recorded_on: Tuple[date, ...] = ()
+    state: str = BILL_LATER
+    days_until: int = 0
+
+    @property
+    def reminder_from(self) -> date:
+        return self.occurrence.day - timedelta(days=REMINDER_DAYS)
+
+
+def bill_state(day: date, amount: Decimal, recorded: Decimal, today: date) -> str:
+    """recorded | overdue | due_today | upcoming | later, relative to today.
+    Recorded in full ends the reminders; a part recorded does not."""
+    if amount > ZERO and recorded >= amount:
+        return BILL_RECORDED
+    if day < today:
+        return BILL_OVERDUE
+    if day == today:
+        return BILL_DUE_TODAY
+    if (day - today).days <= REMINDER_DAYS:
+        return BILL_UPCOMING
+    return BILL_LATER
 
 
 @dataclass(frozen=True)
@@ -165,6 +213,9 @@ class CalendarMonth:
     forecast: Optional[ForecastResult]
     stated_income: Optional[Decimal]
     other_currencies: Tuple[str, ...]
+    # bills to remind of from today: due within REMINDER_DAYS (this month or
+    # the first days of the next), due today, or past due and not recorded
+    reminders: Tuple[CalendarBill, ...] = ()
 
     def _sum(self, group: Optional[str], attr: str) -> Decimal:
         return sum(
@@ -228,25 +279,14 @@ def occurrences_in_month(
     payment: SavedPayment, year: int, month: int
 ) -> List[BillOccurrence]:
     """The dates a saved payment falls on in one month, from the rule the user
-    stated — never before the date it was scheduled for (``anchor``).
+    stated (``monthly_obligations.due_dates_in_month``, the dates the plan
+    holds its money on) — never before the date it was scheduled for
+    (``anchor``).
 
     Monthly: the anchor's day of the month, on the month's last day when the
     month is shorter. Weekly: every matching weekday. One-time: the anchor.
     """
-    first, last = month_days(year, month)
-    if payment.recurrence == MONTHLY:
-        if (year, month) < (payment.anchor.year, payment.anchor.month):
-            return []
-        days = [date(year, month, min(payment.anchor.day, last.day))]
-    elif payment.recurrence == WEEKLY:
-        offset = (payment.anchor.weekday() - first.weekday()) % 7
-        days = [
-            first + timedelta(days=offset + 7 * week)
-            for week in range(6)
-            if first + timedelta(days=offset + 7 * week) <= last
-        ]
-    else:
-        days = [payment.anchor] if first <= payment.anchor <= last else []
+    days = due_dates_in_month(payment.anchor, payment.recurrence, year, month)
     return [
         BillOccurrence(
             day=day,
@@ -293,6 +333,97 @@ def _total(
         ),
         ZERO,
     )
+
+
+def _settled_bills(
+    occurrences: Sequence[BillOccurrence],
+    spent: Mapping[Tuple[date, str], Decimal],
+    buckets: Set[str],
+    planned_lines: Set[str],
+    today: date,
+) -> List[CalendarBill]:
+    """Each bill date with what is recorded against it: per category, the
+    month's recorded spending matched to the category's bill dates in date
+    order (the ledger's rule, ``bill_timing.settle``)."""
+    by_category: Dict[str, List[int]] = defaultdict(list)
+    for index, occurrence in enumerate(occurrences):
+        by_category[occurrence.category].append(index)
+    recorded: Dict[int, Tuple[Decimal, Tuple[date, ...]]] = {}
+    for category, indexes in by_category.items():
+        settlement = settle(
+            [(occurrences[i].day, occurrences[i].amount) for i in indexes],
+            [
+                (day, amount)
+                for (day, code), amount in spent.items()
+                if code == category
+            ],
+        )
+        for position, index in enumerate(indexes):
+            recorded[index] = (
+                settlement.covered[position],
+                tuple(day for day, _ in settlement.paid[position]),
+            )
+    bills = []
+    for index, o in enumerate(occurrences):
+        amount, dates = recorded.get(index, (ZERO, ()))
+        line = line_key(o.category, buckets)
+        bills.append(
+            CalendarBill(
+                occurrence=o,
+                line=line,
+                in_plan=line in planned_lines,
+                recorded=amount,
+                recorded_on=dates,
+                state=bill_state(o.day, o.amount, amount, today),
+                days_until=(o.day - today).days,
+            )
+        )
+    return bills
+
+
+def _next_month(year: int, month: int) -> Tuple[int, int]:
+    return (year + 1, 1) if month == 12 else (year, month + 1)
+
+
+def _reminders(
+    bills: Sequence[CalendarBill],
+    payments: Sequence[SavedPayment],
+    year: int,
+    month: int,
+    today: date,
+    buckets: Set[str],
+    planned_lines: Set[str],
+) -> Tuple[CalendarBill, ...]:
+    """The bills to remind of from today: this month's bills due within
+    REMINDER_DAYS, due today or past due and not recorded (the current month
+    only), and the next month's bills due within REMINDER_DAYS of today. A
+    next-month bill's recordings belong to that month, so it carries none."""
+    current = (year, month) == (today.year, today.month)
+    found = [
+        bill
+        for bill in bills
+        if bill.state in (BILL_DUE_TODAY, BILL_UPCOMING)
+        or (bill.state == BILL_OVERDUE and current)
+    ]
+    following = _next_month(year, month)
+    horizon = today + timedelta(days=REMINDER_DAYS)
+    for payment in payments:
+        for o in occurrences_in_month(payment, *following):
+            if today <= o.day <= horizon:
+                line = line_key(o.category, buckets)
+                found.append(
+                    CalendarBill(
+                        occurrence=o,
+                        line=line,
+                        in_plan=line in planned_lines,
+                        state=bill_state(o.day, o.amount, ZERO, today),
+                        days_until=(o.day - today).days,
+                    )
+                )
+    found.sort(
+        key=lambda b: (b.occurrence.day, b.occurrence.category, -b.occurrence.amount)
+    )
+    return tuple(found)
 
 
 def _day_kind(day: date, today: date) -> str:
@@ -406,14 +537,8 @@ def build_calendar(
         day += timedelta(days=1)
 
     planned_lines = {line.key for line in lines if line.planned > ZERO}
-    bills = [
-        CalendarBill(
-            occurrence=o,
-            line=line_key(o.category, buckets),
-            in_plan=line_key(o.category, buckets) in planned_lines,
-        )
-        for o in occurrences
-    ]
+    bills = _settled_bills(occurrences, spent, buckets, planned_lines, today)
+    reminders = _reminders(bills, payments, year, month, today, buckets, planned_lines)
     position = (
         "past"
         if (year, month) < (today.year, today.month)
@@ -431,6 +556,7 @@ def build_calendar(
         forecast=forecast if plan_generated else None,
         stated_income=stated_income,
         other_currencies=tuple(other_currencies),
+        reminders=reminders,
     )
 
 

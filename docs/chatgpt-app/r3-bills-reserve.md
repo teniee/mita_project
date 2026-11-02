@@ -9,6 +9,11 @@ Tests: `tests_mcp/test_bills_reserve.py` (the scenario matrix),
 `tests_mcp/test_money_consistency.py` (every surface against each other),
 `app/tests/test_budget_forecast_local_day.py` (the mobile routes).
 
+Since 2026-11-02 (MCP 2.5.0, `bill-due-dates.md`) the same bills are planned
+in full on their due dates and their recorded payments move only their own
+line's money; the reserve below is unchanged (measured per category against
+the base plan, which the layout and the bill timing never change).
+
 ## The rule
 
 1. **A bill** is money MITA knows a payment will take this month and can see

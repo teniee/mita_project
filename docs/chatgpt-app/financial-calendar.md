@@ -72,23 +72,38 @@ for any date; negative when the bills due exceed what the plan leaves);
 **Saved bills** fall on dates by the rule the user stated: monthly on the
 anchor's day (the month's last day when shorter), weekly on the weekday, one-time
 on its date — never before the date it was first scheduled for. `in_plan` says
-whether the month's plan holds money on that bill's line. Markers only: a bill's
-amount is never added to any total (no double counting with the plan).
+whether the month's plan holds money on that bill's line. A bill's amount is
+never added to any total on top of the plan (no double counting): since
+2026-11-02 (MCP 2.5.0, `bill-due-dates.md`) the plan itself holds each bill in
+full on its due date, so the date's `planned` already includes it
+(`planned − planned_everyday`).
+
+**Bill states and reminders** (2.5.0): every bill carries `state` —
+`recorded` (expenses recorded under its category cover it, matched in date
+order: `bill_timing.settle`), `overdue` (due date passed, not recorded),
+`due_today`, `upcoming` (within `reminder_days` = 5) or `later` — with
+`days_until`, `recorded`, `recorded_dates` and `reminder_from`. "Recorded" is
+never "paid": MITA has no link between an expense and a saved payment.
+`reminders` lists what to mention now: bills due within five days (this month
+or early next month) or today, and the current month's overdue ones. The
+five days are a reminder, never an allocation.
 
 ### What the calendar shows that MITA's model does not reconcile (reported, not fixed)
 
-* **The dates ahead can hold far less than the daily average.** MITA's
-  automatic rebalancing (`realtime_rebalancer.rebalance_after_overspend`) takes
-  money from later dates to cover a date that went over; money left unspent on
-  a past date stays there. The forecast's average counts both. Review account,
-  24 Oct: base plan for 25–31 Oct €299.95, after the month as recorded €12.16,
-  while the average was €121.99 a day. The calendar shows both, labelled; the
-  component explains the gap when it is material (`planned_after_today`).
-  Backend finding F-8.
-* **A saved bill paid on its due date can count as overspending** where the
-  layout put it elsewhere (rent/school fees on the 1st, other fixed categories
-  on the 5th, obligation categories the layout does not know spread over
-  weekdays) — that is what triggers the rebalancing above. F-8.
+* **The dates ahead can hold less than the daily average.** MITA's automatic
+  rebalancing (`realtime_rebalancer.rebalance_after_overspend`) takes money
+  from later dates to cover a date whose everyday spending went over; money
+  left unspent on a past date stays there. The forecast's average counts both.
+  Review account, 24 Oct: the plan for 25–31 Oct is €61.53 after the month as
+  recorded (€12.16 before bills kept their own money on 2026-11-02), while the
+  average was €117.70 a day. The calendar shows both, labelled; the component
+  explains the gap when it is material (`planned_after_today`). Backend
+  finding F-8.
+* **Bills no longer trigger it** (2026-11-02): a saved bill is planned on its
+  due date, and paying it on another date moves only its own line's money;
+  bill lines are never donors. A plan saved before 2.5.0 keeps its old layout
+  (bills spread or on the 5th) until the month is saved again; the ledger rule
+  already applies to it.
 * **Unrecorded bills** were spendable until recorded (known since
   2026-10-23); since 2026-10-25 they are held (`commitments_reserved`) and out
   of left to spend and the daily average, in ChatGPT and in the mobile API's
@@ -106,8 +121,18 @@ dedicated task. The calendar never adds a figure that would hide them.
 
 * **Inline card** (ChatGPT's default): the month, the average a day, left to
   spend / spent / savings kept, a compact calendar with each date's amount and a
-  bar against its everyday plan, the over days and the next bill; two actions
-  (Open calendar → fullscreen; Save as PNG). No drill-in (OpenAI UI guidelines).
+  bar against its everyday plan, the over days, "Bill reminders" (the first
+  two, "+ N more") or else the next bill; two actions (Open calendar →
+  fullscreen; Save as PNG). No drill-in (OpenAI UI guidelines).
+* **Bills** (2.5.0): each due date carries a bill mark coloured by state (teal
+  recorded, amber upcoming, red overdue, navy/yellow due today — the state is
+  also in words in every label and chip); a live reminder bands the dates from
+  today to its due date; the selected date shows "Bills due on this date"
+  (state, what is recorded, Everyday plan + Bills due = Plan for the date),
+  "Bills recorded on this date" (paid early or late) and "Coming up"; the
+  fullscreen view lists all reminders after the summary and "Bills this month"
+  after the calendar. On a phone's narrow cell the category dots give way so a
+  bill mark is never cut off.
 * **Fullscreen**: month navigation (`get_calendar_month` through the host),
   the summary and "How is this worked out?", category filters (top lines + More),
   the calendar grid (keyboard: arrows, Home/End), the selected date's detail
@@ -189,7 +214,7 @@ except through the host's own download or file store.
   `get_budget_forecast`, no plan / past / future months, bill dates, groups,
   isolation, the render tool's split between model and component, the resource
   and its CSP, the component source rules, the master logomark in the image.
-* `scripts/mcp/calendar_widget_review.py` (65 checks with axe and clean-up; 320/360 px added 2026-10-25): sign-up through the real
+* `scripts/mcp/calendar_widget_review.py` (76 checks with axe and clean-up; 320/360 px added 2026-10-25, 390 px and the bills — reminders, bill marks, a bill date's detail, the bills card — 2026-11-03): sign-up through the real
   page, the month entered through MITA's tools, the component in a sandboxed
   iframe with the spec's restrictive CSP, phone (WebKit) and desktop
   (Chromium), light/dark, fullscreen, a date's label and expenses, model
