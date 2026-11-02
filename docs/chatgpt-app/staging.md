@@ -1,4 +1,4 @@
-# MITA MCP — staging (observed 2026-10-03, v2 update 2026-10-13, credentials rotated 2026-10-23, `dbdc118` — MCP 2.2.0 — deployed 2026-10-24)
+# MITA MCP — staging (observed 2026-10-03, v2 update 2026-10-13, credentials rotated 2026-10-23, MCP 2.4.0 since 2026-10-28, `0af8435` deployed 2026-11-02)
 
 ## What exists
 
@@ -6,8 +6,8 @@
 |---|---|---|
 | Railway project | `mita-mcp-staging` (`497476f2-de93-44b7-b170-2b175c8d5621`) — **separate project**, no access to the production project's variables, services or database | STAGING VERIFIED |
 | Environment | `staging` (`0f67cf7a-5ce4-472e-a842-2e5448d64c08`) | STAGING VERIFIED |
-| MCP service | `mita-mcp-staging` (`833466fc-f7f2-4d51-8db1-48edfbb46057`), Dockerfile `deploy/mcp/Dockerfile`, healthcheck `/health`, restart ON_FAILURE ×5, **1 replica** (region `asia-southeast1-eqsg3a`), source `teniee/mita_project` @ `feat/chatgpt-auth-ui` **pinned to commit `dbdc118`** (MCP 2.2.0: the financial calendar in ChatGPT and the v4 sign-in page) since 2026-10-24 20:10 UTC, deployment `7fd7783b-d910-4c7b-b32b-324fb693a751`. Deploy another commit by connecting the source again with it — not "Redeploy", which rebuilds the current one (before: `de96251` / `b4f6d2fd` from 2026-10-23 20:13 UTC — the v3 sign-in page, not approved, and `opentelemetry-api` 1.45.1 —, `1e24bf4` / `dd8b4894` from 2026-10-23 18:02 UTC, `ee388c0` / `33783139` from 2026-10-23 12:12 UTC, `79efb1d` / `87d26668` 2.1.0 from 2026-10-18 — the re-pin of 2026-10-21 waited for Railway's build pause —, `461abcf` / `174528cf` 2.0.0 from 2026-10-13, `fcd7ae3` from 2026-10-11, `842d365` on which the v1 real-ChatGPT acceptance ran). Pushes do not redeploy it | STAGING VERIFIED |
-| Database | Railway Postgres 18 template (18.6), private network only, alembic `0039`. The MCP service connects as the least-privilege role `mita_mcp` (`scripts/mcp/mcp_service_role.sql`) on `postgres.railway.internal`; the read-only `mita_analytics_reader` exists (password not kept — reset before use). Both stored passwords were rotated on 2026-10-23 (see "Credential rotation"). Temporary TCP proxies used for migrations and checks (2026-10-03, 2026-10-13, 2026-10-18, three times on 2026-10-23) were removed and verified no longer serving Postgres; none was opened on 2026-10-24 (no migration; see "Left on staging") | STAGING VERIFIED |
+| MCP service | `mita-mcp-staging` (`833466fc-f7f2-4d51-8db1-48edfbb46057`), Dockerfile `deploy/mcp/Dockerfile`, healthcheck `/health`, restart ON_FAILURE ×5, **1 replica** (region `asia-southeast1-eqsg3a`), source `teniee/mita_project` @ `feat/chatgpt-auth-ui` **pinned to commit `0af8435`** (MCP 2.4.0: F-11 user budget lines and the V7 per-IP limit fix) since 2026-11-02 18:42 UTC, deployment `ef207e6e-2d9e-4efe-b304-d607c0fdd5bc`. Deploy another commit by connecting the source again with it — not "Redeploy", which rebuilds the current one (before: `73ff153` / `56524faf` 2.4.0 from 2026-10-28 19:10 UTC, `2817bb6` / `724189ec` 2.3.0 from 2026-10-28 02:08 UTC, `dbdc118` / `7fd7783b` 2.2.0 — the financial calendar and the v4 sign-in page — from 2026-10-24 20:10 UTC, `de96251` / `b4f6d2fd` from 2026-10-23 20:13 UTC — the v3 sign-in page, not approved, and `opentelemetry-api` 1.45.1 —, `1e24bf4` / `dd8b4894` from 2026-10-23 18:02 UTC, `ee388c0` / `33783139` from 2026-10-23 12:12 UTC, `79efb1d` / `87d26668` 2.1.0 from 2026-10-18 — the re-pin of 2026-10-21 waited for Railway's build pause —, `461abcf` / `174528cf` 2.0.0 from 2026-10-13, `fcd7ae3` from 2026-10-11, `842d365` on which the v1 real-ChatGPT acceptance ran). Pushes do not redeploy it | STAGING VERIFIED |
+| Database | Railway Postgres 18 template (18.6), private network only, alembic `0040` (since 2026-10-28: `mcp_budget_lines`, granted to `mita_mcp`). The MCP service connects as the least-privilege role `mita_mcp` (`scripts/mcp/mcp_service_role.sql`) on `postgres.railway.internal`; the read-only `mita_analytics_reader` exists (password not kept — reset before use). Both stored passwords were rotated on 2026-10-23 (see "Credential rotation"). Temporary TCP proxies used for migrations and checks (2026-10-03, 2026-10-13, 2026-10-18, three times on 2026-10-23, twice on 2026-10-28, once on 2026-11-02) were removed and verified no longer serving Postgres; none was opened on 2026-10-24 (no migration; see "Left on staging") | STAGING VERIFIED |
 | Public URL | `https://mita-mcp-staging-staging.up.railway.app` (Railway-managed TLS) | STAGING VERIFIED |
 | Custom domain | none (not needed for staging) | — |
 
@@ -56,7 +56,9 @@ Set on staging (names only): `DATABASE_URL` (role `mita_mcp`), `ENVIRONMENT, JWT
 MCP_ANALYTICS_SECRET, MCP_AUTH_MODE, MCP_DATA_SECRET, MCP_GRANT_FINGERPRINT_SECRET,
 MCP_LOGIN_ATTEMPTS_PER_MINUTE, MCP_LOGIN_CSRF_SECRET, MCP_METRICS_TOKEN,
 MCP_OAUTH_PRIVATE_KEY, MCP_OAUTH_REQUESTS_PER_MINUTE, MCP_PUBLIC_URL,
-MCP_TOOL_CALLS_PER_MINUTE, MCP_TRUSTED_PROXY_HOPS, PORT, SECRET_KEY`. All
+MCP_TOOL_CALLS_PER_MINUTE, MCP_TRUSTED_PROXY_HOPS, MCP_WIDGET_DOMAIN, PORT, SECRET_KEY`
+(`MCP_TRUSTED_PROXY_HOPS` is not read since `0af8435`; left in place because
+deleting a variable redeploys the service). All
 secrets were generated fresh for staging with `generate_keys.py --out` and
 pushed with the Railway CLI (`--stdin`; the two v2 secrets on 2026-10-13);
 the local copies were deleted. No production value was used. All of them
@@ -67,21 +69,48 @@ were rotated on 2026-10-23 after Railway's security incident (below).
 `MCP_WIDGET_DOMAIN=https://mita-mcp-staging-staging.up.railway.app` set with
 `--skip-deploys` before the re-pin; no migration (head `0039`).
 
-## Next deployment: MCP 2.4.0, F-11 (NOT executed — owner approval first)
+## MCP 2.4.0 — deployed 2026-10-28 (`73ff153`, deployment `56524faf`)
 
-`user-budget-lines.md`. Needs a migration and a grant, in this order (2.4.0
-reads `mcp_budget_lines`):
+F-11 (`user-budget-lines.md`). CI run 40743607667 green on `73ff153`. Through
+a temporary TCP proxy: `alembic upgrade head` `0039 → 0040` (only
+`mcp_budget_lines`, 0 rows), then `GRANT SELECT, INSERT, UPDATE, DELETE ON
+mcp_budget_lines TO mita_mcp` (checked with `has_table_privilege`; no
+TRUNCATE/REFERENCES); proxies removed and verified. `/health` 2.4.0.
+`e2e_http.py` 31 + 24 PASS (restart between), `e2e_v2.py` 85/85 incl. the
+F-11 steps, F-11 smoke 19/19, isolation 11/11, logs clean. One check failed:
+`staging_failure_modes.py` 23/24 — `/authorize` answered a 40-request burst
+with 40 × 400, never 429 (V7, next section). Rollback: re-pin `2817bb6` (it
+ignores the table; `0040` can stay).
 
-1. Commit, push, green CI on that SHA.
-2. Temporary TCP proxy to the staging Postgres; from the operator machine
-   `alembic upgrade head` (`0039 → 0040`, one new table) as the owner.
-3. `GRANT SELECT, INSERT, UPDATE, DELETE ON mcp_budget_lines TO mita_mcp;`
-   (the line in `scripts/mcp/mcp_service_role.sql`); check it with
-   `has_table_privilege`.
-4. Remove the proxy; check Postgres no longer answers there.
-5. Re-pin `mita-mcp`; `/health` → `2.4.0`; `scripts/mcp/e2e_http.py` and
-   `staging_failure_modes.py`.
-6. Rollback: re-pin `2817bb6` (it ignores the table; `0040` can stay).
+## V7 per-IP limits — deployed 2026-11-02 (`0af8435`, deployment `ef207e6e`)
+
+Cause (`oauth-security-audit.md`, V7): the per-IP limits counted the last
+`X-Forwarded-For` hop, which on Railway is a rotating edge address; they now
+count the `X-Real-IP` Railway's edge writes (the TCP peer without it), and
+uvicorn no longer takes the client from `X-Forwarded-For`. No migration, no
+variable change (`MCP_CLIENT_IP_HEADER` unset = `x-real-ip`). CI run
+41499645931 green on `0af8435`. The service has no TCP proxy (it refuses to
+start with one).
+
+Verified on staging (status codes and counts only):
+
+| Check | Result |
+|---|---|
+| `/authorize`, 40 requests in a fresh minute | 30 × 400 (normal OAuth validation, no parameters), then 10 × 429 with `Retry-After: 60` |
+| forged `X-Real-IP` / `X-Forwarded-For` / `Forwarded`; a new connection per request | 429 every time (same bucket) |
+| 15 HTTP/1.1 + 16 HTTP/2 requests in a fresh minute | 30 × 400, then 429 (one bucket) |
+| sign-up limit (5 per hour) | 1 account created, 4 refused as taken, then 429 — also with a forged `X-Real-IP` |
+| sign-in limit (10 per minute) | 10 × 400, then 429 — also forged |
+| lockout | 5 wrong passwords → the right one refused with the generic message, no code; a forged address does not unlock it; database: 5 failures, locked |
+| slash redirect behind Railway's TLS | `/authorize/` → 307 to `https://…/authorize` |
+| `e2e_http.py` | 31/31, restart, 24/24 (refresh survives, password change revokes both tokens, logs clean) |
+| `staging_failure_modes.py` | 25/25 (incl. the 429 and the forged-header check) |
+| `e2e_v2.py` / F-11 smoke | 85/85 / 19/19 — F-11 unchanged |
+| logs | 441 application lines: no e-mail, token, code, password, amount, client address or budget-line label (the only address is uvicorn's bind `0.0.0.0`); Railway's HTTP log: no query strings |
+
+Every account the checks created was deleted (5 users, as before); the
+temporary proxy was removed and Postgres no longer answers there. Rollback:
+re-pin `73ff153` (per-IP limits then break again, nothing else changes).
 
 ## Credential rotation (done 2026-10-23, after Railway's security incident)
 
@@ -134,8 +163,8 @@ on 2026-10-24.
 ## Database
 
 * Migrated from the operator machine (the MCP container never migrates):
-  empty → `0037` on 2026-10-03, `0037 → 0039` on 2026-10-13
-  (`alembic current` = `0039 (head)`).
+  empty → `0037` on 2026-10-03, `0037 → 0039` on 2026-10-13,
+  `0039 → 0040` on 2026-10-28 (`alembic current` = `0040 (head)`).
 * `mcp_oauth_authorization_codes` and `mcp_oauth_refresh_tokens` include
   `token_version` and `credential_fingerprint`.
 * Seeded with `scripts/mcp/seed_staging_db.py` (canonical writers only):

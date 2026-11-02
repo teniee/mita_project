@@ -1330,9 +1330,9 @@ Rules:
   over public HTTPS with `scripts/mcp/e2e_http.py` and
   `scripts/mcp/staging_failure_modes.py`; results in
   `docs/chatgpt-app/staging-acceptance.md`. Real-ChatGPT acceptance is owner-run.
-  Since 2026-10-24 20:10 UTC it runs `dbdc118` (deployment `7fd7783b`, MCP
-  2.2.0, alembic 0039: the financial calendar and the v4 sign-in page;
-  verified in `HANDOFF.md`; a fictional review account is still there,
+  Since 2026-11-02 18:42 UTC it runs `0af8435` (deployment `ef207e6e`, MCP
+  2.4.0, alembic 0040: F-11 user budget lines and the V7 per-IP limit fix;
+  verified in `staging.md`; a fictional review account is still there,
   `staging.md` → "Left on staging"); every staging secret and both database
   passwords were rotated on 2026-10-23 after Railway's 2026-10-21 security
   incident (`staging.md` → "Credential rotation"). It is connected as

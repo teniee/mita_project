@@ -1,28 +1,26 @@
-# Handoff — MITA in ChatGPT (MCP), 2026-10-27
+# Handoff — MITA in ChatGPT (MCP), 2026-11-02
 
-## F-11: user budget lines, waiting for owner review (2026-10-28)
+## Current state: staging ready for the owner's real-ChatGPT acceptance (2026-11-02)
 
-Staging still runs `2817bb6` (MCP 2.3.0, deployment `724189ec`,
-`MCP_WIDGET_DOMAIN` set). The owner's real-ChatGPT run stopped at onboarding:
-their own amounts ("fuel €200, cigarettes €200 …") could not be kept
-(`backend-findings.md` F-11). Fixed for the plugin only, **uncommitted and
-undeployed**: `user-budget-lines.md` (MCP 2.4.0, plugin 2.4.0, migration
-`0040` = one new MCP table).
+Staging runs `0af8435` (deployment `ef207e6e`, MCP 2.4.0, alembic `0040`,
+`MCP_WIDGET_DOMAIN` set). `main` (`27ed25d`), production and PR #287
+untouched; nothing submitted to OpenAI.
 
-* Staging order, after the owner approves: commit, push, green CI; apply
-  `0040` from the operator machine (temporary TCP proxy, as for 0037–0039;
-  remove it afterwards); run the `mcp_budget_lines` grant from
-  `scripts/mcp/mcp_service_role.sql`; re-pin `mita-mcp`. 2.4.0 reads the new
-  table, so it must not start before `0040` and the grant.
-* Then resume the owner's acceptance: `calendar-owner-test.md` steps 20–25.
+| Item | State |
+|---|---|
+| F-11, the user's own budget lines | committed (`45ed231`, docs `73ff153`; plugin-only design, `user-budget-lines.md`), CI run 40743607667 green; on staging since 2026-10-28: `0040` applied, `mcp_budget_lines` granted to `mita_mcp`; `e2e_v2.py` 85/85 with the F-11 steps, F-11 smoke 19/19 — repeated green on 2026-11-02 |
+| V7, per-IP limits | found on staging 2026-10-28 (`/authorize` 40 × 400, never 429): the limits counted Railway's rotating edge address (last `X-Forwarded-For` hop). Fixed in `0af8435`: Railway's `X-Real-IP`, the TCP peer without it, uvicorn no longer takes the client from `X-Forwarded-For`, refused start with a TCP proxy (`oauth-security-audit.md`, V7). CI run 41499645931 green. Staging: 30 × 400 then 429 on a fresh 40-request burst; forged headers stay in the bucket; sign-in, sign-up limits and the lockout verified; `staging_failure_modes.py` 25/25, `e2e_http.py` 31 + 24 (`staging.md`) |
+| Test fixed along the way | `test_once_the_mobile_app_plans_the_month_every_surface_agrees` had October 2026 hard-coded against the real clock and failed from 2026-11-01 (on `73ff153` too); its plan-generator clock is now pinned to the test's own date |
+| Next (owner) | real-ChatGPT acceptance on staging: refresh the connector (the tools changed in 2.4.0), then `calendar-owner-test.md`, F-11 steps 20–25. Not passed yet |
+| Still open | the owner-only publication P0s (`openai-compliance-2026-10-27.md`, `production-readiness.md`); old fictional accounts on staging (`staging.md` → "Left on staging") |
 
-## Current phase: OpenAI publication-compliance audit (2026-10-27)
+## Previous phase: OpenAI publication-compliance audit (2026-10-27)
 
 Committed on 2026-10-28 as four commits on top of `1ffa2b6` (profile and
 feedback contracts; plugin 2.3.0 and validator; widget-domain guard and
-startup logging; these docs) and pushed to `feat/chatgpt-auth-ui`. Staging is
-NOT deployed (still `dbdc118`); `main` (`27ed25d`), production and PR #287
-untouched.
+startup logging; these docs) and pushed to `feat/chatgpt-auth-ui`. Staging was
+not deployed then (`dbdc118`; 2.3.0 went out on 2026-10-28 02:08 UTC, see
+`staging.md`); `main` (`27ed25d`), production and PR #287 untouched.
 
 | Item | State |
 |---|---|
