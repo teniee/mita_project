@@ -1,4 +1,4 @@
-# MITA MCP — staging (observed 2026-10-03, v2 update 2026-10-13, credentials rotated 2026-10-23, MCP 2.4.0 since 2026-10-28, `0af8435` deployed 2026-11-02)
+# MITA MCP — staging (observed 2026-10-03, v2 update 2026-10-13, credentials rotated 2026-10-23, MCP 2.4.0 since 2026-10-28, `0af8435` deployed 2026-11-02, MCP 2.5.0 `fad9110` since 2026-11-02 22:39 UTC)
 
 ## What exists
 
@@ -6,7 +6,7 @@
 |---|---|---|
 | Railway project | `mita-mcp-staging` (`497476f2-de93-44b7-b170-2b175c8d5621`) — **separate project**, no access to the production project's variables, services or database | STAGING VERIFIED |
 | Environment | `staging` (`0f67cf7a-5ce4-472e-a842-2e5448d64c08`) | STAGING VERIFIED |
-| MCP service | `mita-mcp-staging` (`833466fc-f7f2-4d51-8db1-48edfbb46057`), Dockerfile `deploy/mcp/Dockerfile`, healthcheck `/health`, restart ON_FAILURE ×5, **1 replica** (region `asia-southeast1-eqsg3a`), source `teniee/mita_project` @ `feat/chatgpt-auth-ui` **pinned to commit `0af8435`** (MCP 2.4.0: F-11 user budget lines and the V7 per-IP limit fix) since 2026-11-02 18:42 UTC, deployment `ef207e6e-2d9e-4efe-b304-d607c0fdd5bc`. Deploy another commit by connecting the source again with it — not "Redeploy", which rebuilds the current one (before: `73ff153` / `56524faf` 2.4.0 from 2026-10-28 19:10 UTC, `2817bb6` / `724189ec` 2.3.0 from 2026-10-28 02:08 UTC, `dbdc118` / `7fd7783b` 2.2.0 — the financial calendar and the v4 sign-in page — from 2026-10-24 20:10 UTC, `de96251` / `b4f6d2fd` from 2026-10-23 20:13 UTC — the v3 sign-in page, not approved, and `opentelemetry-api` 1.45.1 —, `1e24bf4` / `dd8b4894` from 2026-10-23 18:02 UTC, `ee388c0` / `33783139` from 2026-10-23 12:12 UTC, `79efb1d` / `87d26668` 2.1.0 from 2026-10-18 — the re-pin of 2026-10-21 waited for Railway's build pause —, `461abcf` / `174528cf` 2.0.0 from 2026-10-13, `fcd7ae3` from 2026-10-11, `842d365` on which the v1 real-ChatGPT acceptance ran). Pushes do not redeploy it | STAGING VERIFIED |
+| MCP service | `mita-mcp-staging` (`833466fc-f7f2-4d51-8db1-48edfbb46057`), Dockerfile `deploy/mcp/Dockerfile`, healthcheck `/health`, restart ON_FAILURE ×5, **1 replica** (region `asia-southeast1-eqsg3a`), source `teniee/mita_project` @ `feat/chatgpt-auth-ui` **pinned to commit `fad9110`** (MCP 2.5.0: bills on their due dates, F-8) since 2026-11-02 22:39 UTC, deployment `ef108adc-0680-408e-9e75-fdf65f8e676d`. Deploy another commit by connecting the source again with it — not "Redeploy", which rebuilds the current one (before: `0af8435` / `ef207e6e` 2.4.0 with V7 from 2026-11-02 18:42 UTC, `73ff153` / `56524faf` 2.4.0 from 2026-10-28 19:10 UTC, `2817bb6` / `724189ec` 2.3.0 from 2026-10-28 02:08 UTC, `dbdc118` / `7fd7783b` 2.2.0 — the financial calendar and the v4 sign-in page — from 2026-10-24 20:10 UTC, `de96251` / `b4f6d2fd` from 2026-10-23 20:13 UTC — the v3 sign-in page, not approved, and `opentelemetry-api` 1.45.1 —, `1e24bf4` / `dd8b4894` from 2026-10-23 18:02 UTC, `ee388c0` / `33783139` from 2026-10-23 12:12 UTC, `79efb1d` / `87d26668` 2.1.0 from 2026-10-18 — the re-pin of 2026-10-21 waited for Railway's build pause —, `461abcf` / `174528cf` 2.0.0 from 2026-10-13, `fcd7ae3` from 2026-10-11, `842d365` on which the v1 real-ChatGPT acceptance ran). Pushes do not redeploy it | STAGING VERIFIED |
 | Database | Railway Postgres 18 template (18.6), private network only, alembic `0040` (since 2026-10-28: `mcp_budget_lines`, granted to `mita_mcp`). The MCP service connects as the least-privilege role `mita_mcp` (`scripts/mcp/mcp_service_role.sql`) on `postgres.railway.internal`; the read-only `mita_analytics_reader` exists (password not kept — reset before use). Both stored passwords were rotated on 2026-10-23 (see "Credential rotation"). Temporary TCP proxies used for migrations and checks (2026-10-03, 2026-10-13, 2026-10-18, three times on 2026-10-23, twice on 2026-10-28, once on 2026-11-02) were removed and verified no longer serving Postgres; none was opened on 2026-10-24 (no migration; see "Left on staging") | STAGING VERIFIED |
 | Public URL | `https://mita-mcp-staging-staging.up.railway.app` (Railway-managed TLS) | STAGING VERIFIED |
 | Custom domain | none (not needed for staging) | — |
@@ -112,6 +112,36 @@ Every account the checks created was deleted (5 users, as before); the
 temporary proxy was removed and Postgres no longer answers there. Rollback:
 re-pin `73ff153` (per-IP limits then break again, nothing else changes).
 
+## MCP 2.5.0 — deployed 2026-11-02 22:39 UTC (`fad9110`, deployment `ef108adc`)
+
+Bills planned in full on their due dates, a bill's money following its
+payment, bill lines never donors, bill states and five-day reminders in the
+calendar (`bill-due-dates.md`). CI run 41536239112 green on `fad9110`
+(Backend, MCP incl. the container end-to-end step, Mobile). No migration, no
+variable change, no new grant (the ledger rebuild reads `scheduled_expenses`,
+already granted to `mita_mcp`). Rollback: re-pin `0af8435` (see
+`bill-due-dates.md` §10).
+
+Verified over public HTTPS only (the temporary database proxy was not opened
+this time — an automated permission check refused it), with new fictional
+accounts:
+
+| Check | Result |
+|---|---|
+| `/health` | `"version":"2.5.0"` |
+| bills smoke (scratch script, a fictional copy of the owner's month plus a bill due today and one in two days) | all checks pass: due dates 10/15/25 Nov and today; 15 Nov = everyday + 270.00; 20–24 Nov carry no bill money; states due_today / upcoming (2 days); reminders = those two; before payments plan 2,000.00, held 404.99, left 1,095.01, 40.56 a day; after recording 9.99 on time, 25.00 two days early and 100.00 of the car loan early: held −134.99, left and the daily figure unchanged, no redistribution note; status = forecast = calendar; an everyday overspend still rebalances, bills and the user's lines keep their money — identical figures to the local run |
+| `e2e_v2.py` | 78/78 (its analytics audit and clean-up need the database: skipped) |
+| `calendar_widget_review.py` with axe | 75/75 (axe 0 violations ×4; 320/360/390 px nothing cut off; reminders, bill marks, the bill date, the bills card; PNG through `ui/download-file` and the fallback; read tools only) |
+| logs of `ef108adc` | 212 deploy + 117 HTTP lines: no e-mail, bearer token, JWT, bill name, amount, password, database URL or code/token query string; no error-level line |
+
+**Not run (need database access, owner decision):** the read-only snapshot of
+the owner's account before/after, `e2e_http.py` (it creates its user directly
+in the database; MCP CI ran it on the built image), `staging_failure_modes.py`,
+and deleting the fictional accounts below. No migration or script touched
+the owner's rows: their saved November plan changes only through their own
+writes (an expense recorded or a budget saved), as `bill-due-dates.md` §8
+describes.
+
 ## Credential rotation (done 2026-10-23, after Railway's security incident)
 
 Railway disclosed on 2026-10-21 that environment variables may have been
@@ -142,6 +172,14 @@ before the rotation is invalid (reconnect); analytics pseudonyms restart.
 Result 2026-10-23: 8 app secrets, `DATABASE_URL`, the `postgres` and
 `mita_mcp` passwords rotated; both old passwords rejected; deployment
 `33783139` verified (HANDOFF.md). Production was not touched.
+
+## Left on staging (2026-11-02, MCP 2.5.0 checks)
+
+Three fictional accounts created over HTTPS, not deleted (no database access):
+`bills-smoke-<8 hex>@example.com`, `v2e2e_<10 hex>@example.test` and
+`calendar-review-<8 hex>@example.com`, with their DCR clients. Delete them
+with `e2e_v2.cleanup` per account the next time a proxy is open, then the
+token-less OAuth clients registered on 2026-11-02 after 22:39 UTC.
 
 ## Left on staging (2026-10-24)
 

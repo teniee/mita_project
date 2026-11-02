@@ -15,6 +15,9 @@ announced before they are due, and never count as overspending when paid.
 | Payment status | "recorded" by category in date order, never "paid" — MITA cannot link an expense to a saved payment; `bill_payments` proposal written, not implemented (owner decision + migration) |
 | Owner's November | not rewritten; the money rule applies from the next expense; due-date layout after "show my November budget again and save it" (amounts unchanged) — `calendar-owner-test.md` steps 26–34 |
 | Tests | MCP suite 714 passed (21 new in `test_bill_due_dates.py`, 5 pinned F-8 tests rewritten with old and new figures); local MCP Apps host 76/76 incl. axe 0 violations ×4, 320/360/390 px, PNG; lint (both toolchains), Bandit, plugin package valid |
+| Commit / CI | `fad9110`, CI run 41536239112 green (Backend, MCP incl. container e2e, Mobile); local backend suite 1327 passed |
+| Staging | `fad9110` live since 2026-11-02 22:39 UTC (deployment `ef108adc`, `/health` 2.5.0). Public HTTPS checks: bills smoke all pass (the same figures as locally), `e2e_v2.py` 78/78, calendar harness 75/75 with axe, logs clean (`staging.md`) |
+| Not done (needs you) | the database proxy for the owner-account snapshot, `e2e_http.py`, `staging_failure_modes.py` and deleting three fictional accounts was refused by an automated permission check — open it yourself or allow `create-tcp-proxy`; your November plan keeps its old layout until you save it again (step 26) |
 | Separate finding | F-12: MITA's default lines (public transport, medical insurance…) do not fit the person — recorded, not changed |
 
 ## Previous state: staging ready for the owner's real-ChatGPT acceptance (2026-11-02)
