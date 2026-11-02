@@ -15,6 +15,7 @@ import time
 
 import uvicorn
 from sqlalchemy import text
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app.mcp.config import McpConfigError, load_settings
 from app.mcp.observability import configure_logging
@@ -61,6 +62,44 @@ def pin_process_timezone() -> None:
     time.tzset()
 
 
+class ForwardedProto:
+    """The scheme the client used, from X-Forwarded-Proto - all that uvicorn's
+    ``proxy_headers`` is still needed for. Railway's edge terminates TLS and
+    sets it (always https); Starlette builds redirect URLs from the scheme
+    (``/mcp/`` -> ``https://<host>/mcp``), which would otherwise say http.
+
+    It never touches ``scope["client"]``. ``proxy_headers`` with
+    ``forwarded_allow_ips="*"`` replaced the client with the first
+    X-Forwarded-For entry of any request, i.e. with whatever a direct caller
+    wrote there; a request without Railway's X-Real-IP is limited by the TCP
+    peer (app/mcp/ratelimit.py), so the peer has to stay the real one."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http":
+            proto = ""
+            for name, value in scope.get("headers") or []:
+                if name.lower() == b"x-forwarded-proto":
+                    proto = value.decode("latin-1").strip().lower()
+            if proto in ("http", "https"):
+                scope = dict(scope, scheme=proto)
+        await self.app(scope, receive, send)
+
+
+def serve_options(port: int) -> dict:
+    """uvicorn's options for the container (the tests serve with them too)."""
+    return dict(
+        host="0.0.0.0",  # nosec B104 - container entrypoint behind Railway's proxy
+        port=port,
+        proxy_headers=False,  # scope["client"] is the TCP peer; see ForwardedProto
+        log_config=None,
+        access_log=False,
+        timeout_keep_alive=30,
+    )
+
+
 def import_build_service(level: str):
     """Import the service with logging already taken over.
 
@@ -98,14 +137,8 @@ def main() -> None:
         analytics_sink=DatabaseSink(write_session),
     )
     uvicorn.run(
-        service.app,
-        host="0.0.0.0",  # nosec B104 - container entrypoint behind Railway's proxy
-        port=int(os.environ.get("PORT", "8080")),
-        proxy_headers=True,
-        forwarded_allow_ips=os.environ.get("FORWARDED_ALLOW_IPS", "*"),
-        log_config=None,
-        access_log=False,
-        timeout_keep_alive=30,
+        ForwardedProto(service.app),
+        **serve_options(int(os.environ.get("PORT", "8080"))),
     )
 
 

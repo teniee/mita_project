@@ -9,6 +9,7 @@ its own secrets (signing key, CSRF secret) and must not need the API's
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from typing import Literal, Tuple
 from urllib.parse import urlparse
@@ -30,6 +31,9 @@ DEFAULT_ALLOWED_REDIRECT_PREFIXES: Tuple[str, ...] = (
 PRODUCTION_ENVIRONMENTS = {"production", "prod", "staging"}
 # The environments OpenAI's directory talks to (submission, review, users).
 SUBMITTED_ENVIRONMENTS = {"production", "prod"}
+# Lists of hops, not one address: never a client-address header (on Railway
+# the last X-Forwarded-For hop is an edge address that changes per request).
+FORWARDING_CHAINS = {"x-forwarded-for", "forwarded"}
 
 
 class McpConfigError(ValueError):
@@ -103,7 +107,11 @@ class McpSettings:
     login_attempts_per_minute: int = 10
     registrations_per_hour: int = 5
     oauth_requests_per_minute: int = 30
-    trusted_proxy_hops: int = 1
+    # The header the proxy in front writes the client's address into, over
+    # whatever the client sent: X-Real-IP on Railway's HTTP edge. Per-IP limits
+    # count by it (app/mcp/ratelimit.py). Empty when the service is reached
+    # directly: they then count by the TCP connection's address.
+    client_ip_header: str = "x-real-ip"
 
     @property
     def is_production(self) -> bool:
@@ -193,15 +201,30 @@ def load_settings() -> McpSettings:
         login_attempts_per_minute=_int_env("MCP_LOGIN_ATTEMPTS_PER_MINUTE", 10),
         registrations_per_hour=_int_env("MCP_REGISTRATIONS_PER_HOUR", 5),
         oauth_requests_per_minute=_int_env("MCP_OAUTH_REQUESTS_PER_MINUTE", 30),
-        trusted_proxy_hops=_int_env("MCP_TRUSTED_PROXY_HOPS", 1),
+        client_ip_header=_env("MCP_CLIENT_IP_HEADER", "x-real-ip").lower(),
     )
     validate_settings(settings)
+    if settings.client_ip_header and _env("RAILWAY_TCP_PROXY_PORT"):
+        # Railway sets this when the service has a TCP proxy: raw connections
+        # from the internet that never pass the HTTP edge, so the client could
+        # write the client-address header itself and pick its own bucket.
+        raise McpConfigError(
+            "The service has a Railway TCP proxy: requests through it bypass the "
+            f"HTTP edge, which is what makes {settings.client_ip_header} "
+            "trustworthy. Remove the TCP proxy."
+        )
     return settings
 
 
 def validate_settings(settings: McpSettings) -> None:
     if settings.access_token_ttl_seconds > 3600:
         raise McpConfigError("MCP_ACCESS_TOKEN_TTL_SECONDS must be at most 3600")
+    header = settings.client_ip_header
+    if header in FORWARDING_CHAINS or not re.fullmatch(r"[a-z0-9-]*", header):
+        raise McpConfigError(
+            "MCP_CLIENT_IP_HEADER must name a header holding one address that the "
+            "proxy writes over the client's value (Railway: x-real-ip), or be empty"
+        )
     if settings.widget_domain:
         parsed = urlparse(settings.widget_domain)
         if (

@@ -1303,6 +1303,17 @@ Rules:
   only code/refresh grants, `response_types=["code"]`, no jwks, <= 4 KiB
   metadata; /register, /token, /authorize, /revoke are rate limited per IP.
   Adversarial regressions: `tests_mcp/test_oauth_adversarial.py`.
+- **"Per IP" means Railway's `X-Real-IP`, never `X-Forwarded-For`**
+  (`ratelimit.client_address`, every per-IP limit incl. sign-in/sign-up).
+  Railway's edge writes `X-Real-IP` over anything the client sent and sends
+  `X-Forwarded-For` as "<client>, <edge address>" with a rotating edge
+  address: counting by its last hop meant a 40-request /authorize burst on
+  staging never got a 429 (2026-10-28, V7 in `oauth-security-audit.md`).
+  No header = the TCP peer,
+  so uvicorn runs with `proxy_headers=False` (`__main__.ForwardedProto`
+  keeps the https scheme); a repeated or malformed header shares one bucket;
+  the service refuses to start with a TCP proxy. Never put
+  `forwarded_allow_ips="*"` back.
 - **OAuth audit:** `docs/chatgpt-app/oauth-security-audit.md` (threat → evidence
   table). Pre-deploy HTTP e2e: `scripts/mcp/e2e_http.py` (also run against the
   built image in `mcp-ci`, across a container restart, with a log scan). The

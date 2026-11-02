@@ -423,7 +423,7 @@ def build_service(
         wrapped = OAuthEndpointRateLimit(
             wrapped,
             per_minute=settings.oauth_requests_per_minute,
-            trusted_hops=settings.trusted_proxy_hops,
+            client_ip_header=settings.client_ip_header,
         )
         # Outside the limiter, so a browser's 429 is a page too.
         wrapped = BrowserAuthorizeErrors(wrapped)

@@ -321,6 +321,21 @@ async def run(base: str, dsn: str) -> None:
                 429 in statuses,
                 str(sorted(set(statuses))),
             )
+            # A caller cannot leave its bucket by writing the address headers
+            # itself (documentation-range values, never a real address).
+            forged = [
+                (await http.get("/authorize", headers=headers)).status_code
+                for headers in (
+                    {"X-Real-IP": "203.0.113.7"},
+                    {"X-Forwarded-For": "203.0.113.8"},
+                    {"X-Real-IP": "203.0.113.9", "X-Forwarded-For": "203.0.113.9"},
+                )
+            ]
+            check(
+                "forged X-Real-IP / X-Forwarded-For stay in the same bucket (429)",
+                forged == [429, 429, 429],
+                str(forged),
+            )
     finally:
         with pg(dsn) as conn, conn.cursor() as cur:
             if client_id:

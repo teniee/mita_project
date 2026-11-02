@@ -45,12 +45,12 @@ From `app/mcp/config.py`, `app/mcp/__main__.py` and `app/core/config.py`.
 | `MCP_OAUTH_ALLOWED_REDIRECT_PREFIXES` | no | redirect policy (default: ChatGPT's two forms) | literal | no |
 | `MCP_ACCESS_TOKEN_TTL_SECONDS` / `MCP_REFRESH_TOKEN_TTL_SECONDS` | no (900 / 2592000) | token lifetimes | literal | no |
 | `MCP_TOOL_CALLS_PER_MINUTE` / `MCP_LOGIN_ATTEMPTS_PER_MINUTE` / `MCP_OAUTH_REQUESTS_PER_MINUTE` / `MCP_REGISTRATIONS_PER_HOUR` | no (60 / 10 / 30 / 5) | per-replica rate limits (sign-ups per IP per hour) | literal | no |
-| `MCP_TRUSTED_PROXY_HOPS` | no (1) | `X-Forwarded-For` hops (Railway = 1) | literal | no |
+| `MCP_CLIENT_IP_HEADER` | no (`x-real-ip`) | the header Railway's HTTP edge writes the client's address into, over anything the client sent; per-IP limits count by it (`X-Forwarded-For` never: its last hop is a rotating edge address). Empty = count by TCP connection. The service refuses to start with it while it has a TCP proxy (`RAILWAY_TCP_PROXY_PORT`) | literal | no |
 | `MCP_SUPPORT_URL` | no | link on the consent page | literal | no |
 | `MCP_WIDGET_DOMAIN` | production: yes (startup refuses without it, since 2026-10-27); staging: set it for the real-ChatGPT acceptance | https origin (no path; a trailing `/` is dropped) for the calendar component's `_meta.ui.domain`; unset = the host's shared sandbox origin | the service's own origin (staging: `https://mita-mcp-staging-staging.up.railway.app`) | no |
 | `OPENAI_APPS_CHALLENGE_TOKEN` | for OpenAI domain verification only | body of `/.well-known/openai-apps-challenge` | OpenAI dashboard | no |
 | `PORT` | no (8080) | listen port (domain targets 8080) | literal | no |
-| `LOG_LEVEL`, `FORWARDED_ALLOW_IPS` | no | logging / uvicorn proxy headers | literal | no |
+| `LOG_LEVEL` | no | logging | literal | no |
 
 Set on staging (names only): `DATABASE_URL` (role `mita_mcp`), `ENVIRONMENT, JWT_SECRET, LOG_LEVEL,
 MCP_ANALYTICS_SECRET, MCP_AUTH_MODE, MCP_DATA_SECRET, MCP_GRANT_FINGERPRINT_SECRET,

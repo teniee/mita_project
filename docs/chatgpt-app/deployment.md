@@ -46,7 +46,7 @@ OWNER_ACTIONS O-6, O-7, O-11.
 | `OPENAI_APPS_CHALLENGE_TOKEN` | token shown in the OpenAI dashboard for domain verification | |
 | `MCP_SUPPORT_URL` | public support page URL (shown on the consent page) | |
 | `LOG_LEVEL` | `INFO` | |
-| optional | `MCP_ACCESS_TOKEN_TTL_SECONDS` (900), `MCP_REFRESH_TOKEN_TTL_SECONDS` (2592000), `MCP_TOOL_CALLS_PER_MINUTE` (60), `MCP_LOGIN_ATTEMPTS_PER_MINUTE` (10), `MCP_REGISTRATIONS_PER_HOUR` (5), `MCP_TRUSTED_PROXY_HOPS` (1), `MCP_OAUTH_ALLOWED_REDIRECT_PREFIXES` (ChatGPT's two redirect URIs) | |
+| optional | `MCP_ACCESS_TOKEN_TTL_SECONDS` (900), `MCP_REFRESH_TOKEN_TTL_SECONDS` (2592000), `MCP_TOOL_CALLS_PER_MINUTE` (60), `MCP_LOGIN_ATTEMPTS_PER_MINUTE` (10), `MCP_REGISTRATIONS_PER_HOUR` (5), `MCP_CLIENT_IP_HEADER` (`x-real-ip`: per-IP limits count by the address Railway's edge writes there; empty = by TCP connection), `MCP_OAUTH_ALLOWED_REDIRECT_PREFIXES` (ChatGPT's two redirect URIs) | |
 
 Never set `OPENAI_API_KEY`, SMTP or IAP variables on `mita-mcp`: it does not
 use them.

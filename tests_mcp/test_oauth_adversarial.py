@@ -4,20 +4,25 @@ Each test states the attack and asserts the server fails closed. Written
 against the implementation as reviewed in docs/chatgpt-app/oauth-security-audit.md.
 """
 
+import asyncio
 import base64
 import json
 import logging
 import secrets
 import time
 import uuid
+from contextlib import AsyncExitStack, asynccontextmanager
 from datetime import timedelta
 from urllib.parse import parse_qs, urlparse
 
+import httpx2
 import jwt
 import pytest
 from sqlalchemy import text
 
-from tests_mcp.conftest import PASSWORD, PUBLIC_URL, structured
+from app.mcp.config import McpConfigError
+from app.mcp.ratelimit import UNUSABLE_CLIENT_ADDRESS, client_address
+from tests_mcp.conftest import PASSWORD, PUBLIC_URL, make_settings, started, structured
 from tests_mcp.test_oauth_flow import (
     REDIRECT,
     RESOURCE,
@@ -792,3 +797,392 @@ async def test_oauth_flow_logs_no_secrets(mcp, seed, caplog):
         user.email,
     ):
         assert secret not in rendered
+
+
+# ---------------------------------------------------------------------------
+# Per-IP limits: which address a request counts against
+# ---------------------------------------------------------------------------
+#
+# What Railway's HTTP edge delivered on staging (2026-10-28, a temporary
+# header-shape probe in the staging project and region; no address printed):
+# exactly one X-Real-IP, the client's address, whatever the client had sent
+# under that name (forged, repeated, comma-separated, IPv6); X-Forwarded-For
+# rebuilt as "<client>, <edge address>" with the edge address rotating over at
+# least four values; a TCP peer that changed from request to request. The
+# limits counted by the last X-Forwarded-For hop, so one client got a new
+# bucket for most requests and /authorize never answered 429 there.
+
+CLIENT_A, CLIENT_B = "198.51.100.7", "198.51.100.8"  # two real clients
+EDGE_HOPS = ("192.0.2.11", "192.0.2.12", "192.0.2.13", "192.0.2.14")
+FORGED = "203.0.113.66"  # what a caller writes to pick a bucket
+
+
+class RailwayEdge:
+    """Railway's HTTP edge as observed: X-Real-IP and X-Forwarded-For are
+    replaced whatever the client sent, X-Forwarded-For is "<client>, <edge
+    hop>" with the hop rotating, X-Forwarded-Proto is https, and the TCP peer
+    is an internal address that changes per request. Other headers (Forwarded,
+    True-Client-IP...) pass through as the client wrote them."""
+
+    REPLACED = {b"x-real-ip", b"x-forwarded-for", b"x-forwarded-proto"}
+
+    def __init__(self, app, client: str) -> None:
+        self.app, self.client, self.requests = app, client, 0
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            self.requests += 1
+            n = self.requests
+            hop = EDGE_HOPS[n % len(EDGE_HOPS)]
+            scope = dict(
+                scope,
+                headers=[(k, v) for k, v in scope["headers"] if k not in self.REPLACED]
+                + [
+                    (b"x-real-ip", self.client.encode()),
+                    (b"x-forwarded-for", f"{self.client}, {hop}".encode()),
+                    (b"x-forwarded-proto", b"https"),
+                ],
+                client=(f"100.64.{n % 200}.{n % 7 + 1}", 30000 + n),
+            )
+        await self.app(scope, receive, send)
+
+
+@asynccontextmanager
+async def one_service(make_service, settings):
+    """A fresh service (fresh limiters) and ``connect``: ``connect(ip)`` opens a
+    client arriving through RailwayEdge as the real client ``ip``,
+    ``connect(peer=...)`` one connecting directly from that TCP address."""
+    service = make_service(settings)
+    async with started(service), AsyncExitStack() as stack:
+
+        async def connect(ip=None, *, peer="127.0.0.1"):
+            app = RailwayEdge(service.app, ip) if ip else service.app
+            return await stack.enter_async_context(
+                httpx2.AsyncClient(
+                    transport=httpx2.ASGITransport(app=app, client=(peer, 50000)),
+                    base_url=PUBLIC_URL,
+                    follow_redirects=False,
+                )
+            )
+
+        yield connect
+
+
+def test_one_client_keeps_one_address_while_the_edge_hop_changes():
+    keys, last_hops = set(), set()
+    for n in range(8):
+        forwarded = f"{CLIENT_A}, {EDGE_HOPS[n % len(EDGE_HOPS)]}"
+        headers = [
+            (b"x-real-ip", CLIENT_A.encode()),
+            (b"x-forwarded-for", forwarded.encode()),
+        ]
+        keys.add(client_address(headers, f"100.64.0.{n + 1}", "x-real-ip"))
+        last_hops.add(forwarded.split(",")[-1].strip())
+    assert keys == {CLIENT_A}
+    # The old key, the last X-Forwarded-For hop: four buckets for one client.
+    assert len(last_hops) == 4
+
+
+async def test_authorize_answers_429_on_request_31_behind_railway(make_service):
+    settings = make_settings()
+    assert settings.oauth_requests_per_minute == 30  # the configured limit
+    async with one_service(make_service, settings) as connect:
+        a = await connect(CLIENT_A)
+        statuses = [(await a.get("/authorize")).status_code for _ in range(31)]
+        other = await connect(CLIENT_B)
+        fresh = (await other.get("/authorize")).status_code
+    assert statuses == [400] * 30 + [429]
+    assert fresh == 400
+
+
+@pytest.mark.parametrize(
+    "method,path",
+    [
+        ("GET", "/authorize"),
+        ("POST", "/register"),
+        ("POST", "/token"),
+        ("POST", "/revoke"),
+    ],
+)
+async def test_every_oauth_endpoint_counts_the_client_not_the_edge_hop(
+    make_service, method, path
+):
+    async with one_service(
+        make_service, make_settings(oauth_requests_per_minute=2)
+    ) as connect:
+        a, b = await connect(CLIENT_A), await connect(CLIENT_B)
+        statuses = [(await a.request(method, path)).status_code for _ in range(3)]
+        other = (await b.request(method, path)).status_code
+    assert 429 not in statuses[:2] and statuses[2] == 429, statuses
+    assert other != 429
+
+
+async def test_forged_forwarding_headers_do_not_leave_the_bucket(make_service):
+    async with one_service(
+        make_service, make_settings(oauth_requests_per_minute=3)
+    ) as connect:
+        a = await connect(CLIENT_A)
+        allowed = [(await a.get("/authorize")).status_code for _ in range(3)]
+        forged = [
+            (await a.get("/authorize", headers=headers)).status_code
+            for headers in (
+                {"X-Real-IP": FORGED},
+                {"X-Forwarded-For": f"{FORGED}, {FORGED}"},
+                {"Forwarded": f"for={FORGED}", "True-Client-IP": FORGED},
+            )
+        ]
+    assert allowed == [400, 400, 400]
+    assert forged == [429, 429, 429]
+
+
+@pytest.mark.parametrize(
+    "variants",
+    [
+        # a second X-Real-IP line, with a new value every time
+        [
+            [
+                (b"x-real-ip", f"203.0.113.{i}".encode()),
+                (b"x-real-ip", CLIENT_A.encode()),
+            ]
+            for i in range(4)
+        ],
+        # not one IP address
+        [
+            [(b"x-real-ip", value)]
+            for value in (
+                b"203.0.113.5:443",
+                b"203.0.113.5, 203.0.113.6",
+                b"not-an-address",
+                b"[2001:db8::1]",
+            )
+        ],
+    ],
+    ids=["repeated", "malformed"],
+)
+async def test_an_unusable_client_address_header_cannot_pick_a_bucket(
+    make_service, variants
+):
+    """A header Railway's edge never sends (it reached the app another way):
+    every such request shares one bucket, whatever the value or the peer."""
+    async with one_service(
+        make_service, make_settings(oauth_requests_per_minute=3)
+    ) as connect:
+        statuses = []
+        for i, headers in enumerate(variants):
+            direct = await connect(peer=f"127.0.0.{i + 1}")
+            statuses.append(
+                (await direct.get("/authorize", headers=headers)).status_code
+            )
+    assert statuses == [400, 400, 400, 429]
+    assert client_address(variants[0], "127.0.0.1", "x-real-ip") == (
+        UNUSABLE_CLIENT_ADDRESS
+    )
+
+
+async def test_direct_requests_count_by_their_connection(make_service):
+    """No X-Real-IP: not through the edge (a local run, a test, the private
+    network). The TCP peer counts; forwarded headers never do."""
+    async with one_service(
+        make_service, make_settings(oauth_requests_per_minute=3)
+    ) as connect:
+        local = await connect(peer="127.0.0.1")
+        statuses = [
+            (
+                await local.get(
+                    "/authorize",
+                    headers={
+                        "X-Forwarded-For": f"203.0.113.{i}",
+                        "Forwarded": f"for=203.0.113.{i}",
+                    },
+                )
+            ).status_code
+            for i in range(4)
+        ]
+        other = await connect(peer="127.0.0.2")
+        fresh = (await other.get("/authorize")).status_code
+    assert statuses == [400, 400, 400, 429]
+    assert fresh == 400
+
+
+async def test_x_real_ip_is_ignored_when_no_header_is_trusted(make_service):
+    """MCP_CLIENT_IP_HEADER= (the service reached directly): nothing the
+    client writes can choose its bucket."""
+    settings = make_settings(oauth_requests_per_minute=3, client_ip_header="")
+    async with one_service(make_service, settings) as connect:
+        direct = await connect(peer="127.0.0.1")
+        statuses = [
+            (
+                await direct.get("/authorize", headers={"X-Real-IP": f"203.0.113.{i}"})
+            ).status_code
+            for i in range(4)
+        ]
+    assert statuses == [400, 400, 400, 429]
+
+
+@pytest.mark.parametrize(
+    "value,key",
+    [
+        ("198.51.100.7", "198.51.100.7"),
+        (" 198.51.100.7 ", "198.51.100.7"),
+        ("2001:DB8::1", "2001:db8::1"),
+        ("2001:db8:0:0:0:0:0:1", "2001:db8::1"),
+        ("::ffff:198.51.100.7", "198.51.100.7"),
+    ],
+)
+def test_one_address_has_one_key_however_it_is_written(value, key):
+    assert (
+        client_address([(b"x-real-ip", value.encode())], "100.64.0.1", "x-real-ip")
+        == key
+    )
+    assert client_address([], value.strip(), "x-real-ip") == key
+
+
+def test_no_header_and_no_peer_is_one_bucket():
+    assert client_address([], None, "x-real-ip") == "unknown"
+
+
+def test_the_client_address_header_is_configured_safely(monkeypatch):
+    from app.mcp.config import load_settings
+    from tests_mcp.test_secret_separation import _env_for
+
+    _env_for(monkeypatch, "staging")
+    monkeypatch.delenv("MCP_CLIENT_IP_HEADER", raising=False)
+    monkeypatch.delenv("RAILWAY_TCP_PROXY_PORT", raising=False)
+    assert load_settings().client_ip_header == "x-real-ip"
+    monkeypatch.setenv("MCP_CLIENT_IP_HEADER", "")
+    assert load_settings().client_ip_header == ""
+    for chain in ("X-Forwarded-For", "forwarded", "x real ip"):
+        monkeypatch.setenv("MCP_CLIENT_IP_HEADER", chain)
+        with pytest.raises(McpConfigError, match="MCP_CLIENT_IP_HEADER"):
+            load_settings()
+    # A Railway TCP proxy reaches the service without the HTTP edge: there the
+    # caller could write X-Real-IP itself, so the service refuses to start.
+    monkeypatch.delenv("MCP_CLIENT_IP_HEADER")
+    monkeypatch.setenv("RAILWAY_TCP_PROXY_PORT", "15140")
+    with pytest.raises(McpConfigError, match="TCP proxy"):
+        load_settings()
+
+
+async def test_served_app_limits_by_the_tcp_peer_and_keeps_https(make_service):
+    """The container's own server options, over real TCP. uvicorn must not
+    replace the client with an X-Forwarded-For entry (proxy_headers with
+    forwarded_allow_ips="*" did, for any caller, which would let a request
+    without X-Real-IP choose its bucket), and redirects behind Railway's TLS
+    must stay https."""
+    import uvicorn
+
+    from app.mcp.__main__ import ForwardedProto, serve_options
+
+    async def serve(**overrides):
+        service = make_service(make_settings(oauth_requests_per_minute=3))
+        options = {**serve_options(0), "host": "127.0.0.1", **overrides}
+        server = uvicorn.Server(uvicorn.Config(ForwardedProto(service.app), **options))
+        task = asyncio.create_task(server.serve())
+        while not server.started:
+            assert not task.done()
+            await asyncio.sleep(0.01)
+        port = server.servers[0].sockets[0].getsockname()[1]
+        try:
+            async with httpx2.AsyncClient(base_url=f"http://127.0.0.1:{port}") as http:
+                statuses = [
+                    (
+                        await http.get(
+                            "/authorize",
+                            headers={"X-Forwarded-For": f"203.0.113.{i}"},
+                        )
+                    ).status_code
+                    for i in range(4)
+                ]
+                behind_tls = await http.get(
+                    "/authorize/", headers={"X-Forwarded-Proto": "https"}
+                )
+                plain = await http.get("/authorize/")
+        finally:
+            server.should_exit = True
+            await task
+        return statuses, behind_tls, plain
+
+    statuses, behind_tls, plain = await serve()
+    assert statuses == [400, 400, 400, 429]
+    assert behind_tls.status_code == 307
+    assert behind_tls.headers["location"].startswith("https://127.0.0.1:")
+    assert plain.headers["location"].startswith("http://127.0.0.1:")
+    # The options this replaced: every forged X-Forwarded-For was a new client.
+    old, _, _ = await serve(proxy_headers=True, forwarded_allow_ips="*")
+    assert 429 not in old
+
+
+async def test_sign_in_limit_counts_the_client_behind_railway(make_service, seed):
+    user = await seed.user()
+    async with one_service(
+        make_service, make_settings(login_attempts_per_minute=2)
+    ) as connect:
+        a, b = await connect(CLIENT_A), await connect(CLIENT_B)
+        client_id = (await register(a)).json()["client_id"]
+        _, challenge = pkce()
+        login_url = (await authorize(a, client_id, challenge)).headers["location"]
+        statuses = [
+            (await consent(a, login_url, user.email, "wrong"))[1].status_code
+            for _ in range(3)
+        ]
+        _, other = await consent(b, login_url, user.email, "wrong")
+    assert statuses == [400, 400, 429]
+    assert other.status_code == 400
+
+
+async def test_sign_up_limit_counts_the_client_behind_railway(make_service, connection):
+    from tests_mcp.test_registration import _login_url, _sign_up
+
+    async with one_service(
+        make_service, make_settings(registrations_per_hour=2)
+    ) as connect:
+        a, b = await connect(CLIENT_A), await connect(CLIENT_B)
+        statuses = []
+        for i in range(3):
+            _, _, login_url = await _login_url(a)
+            _, response = await _sign_up(a, login_url, f"edge{i}@example.test")
+            statuses.append(response.status_code)
+        _, _, login_url = await _login_url(b)
+        _, other = await _sign_up(b, login_url, "edge-other@example.test")
+    assert statuses == [302, 302, 429]
+    assert other.status_code == 302
+
+
+async def test_lockout_counts_the_account_across_client_addresses(
+    make_service, seed, connection
+):
+    """Five wrong passwords from five addresses still lock the account: the
+    lockout is per account, in the database, not per address."""
+    user = await seed.user()
+    async with one_service(make_service, make_settings()) as connect:
+        clients = [await connect(f"198.51.100.{20 + i}") for i in range(6)]
+        client_id = (await register(clients[0])).json()["client_id"]
+        _, challenge = pkce()
+        login_url = (await authorize(clients[0], client_id, challenge)).headers[
+            "location"
+        ]
+        for http in clients[:5]:
+            _, response = await consent(http, login_url, user.email, "wrong-password")
+            assert response.status_code == 400
+        _, last = await consent(clients[5], login_url, user.email, PASSWORD)
+    assert last.status_code == 400 and "Sign-in failed" in last.text
+    row = (
+        await connection.execute(
+            text(
+                "SELECT failed_login_attempts, account_locked_until IS NOT NULL "
+                "FROM users WHERE id = :id"
+            ),
+            {"id": user.id},
+        )
+    ).one()
+    assert row == (5, True)
+
+
+async def test_connecting_through_railway_works_below_the_limits(make_service, seed):
+    user = await seed.user()
+    async with one_service(make_service, make_settings()) as connect:
+        a = await connect(CLIENT_A)
+        client_id, verifier, code, _ = await full_login(a, user)
+        tokens = await exchange(a, client_id, code, verifier)
+    assert tokens.status_code == 200
+    assert tokens.json()["token_type"].lower() == "bearer"

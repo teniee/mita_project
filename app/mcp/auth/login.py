@@ -52,7 +52,7 @@ from app.mcp.auth.pages import MAX_FIELD, REGISTER, UNAVAILABLE, UNAVAILABLE_TIT
 from app.mcp.auth.provider import MitaAuthorizationProvider
 from app.mcp.config import McpSettings
 from app.mcp.observability import subject_hash
-from app.mcp.ratelimit import SlidingWindowLimiter, client_ip_from_headers
+from app.mcp.ratelimit import SlidingWindowLimiter, client_address
 from app.services.credential_verification import verify_login_credentials
 from app.services.user_registration import COUNTRY_NOT_STATED, build_password_user
 
@@ -88,11 +88,11 @@ EXPIRED_TITLE = "This sign-in link has expired"
 UNAVAILABLE_ERRORS = (SQLAlchemyError, OSError)
 
 
-def client_ip(request: Request, trusted_hops: int) -> str:
-    return client_ip_from_headers(
-        request.headers.get("x-forwarded-for", ""),
+def client_ip(request: Request, trusted_header: str) -> str:
+    return client_address(
+        request.scope.get("headers") or [],
         request.client.host if request.client else None,
-        trusted_hops,
+        trusted_header,
     )
 
 
@@ -354,7 +354,7 @@ class ConsentPage:
                 status_code=status_code,
             )
 
-        ip = client_ip(request, self.settings.trusted_proxy_hops)
+        ip = client_ip(request, self.settings.client_ip_header)
         if not self.limiter.allow(ip):
             logger.warning(
                 "oauth login rate limited", extra={"event": "oauth_login_rate_limited"}

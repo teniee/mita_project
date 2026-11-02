@@ -745,15 +745,24 @@ async def test_a_month_without_a_saved_plan(mcp, seed, connection):
 
 
 async def test_once_the_mobile_app_plans_the_month_every_surface_agrees(
-    mcp, seed, connection
+    mcp, seed, connection, monkeypatch
 ):
     """The mobile endpoints generate a missing month before reading it
     (``ensure_month_plan``); MCP read tools never write. After the app has
     generated it, the ChatGPT tools and the mobile forecast agree."""
     from sqlalchemy.orm import Session
 
+    import app.services.monthly_plan_service as plans
     from app.services.monthly_plan_service import ensure_month_plan
 
+    class Frozen(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return NOW if tz else NOW.replace(tzinfo=None)
+
+    # A fresh account's past months are never generated, judged by the wall
+    # clock: the app plans this test's October on a day in October.
+    monkeypatch.setattr(plans, "datetime", Frozen)
     m = mcp.at(NOW)
     user = await seed.user(tz=TZ, currency="EUR", income="3000.00")
 

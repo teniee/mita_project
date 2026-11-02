@@ -201,10 +201,13 @@ in the app enforces an age today.
 3. Settings, mirroring staging: builder Dockerfile, path
    `deploy/mcp/Dockerfile`; healthcheck `/health`, timeout 60; restart on
    failure, 5 retries; **1 replica** (rate limits are per replica); region
-   us-east4 (same as the API and the database).
+   us-east4 (same as the API and the database); public networking through
+   the generated/custom HTTP domain only, **no TCP proxy** (per-IP limits
+   trust the `X-Real-IP` Railway's HTTP edge writes; the service refuses to
+   start while it has a TCP proxy).
 4. Variables: `ENVIRONMENT=production`, `MCP_PUBLIC_URL=https://mcp.mitafinance.com`,
    `MCP_AUTH_MODE=builtin`, `MCP_SUPPORT_URL=https://mitafinance.com/support`,
-   `LOG_LEVEL=INFO`, `MCP_TRUSTED_PROXY_HOPS=1`, `PORT=8080`, the
+   `LOG_LEVEL=INFO`, `PORT=8080`, the
    `generate_keys.py` values (`MCP_OAUTH_PRIVATE_KEY`, `MCP_LOGIN_CSRF_SECRET`,
    `MCP_GRANT_FINGERPRINT_SECRET`, `MCP_DATA_SECRET`, `MCP_ANALYTICS_SECRET`,
    `MCP_METRICS_TOKEN`, and new `JWT_SECRET`/`SECRET_KEY` that are never the

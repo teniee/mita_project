@@ -8,12 +8,18 @@ password guessing across replicas.
 
 from __future__ import annotations
 
+import ipaddress
 import threading
 import time
 from collections import defaultdict, deque
-from typing import Deque, Dict, Optional
+from typing import Deque, Dict, Iterable, Optional, Tuple
 
 MAX_TRACKED_KEYS = 50_000
+# The one bucket for every request whose client-address header is present but
+# repeated or not one IP address: Railway's edge always writes exactly one
+# valid value, so such a request did not come from it, and it must not be
+# able to pick a bucket of its own.
+UNUSABLE_CLIENT_ADDRESS = "unusable-client-address-header"
 
 
 class SlidingWindowLimiter:
@@ -46,18 +52,47 @@ class SlidingWindowLimiter:
             self._hits.clear()
 
 
-def client_ip_from_headers(
-    forwarded_for: str, peer: Optional[str], trusted_hops: int
-) -> str:
-    """Client address behind ``trusted_hops`` proxies (Railway adds one).
+def _ip_key(value: str) -> Optional[str]:
+    """One IP address in canonical form, or None. An IPv4 address written as
+    IPv6 (``::ffff:a.b.c.d``) is that IPv4 address: one client, one bucket."""
+    try:
+        ip = ipaddress.ip_address(value.strip())
+    except ValueError:
+        return None
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        return str(ip.ipv4_mapped)
+    return str(ip)
 
-    Only the entry the trusted proxy appended is used: everything to its left
-    is client-supplied and can be forged.
+
+def client_address(
+    headers: Iterable[Tuple[bytes, bytes]], peer: Optional[str], trusted_header: str
+) -> str:
+    """The address a per-IP limit counts a request against.
+
+    ``trusted_header`` is the header the proxy in front writes over whatever
+    the client sent. Railway's HTTP edge sets ``X-Real-IP`` to the client's
+    address (docs.railway.com, "Specs & Limits"); on staging it replaced forged,
+    repeated, comma-separated and IPv6 values alike. ``X-Forwarded-For`` is
+    never read: Railway sends it as "<client>, <edge address>", and the edge
+    address changes from request to request; counting by it spread one client
+    over a bucket per edge address and put everyone behind one edge address
+    in the same bucket.
+
+    A request without the header did not come through the edge (a local run,
+    a test, the private network) and counts against ``peer``, the TCP peer,
+    which uvicorn does not rewrite from forwarded headers (``__main__.py``).
+    A header that is present but repeated or not one IP address is not
+    Railway's: all such requests share ``UNUSABLE_CLIENT_ADDRESS``.
     """
-    hops = [p.strip() for p in (forwarded_for or "").split(",") if p.strip()]
-    if trusted_hops > 0 and len(hops) >= trusted_hops:
-        return hops[-trusted_hops]
-    return peer or "unknown"
+    if trusted_header:
+        name = trusted_header.encode("latin-1")
+        values = [value for key, value in headers if key.lower() == name]
+        if values:
+            key = _ip_key(values[0].decode("latin-1")) if len(values) == 1 else None
+            return key or UNUSABLE_CLIENT_ADDRESS
+    if not peer:
+        return "unknown"
+    return _ip_key(peer) or peer
 
 
 class OAuthEndpointRateLimit:
@@ -67,9 +102,9 @@ class OAuthEndpointRateLimit:
 
     PATHS = ("/register", "/token", "/authorize", "/revoke")
 
-    def __init__(self, app, *, per_minute: int, trusted_hops: int) -> None:
+    def __init__(self, app, *, per_minute: int, client_ip_header: str) -> None:
         self.app = app
-        self.trusted_hops = trusted_hops
+        self.client_ip_header = client_ip_header
         self.limiters = {path: SlidingWindowLimiter(per_minute) for path in self.PATHS}
 
     async def __call__(self, scope, receive, send) -> None:
@@ -79,11 +114,10 @@ class OAuthEndpointRateLimit:
             else None
         )
         if limiter is not None:
-            headers = dict(scope.get("headers") or [])
-            ip = client_ip_from_headers(
-                headers.get(b"x-forwarded-for", b"").decode("latin-1"),
+            ip = client_address(
+                scope.get("headers") or [],
                 (scope.get("client") or (None,))[0],
-                self.trusted_hops,
+                self.client_ip_header,
             )
             if not limiter.allow(ip):
                 body = (

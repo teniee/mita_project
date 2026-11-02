@@ -6,7 +6,6 @@ import re
 import secrets
 from urllib.parse import parse_qs, urlparse
 
-import pytest
 from sqlalchemy import text
 
 from app.mcp.auth.scopes import SUPPORTED_SCOPES
@@ -462,17 +461,3 @@ async def test_account_deletion_cascades_oauth_rows(mcp, seed, connection):
         {"u": user.id},
     )
     assert left == 0
-
-
-@pytest.mark.parametrize("hops,expected", [(1, "203.0.113.9"), (0, "testclient")])
-def test_client_ip_respects_trusted_proxy_hops(hops, expected):
-    from starlette.requests import Request
-
-    from app.mcp.auth.login import client_ip
-
-    scope = {
-        "type": "http",
-        "headers": [(b"x-forwarded-for", b"198.51.100.1, 203.0.113.9")],
-        "client": ("testclient", 1234),
-    }
-    assert client_ip(Request(scope), hops) == expected

@@ -153,6 +153,37 @@ Residual: an attacker who knows a victim's e-mail can trigger the shared
 30-minute lockout (true of the mobile login already); per-IP limits slow but
 do not prevent this from distributed sources.
 
+### Per-IP limits: the client address (V7, fixed 2026-11-02)
+Found on staging (2026-10-28): `/authorize` answered 40 × 400 to a 40-request
+burst, never 429. A temporary header-shape probe in the staging project and
+region (tags and counts only, no address printed; deleted afterwards) showed
+what Railway's HTTP edge delivers: exactly one `X-Real-IP`, the client's
+address, replacing forged, repeated, comma-separated and IPv6 values;
+`X-Forwarded-For` rebuilt as "<client>, <edge address>" with the edge address
+rotating over at least four values; a TCP peer that changes per request. The
+limits counted by the last `X-Forwarded-For` hop (`MCP_TRUSTED_PROXY_HOPS=1`),
+i.e. by the edge address: one client got a new bucket for most requests, and
+everyone entering through the same edge address shared one. The same key
+served `/register`, `/token`, `/revoke` and the sign-in and sign-up limits on
+`/oauth/login`. uvicorn also ran with `proxy_headers` and
+`forwarded_allow_ips="*"`, which replaced `scope["client"]` with the first
+`X-Forwarded-For` entry of any request — the caller's choice on a direct
+connection.
+
+| Request | Counted against | Evidence |
+|---|---|---|
+| Through Railway's edge | its `X-Real-IP` (canonical; `::ffff:a.b.c.d` = `a.b.c.d`) | `test_authorize_answers_429_on_request_31_behind_railway`, `test_every_oauth_endpoint_counts_the_client_not_the_edge_hop` (4), `test_sign_in_limit_counts_the_client_behind_railway`, `test_sign_up_limit_counts_the_client_behind_railway`, `test_one_address_has_one_key_however_it_is_written` (5) |
+| Forged `X-Real-IP` / `X-Forwarded-For` / `Forwarded` / `True-Client-IP` | the same bucket (the edge replaces the first two; the rest are never read) | `test_forged_forwarding_headers_do_not_leave_the_bucket`; staging: `staging_failure_modes.py` |
+| `X-Real-IP` repeated or not one address (not from the edge) | one shared bucket, whatever the value or peer | `test_an_unusable_client_address_header_cannot_pick_a_bucket` (2) |
+| No `X-Real-IP` (local, tests, private network) | the TCP peer; uvicorn no longer rewrites it (`proxy_headers=False`; `ForwardedProto` keeps the https scheme for redirects) | `test_direct_requests_count_by_their_connection`, `test_served_app_limits_by_the_tcp_peer_and_keeps_https` (real uvicorn; the old options fail it) |
+| `MCP_CLIENT_IP_HEADER=` (reached directly) | the TCP peer; `X-Real-IP` ignored | `test_x_real_ip_is_ignored_when_no_header_is_trusted` |
+| Misconfiguration | refused at startup: a forwarding chain as the header, a TCP proxy | `test_the_client_address_header_is_configured_safely` |
+
+Unchanged: the limits themselves (30/min OAuth, 10/min sign-in, 5/h
+sign-ups), the per-account lockout (`test_lockout_counts_the_account_across_client_addresses`)
+and the per-user tool limit. Residual: an IPv6 client counts per address,
+not per /64.
+
 ## Remaining assumptions (delegated)
 
 1. **ChatGPT binds `state` to the initiating browser session** and validates it
@@ -162,9 +193,14 @@ do not prevent this from distributed sources.
 2. **ChatGPT keeps refresh tokens confidential** and does not submit the same
    refresh token concurrently (if it does, the connection must be re-authorized
    — fails safe).
-3. **TLS** terminates at Railway for `MCP_PUBLIC_URL`; the service is reachable
-   only through that proxy, and `MCP_TRUSTED_PROXY_HOPS=1` matches Railway's
-   single `X-Forwarded-For` hop (otherwise per-IP limits could be spoofed).
+3. **TLS** terminates at Railway's HTTP edge for `MCP_PUBLIC_URL`, and the
+   service is reachable from the internet only through it (no TCP proxy: the
+   service refuses to start while `RAILWAY_TCP_PROXY_PORT` is set). Per-IP
+   limits trust the edge's `X-Real-IP`, which it writes over anything the
+   client sent (see "Per-IP limits: the client address"). The private network
+   (other services of the same environment) can reach the service directly
+   and could write `X-Real-IP`; only first-party services are there.
+   A CDN put in front would make its own address the client's.
 4. **Secrets** (`MCP_OAUTH_PRIVATE_KEY`, `MCP_LOGIN_CSRF_SECRET`) stay only in
    Railway variables. Since the follow-up hardening, the fingerprint uses its own
    `MCP_GRANT_FINGERPRINT_SECRET`: rotating it revokes every ChatGPT grant
