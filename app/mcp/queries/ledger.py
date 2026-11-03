@@ -19,9 +19,10 @@ from uuid import UUID
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session
 
-from app.db.models import Transaction
+from app.db.models import ObligationPayment, Transaction
 from app.mcp.queries.periods import UserContext, utc_window
 from app.services.core.engine.expense_tracker import local_day_of
+from app.services.obligation_lines import PaymentLink, plan_line_of
 
 ZERO = Decimal("0.00")
 
@@ -160,18 +161,41 @@ def totals_by_category(
 
 
 def spend_by_day_and_category(
-    db: Session, ctx: UserContext, start: date, end: date
+    db: Session,
+    ctx: UserContext,
+    start: date,
+    end: date,
+    *,
+    keyed: bool = False,
 ) -> Dict[Tuple[date, str], Decimal]:
-    """Ledger spend keyed exactly as ``rebuild_month_plan`` keys plan rows."""
+    """Ledger spend keyed exactly as ``rebuild_month_plan`` keys plan rows
+    (``obligation_lines.plan_line_of``): an expense the user linked to a
+    saved payment counts on that payment's own line when the month keeps
+    one (``keyed``), every other expense on its category."""
     rows = (
         _base_query(db, ctx, start, end)
-        .with_entities(Transaction.spent_at, Transaction.category, Transaction.amount)
+        .outerjoin(
+            ObligationPayment,
+            and_(
+                ObligationPayment.transaction_id == Transaction.id,
+                ObligationPayment.user_id == ctx.user_id,
+            ),
+        )
+        .with_entities(
+            Transaction.spent_at,
+            Transaction.category,
+            Transaction.amount,
+            ObligationPayment.scheduled_expense_id,
+            ObligationPayment.due_date,
+        )
         .all()
     )
     totals: Dict[Tuple[date, str], Decimal] = defaultdict(lambda: ZERO)
-    for spent_at, category, amount in rows:
+    for spent_at, category, amount, obligation_id, due in rows:
         if category:
-            totals[(local_day_of(spent_at, ctx.timezone), category)] += Decimal(
+            link = PaymentLink(obligation_id, due) if obligation_id else None
+            line = plan_line_of(category, link, keyed)
+            totals[(local_day_of(spent_at, ctx.timezone), line)] += Decimal(
                 str(amount or 0)
             )
     return dict(totals)

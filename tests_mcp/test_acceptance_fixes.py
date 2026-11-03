@@ -258,7 +258,8 @@ async def test_obligations_come_before_a_first_budget_but_never_block_it(mcp, se
         )
     )
     status = structured(await h.call(token, "get_setup_status"))
-    assert status["suggested_next_step"] == "build_budget"
+    # Next, optionally, how the user spends (2026-11-03); never a blocker.
+    assert status["suggested_next_step"] == "describe_spending"
     with_rent = structured(await h.call(token, "preview_monthly_budget", {}))
     assert NO_OBLIGATIONS_WARNING not in with_rent["warnings"]
 

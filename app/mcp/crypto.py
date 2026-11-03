@@ -7,6 +7,9 @@ label per purpose, and every value is bound to the authenticated user:
   AES-SIV, the user id as associated data. Deterministic (the same row always
   has the same reference), opaque (no database id is visible), and useless to
   anyone else — decrypting under another user's id fails authentication;
+* **obligation references** (``ob_…``): a saved regular payment's id, sealed
+  the same way under its own associated-data label, so a transaction
+  reference is never accepted as an obligation one (or the reverse);
 * **budget drafts** (``bd1_…``) and **list cursors** (``cur1_…``): a compact
   binary payload plus a truncated HMAC over (purpose, user id, payload);
 * **budget drafts with the user's own budget lines** (``bd2_…``, F-11): the
@@ -37,6 +40,7 @@ from cryptography.hazmat.primitives.ciphers.aead import AESSIV
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 TRANSACTION_REF_PREFIX = "tx_"
+OBLIGATION_REF_PREFIX = "ob_"
 DRAFT_PREFIX = "bd1_"
 DRAFT_V2_PREFIX = "bd2_"
 MAX_DRAFT_TOKEN_CHARS = 8192
@@ -67,6 +71,18 @@ def _derive(secret: str, label: bytes, length: int) -> bytes:
 # One requested budget line: (line key, amount as "200.00", replaced MITA
 # lines or None to keep the saved choice).
 DraftLine = Tuple[str, str, Optional[Tuple[str, ...]]]
+# One requested spending pattern: (line key, kind, frequency, weekdays, days
+# of the month, times a month, anchor date "YYYY-MM-DD", typical amount).
+DraftPattern = Tuple[
+    str,
+    str,
+    Optional[str],
+    Tuple[int, ...],
+    Tuple[int, ...],
+    Optional[int],
+    Optional[str],
+    Optional[str],
+]
 
 
 @dataclass(frozen=True)
@@ -79,10 +95,12 @@ class DraftClaims:
     # lines asked to leave the plan. Empty for a bd1_ token.
     lines: Tuple[DraftLine, ...] = ()
     remove: Tuple[str, ...] = ()
+    # How the user buys for a line, asked for in this preview (saved with it).
+    patterns: Tuple[DraftPattern, ...] = ()
 
     @property
     def has_request(self) -> bool:
-        return bool(self.lines or self.remove)
+        return bool(self.lines or self.remove or self.patterns)
 
 
 @dataclass(frozen=True)
@@ -118,6 +136,24 @@ class DataKeys:
             return None
         return UUID(bytes=raw)
 
+    # --- obligation references -------------------------------------------------
+
+    def obligation_ref(self, user_id: UUID, obligation_id: UUID) -> str:
+        sealed = self._siv.encrypt(obligation_id.bytes, [b"obligation", user_id.bytes])
+        return OBLIGATION_REF_PREFIX + _b64(sealed)
+
+    def obligation_id(self, user_id: UUID, ref: str) -> Optional[UUID]:
+        if not isinstance(ref, str) or not ref.startswith(OBLIGATION_REF_PREFIX):
+            return None
+        sealed = _unb64(ref[len(OBLIGATION_REF_PREFIX) :])
+        if sealed is None or len(sealed) != 32:
+            return None
+        try:
+            raw = self._siv.decrypt(sealed, [b"obligation", user_id.bytes])
+        except InvalidTag:
+            return None
+        return UUID(bytes=raw)
+
     # --- signed compact tokens -------------------------------------------------
 
     def _mac(self, purpose: bytes, user_id: UUID, payload: bytes) -> bytes:
@@ -146,17 +182,19 @@ class DataKeys:
         )
         if not claims.has_request:
             return self._seal(DRAFT_PREFIX, b"budget-draft", user_id, payload)
-        request = json.dumps(
-            {
-                "l": [
-                    [key, amount, list(replaces) if replaces is not None else None]
-                    for key, amount, replaces in claims.lines
-                ],
-                "r": list(claims.remove),
-            },
-            separators=(",", ":"),
-            ensure_ascii=False,
-        ).encode()
+        body = {
+            "l": [
+                [key, amount, list(replaces) if replaces is not None else None]
+                for key, amount, replaces in claims.lines
+            ],
+            "r": list(claims.remove),
+        }
+        if claims.patterns:
+            body["p"] = [
+                [key, kind, freq, list(wd), list(dom), times, anchor, typical]
+                for key, kind, freq, wd, dom, times, anchor, typical in claims.patterns
+            ]
+        request = json.dumps(body, separators=(",", ":"), ensure_ascii=False).encode()
         sealed = self._draft_siv.encrypt(
             payload + request, [b"budget-draft/v2", user_id.bytes]
         )
@@ -196,10 +234,31 @@ class DataKeys:
                 for key, amount, replaces in request["l"]
             )
             remove = tuple(str(key) for key in request["r"])
+            patterns = tuple(
+                (
+                    str(key),
+                    str(kind),
+                    None if freq is None else str(freq),
+                    tuple(int(d) for d in wd),
+                    tuple(int(d) for d in dom),
+                    None if times is None else int(times),
+                    None if anchor is None else str(anchor),
+                    None if typical is None else str(typical),
+                )
+                for key, kind, freq, wd, dom, times, anchor, typical in request.get(
+                    "p", []
+                )
+            )
         except (ValueError, KeyError, TypeError):
             return None
         return DraftClaims(
-            claims.year, claims.month, claims.expires_at, claims.digest, lines, remove
+            claims.year,
+            claims.month,
+            claims.expires_at,
+            claims.digest,
+            lines,
+            remove,
+            patterns,
         )
 
     def cursor(self, user_id: UUID, position: CursorPosition) -> str:

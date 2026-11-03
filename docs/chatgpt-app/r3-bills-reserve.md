@@ -1,5 +1,12 @@
 # R3 — the month's unpaid bills are not spendable
 
+> **Update 2026-11-03 (MCP 2.7.0, `behavioral-budget.md`).** A saved payment's
+> reserve is its due dates this month minus what expenses **linked** to it paid
+> (capped per due date), never what is recorded in its category. Rent /
+> mortgage / utilities lines with no saved payment behind them keep the
+> category rule below. ChatGPT and `GET /api/budget/forecast` share
+> `obligation_lines.month_commitments`.
+
 Status (2026-10-26): implemented in the shared forecast engine, used by
 ChatGPT (`get_budget_forecast`, `get_calendar_month`, `show_financial_calendar`,
 the sign-in page's example) and the mobile API (`GET /api/budget/forecast`).

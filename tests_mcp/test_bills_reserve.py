@@ -5,7 +5,11 @@ payment will take this month and can see being paid — the categories of the
 user's saved regular payments that count in the month, and the essential
 rent, mortgage and utilities lines — always a category an expense can be
 recorded under. Each needs its reviewed (base) plan, or the saved payments due
-on it when more; what is recorded under it this month counts as paid:
+on it when more. Since 2026-11-03 (docs/chatgpt-app/behavioral-budget.md) a
+saved payment is paid only by an expense recorded as that payment
+(``obligation_ref``), never by other spending in its category; an essential
+line with no saved payment behind it (rent stated in the app) is seen paid by
+category:
 
     held   = per bill max(0, need - recorded)
     left   = plan - spent - protected savings - held
@@ -41,6 +45,8 @@ from tests_mcp.test_money_consistency import (
     key,
     look,
     money,
+    obligation_ref,
+    pay,
     plan_rows,
     spend,
 )
@@ -86,7 +92,7 @@ async def test_rent_due_later_is_held_until_it_is_recorded_then_spent_once(
     ]
     assert unpaid.line("rent")["group"] == "commitment"
 
-    await spend(m, token, 1, "800.00", "rent")
+    await pay(m, token, 1, "800.00", "rent")  # the saved rent, paid early
     paid = await look(m, token, connection, user)
     assert money(paid, *FIGURES) == ("410.00", "34.17", "0.00")
     assert paid.forecast["total_spent"] == "900.00"  # counted once, as spent
@@ -205,7 +211,7 @@ async def test_a_bill_that_differs_from_its_plan(
     token = m.token(user)
     await spend(m, token, 5, "100.00", "utilities")
     if paid:
-        await spend(m, token, 1, paid, "rent")
+        await pay(m, token, 1, paid, "rent")
     seen = await look(m, token, connection, user)
     assert money(seen, *FIGURES) == expected
 
@@ -229,7 +235,7 @@ async def test_two_saved_bills_in_one_category_are_held_once_each(
     await spend(m, token, 5, "100.00", "utilities")
     unpaid = await look(m, token, connection, user)
     assert money(unpaid, *FIGURES) == ("410.00", "34.17", "22.00")
-    await spend(m, token, 10, "12.00", "subscriptions")
+    await pay(m, token, 10, "12.00", "subscriptions", bill_amount="12.00")
     half = await look(m, token, connection, user)
     assert money(half, *FIGURES) == ("410.00", "34.17", "10.00")
 
@@ -339,7 +345,7 @@ async def test_an_ended_month_is_read_as_stored_and_rebuilt_only_when_edited(
             "add_transaction",
             {
                 "amount": "800.00",
-                "category": "rent",
+                "obligation_ref": await obligation_ref(m, token, category="rent"),
                 "date": "2026-09-01",
                 "idempotency_key": key(),
             },
@@ -395,11 +401,13 @@ async def test_a_saved_pass_never_takes_the_everyday_allowance_it_is_shown_with(
     1st, in the reviewed plan as its own line) is shown on the "transport
     public" line with the 5.00-a-day allowance. Only the pass is held: the
     mobile API (stored categories) and ChatGPT (budget lines) must agree. A
-    2.00 ticket recorded as public_transport is spending on that category, so
-    it uses the pass's line (by line, never by amount): 30.00 - 2.00 = 28.00.
+    2.00 ticket recorded as public_transport is spending in the pass's
+    category, not the pass (2026-11-03: only an expense recorded as the
+    pass's payment pays it), so the whole pass stays held:
 
-    1,795.00 - 902.00 - 300.00 - 28.00 = 565.00, 47.08 a day.
-    (Holding the whole line: 185.00 - 2.00 = 183.00, 34.17 a day.)"""
+    1,795.00 - 902.00 - 300.00 - 30.00 = 563.00, 46.92 a day.
+    (Until 2026-11-03 the ticket counted toward the pass: 28.00 held, 565.00.
+    Holding the whole line: 185.00 - 2.00 = 183.00, 34.17 a day.)"""
     extra = {d: {"transport public": "5.00"} for d in range(2, 32)}
     extra[1] = {"transport public": "5.00", "public_transport": "30.00"}
     m = mcp.at(NOW)
@@ -410,7 +418,7 @@ async def test_a_saved_pass_never_takes_the_everyday_allowance_it_is_shown_with(
     await spend(m, token, 5, "100.00", "utilities")
     await spend(m, token, 19, "2.00", "public_transport")
     seen = await look(m, token, connection, user)
-    assert money(seen, *FIGURES) == ("565.00", "47.08", "28.00")
+    assert money(seen, *FIGURES) == ("563.00", "46.92", "30.00")
 
 
 # --- today on a bill's date ----------------------------------------------------------------

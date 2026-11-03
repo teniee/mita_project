@@ -10,13 +10,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
-from typing import List, Optional
+from typing import List, Optional, Tuple
+from uuid import UUID
 
 from sqlalchemy.orm import Session
 
 from app.db.models import ScheduledExpense, Transaction
+from app.mcp.queries.obligations import payments_by_due
 from app.mcp.queries.periods import UserContext, utc_window
 from app.services.core.engine.expense_tracker import local_day_of
+from app.services.monthly_obligations import due_dates_in_month
 
 MARKED_LOOKBACK_DAYS = 180
 UPCOMING_ONE_TIME_DAYS = 60
@@ -26,12 +29,23 @@ REPEATING = {"weekly", "monthly"}
 
 
 @dataclass(frozen=True)
+class DueThisMonth:
+    """One due date of the user's current month and what is paid on it."""
+
+    day: date
+    amount: Decimal
+    paid: Decimal  # by the expenses the user linked to it, only
+
+
+@dataclass(frozen=True)
 class ScheduledItem:
     category: str
     amount: Decimal
     merchant: Optional[str]
     next_date: date
     recurrence: Optional[str]
+    obligation_id: Optional[UUID] = None
+    due_this_month: Tuple[DueThisMonth, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -63,14 +77,30 @@ def recurring_expenses(db: Session, ctx: UserContext) -> RecurringView:
         .all()
     )
     horizon = ctx.today + timedelta(days=UPCOMING_ONE_TIME_DAYS)
+    year, month = ctx.today.year, ctx.today.month
+    paid = payments_by_due(db, ctx, year, month)
 
     def item(row: ScheduledExpense) -> ScheduledItem:
+        amount = Decimal(str(row.amount))
         return ScheduledItem(
             category=row.category,
-            amount=Decimal(str(row.amount)),
+            amount=amount,
             merchant=(row.merchant or "").strip() or None,
             next_date=row.scheduled_date,
             recurrence=row.recurrence,
+            obligation_id=row.id,
+            due_this_month=tuple(
+                DueThisMonth(
+                    day=day,
+                    amount=amount,
+                    paid=sum(
+                        (p.amount for p in paid.get((row.id, day), ())), Decimal("0.00")
+                    ),
+                )
+                for day in due_dates_in_month(
+                    row.scheduled_date, row.recurrence, year, month
+                )
+            ),
         )
 
     scheduled_recurring = [item(r) for r in pending if r.recurrence in REPEATING]

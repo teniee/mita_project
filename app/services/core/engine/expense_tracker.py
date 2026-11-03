@@ -3,7 +3,7 @@ import logging
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Tuple
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
@@ -12,14 +12,22 @@ from sqlalchemy.orm import Session
 
 from app.db.models import DailyPlan, Transaction, User
 from app.services.core.engine.bill_timing import consume_bill_timing, retime_bill_lines
-from app.services.core.engine.budget_forecast_engine import commitment_expectations
 from app.services.core.engine.calendar_updater import calculate_day_status
 from app.services.core.engine.realtime_rebalancer import (
     RebalancePlan,
     check_and_rebalance,
     consume_realtime_adjustment,
 )
-from app.services.monthly_obligations import obligations_due
+from app.services.core.engine.spending_schedule import SELF_SETTLING, line_kinds_of
+from app.services.obligation_lines import (
+    MonthCommitments,
+    links_for_transactions,
+    month_commitments,
+    month_is_keyed,
+    obligation_amounts,
+    plan_line_of,
+    protected_lines,
+)
 from app.services.redistribution_audit_log import record_redistribution_event
 
 logger = logging.getLogger(__name__)
@@ -167,14 +175,9 @@ def _record_creation_redistribution(
             )
 
 
-def month_bill_categories(
-    db: Session, user_id: UUID, month_start: date, rows: Sequence[DailyPlan]
-) -> frozenset:
-    """The month's bill lines — the bills R3 holds out of the safe daily
-    amount (``commitment_expectations``): the recordable categories of the
-    user's saved payments that count in the month, and the rent / mortgage /
-    utilities lines of the base plan. ``rows`` must carry their base
-    allocations (adjustments backed out)."""
+def _base_by_line(rows: Sequence[DailyPlan]) -> Dict[str, Decimal]:
+    """Per line, the base allocation of real budget rows (``rows`` must
+    carry their base allocations: adjustments backed out)."""
     base: Dict[str, Decimal] = defaultdict(lambda: Decimal("0.00"))
     for row in rows:
         metadata = row.plan_json if isinstance(row.plan_json, dict) else {}
@@ -183,8 +186,34 @@ def month_bill_categories(
             and metadata.get(TRANSACTION_GENERATED_PLAN_KEY) is not True
         ):
             base[row.category or ""] += Decimal(row.planned_amount or 0)
-    due = obligations_due(db, user_id, month_start.year, month_start.month)
-    return frozenset(commitment_expectations(base, due))
+    return dict(base)
+
+
+def month_bill_lines(
+    db: Session, user_id: UUID, month_start: date, rows: Sequence[DailyPlan]
+) -> MonthCommitments:
+    """The month's fixed obligations by plan line (``obligation_lines``):
+    each saved payment counting in the month — on its own line in a month
+    laid out so, under its category in a legacy one — and the rent /
+    mortgage / utilities lines with no saved payment behind them. These are
+    the bills R3 holds out of the safe daily amount and never rebalancing
+    donors. ``rows`` must carry their base allocations (adjustments backed
+    out)."""
+    return month_commitments(
+        db,
+        user_id,
+        month_start.year,
+        month_start.month,
+        _base_by_line(rows),
+        month_is_keyed(row.category for row in rows),
+    )
+
+
+def month_bill_categories(
+    db: Session, user_id: UUID, month_start: date, rows: Sequence[DailyPlan]
+) -> frozenset:
+    """The month's bill lines (``month_bill_lines``), as a set."""
+    return month_bill_lines(db, user_id, month_start, rows).lines
 
 
 def rebuild_month_plan(
@@ -252,12 +281,40 @@ def rebuild_month_plan(
         .all()
     )
 
+    # Each expense counts on its plan line: an expense the user linked to a
+    # saved payment counts on that obligation's own line (a legacy month
+    # holds it under the category); every other expense on its category.
+    links = links_for_transactions(db, user_id, [txn.id for txn in transactions])
+    keyed = month_is_keyed(row.category for row in rows)
+    due_amounts = obligation_amounts(
+        db, user_id, (link.obligation_id for link in links.values())
+    )
     totals = defaultdict(lambda: Decimal("0.00"))
+    # What a linked expense pays of its due date: at most what the due date
+    # asks for (more is spending beyond the bill, never another due date's
+    # payment), and only for a due date of this month.
+    linked_payments = defaultdict(list)
+    paid_so_far = defaultdict(lambda: Decimal("0.00"))
     for txn in transactions:
         if txn.category:
-            totals[(local_day_of(txn.spent_at, tz), txn.category)] += Decimal(
-                txn.amount or 0
-            )
+            day = local_day_of(txn.spent_at, tz)
+            link = links.get(txn.id)
+            line = plan_line_of(txn.category, link, keyed)
+            amount = Decimal(txn.amount or 0)
+            totals[(day, line)] += amount
+            if link is not None and (link.due_date.year, link.due_date.month) == (
+                month_start.year,
+                month_start.month,
+            ):
+                key = (link.obligation_id, link.due_date)
+                room = max(
+                    Decimal("0.00"),
+                    due_amounts.get(link.obligation_id, amount) - paid_so_far[key],
+                )
+                within = min(amount, room)
+                paid_so_far[key] += within
+                if within > 0:
+                    linked_payments[line].append((day, within, link.due_date))
 
     for key, total in totals.items():
         row = rows_by_key.get(key)
@@ -281,9 +338,27 @@ def rebuild_month_plan(
     db.flush()
 
     # A bill's money stays on its own line: paying it on another date than
-    # the plan put it on moves that money, never other lines' (F-8).
-    bills = month_bill_categories(db, user_id, month_start, rows)
-    retime_bill_lines(rows_by_key, totals, bills)
+    # the plan put it on moves that money, never other lines' (F-8). Only an
+    # expense linked to a saved payment pays it; other spending in its
+    # category is ordinary spending (obligation_lines). In a month laid out
+    # by how its money is spent, planned purchases and flexible budgets
+    # settle the same way (R2, owner decision 2026-11-03): spending on any
+    # date first uses the line's own money — that date's, then earlier
+    # unspent, then the nearest later — and only spending beyond the line's
+    # whole month is overspending, which the rebalancer then covers.
+    commitments = month_bill_lines(db, user_id, month_start, rows)
+    bills = protected_lines((row.category for row in rows), commitments)
+    self_settling = frozenset(
+        line for line, kind in line_kinds_of(rows).items() if kind in SELF_SETTLING
+    )
+    retime_bill_lines(
+        rows_by_key,
+        totals,
+        bills | self_settling,
+        linked=linked_payments,
+        linked_only=commitments.linked_only
+        | frozenset(c for c in bills if c.startswith("bill:")),
+    )
 
     rebalance_results = {}
     for day, category in sorted(totals):
@@ -536,7 +611,10 @@ def commit_transaction_to_ledger(
 
 
 def add_transactions_to_ledger(
-    db: Session, txns: Sequence[Transaction]
+    db: Session,
+    txns: Sequence[Transaction],
+    *,
+    after_insert: Optional[Callable[[Transaction], None]] = None,
 ) -> List[Optional[RebalancePlan]]:
     """Insert transactions into the ledger as ONE unit of work, without committing.
 
@@ -547,12 +625,19 @@ def add_transactions_to_ledger(
     under the same per-user advisory lock. The caller commits — or rolls back,
     which undoes every row and every plan change — and only then runs
     ``run_transaction_plan_side_effects`` for each result.
+
+    ``after_insert(txn)`` runs once the row has its id and before the plan
+    rebuild, for state the rebuild must see — the saved payment an expense
+    paid (``obligation_payments``).
     """
     results: List[Optional[RebalancePlan]] = []
     for txn in txns:
         lock_user_ledger(db, txn.user_id)
         db.add(txn)
         db.flush()
+        if after_insert is not None:
+            after_insert(txn)
+            db.flush()
         results.append(
             apply_transaction_to_plan(
                 db,

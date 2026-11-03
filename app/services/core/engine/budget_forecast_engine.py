@@ -440,17 +440,28 @@ def commitment_expectations(
 
 
 def _still_reserved(
-    daily_plans: List[DailyPlanData], commitments: Mapping[str, Decimal]
+    daily_plans: List[DailyPlanData],
+    commitments: Mapping[str, Decimal],
+    paid: Optional[Mapping[str, Decimal]] = None,
 ) -> Decimal:
-    """Per bill, what is not recorded yet: never below zero, so a bill paid in
+    """Per bill, what is not paid yet: never below zero, so a bill paid in
     full (or above its plan) holds nothing back, and spending beyond it has
-    already left the remaining budget through total_spent."""
+    already left the remaining budget through total_spent.
+
+    ``paid``: for bills MITA can identify (saved payments), what the expenses
+    the user linked to them paid — the only thing that settles them
+    (``obligation_lines``). A bill absent from it (rent / utilities stated
+    without a saved payment) counts what is recorded on its line."""
+    paid = paid or {}
     recorded: Dict[str, Decimal] = {}
     for p in daily_plans:
         if p.category in commitments:
             recorded[p.category] = recorded.get(p.category, _ZERO) + p.spent_amount
     return sum(
-        (max(_ZERO, need - recorded.get(c, _ZERO)) for c, need in commitments.items()),
+        (
+            max(_ZERO, need - (paid[c] if c in paid else recorded.get(c, _ZERO)))
+            for c, need in commitments.items()
+        ),
         _ZERO,
     )
 
@@ -491,6 +502,7 @@ def compute_forecast(
     month: int,
     today: Optional[date] = None,
     commitments: Optional[Mapping[str, Decimal]] = None,
+    commitments_paid: Optional[Mapping[str, Decimal]] = None,
 ) -> ForecastResult:
     """
     Compute full budget forecast for a user for the given month.
@@ -505,6 +517,9 @@ def compute_forecast(
                       bill needs. Unpaid bills are kept out of the
                       safe daily limit (owner decision 2026-10-25). None = no
                       reserve.
+        commitments_paid: per bill MITA can identify, what the expenses linked
+                      to it paid (``obligation_lines.month_commitments``).
+                      Bills not in it count what is recorded on their line.
 
     Returns:
         ForecastResult with all projection metrics.
@@ -566,7 +581,9 @@ def compute_forecast(
     # Savings, goal reservations and investments: in the plan, not for spending.
     savings_set_aside = _still_set_aside(daily_plans)
     # Bills planned and not recorded yet: in the plan, needed for the bills.
-    commitments_reserved = _still_reserved(daily_plans, commitments or {})
+    commitments_reserved = _still_reserved(
+        daily_plans, commitments or {}, commitments_paid
+    )
 
     days_remaining_d = Decimal(str(days_remaining))
 

@@ -41,9 +41,10 @@ Facts that hold for every tool:
 | Tool | destructiveHint | Why |
 |---|---|---|
 | `update_financial_profile` | **true** | Overwrites the previous value of each field sent (income, currency, timezone, household size, savings target); only fields the user stated are sent. It does not change a saved budget. |
+| `save_spending_patterns` | **true** | Overwrites the earlier spending pattern of each line sent (how the user buys for it: on known days, flexible, or a MITA line that does not apply); only what the user stated is sent. It never changes a saved monthly plan — the user previews and saves a month to apply it. Saving the same patterns again changes nothing. |
 | `add_transaction` | false | Inserts one new expense; nothing existing is deleted or overwritten. MITA then recalculates this month's derived plan (its automatic redistribution) while keeping the reviewed base plan; deleting the expense reverses that. An `idempotency_key` makes a retried call a no-op. |
 | `add_transactions` | false | Same as `add_transaction` for up to 25 new expenses, all or none. |
-| `update_transaction` | **true** | Overwrites fields of an existing expense, identified by its opaque reference. |
+| `update_transaction` | **true** | Overwrites fields of an existing expense, identified by its opaque reference, including which saved regular payment it paid (`obligation_ref`; an empty string removes the link). |
 | `delete_transaction` | **true** | Removes an expense from every total (soft delete; there is no undo tool). |
 | `save_monthly_budget` | **true** | Replaces the month's saved plan with the reviewed draft, only if the draft is still unchanged. |
 | `add_recurring_expense` | false | Creates a new saved regular payment; nothing existing is changed. |

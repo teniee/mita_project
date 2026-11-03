@@ -1,5 +1,13 @@
 # Fixed payments on their due dates, bill reminders, and paying them (F-8) — 2026-11-03
 
+> **Update 2026-11-03 (MCP 2.7.0, `behavioral-budget.md`).** Due dates,
+> reminders and "a bill paid early, late or in parts is not overspending"
+> stand. What pays a bill changed: only an expense the user links to it
+> (`obligation_payments`, `obligation_ref`) — a purchase in the same category
+> no longer counts (§6's "recorded by category" is superseded; the state is
+> `paid`). Each saved bill has its own plan line (`bill:<digest>`) in plans
+> saved from now on.
+
 Owner decision 2026-11-02, after the real-ChatGPT acceptance run on staging:
 a fixed obligation is planned **in full on its actual due date**, the
 financial calendar **reminds** of it from five days before, and paying it —

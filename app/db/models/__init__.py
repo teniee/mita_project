@@ -3,6 +3,7 @@ from .ai_analysis_snapshot import AIAnalysisSnapshot
 from .analytics_log import FeatureAccessLog, FeatureUsageLog, PaywallImpressionLog
 from .base import Base
 from .budget_advice import BudgetAdvice
+from .budget_behavior import ObligationPayment, SpendingPattern
 from .challenge import Challenge, ChallengeParticipation
 from .daily_plan import DailyPlan
 from .expense import Expense
@@ -54,6 +55,8 @@ __all__ = [
     "McpBudgetLine",
     "McpIdempotencyKey",
     "McpUserProfile",
+    "ObligationPayment",
+    "SpendingPattern",
     "ProductFeedback",
     "AnalyticsIdentity",
     "McpOAuthAuthorizationCode",

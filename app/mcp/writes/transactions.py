@@ -123,9 +123,10 @@ def build_rows(
     return rows
 
 
-def insert(db: Session, rows: Sequence[Transaction]) -> None:
-    """All rows and their plan updates, one unit of work, not committed."""
-    add_transactions_to_ledger(db, rows)
+def insert(db: Session, rows: Sequence[Transaction], *, after_insert=None) -> None:
+    """All rows and their plan updates, one unit of work, not committed.
+    ``after_insert(row)``: state the plan rebuild must see (a payment link)."""
+    add_transactions_to_ledger(db, rows, after_insert=after_insert)
 
 
 def load_owned(

@@ -7,9 +7,10 @@ from the same database facts and the same lines; if its digest differs
 (income, savings target, obligations or the saved lines changed, or the
 engine changed) nothing is written and the user must preview again. Otherwise
 ``monthly_plan_service.replace_month_plan`` makes it the month's base plan
-(goal reservations kept, spend and redistribution re-derived from the ledger)
-and ``mcp_budget_lines`` records which of MITA's lines each user line
-replaces, in the caller's transaction.
+(goal reservations kept, spend and redistribution re-derived from the ledger),
+each line's kind is stamped on its rows, ``mcp_budget_lines`` records which
+of MITA's lines each user line replaces and ``spending_patterns`` keeps the
+patterns the preview asked for, in the caller's transaction.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from __future__ import annotations
 import hmac
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -27,11 +29,13 @@ from app.mcp.queries import budget_draft, budget_lines
 from app.mcp.queries.periods import UserContext
 from app.services.core.engine.expense_tracker import lock_user_ledger
 from app.services.core.engine.realtime_rebalancer import REALTIME_ADJUSTMENT_KEY
+from app.services.core.engine.spending_schedule import line_kinds_of
 from app.services.monthly_plan_service import (
     month_base_plan,
     month_bounds,
     replace_month_plan,
 )
+from app.services.spending_patterns import save_pattern, stored_patterns
 
 INVALID_DRAFT = (
     "This budget preview cannot be used for this account (it was changed, copied "
@@ -75,16 +79,54 @@ def verified_draft(
     return draft
 
 
-def save(db: Session, ctx: UserContext, draft: budget_draft.BudgetDraft) -> SaveOutcome:
-    """Write the draft as the month's base plan. Does not commit."""
+def save(
+    db: Session,
+    ctx: UserContext,
+    draft: budget_draft.BudgetDraft,
+    now: Optional[datetime] = None,
+) -> SaveOutcome:
+    """Write the draft as the month's base plan, with the spending patterns
+    the preview asked for. Does not commit."""
+    now = now or datetime.now(timezone.utc)
     current = month_base_plan(db, ctx.user_id, draft.year, draft.month)
     stored = budget_lines.stored_lines(db, ctx) if draft.user_lines else {}
     lines_saved = all(
         stored.get(key) == draft.replaces.get(key, ()) for key in draft.user_lines
     )
-    if current == draft.calendar_entries() and lines_saved:
+    saved_patterns = stored_patterns(db, ctx.user_id)
+    patterns_saved = all(
+        saved_patterns.get(line) == pattern for line, pattern in draft.request.patterns
+    )
+    start, end = month_bounds(draft.year, draft.month)
+    kinds_saved = (
+        line_kinds_of(
+            db.query(DailyPlan)
+            .filter(
+                DailyPlan.user_id == ctx.user_id,
+                DailyPlan.date >= start,
+                DailyPlan.date < end,
+            )
+            .all()
+        )
+        == draft.line_kinds
+    )
+    if (
+        current == draft.calendar_entries()
+        and lines_saved
+        and patterns_saved
+        and kinds_saved
+    ):
         return SaveOutcome("already_saved", draft)
-    replace_month_plan(db, ctx.user_id, draft.year, draft.month, draft.calendar_map)
+    replace_month_plan(
+        db,
+        ctx.user_id,
+        draft.year,
+        draft.month,
+        draft.calendar_map,
+        line_kinds=draft.line_kinds,
+    )
+    for line, pattern in draft.request.patterns:
+        save_pattern(db, ctx.user_id, line, pattern, now)
     for key in draft.user_lines:
         replaces = list(draft.replaces.get(key, ()))
         row = db.get(McpBudgetLine, (ctx.user_id, key))

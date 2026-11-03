@@ -26,18 +26,17 @@ from app.services.core.engine.budget_auto_adapter import adapt_category_weights
 from app.services.core.engine.budget_forecast_engine import (
     DailyPlanData,
     GoalData,
-    commitment_expectations,
     compute_forecast,
 )
 from app.services.core.engine.budget_logic import generate_budget_from_answers
 from app.services.core.engine.budget_mode_selector import resolve_budget_mode
 from app.services.core.engine.budget_suggestion_engine import suggest_budget_adjustments
 from app.services.core.income_classification_service import IncomeClassificationService
-from app.services.monthly_obligations import obligations_due
 from app.services.monthly_plan_service import (
     base_totals_by_category,
     ensure_month_plan_async,
 )
+from app.services.obligation_lines import month_commitments, month_is_keyed
 from app.utils.response_wrapper import success_response
 
 from app.api.budget.services import fetch_remaining_budget  # isort:skip
@@ -445,15 +444,22 @@ async def get_budget_forecast(
     ]
 
     # ── What the month's bills still need (owner decision 2026-10-25) ────────
-    # The same rule as ChatGPT's get_budget_forecast: each bill's
-    # base plan, or the saved payments due on it when more; unpaid bills are
-    # kept out of the safe daily limit.
-    saved_due = await db.run_sync(
-        lambda sync_session: obligations_due(
-            sync_session, user.id, target_year, target_month
+    # The same rule as ChatGPT's get_budget_forecast (obligation_lines): each
+    # saved payment's due dates this month, minus what the expenses the user
+    # linked to it paid — never what happens to share its category — and
+    # rent / utilities lines without a saved payment by category. Unpaid
+    # bills are kept out of the safe daily limit.
+    keyed = month_is_keyed(p.category for p in plans)
+    commitments = await db.run_sync(
+        lambda sync_session: month_commitments(
+            sync_session,
+            user.id,
+            target_year,
+            target_month,
+            base_totals_by_category(plans),
+            keyed,
         )
     )
-    commitments = commitment_expectations(base_totals_by_category(plans), saved_due)
 
     # ── Run pure computation ──────────────────────────────────────────────────
     forecast = compute_forecast(
@@ -462,7 +468,8 @@ async def get_budget_forecast(
         year=target_year,
         month=target_month,
         today=today_local,
-        commitments=commitments,
+        commitments=commitments.needs,
+        commitments_paid=commitments.paid,
     )
 
     return success_response(forecast.to_dict())

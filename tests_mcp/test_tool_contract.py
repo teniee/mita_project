@@ -54,6 +54,8 @@ EXPECTED = {
     "show_financial_calendar": (READ, False, True, FINANCE_READ, False),
     # Overwrites stated values (OpenAI: "delete or overwrite user data").
     "update_financial_profile": ("write", True, True, FINANCE_WRITE, False),
+    # Overwrites a line's earlier spending pattern; never changes a saved plan.
+    "save_spending_patterns": ("write", True, True, FINANCE_WRITE, False),
     # Additive; idempotent only because the arguments carry a key.
     "add_transaction": ("write", False, True, FINANCE_WRITE, True),
     "add_transactions": ("write", False, True, FINANCE_WRITE, True),

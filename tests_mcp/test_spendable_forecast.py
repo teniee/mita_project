@@ -308,28 +308,30 @@ async def test_the_reviewed_budget_savings_target_is_not_spendable(mcp, seed):
             token, "save_monthly_budget", {"draft_token": preview["draft_token"]}
         )
     )
+    rent_ref = structured(await m.call(token, "get_recurring_expenses"))[
+        "scheduled_recurring"
+    ][0]["obligation_ref"]
     for amount, category, day in (
-        (700, "rent", "2026-10-01"),
+        (700, None, "2026-10-01"),  # the rent payment, recorded as that payment
         (54.20, "groceries", "2026-10-05"),
         (36.80, "groceries", "2026-10-11"),
     ):
-        structured(
-            await m.call(
-                token,
-                "add_transaction",
-                {
-                    "amount": amount,
-                    "category": category,
-                    "date": day,
-                    "idempotency_key": uuid.uuid4().hex,
-                },
-            )
-        )
+        arguments = {
+            "amount": amount,
+            "date": day,
+            "idempotency_key": uuid.uuid4().hex,
+        }
+        if category is None:
+            arguments["obligation_ref"] = rent_ref
+        else:
+            arguments["category"] = category
+        structured(await m.call(token, "add_transaction", arguments))
     data = structured(await m.call(token, "get_budget_forecast"))
     assert data["total_planned"] == preview["plan_total"] == "2325.00"
     assert data["remaining_budget"] == "1534.00"
     assert data["savings_set_aside"] == "400.00"
-    # Rent, the only bill, is recorded, so nothing is held. The reviewed plan's
+    # Rent, the only bill, is paid (recorded as that payment), so nothing is
+    # held. The reviewed plan's
     # medical insurance line (105.00) is the budget engine's own allowance —
     # Ana never stated insurance — and no expense is ever recorded under it,
     # so it is everyday money, not a bill (R3, r3-bills-reserve.md).

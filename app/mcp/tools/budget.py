@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated, List, Literal, Optional
 
 from mcp.server.mcpserver import Context, MCPServer
@@ -24,11 +25,13 @@ from app.mcp.schemas import (
     BudgetSavedOut,
     BudgetStatusOut,
     DataSourceOut,
+    ExcludedLineOut,
     FinancialSummaryOut,
     ForecastOut,
     HistoryUsedOut,
     ObligationOut,
     PlanChangeOut,
+    PlannedPurchaseOut,
 )
 from app.mcp.serializers import (
     budget_status_out,
@@ -44,8 +47,10 @@ from app.mcp.tools.common import (
     tool_meta,
     write_annotations,
 )
+from app.mcp.tools.inputs import SpendingPatternIn
 from app.mcp.tools.inputs import money as money_input
 from app.mcp.writes import budget as budget_writes
+from app.services.core.engine.spending_schedule import dates_are_stated, describe
 from app.services.core.engine.user_budget_lines import ENGINE_BUCKETS, MAX_LABEL_CHARS
 
 Year = Annotated[
@@ -142,6 +147,7 @@ PREVIEW_DESCRIPTION = (
 )
 
 EngineLine = Literal[tuple(sorted(ENGINE_BUCKETS))]  # type: ignore[valid-type]
+CENT = Decimal("0.01")
 
 REPLACES_HELP = (
     "MITA's own lines this line takes the place of, so the same spending is not "
@@ -209,9 +215,10 @@ def preview_out(
         budget_draft.region_note(ctx.region),
         "Category shares come from MITA's standard allocation rules for this "
         "income; they are a starting plan, not an assessment of the user.",
-        "Each saved bill is planned in full on its due date; every other "
-        "category is spread over the month's days by MITA's usual pattern "
-        "(groceries on weekdays, dining on a few days).",
+        "Each saved bill is planned in full on its due date. A line the user "
+        "said they buy on known days is split over those real dates; every other "
+        "line is a flexible monthly budget with no purchase dates — MITA shows a "
+        "daily figure for it as guidance, never as a purchase.",
     ]
     if alloc.manual:
         assumptions.append(
@@ -310,25 +317,52 @@ def preview_out(
     def by_size(item):
         return (-item[1], item[0])
 
-    categories = [
-        AllocationOut(
+    entries = draft.calendar_entries()
+
+    def allocation(key: str, amount, source: str, replaces) -> AllocationOut:
+        kind = draft.line_kinds.get(key, "flexible")
+        pattern = draft.patterns.get(key)
+        planned = kind == "planned"
+        per_day = (
+            (amount / draft.days_in_month).quantize(CENT, ROUND_HALF_UP)
+            if not planned
+            else None
+        )
+        return AllocationOut(
             category=key,
             category_label=category_label(key),
             amount=money(amount),
-            layout=budget_draft.layout_of(key),
-            source=SET_BY_YOU,
-            replaces=list(draft.replaces.get(key, ())),
+            source=source,
+            replaces=list(replaces),
+            spending_type="planned" if planned else "flexible",
+            pattern=describe(pattern if planned else None),
+            pattern_source=(
+                "user_confirmed"
+                if pattern is not None and pattern.kind != "not_applicable"
+                else "mita_default"
+            ),
+            purchases=[
+                PlannedPurchaseOut(date=day, amount=money(value))
+                for (day, line), value in sorted(entries.items())
+                if line == key and planned
+            ],
+            purchase_dates_stated=(dates_are_stated(pattern) if planned else None),
+            per_day=optional_money(per_day),
+            per_day_rounded=(
+                str(per_day.quantize(Decimal("1"), ROUND_HALF_UP))
+                if per_day is not None
+                else None
+            ),
+            typical_amount=optional_money(
+                pattern.typical_amount if pattern is not None else None
+            ),
         )
+
+    categories = [
+        allocation(key, amount, SET_BY_YOU, draft.replaces.get(key, ()))
         for key, amount in sorted(alloc.manual.items(), key=by_size)
     ] + [
-        AllocationOut(
-            category=category,
-            category_label=category_label(category),
-            amount=money(amount),
-            layout=budget_draft.layout_of(category),
-            source=CALCULATED_BY_MITA,
-            replaces=[],
-        )
+        allocation(category, amount, CALCULATED_BY_MITA, ())
         for category, amount in sorted(alloc.discretionary.items(), key=by_size)
     ]
     changes = [
@@ -350,6 +384,7 @@ def preview_out(
         fixed_obligations=[
             ObligationOut(
                 name=o.name,
+                line=o.line,
                 category=o.category,
                 category_label=category_label(o.category),
                 amount=money(o.amount),
@@ -361,6 +396,10 @@ def preview_out(
         fixed_obligations_total=money(draft.fixed_total),
         savings_allocation=money(alloc.savings),
         category_allocations=categories,
+        not_applicable_lines=[
+            ExcludedLineOut(category=code, category_label=category_label(code))
+            for code in draft.not_applicable
+        ],
         user_set_total=money(draft.user_set_total),
         unallocated=money(alloc.unallocated),
         flexible_total=money(alloc.discretionary_total),
@@ -501,6 +540,19 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
                 ),
             ),
         ] = None,
+        spending_patterns: Annotated[
+            Optional[List[SpendingPatternIn]],
+            Field(
+                max_length=MAX_BUDGET_LINES + len(ENGINE_BUCKETS),
+                description=(
+                    "How the user buys for a line, when it differs from what MITA "
+                    "has saved (get_setup_status spending): shown in this preview "
+                    "and saved only with save_monthly_budget. Use it to show a "
+                    "change before the user confirms it (groceries from weekly to "
+                    "twice a month)."
+                ),
+            ),
+        ] = None,
     ) -> Annotated[CallToolResult, BudgetPreviewOut]:
         def body(session, user_ctx):
             y, m = budget_draft.target_month(user_ctx, month)
@@ -514,6 +566,7 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
                     for line in budget_lines or []
                 ),
                 tuple(remove_lines or []),
+                tuple((p.line, p.pattern()) for p in spending_patterns or []),
             )
             draft = budget_draft.build_draft(session, user_ctx, y, m, request)
             now = runtime.clock()
@@ -563,7 +616,7 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
                 draft = budget_writes.verified_draft(
                     s, user_ctx, runtime.data_keys, draft_token, call.now
                 )
-                outcome = budget_writes.save(s, user_ctx, draft)
+                outcome = budget_writes.save(s, user_ctx, draft, call.now)
                 s.commit()
                 offset = (draft.year * 12 + draft.month) - (
                     user_ctx.today.year * 12 + user_ctx.today.month

@@ -14,11 +14,19 @@ from sqlalchemy import func, select
 from app.db.models import McpUserProfile, Transaction, User
 from app.mcp import analytics
 from app.mcp.auth.scopes import FINANCE_WRITE, PROFILE_READ
+from app.mcp.categories import label as category_label
 from app.mcp.errors import ValidationError
 from app.mcp.queries import setup as setup_queries
 from app.mcp.queries.periods import load_user_context
+from app.mcp.queries.spending import spending_profile
 from app.mcp.runtime import McpRuntime
-from app.mcp.schemas import KnownProfileOut, ProfileUpdateOut, SetupStatusOut
+from app.mcp.schemas import (
+    KnownProfileOut,
+    ProfileUpdateOut,
+    SetupStatusOut,
+    SpendingLineOut,
+    SpendingProfileOut,
+)
 from app.mcp.serializers import optional_money
 from app.mcp.tools.common import (
     NO_MONEY_MOVEMENT,
@@ -28,15 +36,19 @@ from app.mcp.tools.common import (
     write_annotations,
 )
 from app.mcp.tools.inputs import money
+from app.services.core.engine.spending_schedule import describe
+from app.services.core.engine.user_budget_lines import is_user_line
 
 STATUS_DESCRIPTION = (
     "Use at the start of any setup or budgeting request, and before asking the user "
     "for income, currency, timezone, household size or savings: reports what MITA "
     "already knows about this user (values included), which profile fields are "
     "still missing, whether a budget plan exists for the current month, and how "
-    "many expenses, recurring expenses and savings goals are recorded. Ask only for "
-    "missing_fields; never re-ask what is in 'known'. MITA keeps this across all "
-    "future conversations. " + READ_ONLY_DISCLAIMER
+    "many expenses, recurring expenses and savings goals are recorded, and how the "
+    "user spends line by line (spending: stated purchase patterns, lines without "
+    "one, MITA lines that do not apply). Ask only for missing_fields and what "
+    "spending marks as unknown; never re-ask what is in 'known' or 'spending'. "
+    "MITA keeps this across all future conversations. " + READ_ONLY_DISCLAIMER
 )
 
 UPDATE_DESCRIPTION = (
@@ -52,6 +64,15 @@ UPDATE_DESCRIPTION = (
     "with add_recurring_expense; then preview_monthly_budget. The currency cannot be "
     "changed once expenses are recorded, because MITA does not convert amounts. "
     + NO_MONEY_MOVEMENT
+)
+
+DESCRIBE_SPENDING = (
+    "Before the first budget, ask once, in one short message, what the user "
+    "spends on each month and how often they buy (their own amounts, e.g. fuel "
+    "€200 a month, groceries every Wednesday, coffee whenever). The user can "
+    "simply say it, by voice too. Save the patterns with save_spending_patterns "
+    "and the amounts with preview_monthly_budget budget_lines. Optional: if they "
+    "prefer to skip, MITA plans every line as a flexible budget."
 )
 
 OBLIGATIONS_FIRST = (
@@ -94,7 +115,32 @@ def known_profile(ctx) -> KnownProfileOut:
     )
 
 
-def setup_status_out(state: setup_queries.SetupState, ctx) -> SetupStatusOut:
+def spending_out(profile) -> SpendingProfileOut:
+    return SpendingProfileOut(
+        lines=[
+            SpendingLineOut(
+                category=line.key,
+                category_label=category_label(line.key),
+                source="set_by_you" if is_user_line(line.key) else "calculated_by_mita",
+                monthly_amount=optional_money(line.planned),
+                pattern_stated=line.pattern is not None,
+                spending_type=(
+                    "planned"
+                    if line.pattern is not None and line.pattern.kind == "planned"
+                    else "flexible"
+                ),
+                pattern=describe(line.pattern),
+            )
+            for line in profile.lines
+        ],
+        lines_without_pattern=profile.missing,
+        not_applicable=list(profile.not_applicable),
+    )
+
+
+def setup_status_out(
+    state: setup_queries.SetupState, ctx, profile=None
+) -> SetupStatusOut:
     notes: List[str] = []
     if state.transaction_count == 0:
         notes.append("No expenses are recorded in MITA yet.")
@@ -102,6 +148,15 @@ def setup_status_out(state: setup_queries.SetupState, ctx) -> SetupStatusOut:
         notes.append("No budget plan is saved for the current month yet.")
     if state.suggested_next_step == "ask_about_obligations":
         notes.append(OBLIGATIONS_FIRST)
+    if state.suggested_next_step == "describe_spending":
+        notes.append(DESCRIBE_SPENDING)
+    if profile is not None and profile.plan_exists and profile.missing:
+        notes.append(
+            f"MITA does not know when the user buys for {len(profile.missing)} "
+            "line(s) of this month's plan (lines_without_pattern): they are "
+            "flexible budgets with no purchase dates. Ask only if the user wants a "
+            "day-by-day plan."
+        )
     return SetupStatusOut(
         profile_complete=state.profile_complete,
         income_set=state.income_set,
@@ -118,6 +173,13 @@ def setup_status_out(state: setup_queries.SetupState, ctx) -> SetupStatusOut:
         missing_fields=state.missing_fields,
         suggested_next_step=state.suggested_next_step,
         known=known_profile(ctx),
+        spending=(
+            spending_out(profile)
+            if profile is not None
+            else SpendingProfileOut(
+                lines=[], lines_without_pattern=[], not_applicable=[]
+            )
+        ),
         notes=notes,
     )
 
@@ -156,7 +218,9 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
             state = setup_queries.setup_state(session, user_ctx)
             if not state.setup_complete:
                 analytics.emit("onboarding_started")
-            return setup_status_out(state, user_ctx)
+            return setup_status_out(
+                state, user_ctx, spending_profile(session, user_ctx)
+            )
 
         return await runtime.execute(
             "get_setup_status", PROFILE_READ, body, ctx=ctx, intent="onboarding"

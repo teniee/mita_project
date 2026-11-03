@@ -14,6 +14,7 @@ from app.mcp.tools import (
     profile,
     recurring,
     setup,
+    spending,
     transactions,
 )
 
@@ -36,6 +37,7 @@ READ_TOOLS = (
 
 WRITE_TOOLS = (
     "update_financial_profile",
+    "save_spending_patterns",
     "add_transaction",
     "add_transactions",
     "update_transaction",
@@ -53,6 +55,7 @@ PUBLISHED_TOOLS = READ_TOOLS + WRITE_TOOLS
 def register_tools(server: MCPServer, runtime: McpRuntime) -> None:
     profile.register(server, runtime)
     setup.register(server, runtime)
+    spending.register(server, runtime)
     transactions.register(server, runtime)
     budget.register(server, runtime)
     calendar.register(server, runtime)

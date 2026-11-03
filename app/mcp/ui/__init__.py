@@ -30,7 +30,7 @@ from app.mcp.config import McpSettings
 
 # v2 (2026-11-03): the redesigned calendar — a new cache key, so ChatGPT
 # fetches it instead of a template it cached for v1.
-CALENDAR_URI = "ui://mita/financial-calendar-v2.html"
+CALENDAR_URI = "ui://mita/financial-calendar-v3.html"
 CALENDAR_FILE = Path(__file__).with_name("financial_calendar.html")
 DISPLAY_MODES = ("inline", "fullscreen")
 

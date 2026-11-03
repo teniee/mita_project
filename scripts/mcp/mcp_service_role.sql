@@ -40,6 +40,12 @@ GRANT SELECT, INSERT ON goals, scheduled_expenses TO mita_mcp;
 -- SELECT too: the ORM inserts with RETURNING (server-default columns).
 GRANT SELECT, INSERT ON redistribution_events TO mita_mcp;
 
+-- How money is meant to be spent (0041-0042): which expense paid which saved
+-- payment (linked and unlinked by the transaction tools), and the user's
+-- stated spending patterns (save_spending_patterns, save_monthly_budget).
+GRANT SELECT, INSERT, DELETE ON obligation_payments TO mita_mcp;
+GRANT SELECT, INSERT, UPDATE, DELETE ON spending_patterns TO mita_mcp;
+
 -- The MCP service's own tables (0037-0040).
 GRANT SELECT, INSERT, UPDATE, DELETE ON
   mcp_oauth_clients, mcp_oauth_authorization_codes, mcp_oauth_refresh_tokens,

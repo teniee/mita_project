@@ -18,6 +18,14 @@ unallocated: plan 2,000.00. With the old layout the calendar read 52.00 on
 the 10th, 38.99 on the 15th and 51.96 on the 25th, the bills spread over
 weekdays (the phone on the 5th); reproduced in
 ``test_the_old_layout_is_what_the_owner_saw``.
+
+Since 2026-11-03 (docs/chatgpt-app/behavioral-budget.md) each saved bill has
+a plan line of its own (``"bill:<id>"``, ``line_of``) and is paid only by an
+expense recorded as that payment (``pay_bill``: ``obligation_ref``) — a
+purchase in the same category is ordinary spending. The owner described no
+purchase days, so every other line is a flexible budget: a date ahead holds
+only its bills (``planned_scheduled``); the flexible budgets' daily share is
+guidance (``planned_flexible``).
 """
 
 from __future__ import annotations
@@ -39,8 +47,9 @@ from app.services.monthly_plan_service import (
     bills_on_due_dates,
     month_calendar,
 )
+from app.services.obligation_lines import bill_key
 from tests_mcp.conftest import structured
-from tests_mcp.test_money_consistency import look
+from tests_mcp.test_money_consistency import look, obligation_ref
 
 D = Decimal
 TZ = "Europe/Sofia"
@@ -62,7 +71,47 @@ USER_LINES = {
     "my:Groceries": "50.00",
     "my:Housing": "50.00",
 }
-BILLS = ("utilities", "transportation", "other")
+BILLS = ("utilities", "transportation", "other")  # their categories
+
+
+async def line_of(connection, user, name: str) -> str:
+    """The plan line a saved payment's money is on (its own line)."""
+    oid = (
+        await connection.execute(
+            text(
+                "SELECT id FROM scheduled_expenses WHERE user_id = :u AND merchant = :n"
+            ),
+            {"u": user.id, "n": name},
+        )
+    ).scalar_one()
+    return bill_key(oid)
+
+
+async def bill_lines(connection, user) -> set:
+    oids = (
+        await connection.execute(
+            text("SELECT id FROM scheduled_expenses WHERE user_id = :u"),
+            {"u": user.id},
+        )
+    ).scalars()
+    return {bill_key(oid) for oid in oids}
+
+
+async def pay_bill(
+    mcp, token, day: int, amount: str, name: str, *, today=None, due=None
+):
+    """Record an expense AS the payment of the user's saved payment ``name``."""
+    m = mcp.at(at(today or day))
+    ref = await obligation_ref(m, token, merchant=name)
+    arguments = {
+        "amount": amount,
+        "obligation_ref": ref,
+        "date": date(2026, 11, day).isoformat(),
+        "idempotency_key": key(),
+    }
+    if due is not None:
+        arguments["obligation_due_date"] = due
+    return await call(m, token, "add_transaction", arguments)
 
 
 def at(day: int, month: int = 11) -> datetime:
@@ -331,9 +380,13 @@ async def test_the_owner_s_bills_are_planned_whole_on_their_due_dates(
         ("Laptop loan", ["2026-11-25"]),
     ]
     rows = await rows_of(connection, user)
-    assert where(rows, "utilities") == {10: D("30.00")}
-    assert where(rows, "transportation") == {15: D("270.00")}
-    assert where(rows, "other") == {25: D("70.00")}
+    phone, car, laptop = [
+        await line_of(connection, user, n) for n in ("Phone", "Car loan", "Laptop loan")
+    ]
+    assert where(rows, phone) == {10: D("30.00")}
+    assert where(rows, car) == {15: D("270.00")}
+    assert where(rows, laptop) == {25: D("70.00")}
+    assert not {c for (_d, c) in rows} & set(BILLS)  # never under the category
     totals = line_totals(rows)
     assert {k: totals[k] for k in USER_LINES} == {
         k: D(v) for k, v in USER_LINES.items()
@@ -342,16 +395,21 @@ async def test_the_owner_s_bills_are_planned_whole_on_their_due_dates(
 
     seen = await look(m, token, connection, user, month=11, today=date(2026, 11, 2))
     days = {d["date"]: d for d in seen.cal["days"]}
-    nov15 = days["2026-11-15"]
-    assert (nov15["planned_everyday"], nov15["planned"]) == ("38.99", "308.99")
-    assert days["2026-11-10"]["planned"] == "65.80"
-    assert days["2026-11-25"]["planned"] == "105.78"
-    # the reminder windows carry no money of the bills
-    for n in range(20, 25):
-        assert (
-            days[f"2026-11-{n:02d}"]["planned"]
-            == days[f"2026-11-{n:02d}"]["planned_everyday"]
-        )
+    # Each bill alone on its due date; no purchase is planned on any other
+    # date (the reminder windows included): the owner described no purchase
+    # days, so their lines and MITA's are flexible budgets.
+    scheduled = {
+        d[-2:]: x["planned_scheduled"]
+        for d, x in days.items()
+        if D(x["planned_scheduled"]) > 0
+    }
+    assert scheduled == {"10": "30.00", "15": "270.00", "25": "70.00"}
+    assert all(x["purchases"] == [] for x in days.values())
+    assert sum(D(x["planned_flexible"]) for x in days.values()) == D("1130.00")
+    kinds = {c["category"]: c["spending_type"] for c in seen.cal["categories"]}
+    assert {kinds[k] for k in USER_LINES} == {"flexible"}
+    assert kinds["transport public"] == "flexible"  # MITA's suggestion, no dates
+    assert kinds[car] == "obligation"
     summary = seen.summary
     assert (
         summary["total_planned"],
@@ -471,7 +529,9 @@ async def test_reminders_announce_a_bill_five_days_ahead_without_money(
     assert "Laptop loan 70.00 due tomorrow (2026-11-25)" in shown
     # the plan never moved
     rows = await rows_of(connection, user)
-    assert where(rows, "other") == {25: D("70.00")}
+    assert where(rows, await line_of(connection, user, "Laptop loan")) == {
+        25: D("70.00")
+    }
 
 
 async def test_paying_bills_on_their_dates_moves_nothing_and_releases_the_reserve(
@@ -481,15 +541,15 @@ async def test_paying_bills_on_their_dates_moves_nothing_and_releases_the_reserv
     before = await look(
         mcp.at(at(15)), token, connection, user, month=11, today=date(2026, 11, 15)
     )
-    await spend(mcp, token, 10, "30.00", "utilities", today=15)
-    await spend(mcp, token, 15, "270.00", "transportation")
+    await pay_bill(mcp, token, 10, "30.00", "Phone", today=15)
+    await pay_bill(mcp, token, 15, "270.00", "Car loan")
     after = await look(
         mcp.at(at(15)), token, connection, user, month=11, today=date(2026, 11, 15)
     )
     rows = await rows_of(connection, user)
     assert no_redistribution(rows)
     assert all(t == 0 for (_p, _s, _a, t) in rows.values())  # nothing re-timed
-    assert where(rows, "transportation") == {15: D("270.00")}
+    assert where(rows, await line_of(connection, user, "Car loan")) == {15: D("270.00")}
     # Spent +300, held -300: left to spend and the daily figure do not move.
     assert (
         before.summary["commitments_reserved"],
@@ -511,11 +571,11 @@ async def test_paying_bills_on_their_dates_moves_nothing_and_releases_the_reserv
     ).scalar_one()
     assert redistributed == 0
     bills = bills_by_name(after.cal)
-    assert (bills["Car loan"]["state"], bills["Car loan"]["recorded_dates"]) == (
-        "recorded",
+    assert (bills["Car loan"]["state"], bills["Car loan"]["paid_dates"]) == (
+        "paid",
         ["2026-11-15"],
     )
-    assert bills["Phone"]["state"] == "recorded"
+    assert bills["Phone"]["state"] == "paid"
     day15 = next(d for d in after.cal["days"] if d["date"] == "2026-11-15")
     assert (day15["spent"], day15["spent_everyday"], day15["state"]) == (
         "270.00",
@@ -526,26 +586,27 @@ async def test_paying_bills_on_their_dates_moves_nothing_and_releases_the_reserv
 
 async def test_a_bill_paid_early_is_counted_once_on_the_day_paid(mcp, seed, connection):
     user, token = await owner_account(mcp, seed)
-    await spend(mcp, token, 12, "270.00", "transportation", today=13)
+    await pay_bill(mcp, token, 12, "270.00", "Car loan", today=13)
     seen = await look(
         mcp.at(at(13)), token, connection, user, month=11, today=date(2026, 11, 13)
     )
     rows = await rows_of(connection, user)
-    assert where(rows, "transportation") == {12: D("270.00")}
-    assert rows[(15, "transportation")][:2] == (D("0.00"), D("0"))
-    assert rows[(12, "transportation")][3] == D("270.00")  # bill timing, not
-    assert rows[(15, "transportation")][3] == D("-270.00")  # redistribution
+    car_line = await line_of(connection, user, "Car loan")
+    assert where(rows, car_line) == {12: D("270.00")}
+    assert rows[(15, car_line)][:2] == (D("0.00"), D("0"))
+    assert rows[(12, car_line)][3] == D("270.00")  # bill timing, not
+    assert rows[(15, car_line)][3] == D("-270.00")  # redistribution
     assert no_redistribution(rows)
     car = bills_by_name(seen.cal)["Car loan"]
-    assert (car["date"], car["state"], car["recorded_dates"], car["days_until"]) == (
+    assert (car["date"], car["state"], car["paid_dates"], car["days_until"]) == (
         "2026-11-15",
-        "recorded",
+        "paid",
         ["2026-11-12"],
         2,
     )
     assert not [b for b in seen.cal["reminders"] if b["name"] == "Car loan"]
     days = {d["date"]: d for d in seen.cal["days"]}
-    assert days["2026-11-15"]["planned"] == "38.99"  # no second car loan
+    assert days["2026-11-15"]["planned_scheduled"] == "0.00"  # no second car loan
     assert seen.summary["commitments_reserved"] == "100.00"  # phone + laptop
     assert seen.summary["left_to_spend"] == "1130.00"
 
@@ -554,22 +615,23 @@ async def test_a_bill_paid_late_is_overdue_until_recorded_then_moves_with_it(
     mcp, seed, connection
 ):
     user, token = await owner_account(mcp, seed)
-    await spend(mcp, token, 10, "30.00", "utilities", today=16)
+    await pay_bill(mcp, token, 10, "30.00", "Phone", today=16)
     waiting = await calendar(mcp, token, 16)
     car = bills_by_name(waiting)["Car loan"]
-    assert (car["state"], car["recorded"], car["days_until"]) == ("overdue", "0.00", -1)
+    assert (car["state"], car["paid"], car["days_until"]) == ("overdue", "0.00", -1)
     assert [b["name"] for b in waiting["reminders"]] == ["Car loan"]
     assert waiting["summary"]["commitments_reserved"] == "340.00"  # still held
 
-    await spend(mcp, token, 17, "270.00", "transportation")
+    paid = await pay_bill(mcp, token, 17, "270.00", "Car loan")
+    assert paid["transactions"][0]["paid_obligation"]["due_date"] == "2026-11-15"
     seen = await look(
         mcp.at(at(17)), token, connection, user, month=11, today=date(2026, 11, 17)
     )
     rows = await rows_of(connection, user)
-    assert where(rows, "transportation") == {17: D("270.00")}
+    assert where(rows, await line_of(connection, user, "Car loan")) == {17: D("270.00")}
     assert no_redistribution(rows)
     car = bills_by_name(seen.cal)["Car loan"]
-    assert (car["state"], car["recorded_dates"]) == ("recorded", ["2026-11-17"])
+    assert (car["state"], car["paid_dates"]) == ("paid", ["2026-11-17"])
     day17 = next(d for d in seen.cal["days"] if d["date"] == "2026-11-17")
     assert day17["state"] != "over"
     assert seen.summary["commitments_reserved"] == "70.00"
@@ -577,10 +639,14 @@ async def test_a_bill_paid_late_is_overdue_until_recorded_then_moves_with_it(
 
 async def test_a_partly_paid_bill_keeps_the_rest_held(mcp, seed, connection):
     user, token = await owner_account(mcp, seed)
-    await spend(mcp, token, 15, "100.00", "transportation")
+    await pay_bill(mcp, token, 15, "100.00", "Car loan")
     today = await calendar(mcp, token, 15)
     car = bills_by_name(today)["Car loan"]
-    assert (car["state"], car["recorded"]) == ("due_today", "100.00")
+    assert (car["state"], car["paid"], car["outstanding"]) == (
+        "due_today",
+        "100.00",
+        "170.00",
+    )
     assert today["summary"]["commitments_reserved"] == "270.00"  # 170 + 30 + 70
     shown = (
         (
@@ -591,20 +657,23 @@ async def test_a_partly_paid_bill_keeps_the_rest_held(mcp, seed, connection):
         .content[0]
         .text
     )
-    assert "Car loan 270.00 due today, 100.00 recorded, 170.00 not yet" in shown
+    assert "Car loan 270.00 due today, 100.00 paid, 170.00 not yet" in shown
     later = await calendar(mcp, token, 18)
     assert bills_by_name(later)["Car loan"]["state"] == "overdue"
 
-    await spend(mcp, token, 20, "170.00", "transportation")
+    await pay_bill(mcp, token, 20, "170.00", "Car loan")
     seen = await look(
         mcp.at(at(20)), token, connection, user, month=11, today=date(2026, 11, 20)
     )
     rows = await rows_of(connection, user)
-    assert where(rows, "transportation") == {15: D("100.00"), 20: D("170.00")}
+    assert where(rows, await line_of(connection, user, "Car loan")) == {
+        15: D("100.00"),
+        20: D("170.00"),
+    }
     assert no_redistribution(rows)
     car = bills_by_name(seen.cal)["Car loan"]
-    assert (car["state"], car["recorded_dates"]) == (
-        "recorded",
+    assert (car["state"], car["paid_dates"]) == (
+        "paid",
         ["2026-11-15", "2026-11-20"],
     )
 
@@ -612,19 +681,21 @@ async def test_a_partly_paid_bill_keeps_the_rest_held(mcp, seed, connection):
 async def test_spending_beyond_a_bill_line_is_overspending_as_before(
     mcp, seed, connection
 ):
-    """The car loan's €270 line receives €300: €30 is beyond the line's
-    month and is covered from MITA's everyday lines ahead; no bill line, user
-    line or savings line gives."""
+    """€300 recorded as the €270 car loan's payment: €30 is beyond the bill
+    and is covered from MITA's everyday lines ahead; no bill line, user line
+    or savings line gives."""
     user, token = await owner_account(mcp, seed)
-    await spend(mcp, token, 15, "300.00", "transportation")
+    out = await pay_bill(mcp, token, 15, "300.00", "Car loan")
+    assert any("30.00 paid beyond it" in n for n in out["notes"])
     await look(
         mcp.at(at(15)), token, connection, user, month=11, today=date(2026, 11, 15)
     )
     rows = await rows_of(connection, user)
-    moved_in = rows[(15, "transportation")]
+    moved_in = rows[(15, await line_of(connection, user, "Car loan"))]
     assert (moved_in[0], moved_in[2]) == (D("300.00"), D("30.00"))
     givers = {c for (_d, c), (_p, _s, a, _t) in rows.items() if a < 0}
-    assert givers and not givers & (set(BILLS) | set(USER_LINES))
+    lines = await bill_lines(connection, user)
+    assert givers and not givers & (lines | set(USER_LINES))
     assert not any(is_set_aside(c) for c in givers)
 
 
@@ -640,36 +711,39 @@ async def test_everyday_overspending_still_rebalances_but_never_from_bills_or_th
     rows = await rows_of(connection, user)
     givers = {c for (_d, c), (_p, _s, a, _t) in rows.items() if a < 0}
     assert givers  # MITA's everyday lines covered it, as before
-    assert not givers & (set(BILLS) | set(USER_LINES))
+    assert not givers & (await bill_lines(connection, user) | set(USER_LINES))
     totals = line_totals(rows)
     assert {k: totals[k] for k in USER_LINES} == {
         k: D(v) for k, v in USER_LINES.items()
     }
-    for bill in BILLS:
-        assert where(rows, bill) == where(before, bill)
+    for bill in await bill_lines(connection, user):
+        assert where(rows, bill) == where(before, bill) != {}
     assert seen.summary["commitments_reserved"] == "370.00"
 
 
 async def test_an_unrelated_expense_in_a_bill_s_category_counts_only_its_amount(
     mcp, seed, connection
 ):
-    """MITA matches by category, never by amount: a €15 taxi under Transport
-    counts €15 toward the car loan — the bill is not shown as recorded and its
-    reminders continue (no expense is linked to a saved payment)."""
+    """A €15 taxi under Transport is not the car loan (2026-11-03): it pays
+    none of it. Until then MITA matched by category and counted €15 toward
+    the loan (355.00 held); now the whole loan stays held, the taxi is
+    ordinary spending, and the result says the loan is still unpaid so
+    ChatGPT can ask the user — MITA never links it by itself."""
     user, token = await owner_account(mcp, seed)
-    await spend(mcp, token, 5, "15.00", "transportation", today=12)
+    out = await spend(mcp, token, 5, "15.00", "transportation", today=12)
+    assert any(
+        "Car loan (270.00 due 2026-11-15)" in n and "does not pay it" in n
+        for n in out["notes"]
+    )
+    assert out["transactions"][0]["paid_obligation"] is None
     cal = await calendar(mcp, token, 12)
     car = bills_by_name(cal)["Car loan"]
-    assert (car["state"], car["recorded"], car["recorded_dates"]) == (
-        "upcoming",
-        "15.00",
-        ["2026-11-05"],
-    )
+    assert (car["state"], car["paid"], car["paid_dates"]) == ("upcoming", "0.00", [])
     assert "Car loan" in [b["name"] for b in cal["reminders"]]
-    assert cal["summary"]["commitments_reserved"] == "355.00"  # 255 + 30 + 70
+    assert cal["summary"]["commitments_reserved"] == "370.00"  # 270 + 30 + 70
     rows = await rows_of(connection, user)
-    assert where(rows, "transportation") == {5: D("15.00"), 15: D("255.00")}
-    assert no_redistribution(rows)
+    assert where(rows, await line_of(connection, user, "Car loan")) == {15: D("270.00")}
+    assert rows[(5, "transportation")][1] == D("15.00")  # Transport spending
 
 
 async def test_two_bills_on_one_day_and_two_in_one_category(mcp, seed, connection):
@@ -682,8 +756,13 @@ async def test_two_bills_on_one_day_and_two_in_one_category(mcp, seed, connectio
         ),
     )
     rows = await rows_of(connection, user)
-    assert where(rows, "subscriptions") == {15: D("25.00")}
-    assert where(rows, "other") == {5: D("8.00"), 25: D("70.00")}
+    assert where(rows, await line_of(connection, user, "Gym")) == {15: D("25.00")}
+    assert where(rows, await line_of(connection, user, "Phone insurance")) == {
+        5: D("8.00")
+    }
+    assert where(rows, await line_of(connection, user, "Laptop loan")) == {
+        25: D("70.00")
+    }
     cal = await calendar(mcp, token, 2)
     on15 = [b for b in cal["bills"] if b["date"] == "2026-11-15"]
     assert sorted((b["name"], b["amount"]) for b in on15) == [
@@ -692,11 +771,11 @@ async def test_two_bills_on_one_day_and_two_in_one_category(mcp, seed, connectio
     ]
     day15 = next(d for d in cal["days"] if d["date"] == "2026-11-15")
     assert D(day15["planned"]) - D(day15["planned_everyday"]) == D("295.00")
-    # paying the small one does not mark the laptop loan as recorded
-    await spend(mcp, token, 5, "8.00", "other", today=6)
+    # paying the small one does not mark the laptop loan as paid
+    await pay_bill(mcp, token, 5, "8.00", "Phone insurance", today=6)
     cal = await calendar(mcp, token, 6)
-    states = {b["name"]: (b["state"], b["recorded"]) for b in cal["bills"]}
-    assert states["Phone insurance"] == ("recorded", "8.00")
+    states = {b["name"]: (b["state"], b["paid"]) for b in cal["bills"]}
+    assert states["Phone insurance"] == ("paid", "8.00")
     assert states["Laptop loan"] == ("later", "0.00")
 
 
@@ -731,18 +810,23 @@ async def test_weekly_and_one_time_bills_sit_on_their_dates(mcp, seed, connectio
     preview = await call(m, token, "preview_monthly_budget", {"month": "2026-11"})
     await call(m, token, "save_monthly_budget", {"draft_token": preview["draft_token"]})
     rows = await rows_of(connection, user)
-    assert where(rows, "other") == {
+    cleaner_line = await line_of(connection, user, "Cleaner")
+    assert where(rows, cleaner_line) == {
         6: D("20.00"),
         13: D("20.00"),
         20: D("20.00"),
         27: D("20.00"),
     }
-    assert where(rows, "transportation") == {18: D("120.00")}
-    # one week's payment, recorded on the 14th, settles the oldest unpaid
-    # week (the 6th): that week's money moves, nothing else
-    await spend(mcp, token, 14, "20.00", "other", today=14)
+    assert where(rows, await line_of(connection, user, "Car service")) == {
+        18: D("120.00")
+    }
+    # one week's payment, recorded on the 14th, pays the oldest unpaid week
+    # (the 6th, MITA's default when the user names no date): that week's
+    # money moves, nothing else
+    out = await pay_bill(mcp, token, 14, "20.00", "Cleaner")
+    assert out["transactions"][0]["paid_obligation"]["due_date"] == "2026-11-06"
     rows = await rows_of(connection, user)
-    assert where(rows, "other") == {
+    assert where(rows, cleaner_line) == {
         13: D("20.00"),
         14: D("20.00"),
         20: D("20.00"),
@@ -752,7 +836,7 @@ async def test_weekly_and_one_time_bills_sit_on_their_dates(mcp, seed, connectio
     cal = await calendar(mcp, token, 14)
     cleaner = [(b["date"], b["state"]) for b in cal["bills"] if b["name"] == "Cleaner"]
     assert cleaner == [
-        ("2026-11-06", "recorded"),  # the oldest unpaid one comes first
+        ("2026-11-06", "paid"),  # the oldest unpaid one comes first
         ("2026-11-13", "overdue"),
         ("2026-11-20", "later"),
         ("2026-11-27", "later"),
@@ -765,18 +849,28 @@ async def test_a_payment_recorded_just_after_midnight_in_sofia_is_on_time(
     """22:30 UTC on 14 Nov is 00:30 on 15 Nov in Sofia (EET, UTC+2): the
     car loan paid then is on its due date — nothing moves."""
     user, token = await owner_account(mcp, seed)
-    await seed.txn(
+    txn = await seed.txn(
         user,
         "270.00",
         "transportation",
         datetime(2026, 11, 14, 22, 30, tzinfo=timezone.utc),
     )
+    await connection.execute(  # the user said it was the car loan's payment
+        text(
+            "INSERT INTO obligation_payments (id, user_id, scheduled_expense_id, "
+            "due_date, transaction_id) SELECT gen_random_uuid(), :u, id, "
+            "'2026-11-15', :t FROM scheduled_expenses WHERE user_id = :u "
+            "AND merchant = 'Car loan'"
+        ),
+        {"u": user.id, "t": txn.id},
+    )
     await spend(mcp, token, 15, "1.00", "dining")  # a ledger write rebuilds the month
     rows = await rows_of(connection, user)
-    assert rows[(15, "transportation")][:2] == (D("270.00"), D("270.00"))
+    car_line = await line_of(connection, user, "Car loan")
+    assert rows[(15, car_line)][:2] == (D("270.00"), D("270.00"))
     assert all(t == 0 for (_p, _s, _a, t) in rows.values())
     cal = await calendar(mcp, token, 15)
-    assert bills_by_name(cal)["Car loan"]["recorded_dates"] == ["2026-11-15"]
+    assert bills_by_name(cal)["Car loan"]["paid_dates"] == ["2026-11-15"]
 
 
 async def test_next_month_and_a_reminder_across_the_month_end(mcp, seed, connection):
@@ -787,10 +881,14 @@ async def test_next_month_and_a_reminder_across_the_month_end(mcp, seed, connect
         months=("2026-11", "2026-12"),
     )
     december = await rows_of(connection, user, month=12)
-    assert where(december, "utilities") == {10: D("30.00")}
-    assert where(december, "transportation") == {15: D("270.00")}
-    assert where(december, "other") == {25: D("70.00")}
-    assert where(december, "rent") == {1: D("300.00")}
+    assert where(december, await line_of(connection, user, "Phone")) == {10: D("30.00")}
+    assert where(december, await line_of(connection, user, "Car loan")) == {
+        15: D("270.00")
+    }
+    assert where(december, await line_of(connection, user, "Laptop loan")) == {
+        25: D("70.00")
+    }
+    assert where(december, await line_of(connection, user, "Rent")) == {1: D("300.00")}
     next_month = await calendar(mcp, token, 28, month=12)
     assert [(b["name"], b["state"]) for b in next_month["bills"]] == [
         ("Rent", "upcoming"),
@@ -840,10 +938,31 @@ async def test_the_mobile_rollover_puts_bills_on_their_dates(
     result = await connection.run_sync(materialize)
     assert (result.created, result.source) == (True, "rollover")
     december = await rows_of(connection, user, month=12)
-    assert where(december, "utilities") == {10: D("30.00")}
-    assert where(december, "transportation") == {15: D("270.00")}
-    assert where(december, "other") == {25: D("70.00")}
+    assert where(december, await line_of(connection, user, "Phone")) == {10: D("30.00")}
+    assert where(december, await line_of(connection, user, "Car loan")) == {
+        15: D("270.00")
+    }
+    assert where(december, await line_of(connection, user, "Laptop loan")) == {
+        25: D("70.00")
+    }
     assert sum(line_totals(december).values()) == D("2000.00")
+    # The new month keeps how the money is spent (flexible lines over all 31
+    # days, not the weekdays November happened to have), not a day count.
+    assert len(where(december, "my:Cigarettes")) == 31
+    kinds = (
+        (
+            await connection.execute(
+                text(
+                    "SELECT DISTINCT plan_json->>'_mita_line_kind_v1' FROM daily_plan "
+                    "WHERE user_id = :u AND date >= '2026-12-01' AND goal_id IS NULL"
+                ),
+                {"u": user.id},
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert set(kinds) == {"obligation", "flexible", "set_aside"}
     await look(
         mcp.at(at(28)), token, connection, user, month=12, today=date(2026, 11, 28)
     )
@@ -856,12 +975,17 @@ async def test_a_plan_saved_before_due_dates_is_corrected_only_when_the_user_sav
     a bill already moves only that line's money; a new preview says that
     saving changes only where the bills sit, and saving puts them there."""
     user, token = await owner_account(mcp, seed)
-    # Re-lay November as the old engine saved it: the loans spread over the
-    # weekdays, the phone on the 5th.
+    # Re-lay November as the old engine saved it: the bills under their
+    # categories, the loans spread over the weekdays, the phone on the 5th,
+    # and no line kinds (a plan saved before 2.7.0).
+    await connection.execute(
+        text("DELETE FROM daily_plan WHERE user_id = :u AND category LIKE 'bill:%'"),
+        {"u": user.id},
+    )
     await connection.execute(
         text(
-            "DELETE FROM daily_plan WHERE user_id = :u AND category IN "
-            "('utilities', 'transportation', 'other')"
+            "UPDATE daily_plan SET plan_json = NULLIF(plan_json - "
+            "'_mita_line_kind_v1', '{}'::jsonb) WHERE user_id = :u"
         ),
         {"u": user.id},
     )
@@ -873,15 +997,15 @@ async def test_a_plan_saved_before_due_dates_is_corrected_only_when_the_user_sav
             old[(d, category)] = D(cents + (1 if i < rest else 0)) / 100
     for (d, category), amount in old.items():
         await seed.plan(user, date(2026, 11, d), {category: str(amount)})
-    await spend(mcp, token, 15, "270.00", "transportation", today=16)
+    await pay_bill(mcp, token, 15, "270.00", "Car loan", today=16)
     rows = await rows_of(connection, user)
-    assert no_redistribution(rows)  # paid in full from its own line
+    assert no_redistribution(rows)  # paid in full from its own line's money
     assert sum(where(rows, "transportation").values()) == D("270.00")
     preview = await call(
         mcp.at(at(16)), token, "preview_monthly_budget", {"month": "2026-11"}
     )
-    assert preview["changes"] == []
-    assert any("No amount differs" in w for w in preview["warnings"])
+    assert preview["changes"] == []  # same amounts, now on lines of their own
+    assert any("a line of its own" in w for w in preview["warnings"])
     await call(
         mcp.at(at(16)),
         token,
@@ -889,9 +1013,13 @@ async def test_a_plan_saved_before_due_dates_is_corrected_only_when_the_user_sav
         {"draft_token": preview["draft_token"]},
     )
     rows = await rows_of(connection, user)
-    assert where(rows, "utilities") == {10: D("30.00")}
-    assert where(rows, "transportation") == {15: D("270.00")}  # paid on the 15th
-    assert where(rows, "other") == {25: D("70.00")}
+    assert where(rows, await line_of(connection, user, "Phone")) == {10: D("30.00")}
+    car = await line_of(connection, user, "Car loan")
+    assert where(rows, car) == {15: D("270.00")}  # paid on the 15th
+    assert where(rows, await line_of(connection, user, "Laptop loan")) == {
+        25: D("70.00")
+    }
+    assert not {c for (_d, c) in rows} & set(BILLS)
     totals = line_totals(rows)
     assert {k: totals[k] for k in USER_LINES} == {
         k: D(v) for k, v in USER_LINES.items()

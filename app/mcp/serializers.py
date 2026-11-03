@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import hashlib
 from decimal import ROUND_HALF_UP, Decimal
-from typing import List, Optional, Sequence
+from typing import List, Mapping, Optional, Sequence
 
 from app.mcp.categories import goal_label
 from app.mcp.categories import label as category_label
@@ -25,12 +25,14 @@ from app.mcp.schemas import (
     CalendarDayOut,
     CalendarLineOut,
     CalendarMonthOut,
+    CalendarPurchaseOut,
     CalendarSummaryOut,
     CalendarViewOut,
     CategoryBudgetOut,
     CategoryRiskOut,
     CategorySpendOut,
     DayBudgetOut,
+    DueThisMonthOut,
     FinancialSummaryOut,
     ForecastOut,
     GoalOut,
@@ -44,6 +46,7 @@ from app.mcp.schemas import (
     TransactionOut,
     TransactionsOut,
 )
+from app.services.obligation_lines import is_bill_key
 
 CENT = Decimal("0.01")
 TENTH = Decimal("0.1")
@@ -347,6 +350,8 @@ def forecast_out(
                 days_until_exhausted=c.days_until_exhausted,
             )
             for c in result.categories_at_risk
+            # a bill paid on its due date is not spending fast
+            if not is_bill_key(c.category)
         ],
         notes=_currency_notes(ctx, others),
     )
@@ -418,15 +423,25 @@ def goals_out(ctx: UserContext, goals: Sequence[GoalView]) -> GoalsOut:
     return GoalsOut(currency=ctx.currency, goals=items, notes=notes)
 
 
-def recurring_out(ctx: UserContext, view: RecurringView) -> RecurringOut:
+def recurring_out(ctx: UserContext, view: RecurringView, keys) -> RecurringOut:
     def scheduled(item) -> ScheduledExpenseOut:
         return ScheduledExpenseOut(
+            obligation_ref=keys.obligation_ref(ctx.user_id, item.obligation_id),
             category=item.category,
             category_label=category_label(item.category),
             amount=money(item.amount),
             merchant=item.merchant,
             due_date=item.next_date,
             recurrence=item.recurrence,
+            due_this_month=[
+                DueThisMonthOut(
+                    due_date=due.day,
+                    amount=money(due.amount),
+                    paid=money(due.paid),
+                    outstanding=money(max(ZERO, due.amount - due.paid)),
+                )
+                for due in item.due_this_month
+            ],
         )
 
     return RecurringOut(
@@ -450,7 +465,9 @@ def recurring_out(ctx: UserContext, view: RecurringView) -> RecurringOut:
         inferred=[],
         notes=[
             "Only expenses the user scheduled or marked as recurring are listed. "
-            "MITA does not detect subscriptions automatically."
+            "MITA does not detect subscriptions automatically.",
+            "A saved payment counts as paid only through expenses recorded with "
+            "its obligation_ref; MITA never matches it by category or amount.",
         ],
     )
 
@@ -470,9 +487,9 @@ CALENDAR_METHOD = (
     "figure: an average for each remaining day, not a budget for a particular date."
 )
 NOTE_COMMITMENTS_RESERVED = (
-    "{amount} {currency} is held for bills not recorded as paid yet; it is not part of "
-    "left_to_spend or average_per_day. Recording a bill as an expense releases what "
-    "it does not use."
+    "{amount} {currency} is held for bills not paid in MITA yet; it is not part of "
+    "left_to_spend or average_per_day. Only an expense recorded as paying a bill "
+    "(obligation_ref) releases it — other spending in the same category does not."
 )
 NOTE_BILLS_OUTSIDE_PLAN = (
     "{count} saved payment(s) this month fall on a category with no money in this "
@@ -546,6 +563,12 @@ def _calendar_notes(ctx: UserContext, cal: CalendarMonth) -> List[str]:
     return notes + _currency_notes(ctx, cal.other_currencies)
 
 
+def _purchase_out(p) -> CalendarPurchaseOut:
+    return CalendarPurchaseOut(
+        category=p.line, date=p.day, planned=money(p.planned), spent=money(p.spent)
+    )
+
+
 def _day_out(day) -> CalendarDayOut:
     begun = day.kind != "future"
     return CalendarDayOut(
@@ -558,14 +581,46 @@ def _day_out(day) -> CalendarDayOut:
         spent=money(day.spent) if begun else None,
         spent_everyday=money(day.spent_everyday) if begun else None,
         everyday_left=optional_money(day.everyday_left),
+        planned_scheduled=money(day.planned_scheduled),
+        planned_flexible=money(day.planned_flexible),
+        purchases=[_purchase_out(p) for p in day.purchases],
     )
 
 
-def _bill_out(bill) -> CalendarBillOut:
+def _line_out(line) -> CalendarLineOut:
+    per_day, per_week = line.guidance()
+    return CalendarLineOut(
+        category=line.key,
+        category_label=line.label,
+        category_codes=list(line.codes),
+        group=line.group,  # type: ignore[arg-type]
+        planned=money(line.planned),
+        spent=money(line.spent),
+        remaining=money(line.remaining),
+        source=line.source,  # type: ignore[arg-type]
+        replaces=list(line.replaces),
+        spending_type=line.spending_type,  # type: ignore[arg-type]
+        pattern=line.pattern,
+        purchases=[_purchase_out(p) for p in line.purchases],
+        next_purchase=(
+            _purchase_out(line.next_purchase) if line.next_purchase else None
+        ),
+        left_per_day=optional_money(per_day),
+        left_per_day_rounded=(
+            str(per_day.quantize(Decimal("1"), ROUND_HALF_UP))
+            if per_day is not None
+            else None
+        ),
+        left_per_week=optional_money(per_week),
+    )
+
+
+def _bill_out(bill, refs: Optional[Mapping] = None) -> CalendarBillOut:
     occurrence = bill.occurrence
     return CalendarBillOut(
         date=occurrence.day,
         name=occurrence.merchant,
+        obligation_ref=(refs or {}).get(occurrence.obligation_id),
         category=occurrence.category,
         category_label=category_label(occurrence.category),
         amount=money(occurrence.amount),
@@ -573,13 +628,27 @@ def _bill_out(bill) -> CalendarBillOut:
         in_plan=bill.in_plan,
         state=bill.state,  # type: ignore[arg-type]
         days_until=bill.days_until,
-        recorded=money(bill.recorded),
-        recorded_dates=list(bill.recorded_on),
+        paid=money(bill.paid),
+        outstanding=money(bill.outstanding),
+        paid_dates=list(bill.paid_on),
         reminder_from=bill.reminder_from,
     )
 
 
-def calendar_month_out(ctx: UserContext, cal: CalendarMonth) -> CalendarMonthOut:
+def obligation_refs(keys, ctx: UserContext, cal: CalendarMonth) -> dict:
+    """``{saved payment id: its ob_ ref}`` for every bill the month shows."""
+    return {
+        bill.occurrence.obligation_id: keys.obligation_ref(
+            ctx.user_id, bill.occurrence.obligation_id
+        )
+        for bill in list(cal.bills) + list(cal.reminders)
+        if bill.occurrence.obligation_id is not None
+    }
+
+
+def calendar_month_out(
+    ctx: UserContext, cal: CalendarMonth, refs: Optional[Mapping] = None
+) -> CalendarMonthOut:
     return CalendarMonthOut(
         year=cal.year,
         month=cal.month,
@@ -590,35 +659,24 @@ def calendar_month_out(ctx: UserContext, cal: CalendarMonth) -> CalendarMonthOut
         plan_status="generated" if cal.plan_generated else "not_generated",
         method=CALENDAR_METHOD,
         summary=calendar_summary_out(cal),
-        categories=[
-            CalendarLineOut(
-                category=line.key,
-                category_label=line.label,
-                category_codes=list(line.codes),
-                group=line.group,  # type: ignore[arg-type]
-                planned=money(line.planned),
-                spent=money(line.spent),
-                remaining=money(line.remaining),
-                source=line.source,  # type: ignore[arg-type]
-                replaces=list(line.replaces),
-            )
-            for line in cal.lines
-        ],
+        categories=[_line_out(line) for line in cal.lines],
         days=[_day_out(day) for day in cal.days],
-        bills=[_bill_out(bill) for bill in cal.bills],
-        reminders=[_bill_out(bill) for bill in cal.reminders],
+        bills=[_bill_out(bill, refs) for bill in cal.bills],
+        reminders=[_bill_out(bill, refs) for bill in cal.reminders],
         reminder_days=REMINDER_DAYS,
         notes=_calendar_notes(ctx, cal),
     )
 
 
-def calendar_widget_payload(ctx: UserContext, cal: CalendarMonth) -> dict:
+def calendar_widget_payload(
+    ctx: UserContext, cal: CalendarMonth, refs: Optional[Mapping] = None
+) -> dict:
     """Everything the calendar component draws, for the tool result's
     ``_meta`` (delivered to the component only, never to the model): the
     month as ``get_calendar_month`` returns it plus each date's lines."""
     return {
         "version": 1,
-        "month": calendar_month_out(ctx, cal).model_dump(mode="json"),
+        "month": calendar_month_out(ctx, cal, refs).model_dump(mode="json"),
         "day_lines": {
             day.day.isoformat(): [
                 [line.line, money(line.planned), money(line.spent)]
@@ -639,6 +697,7 @@ def calendar_view_out(
     category: Optional[str],
     shown: str,
     notes: Sequence[str] = (),
+    refs: Optional[Mapping] = None,
 ) -> CalendarViewOut:
     return CalendarViewOut(
         year=cal.year,
@@ -649,7 +708,7 @@ def calendar_view_out(
         focus_date=focus_date,
         category=category,
         summary=calendar_summary_out(cal),
-        reminders=[_bill_out(bill) for bill in cal.reminders],
+        reminders=[_bill_out(bill, refs) for bill in cal.reminders],
         shown=shown,
         notes=list(notes) + _calendar_notes(ctx, cal),
     )

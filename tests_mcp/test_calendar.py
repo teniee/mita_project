@@ -286,6 +286,8 @@ async def test_saved_payments_fall_on_their_dates_and_say_whether_the_plan_has_t
 ):
     user = await seed_month(seed)
     out = structured(await mcp.at(NOW).call(mcp.token(user), "get_calendar_month"))
+    refs = [bill.pop("obligation_ref") for bill in out["bills"]]
+    assert all(r.startswith("ob_") for r in refs) and len(set(refs)) == 2
     assert out["bills"] == [
         {
             "date": "2026-10-27",
@@ -297,8 +299,9 @@ async def test_saved_payments_fall_on_their_dates_and_say_whether_the_plan_has_t
             "in_plan": False,
             "state": "later",  # today is 19 Oct: more than five days ahead
             "days_until": 8,
-            "recorded": "0.00",
-            "recorded_dates": [],
+            "paid": "0.00",
+            "outstanding": "30.00",
+            "paid_dates": [],
             "reminder_from": "2026-10-22",
         },
         {
@@ -311,14 +314,15 @@ async def test_saved_payments_fall_on_their_dates_and_say_whether_the_plan_has_t
             "in_plan": True,
             "state": "later",
             "days_until": 11,
-            "recorded": "0.00",
-            "recorded_dates": [],
+            "paid": "0.00",
+            "outstanding": "60.00",
+            "paid_dates": [],
             "reminder_from": "2026-10-25",
         },
     ]
     assert out["reminders"] == [] and out["reminder_days"] == 5
     notes = " ".join(out["notes"])
-    assert "210.00 EUR is held for bills not recorded as paid yet" in notes
+    assert "210.00 EUR is held for bills not paid in MITA yet" in notes
     assert "1 saved payment(s) this month fall on a category with no money" in notes
 
 

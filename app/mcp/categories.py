@@ -31,6 +31,7 @@ from app.services.core.engine.user_budget_lines import (
     is_user_line,
     label_of,
 )
+from app.services.obligation_lines import is_bill_key
 
 UNCATEGORIZED = "uncategorized"
 
@@ -132,14 +133,22 @@ LABEL_RULE = (
 )
 
 
-def label(code: Optional[str]) -> str:
+# A saved regular payment's own plan line whose name is not at hand.
+FIXED_PAYMENT_LABEL = "Fixed payment"
+
+
+def label(code: Optional[str], names: Optional[Mapping[str, str]] = None) -> str:
     """The display name of a stored category code (plan or expense vocabulary).
 
-    Codes outside both tables (older onboarding names, custom rows) get a
-    deterministic fallback: underscores as spaces, first letter capitalised.
+    A saved regular payment's own line (``"bill:<id>"``) is named as the user
+    named the payment (``names``: ``obligation_names``). Codes outside both
+    tables (older onboarding names, custom rows) get a deterministic
+    fallback: underscores as spaces, first letter capitalised.
     """
     if not code or code == UNCATEGORIZED:
         return "Uncategorized"
+    if is_bill_key(code):
+        return (names or {}).get(code) or FIXED_PAYMENT_LABEL
     if is_user_line(code):
         return label_of(code)  # the user's own words (F-11)
     found = EXPENSE_LABELS.get(code) or PLAN_LABELS.get(code)
@@ -162,6 +171,8 @@ def source_of(code: str) -> str:
     saved payments the plan was built with)."""
     if is_user_line(code):
         return SET_BY_YOU
+    if is_bill_key(code):
+        return FIXED_PAYMENT
     if is_set_aside(code):
         return SAVINGS
     if code in ENGINE_BUCKETS:
@@ -195,14 +206,17 @@ def line_key(code: str, plan_buckets: Set[str]) -> str:
 
 
 def group_lines(
-    planned: Mapping[str, Decimal], spent: Mapping[str, Decimal]
+    planned: Mapping[str, Decimal],
+    spent: Mapping[str, Decimal],
+    names: Optional[Mapping[str, str]] = None,
 ) -> List[Tuple[str, str, List[str], Decimal, Decimal]]:
     """Combine per-category plan and spend into display lines.
 
     Returns ``(key, label, codes, planned, spent)`` per line. The figures are
     sums of the stored ones; nothing is estimated or moved. If two different
     lines would still carry the same label (only possible with uncommon stored
-    names), the code is appended to keep them apart.
+    names), the code is appended to keep them apart. Saved payments named
+    alike are told apart by ``obligations.obligation_names``.
     """
     buckets = set(planned)
     members: Dict[str, Set[str]] = defaultdict(set)
@@ -210,12 +224,12 @@ def group_lines(
         members[line_key(code, buckets)].add(code)
     by_label: Dict[str, List[str]] = defaultdict(list)
     for key in members:
-        by_label[label(key)].append(key)
+        by_label[label(key, names)].append(key)
     lines = []
     for key, codes in members.items():
-        name = label(key)
+        name = label(key, names)
         if len(by_label[name]) > 1:
-            name = f"{name} ({key})"
+            name = f"{name} ({key})" if not is_bill_key(key) else name
         lines.append(
             (
                 key,

@@ -70,13 +70,13 @@ async def test_racing_identical_calls_record_one_expense(committed_user, monkeyp
     real_insert = writes_module.insert
     calls = []
 
-    def slow_insert(db, rows):
+    def slow_insert(db, rows, **kwargs):
         # Hold the first transaction open AFTER it claimed the key: a
         # database-side sleep yields the event loop, so the twin call runs,
         # finds no committed record and must block on the key's primary key.
         calls.append(1)
         db.execute(text("SELECT pg_sleep(0.4)"))
-        real_insert(db, rows)
+        real_insert(db, rows, **kwargs)
 
     monkeypatch.setattr(writes_module, "insert", slow_insert)
     service = build_service(

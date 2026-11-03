@@ -148,9 +148,18 @@ async def test_fuel_200_is_kept_exactly_and_takes_mitas_fuel_line(
             "category": "my:Fuel",
             "category_label": "Fuel",
             "amount": "200.00",
-            "layout": "spread",
             "source": "set_by_you",
             "replaces": ["transport gas"],
+            # No purchase pattern stated: a flexible budget, no invented dates
+            # (October has 31 days: 200.00 / 31 = 6.45).
+            "spending_type": "flexible",
+            "pattern": "flexible (no purchase dates)",
+            "pattern_source": "mita_default",
+            "purchases": [],
+            "purchase_dates_stated": None,
+            "per_day": "6.45",
+            "per_day_rounded": "6",
+            "typical_amount": None,
         }
     ]
     mita = by_source(draft, "calculated_by_mita")
@@ -411,8 +420,13 @@ async def test_a_user_line_is_never_held_as_a_bill(m, person):
     assert forecast["commitments_reserved"] == "340.00"  # the rent payment only
     calendar = structured(await m.call(token, "get_calendar_month", {}))
     groups = {line["category"]: line["group"] for line in calendar["categories"]}
+    labels = {
+        line["category"]: line["category_label"] for line in calendar["categories"]
+    }
     assert groups["my:Cigarettes"] == "everyday"
-    assert groups["rent"] == "commitment"
+    # The rent payment has a line of its own, named as the user named it.
+    (rent,) = [c for c in groups if c.startswith("bill:")]
+    assert groups[rent] == "commitment" and labels[rent] == "Rent"
     # One safe daily figure, from the persisted plan.
     assert calendar["summary"]["average_per_day"] == forecast["safe_daily_limit"]
     assert calendar["summary"]["commitments_reserved"] == "340.00"

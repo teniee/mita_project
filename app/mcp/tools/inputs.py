@@ -9,10 +9,11 @@ rounded silently; NaN and Infinity are refused.
 
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
-from typing import Annotated, Literal, Optional
+from typing import Annotated, List, Literal, Optional
 
-from pydantic import Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.financial_constants import FinancialConstants
 
@@ -93,3 +94,98 @@ EntryMethod = Annotated[
         )
     ),
 ]
+
+
+# --- how the user buys for a budget line (spending patterns) ------------------
+
+WEEKDAY_NAMES = (
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+)
+
+PATTERN_LINE_HELP = (
+    "The budget line: one of the user's own lines by name or 'my:' id ('Groceries', "
+    "'my:Fuel'), or one of MITA's lines by code or name ('groceries', 'transport "
+    "public', 'Medical insurance')."
+)
+PATTERN_KIND_HELP = (
+    "planned: the user buys on known days (groceries every Wednesday) — MITA "
+    "splits the line's monthly amount over those real dates; flexible: no fixed "
+    "purchase days (coffee, cigarettes, walks) — a monthly limit with daily "
+    "guidance, never invented purchases; not_applicable: one of MITA's lines the "
+    "user says they do not have (no medical insurance, no public transport) — "
+    "MITA leaves it out of the plan. Only what the user said; never guess."
+)
+FREQUENCY_HELP = (
+    "For planned: daily; weekly (one weekday) or weekdays (several, e.g. Mon-Fri) "
+    "with weekdays; biweekly with next_date; times_per_month with times_per_month "
+    "(weekdays optional); monthly (one day) or dates (several) with days_of_month."
+)
+
+
+class SpendingPatternIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    line: Annotated[
+        str, Field(min_length=1, max_length=64, description=PATTERN_LINE_HELP)
+    ]
+    kind: Annotated[
+        Literal["planned", "flexible", "not_applicable"],
+        Field(description=PATTERN_KIND_HELP),
+    ]
+    frequency: Annotated[
+        Optional[
+            Literal[
+                "daily",
+                "weekly",
+                "weekdays",
+                "biweekly",
+                "times_per_month",
+                "monthly",
+                "dates",
+            ]
+        ],
+        Field(description=FREQUENCY_HELP),
+    ] = None
+    weekdays: Annotated[
+        Optional[List[Literal[WEEKDAY_NAMES]]],  # type: ignore[valid-type]
+        Field(max_length=7, description="Days of the week the purchases happen."),
+    ] = None
+    days_of_month: Annotated[
+        Optional[List[Annotated[int, Field(ge=1, le=31)]]],
+        Field(
+            max_length=31,
+            description="Days of the month (1-31; 31 means the month's last day).",
+        ),
+    ] = None
+    times_per_month: Annotated[
+        Optional[int], Field(ge=1, le=31, description="For times_per_month.")
+    ] = None
+    next_date: Annotated[
+        Optional[date],
+        Field(description="For biweekly: the next purchase date (YYYY-MM-DD)."),
+    ] = None
+    typical_amount: Optional[
+        money(
+            "What one purchase usually costs, if the user said (shown with the plan; "
+            "the line's monthly amount stays what it is)."
+        )
+    ] = None
+
+    def pattern(self):
+        from app.services.core.engine.spending_schedule import SpendingPattern
+
+        return SpendingPattern(
+            kind=self.kind,
+            frequency=self.frequency,
+            weekdays=tuple(WEEKDAY_NAMES.index(d) for d in (self.weekdays or ())),
+            days_of_month=tuple(self.days_of_month or ()),
+            times_per_month=self.times_per_month,
+            anchor_date=self.next_date,
+            typical_amount=self.typical_amount,
+        )

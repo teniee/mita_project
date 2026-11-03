@@ -1,6 +1,6 @@
 ---
 name: setup
-description: Set up MITA and show what it can do. First check what MITA already knows (get_setup_status); ask only for missing income, currency, timezone, household size and savings target; save them; ask about regular payments such as rent and save them; then offer to preview and, after the user confirms, save a first monthly budget. Use when the user connects MITA, is new to MITA, or asks to set up or start their budget.
+description: Set up MITA and show what it can do. First check what MITA already knows (get_setup_status); ask only for missing income, currency, timezone, household size and savings target; ask about regular payments such as rent; ask how the user spends (their own monthly amounts, which things they buy on known days, what is flexible, which MITA lines do not apply); save each answer; then preview and, after the user confirms, save a monthly budget. Use when the user connects MITA, is new to MITA, or asks to set up or change their budget.
 ---
 
 # MITA setup
@@ -13,6 +13,15 @@ hold or move money and is not connected to any bank.
 Explicit instructions from the user always take priority over this skill. If
 the user only wants to record an expense or ask a question, do that and skip
 setup — never block them on it.
+
+Keep it a conversation, not a form: short questions, grouped, in the user's
+language; skip anything `get_setup_status` already knows. Once, gently, say
+that they can simply tell you how they spend — typing or, if they like,
+with ChatGPT's voice input (for example, in Russian: «Можешь просто
+рассказать голосом, как обычно тратишь деньги. Необязательно заполнять всё
+вручную.»). Voice is a convenience, never a requirement. MITA itself never
+receives audio or images: you turn what the user says or shows into the
+tool arguments.
 
 ## Steps
 
@@ -34,7 +43,19 @@ setup — never block them on it.
    date), then save it with `add_recurring_expense`, keeping their name for
    it. If they have none or prefer to skip, move on — do not show a detailed
    budget before asking.
-5. **First budget.** Offer it; if they want it, call `preview_monthly_budget`
+5. **How they spend — before a first budget** (MITA suggests it as
+   `describe_spending`; optional). In one short message ask what they
+   regularly spend on and roughly how much a month, which of those they buy
+   on known days ("groceries every Wednesday", "fuel every Friday", "a big
+   shop twice a month") and which are flexible ("coffee and walks whenever").
+   Save the patterns with `save_spending_patterns` (planned with the days,
+   flexible, or `not_applicable` for MITA lines they do not have: "no medical
+   insurance", "I drive, no public transport"). Never invent days: if they
+   say "twice a month" with no days, MITA spaces them evenly — tell them the
+   dates (`next_purchases`). Their monthly amounts go into the preview as
+   `budget_lines`. If they prefer to skip, MITA plans every line as a
+   flexible budget with no purchase dates.
+6. **First budget.** Offer it; if they want it, call `preview_monthly_budget`
    and explain in plain words: fixed obligations, savings, the category
    amounts, unallocated money, the daily average and every warning. It is a
    preview — nothing is saved yet; without regular payments it is a default
@@ -50,11 +71,27 @@ setup — never block them on it.
    the income, show each part and ask what to change. Call an amount the
    user's only when its source is `set_by_you`; record later expenses for such
    a line with `budget_line`.
-6. **Finish with the cheat sheet** below, translated into the user's language.
+   Explain each line by its `spending_type`: planned lines with their
+   purchase dates and amounts (an allocation, not a payment), flexible lines
+   as a monthly limit with about `per_day_rounded` a day (exact `per_day` if
+   asked). Never describe a flexible line as daily purchases.
+7. **Changing how they spend later.** For a change ("I now shop twice a
+   month"), preview the month with `spending_patterns`, show the new dates
+   and amounts (the monthly total stays) and save only after a yes — the
+   change is saved with the plan. A pattern saved with
+   `save_spending_patterns` never changes a saved plan by itself: preview and
+   save the month to apply it (`plans_to_review`).
+8. **Finish with the cheat sheet** below, translated into the user's language.
 
 ## Rules
 
 - Use MITA's figures exactly as returned, in the user's MITA currency.
+- A saved regular payment (loan, rent, phone) is paid in MITA only when the
+  user says which expense paid it: record that expense with the payment's
+  `obligation_ref` (from `get_recurring_expenses` or the calendar's bills),
+  or link an already recorded one with `update_transaction`. Never treat a
+  purchase in the same category as a payment — a car part is not the car
+  loan; when unsure, ask.
 - Call every category by its `category_label`, the same way each time.
 - Keep the user's own words for names of goals, merchants and obligations.
 - Offer only what MITA's tools can do. A savings goal cannot be changed after
@@ -89,6 +126,11 @@ HISTORY
 
 RECURRING
 - "My rent is €700 every month on the first."
+- "I paid the car loan today, €270."
+
+HOW I SPEND
+- "I buy groceries every Wednesday, coffee whenever."
+- "I have no medical insurance."
 
 GOALS
 - "I want to save €5,000 by June."

@@ -97,8 +97,56 @@ async def spend(m, token, day: int, amount: str, category: str, *, month: int = 
     return out["transactions"][0]["ref"]
 
 
-async def pay_bills_on_time(m, token):
-    await spend(m, token, 1, "800.00", "rent")
+async def obligation_ref(m, token, *, category=None, merchant=None, amount=None):
+    """The ``ob_`` reference of one of the user's saved payments."""
+    out = structured(await m.call(token, "get_recurring_expenses", {}))
+    for item in out["scheduled_recurring"] + out["upcoming_one_time"]:
+        if (
+            (category is None or item["category"] == category)
+            and (merchant is None or item["merchant"] == merchant)
+            and (amount is None or item["amount"] == amount)
+        ):
+            return item["obligation_ref"]
+    raise AssertionError(f"no saved payment {category} {merchant} {amount}")
+
+
+async def pay(
+    m,
+    token,
+    day: int,
+    amount: str,
+    category: str,
+    *,
+    month: int = 10,
+    merchant=None,
+    bill_amount=None,
+    due=None,
+):
+    """Record an expense AS a saved payment's payment (``obligation_ref``):
+    since 2026-11-03 only such an expense pays a bill."""
+    arguments = {
+        "amount": amount,
+        "obligation_ref": await obligation_ref(
+            m, token, category=category, merchant=merchant, amount=bill_amount
+        ),
+        "date": date(2026, month, day).isoformat(),
+        "idempotency_key": key(),
+    }
+    if due is not None:
+        arguments["obligation_due_date"] = due
+    out = structured(await m.call(token, "add_transaction", arguments))
+    return out["transactions"][0]["ref"]
+
+
+async def pay_bills_on_time(m, token, *, rent_saved: bool = False):
+    """Rent on the 1st and utilities on the 5th. A rent the user saved as a
+    regular payment is paid by an expense recorded as that payment; the
+    utilities line has no saved payment behind it, so it is seen paid by
+    category (R3's rule for such lines)."""
+    if rent_saved:
+        await pay(m, token, 1, "800.00", "rent")
+    else:
+        await spend(m, token, 1, "800.00", "rent")
     await spend(m, token, 5, "100.00", "utilities")
 
 
@@ -143,14 +191,15 @@ def planned(rows: Rows, category: str, days=None) -> Decimal:
 
 
 async def mobile_commitments(connection, user, month: int):
-    """What GET /api/budget/forecast passes the engine: the base plan of the
-    rows it loaded and the saved payments due (the same shared helpers)."""
+    """What GET /api/budget/forecast passes the engine: the month's
+    commitments over the base plan of the rows it loaded, with what the
+    expenses linked to each saved payment paid (the same shared helpers,
+    ``obligation_lines.month_commitments``)."""
     from sqlalchemy.orm import Session
 
     from app.db.models import DailyPlan
-    from app.services.core.engine.budget_forecast_engine import commitment_expectations
-    from app.services.monthly_obligations import obligations_due
     from app.services.monthly_plan_service import base_totals_by_category, month_bounds
+    from app.services.obligation_lines import month_commitments, month_is_keyed
 
     def build(sync_connection):
         session = Session(bind=sync_connection)
@@ -165,8 +214,14 @@ async def mobile_commitments(connection, user, month: int):
                 )
                 .all()
             )
-            due = obligations_due(session, user.id, 2026, month)
-            return commitment_expectations(base_totals_by_category(rows), due)
+            return month_commitments(
+                session,
+                user.id,
+                2026,
+                month,
+                base_totals_by_category(rows),
+                month_is_keyed(r.category for r in rows),
+            )
         finally:
             session.close()
 
@@ -264,7 +319,8 @@ async def look(
         year=2026,
         month=month,
         today=today,
-        commitments=await mobile_commitments(connection, user, month),
+        commitments=(found := await mobile_commitments(connection, user, month)).needs,
+        commitments_paid=found.paid,
     )
     assert format(mobile.total_planned, ".2f") == forecast["total_planned"]
     assert format(mobile.total_spent, ".2f") == forecast["total_spent"]
@@ -309,7 +365,7 @@ async def test_a_bill_paid_on_its_due_date_where_the_plan_holds_it_moves_nothing
         user, category="rent", amount=D("800.00"), scheduled_date=date(2026, 10, 1)
     )
     token = m.token(user)
-    await pay_bills_on_time(m, token)
+    await pay_bills_on_time(m, token, rent_saved=True)
     seen = await look(m, token, connection, user)
     assert money(seen, "total_spent", "left_to_spend", "average_per_day") == (
         "900.00",
@@ -349,7 +405,7 @@ async def test_a_bill_paid_on_its_due_date_away_from_an_old_layout_moves_only_it
     )
     token = m.token(user)
     await spend(m, token, 1, "800.00", "rent")
-    await spend(m, token, 18, "100.00", "utilities")
+    await pay(m, token, 18, "100.00", "utilities")
     seen = await look(m, token, connection, user)
     assert money(seen, "left_to_spend", "average_per_day", "planned_after_today") == (
         "410.00",
@@ -372,9 +428,9 @@ async def test_a_bill_paid_on_its_due_date_away_from_an_old_layout_moves_only_it
     assert (bill["date"], bill["in_plan"], bill["state"]) == (
         "2026-10-18",
         True,
-        "recorded",
+        "paid",
     )
-    assert (bill["recorded"], bill["recorded_dates"]) == ("100.00", ["2026-10-18"])
+    assert (bill["paid"], bill["paid_dates"]) == ("100.00", ["2026-10-18"])
 
 
 async def test_a_bill_paid_late_moves_its_own_money_to_the_day_paid(
@@ -417,7 +473,7 @@ async def test_a_bill_paid_early_is_held_once(mcp, seed, connection):
     )
     token = m.token(user)
     await pay_bills_on_time(m, token)
-    await spend(m, token, 15, "30.00", "subscriptions")
+    await pay(m, token, 15, "30.00", "subscriptions")
     seen = await look(m, token, connection, user)
     assert planned(seen.rows, "subscriptions") == D("30.00")
     assert seen.rows[(27, "subscriptions")][0] == D("0.00")
@@ -433,18 +489,19 @@ async def test_a_bill_paid_early_is_held_once(mcp, seed, connection):
     )
     assert seen.line("subscriptions")["group"] == "commitment"
     bill = next(b for b in seen.cal["bills"] if b["category"] == "subscriptions")
-    assert (bill["date"], bill["state"], bill["recorded_dates"]) == (
+    assert (bill["date"], bill["state"], bill["paid_dates"]) == (
         "2026-10-27",
-        "recorded",
+        "paid",
         ["2026-10-15"],
     )
 
 
 async def test_two_bills_in_one_category(mcp, seed, connection):
     """Two saved subscriptions (12 on the 10th, 10 on the 15th), each planned
-    on its date. Paid apart: nothing moves. Paid together on the 10th: the
-    15th's €10 moves to the 10th; both bills show as recorded. (Until
-    2026-11-02 the 10th was €10 over and dining out covered it.)"""
+    on its date. Paid apart: nothing moves. Both paid on the 10th (two
+    expenses, each recorded as its bill's payment): the 15th's €10 moves to
+    the 10th; both bills show as paid. (Until 2026-11-02 the 10th was €10 over
+    and dining out covered it.)"""
     extra = {10: {"subscriptions": "12.00"}, 15: {"subscriptions": "10.00"}}
     m = mcp.at(NOW)
     apart = await base_month(seed, extra=extra)
@@ -463,22 +520,25 @@ async def test_two_bills_in_one_category(mcp, seed, connection):
             scheduled_date=date(2026, 10, 15),
         )
     token = m.token(apart)
-    await spend(m, token, 10, "12.00", "subscriptions")
-    await spend(m, token, 15, "10.00", "subscriptions")
+    await pay(m, token, 10, "12.00", "subscriptions", bill_amount="12.00")
+    await pay(m, token, 15, "10.00", "subscriptions", bill_amount="10.00")
     seen = await look(m, token, connection, apart)
     assert all(a == 0 for _p, _s, a in seen.rows.values())
     assert [b["amount"] for b in seen.cal["bills"]] == ["12.00", "10.00"]
 
     token = m.token(together)
-    await spend(m, token, 10, "22.00", "subscriptions")
+    await pay(m, token, 10, "12.00", "subscriptions", bill_amount="12.00")
+    await pay(
+        m, token, 10, "10.00", "subscriptions", bill_amount="10.00", due="2026-10-15"
+    )
     seen = await look(m, token, connection, together)
     assert planned(seen.rows, "subscriptions") == D("22.00")
     assert seen.rows[(10, "subscriptions")][:2] == (D("22.00"), D("22.00"))
     assert seen.rows[(15, "subscriptions")][0] == D("0.00")
     assert [seen.rows[(d, "dining out")][0] for d in (17, 24, 31)] == [D("20.00")] * 3
-    assert [(b["amount"], b["state"], b["recorded"]) for b in seen.cal["bills"]] == [
-        ("12.00", "recorded", "12.00"),
-        ("10.00", "recorded", "10.00"),
+    assert [(b["amount"], b["state"], b["paid"]) for b in seen.cal["bills"]] == [
+        ("12.00", "paid", "12.00"),
+        ("10.00", "paid", "10.00"),
     ]
 
 
@@ -977,9 +1037,40 @@ async def test_f8_review_month(mcp, seed, connection):
         ),
         D("0"),
     )
-    assert base_ahead == D("282.25")
+
+    # Every MITA line is a flexible budget (no stated pattern): its amount
+    # over the 31 days, the leftover cents on its first days, so each of
+    # 25-31 Oct holds the floor of its daily share; plus the internet bill
+    # on the 27th.
+    def last_week(amount: str) -> Decimal:
+        cents = int(D(amount) * 100)
+        share, rest = divmod(cents, 31)
+        return D(7 * share + max(0, rest - 24)) / 100
+
+    flexible_ahead = sum(
+        (last_week(a["amount"]) for a in preview["category_allocations"]), D("0")
+    )
+    assert flexible_ahead == D("353.81")
+    assert base_ahead == flexible_ahead + D("30.00") == D("383.81")
+    # The three bills paid this month are recorded as those payments (only
+    # such an expense pays a saved payment, 2026-11-03); the rest are
+    # ordinary expenses.
+    refs = {
+        name: await obligation_ref(m, token, merchant=name)
+        for name in ("Apartment rent", "Kindergarten", "Electricity and water")
+    }
+    paid_as = {
+        (1, "rent"): "Apartment rent",
+        (5, "childcare"): "Kindergarten",
+        (18, "utilities"): "Electricity and water",
+    }
     items = [
-        {"amount": a, "category": c, "date": date(2026, 10, d).isoformat()}
+        (
+            {"amount": a, "obligation_ref": refs[paid_as[(d, c)]]}
+            if (d, c) in paid_as
+            else {"amount": a, "category": c}
+        )
+        | {"date": date(2026, 10, d).isoformat()}
         for d, a, c in REVIEW_SPENDING
     ]
     structured(
@@ -988,22 +1079,37 @@ async def test_f8_review_month(mcp, seed, connection):
         )
     )
     seen = await look(m, token, connection, user, today=date(2026, 10, 24))
+    # The month's money is what it was: only where it sits by date changed.
     assert money(
         seen,
         "total_planned",
         "total_spent",
         "left_to_spend",
         "average_per_day",
-        "planned_after_today",
         "commitments_reserved",
-    ) == ("3160.84", "1869.09", "823.91", "117.70", "61.53", "30.00")
-    lines = {x["category"]: (x["planned"], x["spent"]) for x in seen.cal["categories"]}
-    assert lines["utilities"] == ("95.00", "95.00")  # one 95.00 bill, on the 18th
-    assert lines["childcare"] == ("180.00", "180.00")  # one 180.00 bill, on the 5th
-    assert lines["subscriptions"] == ("30.00", "0.00")  # due on the 27th, kept
-    bills = ("rent", "childcare", "utilities", "subscriptions")
+    ) == ("3160.84", "1869.09", "823.91", "117.70", "30.00")
+    # 25-31 Oct: 383.81 planned before the month's expenses, 79.54 after
+    # them (61.53 under the per-date rule of 2.5.0, 12.16 before F-8).
+    assert seen.summary["planned_after_today"] == "79.54"
+    lines = {
+        x["category_label"]: (x["spending_type"], x["planned"], x["spent"])
+        for x in seen.cal["categories"]
+    }
+    assert lines["Electricity and water"] == ("obligation", "95.00", "95.00")
+    assert lines["Kindergarten"] == ("obligation", "180.00", "180.00")
+    assert lines["Apartment rent"] == ("obligation", "850.00", "850.00")
+    assert lines["Home internet"] == ("obligation", "30.00", "0.00")  # due the 27th
+    assert lines["Medical insurance"][0] == "flexible"  # MITA's suggestion, no date
+    bills = {
+        x["category"]
+        for x in seen.cal["categories"]
+        if x["spending_type"] == "obligation"
+    }
     assert all(a == 0 for (_d, c), (_p, _s, a) in seen.rows.items() if c in bills)
-    # What still moves between lines is everyday spending: expenses recorded
-    # under the API's names (F-2) and groceries bought in a few large shops.
+    # What still moves between lines: expenses recorded under the API's
+    # names (F-2: dining, gas, entertainment, healthcare, public transport,
+    # shopping — 317.99 with no plan line of their own) and groceries beyond
+    # their month's amount. Groceries' large shops within the month no
+    # longer drain other lines (R2): 490.02 moved, from 656.19 (2.5.0).
     moved = sum((a for _p, _s, a in seen.rows.values() if a > 0), D("0"))
-    assert moved == D("656.19")  # 904.32 before bills kept their own money
+    assert moved == D("490.02")

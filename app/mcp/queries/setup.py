@@ -16,7 +16,7 @@ from typing import List, Optional
 from sqlalchemy import distinct, func, select
 from sqlalchemy.orm import Session
 
-from app.db.models import Goal, ScheduledExpense, Transaction
+from app.db.models import Goal, ScheduledExpense, SpendingPattern, Transaction
 from app.mcp.queries.periods import UserContext
 from app.mcp.queries.recurring import REPEATING
 from app.services.core.engine.expense_tracker import _safe_zone
@@ -43,6 +43,8 @@ class SetupState:
     recurring_expense_count: int
     savings_goal_count: int
     months_of_history: int
+    # Spending patterns the user stated (spending_patterns rows).
+    spending_patterns_count: int = 0
 
     @property
     def profile_complete(self) -> bool:
@@ -73,6 +75,10 @@ class SetupState:
             # known looks final but is not; ask once (never mandatory).
             if self.recurring_expense_count == 0:
                 return "ask_about_obligations"
+            if self.spending_patterns_count == 0:
+                # Optional: what the user spends on and how often. A budget
+                # without it plans every line as a flexible budget.
+                return "describe_spending"
             return "build_budget"
         if self.transaction_count == 0:
             return "record_expenses"
@@ -135,6 +141,11 @@ def setup_state(db: Session, ctx: UserContext) -> SetupState:
             Goal.status == "active",
         )
     )
+    patterns = db.scalar(
+        select(func.count())
+        .select_from(SpendingPattern)
+        .where(SpendingPattern.user_id == ctx.user_id)
+    )
     return SetupState(
         income_set=income_set(ctx),
         currency_set=currency_set(ctx),
@@ -148,4 +159,5 @@ def setup_state(db: Session, ctx: UserContext) -> SetupState:
         recurring_expense_count=int(recurring or 0),
         savings_goal_count=int(goals or 0),
         months_of_history=int(months or 0),
+        spending_patterns_count=int(patterns or 0),
     )

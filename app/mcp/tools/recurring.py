@@ -33,7 +33,9 @@ DESCRIPTION = (
     "List recurring and upcoming expenses the user has confirmed in MITA: repeating "
     "expenses they scheduled (with the repeat rule and next due date), one-time "
     "expenses scheduled for the next 60 days, and transactions from the last 180 days "
-    "that the user marked as recurring, grouped by merchant or category. MITA does not "
+    "that the user marked as recurring, grouped by merchant or category. Each saved "
+    "payment has its obligation_ref and this month's due dates with what is paid on "
+    "them (only expenses recorded with its obligation_ref pay it). MITA does not "
     "detect subscriptions automatically, so nothing here is guessed from merchant "
     "names. " + READ_ONLY_DISCLAIMER
 )
@@ -74,7 +76,7 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
             "get_recurring_expenses",
             FINANCE_READ,
             lambda session, user_ctx: recurring_out(
-                user_ctx, recurring_expenses(session, user_ctx)
+                user_ctx, recurring_expenses(session, user_ctx), runtime.data_keys
             ),
             ctx=ctx,
             intent="upcoming_expenses",

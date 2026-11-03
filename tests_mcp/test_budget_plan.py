@@ -17,7 +17,10 @@ from sqlalchemy import text
 from app.mcp.queries import budget_draft
 from app.mcp.writes.budget import CHANGED_DRAFT, EXPIRED_DRAFT, INVALID_DRAFT
 from app.services.core.engine.realtime_rebalancer import REALTIME_ADJUSTMENT_KEY
-from app.services.monthly_plan_service import allocations_from_profile, month_calendar
+from app.services.monthly_plan_service import (
+    allocations_from_profile,
+    behavioral_month_calendar,
+)
 from tests_mcp.conftest import structured
 
 NOW = datetime(2026, 10, 11, 9, 0, tzinfo=timezone.utc)  # 12:00 in Sofia
@@ -91,9 +94,8 @@ def by_category(rows):
 
 
 def preview_allocations(preview):
-    expected = {
-        o["category"]: Decimal(o["amount"]) for o in preview["fixed_obligations"]
-    }
+    """The allocations a preview saves: each obligation on its own line."""
+    expected = {o["line"]: Decimal(o["amount"]) for o in preview["fixed_obligations"]}
     for item in preview["category_allocations"]:
         expected[item["category"]] = expected.get(
             item["category"], Decimal("0")
@@ -109,9 +111,12 @@ async def test_preview_is_the_canonical_engine_and_writes_nothing(m, ana, connec
     assert preview["status"] == "preview" and preview["month"] == "2026-10"
     assert preview["existing_plan"] is False and preview["currency"] == "EUR"
     assert preview["stated_monthly_income"] == "2500.00"
+    line = preview["fixed_obligations"][0]["line"]
+    assert line.startswith("bill:")  # the payment's own plan line
     assert preview["fixed_obligations"] == [
         {
             "name": "Rent",
+            "line": line,
             "category": "rent",
             "category_label": "Rent",
             "amount": "700.00",
@@ -176,8 +181,17 @@ async def test_saved_plan_is_exactly_the_reviewed_plan(
     expected = preview_allocations(preview)
     assert by_category(rows) == expected
     assert sum(by_category(rows).values()) == Decimal(preview["plan_total"])
-    # Day by day: the canonical layout of exactly those allocations.
-    layout = month_calendar(2026, 10, expected)
+    # Day by day: the canonical layout of exactly those allocations — the
+    # obligation in full on its due date, every line without a stated
+    # pattern a flexible budget over every day.
+    bills = [
+        (date.fromisoformat(day), o["line"], Decimal(o["amount"]) / len(o["due_dates"]))
+        for o in preview["fixed_obligations"]
+        for day in o["due_dates"]
+    ]
+    layout, kinds = behavioral_month_calendar(2026, 10, expected, bills, {})
+    rent = preview["fixed_obligations"][0]["line"]
+    assert kinds[rent] == "obligation" and kinds["groceries"] == "flexible"
     stored_days = {
         (row["date"].date().isoformat(), row["category"]): Decimal(
             str(row["planned_amount"])
@@ -189,7 +203,7 @@ async def test_saved_plan_is_exactly_the_reviewed_plan(
         for day, categories in layout.items()
         for category, amount in categories.items()
     }
-    assert stored_days[("2026-10-01", "rent")] == Decimal("700.00")  # rent on the 1st
+    assert stored_days[("2026-10-01", rent)] == Decimal("700.00")  # rent on the 1st
 
     status = structured(await m.call(token, "get_budget_status", {}))
     assert status["plan_status"] == "generated"
@@ -311,17 +325,20 @@ async def test_replacing_a_plan_keeps_goal_reservations_and_reaccrues_spend(
     assert any("including days already past" in n for n in saved["notes"])
     rows = await plan_rows(connection, ana)
     assert "legacy category" not in {r["category"] for r in rows}
-    # The 12.00 on 5 Oct overspent that day's groceries slice, so the rebuild's
-    # automatic redistribution moved money in-month (as in the app). The BASE
-    # plan — adjustments backed out — is exactly the reviewed one.
-    assert any("automatic redistribution" in n for n in saved["notes"])
+    # Groceries is a flexible budget (no stated pattern): the 12.00 on 5 Oct
+    # is paid from the line's own money (R2, owner decision 2026-11-03), so
+    # nothing is redistributed between lines. The BASE plan — every
+    # adjustment backed out — is exactly the reviewed one.
+    assert not any("automatic redistribution" in n for n in saved["notes"])
     base = defaultdict(Decimal)
     for r in rows:
         meta = r["plan_json"] or {}
         if meta.get("_mita_transaction_generated_v1"):
             continue
         adjustment = Decimal(str(meta.get(REALTIME_ADJUSTMENT_KEY, "0")))
-        base[r["category"]] += Decimal(str(r["planned_amount"])) - adjustment
+        timing = Decimal(str(meta.get("_mita_bill_timing_v1", "0")))
+        assert adjustment == 0
+        base[r["category"]] += Decimal(str(r["planned_amount"])) - adjustment - timing
     assert dict(base) == preview_allocations(preview)
     goal_rows = await plan_rows(connection, ana, goal_rows=True)
     assert [(r["category"], r["planned_amount"]) for r in goal_rows] == [

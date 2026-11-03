@@ -48,6 +48,7 @@ from uuid import UUID
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.category_priority import is_set_aside
 from app.db.models.daily_plan import DailyPlan
 from app.db.models.user import User
 from app.services.calendar_service_real import save_calendar_for_user
@@ -65,12 +66,22 @@ from app.services.core.engine.expense_tracker import (
     user_timezone_of,
 )
 from app.services.core.engine.realtime_rebalancer import REALTIME_ADJUSTMENT_KEY
+from app.services.core.engine.spending_schedule import (
+    LINE_KIND_KEY,
+    LINE_OBLIGATION,
+    LINE_SET_ASIDE,
+    SpendingPattern,
+    lay_out_line,
+    line_kinds_of,
+)
 from app.services.monthly_obligations import dated_obligations
+from app.services.obligation_lines import bill_key, is_bill_key, month_is_keyed
 
 logger = logging.getLogger(__name__)
 
 # (due date, category, amount): one date a saved bill is due on in a month.
 DatedBill = Tuple[date, str, Decimal]
+
 
 ZERO = Decimal("0.00")
 
@@ -234,6 +245,23 @@ def _budget_rows(rows) -> list:
         and not _is_transaction_generated(row)
         and _base_planned_amount(row) != 0
     ]
+
+
+# Public names for readers that load a month's rows once and derive the
+# rest themselves (app/mcp/queries/plan.month_plan).
+def month_plan_rows(db: Session, user_id: UUID, year: int, month: int):
+    """Every ``daily_plan`` row of the month, in date and category order."""
+    return _month_rows(db, user_id, year, month)
+
+
+def budget_rows(rows) -> list:
+    """The rows that are a real allocation (``_budget_rows``)."""
+    return _budget_rows(rows)
+
+
+def base_planned_amount(row: DailyPlan) -> Decimal:
+    """A row's allocation with every in-month adjustment backed out."""
+    return _base_planned_amount(row)
 
 
 def month_has_plan(db: Session, user_id: UUID, year: int, month: int) -> bool:
@@ -642,6 +670,101 @@ def month_calendar(
     return calendar_map
 
 
+def behavioral_month_calendar(
+    year: int,
+    month: int,
+    allocations: Dict[str, Decimal],
+    bills: Sequence[DatedBill] = (),
+    patterns: Optional[Dict[str, SpendingPattern]] = None,
+) -> Tuple[Dict[str, Dict[str, Decimal]], Dict[str, str]]:
+    """A month laid out by how its money is spent (owner decision
+    2026-11-03, docs/chatgpt-app/behavioral-budget.md). Returns
+    ``({"YYYY-MM-DD": {line: amount}}, {line: line kind})``.
+
+    * a saved payment's own line (``"bill:<id>"``): in full on its due dates
+      (``bills_on_due_dates``);
+    * money set aside (savings): as the canonical distributor lays it;
+    * every other line by its stated pattern (``patterns``): its monthly
+      amount split exactly over its real purchase dates, or — flexible, the
+      default without a pattern — evenly over every day of the month as
+      guidance, never as invented purchases (``spending_schedule``).
+
+    Refuses (ValueError) a layout that does not re-sum to the allocations to
+    the cent.
+    """
+    _validate_month(year, month)
+    patterns = patterns or {}
+    in_month = [
+        (day, line, amount)
+        for day, line, amount in bills
+        if (day.year, day.month) == (year, month)
+    ]
+    placed = bills_on_due_dates(allocations, in_month)
+    calendar_map: Dict[str, Dict[str, Decimal]] = {}
+    kinds: Dict[str, str] = {}
+
+    def add(day: date, line: str, amount: Decimal) -> None:
+        if amount == ZERO:
+            return
+        on_day = calendar_map.setdefault(day.isoformat(), {})
+        on_day[line] = Decimal(str(on_day.get(line, ZERO))) + amount
+
+    days_in_month = calendar_module.monthrange(year, month)[1]
+    legacy_days = [
+        CalendarDay(date(year, month, number)) for number in range(1, days_in_month + 1)
+    ]
+    for line, total in sorted(allocations.items()):
+        total = Decimal(str(total))
+        if total <= ZERO:
+            continue
+        if is_bill_key(line):
+            kinds[line] = LINE_OBLIGATION
+            dates = sorted(day for day, by_line in placed.items() if line in by_line)
+            for day in dates:
+                add(day, line, placed[day][line])
+            rest = total - sum((placed[day][line] for day in dates), ZERO)
+            if rest > ZERO:
+                add(dates[-1] if dates else date(year, month, 1), line, rest)
+        elif is_set_aside(line):
+            kinds[line] = LINE_SET_ASIDE
+            distribute_budget_over_days(legacy_days, line, total, None)
+        else:
+            layout = lay_out_line(total, patterns.get(line), year, month)
+            kinds[line] = layout.kind
+            for day, amount in layout.by_date.items():
+                add(day, line, amount)
+    for day in legacy_days:
+        for line, amount in day.planned_budget.items():
+            add(day.date, line, Decimal(str(amount)))
+
+    intended = sum((a for a in allocations.values() if a > ZERO), ZERO)
+    laid_out = sum(
+        (Decimal(str(a)) for day in calendar_map.values() for a in day.values()), ZERO
+    )
+    if laid_out != intended:
+        raise ValueError(
+            f"month plan does not conserve money: allocated {laid_out} from {intended}"
+        )
+    return dict(sorted(calendar_map.items())), kinds
+
+
+def stamp_line_kinds(
+    db: Session, user_id: UUID, year: int, month: int, kinds: Dict[str, str]
+) -> None:
+    """Write each line's kind into the month's plan rows. Does not commit."""
+    if not kinds:
+        return
+    for row in _month_rows(db, user_id, year, month):
+        kind = kinds.get(row.category or "")
+        if kind is None or row.goal_id is not None:
+            continue
+        metadata = dict(row.plan_json) if isinstance(row.plan_json, dict) else {}
+        if metadata.get(LINE_KIND_KEY) != kind:
+            metadata[LINE_KIND_KEY] = kind
+            row.plan_json = metadata
+    db.flush()
+
+
 def month_base_plan(
     db: Session, user_id: UUID, year: int, month: int
 ) -> Dict[Tuple[date, str], Decimal]:
@@ -673,6 +796,7 @@ def replace_month_plan(
     year: int,
     month: int,
     calendar_map: Dict[str, Dict[str, Decimal]],
+    line_kinds: Optional[Dict[str, str]] = None,
 ) -> None:
     """Make ``calendar_map`` the month's base plan. Does not commit.
 
@@ -693,6 +817,7 @@ def replace_month_plan(
             db.delete(row)
     db.flush()  # deletes must land before inserts on the same (day, category)
     save_calendar_for_user(db, user_id, calendar_map, commit=False)
+    stamp_line_kinds(db, user_id, year, month, line_kinds or {})
     rebuild_month_plan(
         db,
         user_id,
@@ -869,12 +994,14 @@ def _materialize_month(
             f"{earliest[0]}-{earliest[1]:02d}; history is not back-filled",
         )
 
+    template_kinds: Dict[str, str] = {}
     if earliest is not None:
         template_month = _find_template_month(db, user_id, year, month)
         if template_month is not None:
             allocations, frequencies = _base_month_allocations(
                 db, user_id, *template_month
             )
+            template_kinds = line_kinds_of(_month_rows(db, user_id, *template_month))
             source = "rollover"
 
     if not allocations:
@@ -908,12 +1035,45 @@ def _materialize_month(
         )
 
     # The user's saved bills go on their due dates in the new month too, as
-    # in a reviewed budget (owner decision 2026-11-02, F-8).
-    bills = [
-        (occurrence.day, occurrence.category, occurrence.amount)
-        for occurrence in dated_obligations(db, user_id, year, month)
-    ]
-    calendar_map = _build_month_calendar(year, month, allocations, frequencies, bills)
+    # in a reviewed budget (owner decision 2026-11-02, F-8). A month whose
+    # template keeps each saved payment on its own line ("bill:<id>",
+    # obligation_lines) carries the payments due NOW — amounts and dates of
+    # this month, a cancelled one gone, a new one added — never the
+    # template's copy of them. A legacy template keeps them under their
+    # categories, as before.
+    occurrences = dated_obligations(db, user_id, year, month)
+    if month_is_keyed(allocations):
+        allocations = {c: a for c, a in allocations.items() if not is_bill_key(c)}
+        frequencies = {c: f for c, f in frequencies.items() if not is_bill_key(c)}
+        for occurrence in occurrences:
+            line = bill_key(occurrence.obligation_id)
+            allocations[line] = allocations.get(line, ZERO) + occurrence.amount
+        bills = [
+            (occurrence.day, bill_key(occurrence.obligation_id), occurrence.amount)
+            for occurrence in occurrences
+        ]
+    else:
+        bills = [
+            (occurrence.day, occurrence.category, occurrence.amount)
+            for occurrence in occurrences
+        ]
+    line_kinds: Dict[str, str] = {}
+    if template_kinds and source == "rollover":
+        # A month laid out by how its money is spent rolls forward the same
+        # way: the user's stated patterns (spending_patterns) on THIS month's
+        # real dates — never the number of dates last month happened to have.
+        from app.services.spending_patterns import not_applicable, stored_patterns
+
+        patterns = stored_patterns(db, user_id)
+        dropped = not_applicable(patterns)
+        allocations = {c: a for c, a in allocations.items() if c not in dropped}
+        calendar_map, line_kinds = behavioral_month_calendar(
+            year, month, allocations, bills, patterns
+        )
+    else:
+        calendar_map = _build_month_calendar(
+            year, month, allocations, frequencies, bills
+        )
     if not calendar_map:
         return _not_generated(
             year, month, "allocations produced no positive daily amounts"
@@ -946,6 +1106,7 @@ def _materialize_month(
     # guarantee a property of this function.
     try:
         save_calendar_for_user(db, user_id, calendar_map, commit=False)
+        stamp_line_kinds(db, user_id, year, month, line_kinds)
 
         # Accrue this month's OWN spend. rebuild_month_plan zeroes spent_amount
         # and re-derives it from non-deleted transactions inside this month

@@ -399,7 +399,23 @@ class GoalsOut(_Out):
 # --- get_recurring_expenses ------------------------------------------------
 
 
+class DueThisMonthOut(_Out):
+    due_date: dt.date
+    amount: Money = money_field("Amount due on this date.")
+    paid: Money = money_field(
+        "Paid by the expenses the user linked to this due date (obligation_ref). "
+        "Spending in the same category never counts."
+    )
+    outstanding: Money = money_field("amount minus paid, never below 0.")
+
+
 class ScheduledExpenseOut(_Out):
+    obligation_ref: str = Field(
+        description=(
+            "Opaque reference of this saved payment: pass it as obligation_ref "
+            "when the user records (or corrects) the expense that paid it."
+        )
+    )
     category: str
     category_label: str = category_label_field()
     amount: Money = money_field("Scheduled amount.")
@@ -409,6 +425,9 @@ class ScheduledExpenseOut(_Out):
     )
     recurrence: Optional[str] = Field(
         description="Repeat rule the user set, e.g. 'monthly'; null for one-time."
+    )
+    due_this_month: List[DueThisMonthOut] = Field(
+        description="Its due dates in the user's current month and what is paid on each."
     )
 
 
@@ -485,6 +504,7 @@ class KnownProfileOut(_Out):
 NextStep = Literal[
     "complete_profile",
     "ask_about_obligations",
+    "describe_spending",
     "build_budget",
     "record_expenses",
     "ready",
@@ -493,9 +513,53 @@ NEXT_STEP_DESCRIPTION = (
     "complete_profile: ask for missing_fields. ask_about_obligations: before a "
     "first budget, ask once whether the user has regular payments such as rent, "
     "utilities, loans or subscriptions and save them with add_recurring_expense; "
-    "a budget previewed without them assumes there are none. build_budget: offer "
-    "preview_monthly_budget. record_expenses / ready: nothing to set up."
+    "a budget previewed without them assumes there are none. describe_spending: "
+    "before a first budget, ask in one short message what they spend on each month "
+    "(their own amounts) and how often they buy (groceries every Wednesday, coffee "
+    "whenever); save it with save_spending_patterns — optional, never mandatory. "
+    "build_budget: offer preview_monthly_budget. record_expenses / ready: nothing "
+    "to set up."
 )
+
+
+class SpendingLineOut(_Out):
+    category: str = Field(
+        description="The line's code ('my:<label>' for the user's own lines)."
+    )
+    category_label: str = category_label_field()
+    source: Literal["set_by_you", "calculated_by_mita"] = Field(
+        description="set_by_you: the user's own line; calculated_by_mita: MITA's suggestion."
+    )
+    monthly_amount: Optional[Money] = Field(
+        description="In the current month's saved plan; null when the month has no plan.",
+        pattern=MONEY_PATTERN,
+    )
+    pattern_stated: bool = Field(
+        description="True when the user said how they buy for this line."
+    )
+    spending_type: Literal["planned", "flexible"] = Field(
+        description="planned: on known days; flexible: no purchase dates (also when not stated)."
+    )
+    pattern: str = Field(description="How the user buys for it, in plain words.")
+
+
+class SpendingProfileOut(_Out):
+    lines: List[SpendingLineOut] = Field(
+        description=(
+            "The current month's spending lines (not bills, not savings) and any "
+            "line the user described."
+        )
+    )
+    lines_without_pattern: List[str] = Field(
+        description=(
+            "Lines whose purchase pattern is not known: MITA plans them as flexible "
+            "budgets with no purchase dates. Ask about them only if the user wants "
+            "a day-by-day plan; never guess."
+        )
+    )
+    not_applicable: List[str] = Field(
+        description="MITA's lines the user said they do not have (left out of the plan)."
+    )
 
 
 class SetupStatusOut(_Out):
@@ -526,6 +590,39 @@ class SetupStatusOut(_Out):
     known: KnownProfileOut = Field(
         description="Values MITA already has. Do not ask the user for these again."
     )
+    spending: SpendingProfileOut = Field(
+        description=(
+            "How the user spends, line by line, as far as they told MITA. Never "
+            "re-ask what is stated here."
+        )
+    )
+    notes: List[str]
+
+
+class SpendingPatternSavedOut(_Out):
+    category: str
+    category_label: str = category_label_field()
+    kind: Literal["planned", "flexible", "not_applicable"]
+    pattern: str = Field(description="What MITA saved, in plain words.")
+    next_purchases: List[dt.date] = Field(
+        description="For planned lines: the next purchase dates from today (up to 4)."
+    )
+    purchase_dates_stated: Optional[bool] = Field(
+        description="False when MITA spaced a number of purchases a month evenly (say so)."
+    )
+    typical_amount: Optional[Money] = Field(pattern=MONEY_PATTERN)
+
+
+class SpendingPatternsOut(_Out):
+    status: Literal["saved", "unchanged"]
+    saved: List[SpendingPatternSavedOut]
+    plans_to_review: List[str] = Field(
+        description=(
+            "Saved monthly plans (YYYY-MM) that still use the earlier way of "
+            "spending: they change only when the user previews that month "
+            "(preview_monthly_budget) and saves it."
+        )
+    )
     notes: List[str]
 
 
@@ -542,6 +639,14 @@ class ProfileUpdateOut(_Out):
 # --- add_transaction(s) / update_transaction / delete_transaction ----------
 
 
+class PaidObligationOut(_Out):
+    obligation_ref: str = Field(
+        description="The saved regular payment this expense paid (its obligation_ref)."
+    )
+    name: str = Field(description="Name the user saved for the payment.")
+    due_date: dt.date = Field(description="The due date this expense paid.")
+
+
 class RecordedTransactionOut(_Out):
     ref: str = Field(description=REF_DESCRIPTION)
     date: dt.date = Field(description="Local calendar day of the expense.")
@@ -550,6 +655,14 @@ class RecordedTransactionOut(_Out):
     category: str
     category_label: str = category_label_field()
     merchant: Optional[str] = Field(description="Merchant exactly as recorded.")
+    paid_obligation: Optional[PaidObligationOut] = Field(
+        default=None,
+        description=(
+            "The saved regular payment and due date the user said this expense "
+            "paid; null for every other expense (spending in a bill's category "
+            "does not pay the bill)."
+        ),
+    )
 
 
 class TransactionsRecordedOut(_Out):
@@ -569,7 +682,7 @@ class TransactionsRecordedOut(_Out):
     notes: List[str]
 
 
-TransactionField = Literal["amount", "category", "date", "merchant"]
+TransactionField = Literal["amount", "category", "date", "merchant", "paid_obligation"]
 
 
 class TransactionChangeOut(_Out):
@@ -636,6 +749,12 @@ class GoalCreatedOut(_Out):
 
 class ObligationOut(_Out):
     name: Optional[str] = Field(description="Name the user gave the obligation.")
+    line: str = Field(
+        description=(
+            "The plan line holding this payment's money (its own line, 'bill:…'; "
+            "the same code in get_budget_status and the calendar)."
+        )
+    )
     category: str
     category_label: str = category_label_field()
     amount: Money = money_field("Amount counted in this month.")
@@ -650,6 +769,19 @@ class ObligationOut(_Out):
     )
 
 
+class PlannedPurchaseOut(_Out):
+    date: dt.date = Field(
+        description="A real date of the month the purchase is planned on."
+    )
+    amount: Money = money_field(
+        "Money planned for that purchase (an allocation, not a transaction)."
+    )
+
+
+SpendingType = Literal["planned", "flexible"]
+PatternSource = Literal["user_confirmed", "mita_default"]
+
+
 class AllocationOut(_Out):
     category: str = Field(
         description=(
@@ -660,9 +792,6 @@ class AllocationOut(_Out):
     )
     category_label: str = category_label_field()
     amount: Money = money_field("Monthly allocation.")
-    layout: Literal["fixed", "spread", "clustered"] = Field(
-        description="How MITA spreads it over the days: on one day, across weekdays, or on a few days."
-    )
     source: LineSource = Field(description=SOURCE_DESCRIPTION)
     replaces: List[str] = Field(
         description=(
@@ -670,6 +799,49 @@ class AllocationOut(_Out):
             "(those are not in the plan). Empty otherwise."
         )
     )
+    spending_type: SpendingType = Field(
+        description=(
+            "planned: the monthly amount is split exactly over the purchase dates in "
+            "purchases; flexible: a monthly limit with no purchase dates (per_day is "
+            "guidance, not a purchase)."
+        )
+    )
+    pattern: str = Field(
+        description="How the user buys for this line, in plain words (e.g. 'every Wednesday')."
+    )
+    pattern_source: PatternSource = Field(
+        description=(
+            "user_confirmed: the user stated the pattern; mita_default: nothing was "
+            "stated, so the line is flexible and MITA invented no purchase dates."
+        )
+    )
+    purchases: List[PlannedPurchaseOut] = Field(
+        description="Planned purchases on their real dates; empty for a flexible line."
+    )
+    purchase_dates_stated: Optional[bool] = Field(
+        description=(
+            "For planned lines: true when the user named the days, false when they "
+            "gave only a number of purchases a month and MITA spaced them evenly "
+            "(say so to the user). Null for flexible lines."
+        )
+    )
+    per_day: Optional[Money] = Field(
+        description="For flexible lines: the monthly amount ÷ the days of the month, exact.",
+        pattern=MONEY_PATTERN,
+    )
+    per_day_rounded: Optional[str] = Field(
+        description="per_day to whole currency units, for a short summary ('about €7 a day').",
+        pattern=r"^\d+$",
+    )
+    typical_amount: Optional[Money] = Field(
+        description="What one purchase usually costs, as the user said; null when not said.",
+        pattern=MONEY_PATTERN,
+    )
+
+
+class ExcludedLineOut(_Out):
+    category: str
+    category_label: str = category_label_field()
 
 
 class PlanChangeOut(_Out):
@@ -718,8 +890,14 @@ class BudgetPreviewOut(_Out):
     category_allocations: List[AllocationOut] = Field(
         description=(
             "Spending lines: the user's own budget lines first (source "
-            "set_by_you, exactly as they set them), then MITA's allocation of "
-            "the money left (calculated_by_mita), largest first."
+            "set_by_you, exactly as they set them), then MITA's suggested "
+            "allocation of the money left (calculated_by_mita), largest first."
+        )
+    )
+    not_applicable_lines: List[ExcludedLineOut] = Field(
+        description=(
+            "MITA's lines the user said they do not have (spending pattern "
+            "not_applicable): left out of the plan."
         )
     )
     user_set_total: Money = money_field(
@@ -961,7 +1139,7 @@ class UsageAnalyticsOut(_Out):
 CalendarGroup = Literal["commitment", "set_aside", "everyday"]
 DayKind = Literal["past", "today", "future"]
 DayState = Literal["over", "within", "unplanned", "quiet", "planned", "free"]
-BillState = Literal["recorded", "overdue", "due_today", "upcoming", "later"]
+BillState = Literal["paid", "overdue", "due_today", "upcoming", "later"]
 
 
 class CalendarSummaryOut(_Out):
@@ -1015,9 +1193,9 @@ class CalendarSummaryOut(_Out):
     commitments_reserved: Optional[Money] = Field(
         description=(
             "get_budget_forecast commitments_reserved: what the month's bills still need (each "
-            "commitment line's reviewed plan, or its saved payments due when more, minus what is "
-            "recorded on it). Kept out of left_to_spend and average_per_day until the bills are "
-            "recorded."
+            "saved payment's due dates this month minus what the expenses linked to them paid; "
+            "a rent / utilities line without a saved payment minus what is recorded on it). "
+            "Kept out of left_to_spend and average_per_day until the bills are paid."
         ),
         pattern=MONEY_PATTERN,
     )
@@ -1031,8 +1209,22 @@ class CalendarSummaryOut(_Out):
         pattern=MONEY_PATTERN,
     )
     bills_due_after_today: Money = money_field(
-        "Saved regular payments that fall due after today in this month, as scheduled (a bill already recorded early is still counted here; see bills[].state)."
+        "Saved regular payments that fall due after today in this month, as scheduled (a bill already paid early is still counted here; see bills[].state)."
     )
+
+
+class CalendarPurchaseOut(_Out):
+    category: str = Field(description="The planned line's code.")
+    date: dt.date = Field(description="The purchase date the plan holds money on.")
+    planned: Money = money_field(
+        "Money planned for the purchase (an allocation, not a transaction)."
+    )
+    spent: Money = money_field("Recorded on that line on that date.")
+
+
+CalendarSpendingType = Literal[
+    "obligation", "planned", "flexible", "set_aside", "legacy"
+]
 
 
 class CalendarLineOut(_Out):
@@ -1052,6 +1244,39 @@ class CalendarLineOut(_Out):
     )
     replaces: List[str] = Field(
         description="For a line the user set: MITA's own lines it takes the place of, as saved. Empty otherwise."
+    )
+    spending_type: CalendarSpendingType = Field(
+        description=(
+            "obligation: a saved regular payment, on its due dates; planned: "
+            "purchases on known dates (purchases); flexible: a monthly limit with no "
+            "purchase dates — its daily share is guidance, never a purchase; "
+            "set_aside: savings; legacy: a month saved before MITA knew how the user "
+            "buys (laid out by MITA's old pattern), or spending with no plan."
+        )
+    )
+    pattern: Optional[str] = Field(
+        description="For planned lines: how the user buys, in words, when it matches this month's dates."
+    )
+    purchases: List[CalendarPurchaseOut] = Field(
+        description="For planned lines: every planned purchase of the month."
+    )
+    next_purchase: Optional[CalendarPurchaseOut] = Field(
+        description="For planned lines: the first planned purchase from today on."
+    )
+    left_per_day: Optional[Money] = Field(
+        description=(
+            "For flexible lines of a month not ended: what is left on the line ÷ the "
+            "days left (today included) — exact guidance, not a purchase."
+        ),
+        pattern=MONEY_PATTERN,
+    )
+    left_per_day_rounded: Optional[str] = Field(
+        description="left_per_day in whole currency units, for a short summary ('about €4 a day').",
+        pattern=r"^\d+$",
+    )
+    left_per_week: Optional[Money] = Field(
+        description="For flexible lines: left_per_day × 7 (all that is left when under a week remains).",
+        pattern=MONEY_PATTERN,
     )
 
 
@@ -1084,14 +1309,32 @@ class CalendarDayOut(_Out):
         description="planned_everyday minus spent_everyday for a begun date with an everyday plan; negative means over.",
         pattern=MONEY_PATTERN,
     )
+    planned_scheduled: Money = money_field(
+        "The part of planned that is planned purchases and bills due (what is "
+        "actually scheduled for the date)."
+    )
+    planned_flexible: Money = money_field(
+        "The part of planned that is flexible budgets' daily share: guidance, never "
+        "a purchase on this date."
+    )
+    purchases: List[CalendarPurchaseOut] = Field(
+        description="Planned purchases on this date."
+    )
 
 
 class CalendarBillOut(_Out):
     date: dt.date = Field(
-        description="Due date. The plan holds the bill's full amount on this date and nowhere else (until it is recorded on another date)."
+        description="Due date. The plan holds the bill's full amount on this date and nowhere else (until it is paid on another date)."
     )
     name: Optional[str] = Field(
-        description="Merchant the user saved for this payment, if any."
+        description="Name the user saved for this payment, if any."
+    )
+    obligation_ref: Optional[str] = Field(
+        description=(
+            "Opaque reference of this saved regular payment: pass it as "
+            "obligation_ref when recording (add_transaction) or correcting "
+            "(update_transaction) the expense that paid this due date."
+        )
     )
     category: str
     category_label: str = category_label_field()
@@ -1104,8 +1347,8 @@ class CalendarBillOut(_Out):
     )
     state: BillState = Field(
         description=(
-            "Relative to the user's today: recorded (expenses recorded under the bill's "
-            "category cover it), overdue (due date passed, not recorded — MITA cannot "
+            "Relative to the user's today: paid (expenses the user linked to this due "
+            "date cover it), overdue (due date passed, not paid in MITA — MITA cannot "
             "know whether it was paid outside MITA), due_today, upcoming (due within "
             "reminder_days) or later."
         )
@@ -1113,14 +1356,13 @@ class CalendarBillOut(_Out):
     days_until: int = Field(
         description="Days from the user's today to the due date; negative once it has passed."
     )
-    recorded: Money = money_field(
-        "Spending recorded under the bill's category this month and matched to this due "
-        "date (by category, in date order: a payment covers the bill due on its own date, "
-        "then earlier unpaid ones, then later ones). Not proof that this particular bill "
-        "was paid: MITA does not link an expense to a saved payment."
+    paid: Money = money_field(
+        "What the expenses the user linked to this due date paid (whenever recorded). "
+        "Spending in the same category never counts: a car part is not the car loan."
     )
-    recorded_dates: List[dt.date] = Field(
-        description="Dates of the recorded expenses counted in recorded (one before the due date = recorded early, after = late)."
+    outstanding: Money = money_field("amount minus paid, never below 0.")
+    paid_dates: List[dt.date] = Field(
+        description="Dates the linked expenses were recorded on (one before the due date = paid early, after = late)."
     )
     reminder_from: dt.date = Field(
         description="First day of the bill's reminder window (reminder_days before its due date). A reminder only: no money is planned on those days for the bill."
@@ -1148,7 +1390,7 @@ class CalendarMonthOut(_Out):
         description=(
             "Bills to remind the user of now: due within reminder_days of today (this "
             "month or early next month), due today, or — for the current month — past due "
-            "and not recorded. Ordered by due date."
+            "and not paid. Ordered by due date."
         )
     )
     reminder_days: int = Field(
@@ -1171,7 +1413,7 @@ class CalendarViewOut(_Out):
     )
     summary: CalendarSummaryOut
     reminders: List[CalendarBillOut] = Field(
-        description="get_calendar_month reminders: bills due soon, due today or past due and not recorded."
+        description="get_calendar_month reminders: bills due soon, due today or past due and not paid."
     )
     shown: str = Field(
         description="What the user now sees. The figures on screen are MITA's, not the arguments'."

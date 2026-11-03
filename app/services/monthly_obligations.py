@@ -89,6 +89,7 @@ def due_in_month(
 class DueOccurrence:
     """One date a saved payment is due on in a month, for its full amount."""
 
+    obligation_id: UUID  # the saved payment (scheduled_expenses.id)
     day: date
     category: str
     amount: Decimal
@@ -100,6 +101,7 @@ class DueOccurrence:
 def _pending_payments(db: Session, user_id: UUID):
     return db.execute(
         select(
+            ScheduledExpense.id,
             ScheduledExpense.category,
             ScheduledExpense.amount,
             ScheduledExpense.merchant,
@@ -111,7 +113,11 @@ def _pending_payments(db: Session, user_id: UUID):
             ScheduledExpense.deleted_at.is_(None),
             ScheduledExpense.status == "pending",
         )
-        .order_by(ScheduledExpense.scheduled_date, ScheduledExpense.category)
+        .order_by(
+            ScheduledExpense.scheduled_date,
+            ScheduledExpense.category,
+            ScheduledExpense.id,
+        )
     ).all()
 
 
@@ -122,13 +128,19 @@ def dated_obligations(
     (cancelled and deleted ones never count), ordered by date. Summed per
     category it is exactly ``obligations_due``."""
     found: List[DueOccurrence] = []
-    for category, amount, merchant, next_date, recurrence in _pending_payments(
-        db, user_id
-    ):
+    for (
+        obligation_id,
+        category,
+        amount,
+        merchant,
+        next_date,
+        recurrence,
+    ) in _pending_payments(db, user_id):
         value = Decimal(str(amount))
         for day in due_dates_in_month(next_date, recurrence, year, month):
             found.append(
                 DueOccurrence(
+                    obligation_id=obligation_id,
                     day=day,
                     category=category,
                     amount=value,
@@ -139,7 +151,7 @@ def dated_obligations(
                     scheduled_from=next_date,
                 )
             )
-    found.sort(key=lambda o: (o.day, o.category, -o.amount))
+    found.sort(key=lambda o: (o.day, o.category, -o.amount, str(o.obligation_id)))
     return found
 
 

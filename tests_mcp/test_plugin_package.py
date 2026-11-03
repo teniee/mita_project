@@ -313,6 +313,15 @@ def test_skill_names_only_published_tools():
         "replaces",  # a field of a budget line
         "set_by_you",  # a source value in its result
         "budget_line",  # an argument of add_transaction
+        "describe_spending",  # a suggested_next_step value
+        "spending_patterns",  # an argument of preview_monthly_budget
+        "not_applicable",  # a spending pattern kind
+        "next_purchases",  # a field of save_spending_patterns' result
+        "plans_to_review",  # a field of save_spending_patterns' result
+        "spending_type",  # a field of a preview line
+        "per_day",  # a field of a preview line
+        "per_day_rounded",  # a field of a preview line
+        "obligation_ref",  # an argument of add_transaction / update_transaction
     }
     assert named and named <= set(PUBLISHED_TOOLS), named - set(PUBLISHED_TOOLS)
 

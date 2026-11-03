@@ -1,5 +1,14 @@
 # MITA's financial calendar in ChatGPT (MCP Apps) — v1, 2026-10-24
 
+> **Update 2026-11-03 (MCP 2.7.0, component `ui://mita/financial-calendar-v3.html`,
+> `behavioral-budget.md`).** Bills are `paid` only from linked expenses (fields
+> `paid`, `outstanding`, `paid_dates`, `obligation_ref`). Lines carry
+> `spending_type` (obligation / planned / flexible / set_aside / legacy),
+> `purchases`, `next_purchase` and, for flexible lines, `left_per_day`
+> (+ rounded) and `left_per_week`. Dates split `planned` into
+> `planned_scheduled` (planned purchases + bills — what dates ahead show) and
+> `planned_flexible` (guidance, never a purchase).
+
 The user's month, date by date, rendered inside the ChatGPT conversation as an
 interactive component: "Show my financial calendar for November." Built on the
 open MCP Apps standard (`io.modelcontextprotocol/ui`), which ChatGPT implements

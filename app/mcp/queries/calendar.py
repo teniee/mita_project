@@ -31,15 +31,13 @@ commitment paid, not €850 of overspending on the 3rd. A date with no everyday
 plan is never "over" (the dashboard rule: no allocation, no verdict).
 
 Saved bills (owner decision 2026-11-02, F-8; docs/chatgpt-app/bill-due-dates.md)
-are planned in full on their due dates. Each bill date carries what is
-recorded against it — spending recorded under the bill's category this month,
-matched to the category's bill dates in date order (``bill_timing.settle``,
-the rule the ledger moves the bill's money by) — and its state relative to
-the user's today: ``recorded``, ``overdue`` (past and not recorded),
-``due_today``, ``upcoming`` (within ``REMINDER_DAYS``) or ``later``. MITA's
-data has no link between an expense and a saved payment, so "recorded" means
-recorded under the bill's category, never proof that a particular bill was
-paid.
+are planned in full on their due dates. Each bill date carries what is paid
+on it — ONLY the expenses the user linked to that due date
+(``obligation_payments``; docs/chatgpt-app/behavioral-budget.md): a purchase
+in the bill's category never pays it — and its state relative to the user's
+today: ``paid``, ``overdue`` (past and not paid in MITA), ``due_today``,
+``upcoming`` (within ``REMINDER_DAYS``) or ``later``. "Paid" means the user
+told MITA which expense paid it; MITA has no bank connection to confirm it.
 
 The pure ``build_calendar`` takes plain inputs so the sign-in page's
 fictional example runs through exactly this code (tests_mcp/test_auth_ui.py).
@@ -50,20 +48,26 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import date, timedelta
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple
+from uuid import UUID
 
 from sqlalchemy.orm import Session
 
 from app.core.category_priority import is_set_aside
 from app.db.models import ScheduledExpense
 from app.mcp.categories import group_lines, line_key, line_source
-from app.mcp.queries import budget_lines, ledger, plan
+from app.mcp.queries import budget_lines, ledger, obligations, plan
 from app.mcp.queries.periods import UserContext, month_days
-from app.services.core.engine.bill_timing import settle
-from app.services.core.engine.budget_forecast_engine import ForecastResult
+from app.services.core.engine.budget_forecast_engine import (
+    ForecastResult,
+    is_bill_line,
+    is_recordable,
+)
+from app.services.core.engine.spending_schedule import describe, purchase_dates
 from app.services.monthly_obligations import due_dates_in_month, due_in_month
-from app.services.monthly_plan_service import month_has_plan
+from app.services.obligation_lines import bill_key, month_is_keyed
+from app.services.spending_patterns import stored_patterns
 
 ZERO = Decimal("0.00")
 
@@ -81,7 +85,7 @@ WEEKLY = "weekly"
 # money stays on its due date.
 REMINDER_DAYS = 5
 
-BILL_RECORDED = "recorded"
+BILL_PAID = "paid"
 BILL_OVERDUE = "overdue"
 BILL_DUE_TODAY = "due_today"
 BILL_UPCOMING = "upcoming"
@@ -98,6 +102,7 @@ class SavedPayment:
     merchant: Optional[str]
     anchor: date  # scheduled_date: the next date the user scheduled it for
     recurrence: Optional[str]
+    obligation_id: Optional[UUID] = None  # scheduled_expenses.id
 
 
 @dataclass(frozen=True)
@@ -107,11 +112,23 @@ class BillOccurrence:
     amount: Decimal
     merchant: Optional[str]
     recurrence: Optional[str]  # "monthly" | "weekly" | None (one-time)
+    obligation_id: Optional[UUID] = None
 
 
 @dataclass(frozen=True)
 class DayLine:
     line: str
+    planned: Decimal
+    spent: Decimal
+
+
+@dataclass(frozen=True)
+class Purchase:
+    """One planned purchase of a planned line: its date, the money the
+    reviewed plan put on it and what was spent on the line that date."""
+
+    line: str
+    day: date
     planned: Decimal
     spent: Decimal
 
@@ -126,6 +143,14 @@ class CalendarDay:
     spent: Decimal
     spent_everyday: Decimal
     lines: Tuple[DayLine, ...]
+    # The flexible budgets' share of ``planned`` on this date (guidance, never
+    # a purchase); the rest is planned purchases, bills and legacy lines.
+    planned_flexible: Decimal = ZERO
+    purchases: Tuple[Purchase, ...] = ()
+
+    @property
+    def planned_scheduled(self) -> Decimal:
+        return self.planned - self.planned_flexible
 
     @property
     def planned_commitments(self) -> Decimal:
@@ -165,10 +190,31 @@ class CalendarLine:
     source: Optional[str] = None  # categories.line_source
     # a user line's stored MITA lines it takes the place of (mcp_budget_lines)
     replaces: Tuple[str, ...] = ()
+    # obligation | planned | flexible | set_aside, or legacy for a month laid
+    # out before spending patterns existed (and spending with no plan)
+    spending_type: str = "legacy"
+    pattern: Optional[str] = None
+    purchases: Tuple[Purchase, ...] = ()
+    next_purchase: Optional[Purchase] = None  # the first from today on
+    days_left: int = 0  # today and the days after it, for a month not ended
 
     @property
     def remaining(self) -> Decimal:
         return self.planned - self.spent
+
+    def guidance(self) -> Tuple[Optional[Decimal], Optional[Decimal]]:
+        """For a flexible line of a month not ended: what is left of it per
+        day (today included) and per week — arithmetic, never a forecast."""
+        if self.spending_type != "flexible" or self.days_left <= 0:
+            return None, None
+        left = max(ZERO, self.remaining)
+        per_day = (left / self.days_left).quantize(Decimal("0.01"), ROUND_HALF_UP)
+        per_week = (
+            (left * 7 / self.days_left).quantize(Decimal("0.01"), ROUND_HALF_UP)
+            if self.days_left >= 7
+            else left
+        )
+        return per_day, per_week
 
 
 @dataclass(frozen=True)
@@ -176,10 +222,10 @@ class CalendarBill:
     occurrence: BillOccurrence
     line: str
     in_plan: bool  # the month's plan holds money on this bill's line
-    # Spending recorded under the bill's category this month and matched to
-    # this date (category and date order, ``bill_timing.settle``).
-    recorded: Decimal = ZERO
-    recorded_on: Tuple[date, ...] = ()
+    # The expenses the user linked to this due date (obligation_payments),
+    # whenever they were recorded.
+    paid: Decimal = ZERO
+    paid_on: Tuple[date, ...] = ()
     state: str = BILL_LATER
     days_until: int = 0
 
@@ -187,12 +233,16 @@ class CalendarBill:
     def reminder_from(self) -> date:
         return self.occurrence.day - timedelta(days=REMINDER_DAYS)
 
+    @property
+    def outstanding(self) -> Decimal:
+        return max(ZERO, self.occurrence.amount - self.paid)
 
-def bill_state(day: date, amount: Decimal, recorded: Decimal, today: date) -> str:
-    """recorded | overdue | due_today | upcoming | later, relative to today.
-    Recorded in full ends the reminders; a part recorded does not."""
-    if amount > ZERO and recorded >= amount:
-        return BILL_RECORDED
+
+def bill_state(day: date, amount: Decimal, paid: Decimal, today: date) -> str:
+    """paid | overdue | due_today | upcoming | later, relative to today.
+    Paid in full ends the reminders; a part paid does not."""
+    if amount > ZERO and paid >= amount:
+        return BILL_PAID
     if day < today:
         return BILL_OVERDUE
     if day == today:
@@ -298,6 +348,7 @@ def occurrences_in_month(
             recurrence=(
                 payment.recurrence if payment.recurrence in (MONTHLY, WEEKLY) else None
             ),
+            obligation_id=payment.obligation_id,
         )
         for day in days
         if day >= payment.anchor
@@ -337,46 +388,37 @@ def _total(
     )
 
 
+def _bill_line(o: BillOccurrence, buckets: Set[str], keyed: bool) -> str:
+    """The plan line a bill's money is on: its own in a keyed month, its
+    category's (shown with its paired bucket) in a legacy one."""
+    if keyed and o.obligation_id is not None:
+        return bill_key(o.obligation_id)
+    return line_key(o.category, buckets)
+
+
 def _settled_bills(
     occurrences: Sequence[BillOccurrence],
-    spent: Mapping[Tuple[date, str], Decimal],
+    payments: Mapping[Tuple[UUID, date], Sequence[Tuple[date, Decimal]]],
     buckets: Set[str],
     planned_lines: Set[str],
     today: date,
+    keyed: bool,
 ) -> List[CalendarBill]:
-    """Each bill date with what is recorded against it: per category, the
-    month's recorded spending matched to the category's bill dates in date
-    order (the ledger's rule, ``bill_timing.settle``)."""
-    by_category: Dict[str, List[int]] = defaultdict(list)
-    for index, occurrence in enumerate(occurrences):
-        by_category[occurrence.category].append(index)
-    recorded: Dict[int, Tuple[Decimal, Tuple[date, ...]]] = {}
-    for category, indexes in by_category.items():
-        settlement = settle(
-            [(occurrences[i].day, occurrences[i].amount) for i in indexes],
-            [
-                (day, amount)
-                for (day, code), amount in spent.items()
-                if code == category
-            ],
-        )
-        for position, index in enumerate(indexes):
-            recorded[index] = (
-                settlement.covered[position],
-                tuple(day for day, _ in settlement.paid[position]),
-            )
+    """Each bill date with what the user linked to it as paid
+    (``obligation_payments``); nothing else counts."""
     bills = []
-    for index, o in enumerate(occurrences):
-        amount, dates = recorded.get(index, (ZERO, ()))
-        line = line_key(o.category, buckets)
+    for o in occurrences:
+        linked = list(payments.get((o.obligation_id, o.day), ()))
+        paid = sum((amount for _, amount in linked), ZERO)
+        line = _bill_line(o, buckets, keyed)
         bills.append(
             CalendarBill(
                 occurrence=o,
                 line=line,
                 in_plan=line in planned_lines,
-                recorded=amount,
-                recorded_on=dates,
-                state=bill_state(o.day, o.amount, amount, today),
+                paid=paid,
+                paid_on=tuple(sorted({day for day, _ in linked})),
+                state=bill_state(o.day, o.amount, paid, today),
                 days_until=(o.day - today).days,
             )
         )
@@ -395,11 +437,14 @@ def _reminders(
     today: date,
     buckets: Set[str],
     planned_lines: Set[str],
+    next_month_paid: Optional[
+        Mapping[Tuple[UUID, date], Sequence[Tuple[date, Decimal]]]
+    ] = None,
 ) -> Tuple[CalendarBill, ...]:
     """The bills to remind of from today: this month's bills due within
-    REMINDER_DAYS, due today or past due and not recorded (the current month
-    only), and the next month's bills due within REMINDER_DAYS of today. A
-    next-month bill's recordings belong to that month, so it carries none."""
+    REMINDER_DAYS, due today or past due and not paid (the current month
+    only), and the next month's bills due within REMINDER_DAYS of today —
+    with what the user already linked to them (``next_month_paid``)."""
     current = (year, month) == (today.year, today.month)
     found = [
         bill
@@ -409,16 +454,23 @@ def _reminders(
     ]
     following = _next_month(year, month)
     horizon = today + timedelta(days=REMINDER_DAYS)
+    next_month_paid = next_month_paid or {}
     for payment in payments:
         for o in occurrences_in_month(payment, *following):
             if today <= o.day <= horizon:
+                linked = list(next_month_paid.get((o.obligation_id, o.day), ()))
+                paid = sum((amount for _, amount in linked), ZERO)
+                if o.amount > ZERO and paid >= o.amount:
+                    continue  # already paid early: nothing to remind of
                 line = line_key(o.category, buckets)
                 found.append(
                     CalendarBill(
                         occurrence=o,
                         line=line,
                         in_plan=line in planned_lines,
-                        state=bill_state(o.day, o.amount, ZERO, today),
+                        paid=paid,
+                        paid_on=tuple(sorted({day for day, _ in linked})),
+                        state=bill_state(o.day, o.amount, paid, today),
                         days_until=(o.day - today).days,
                     )
                 )
@@ -447,11 +499,33 @@ def build_calendar(
     stated_income: Optional[Decimal] = None,
     other_currencies: Sequence[str] = (),
     replaces: Optional[Mapping[str, Sequence[str]]] = None,
+    paid: Optional[Mapping[Tuple[UUID, date], Sequence[Tuple[date, Decimal]]]] = None,
+    next_month_paid: Optional[
+        Mapping[Tuple[UUID, date], Sequence[Tuple[date, Decimal]]]
+    ] = None,
+    commitment_lines: Optional[Iterable[str]] = None,
+    names: Optional[Mapping[str, str]] = None,
+    kinds: Optional[Mapping[str, str]] = None,
+    base: Optional[Mapping[Tuple[date, str], Decimal]] = None,
+    patterns: Optional[Mapping[str, str]] = None,
 ) -> CalendarMonth:
-    """The calendar of one month from per-(local day, stored category) plan
-    and spend. Pure: no I/O, no clock. ``replaces``: the user's own lines and
-    the MITA lines each takes the place of, as stored."""
+    """The calendar of one month from per-(local day, plan line) plan and
+    spend. Pure: no I/O, no clock. ``replaces``: the user's own lines and
+    the MITA lines each takes the place of, as stored. ``paid``: per (saved
+    payment, due date) the ``(recorded day, amount)`` of the expenses the
+    user linked to it. ``commitment_lines``: the month's commitments
+    (``obligation_lines.month_commitments``); without them (the sign-in
+    page's fictional month) they are derived from the plan and the saved
+    payments' categories, as before obligations had lines of their own.
+    ``names``: the user's names for their saved payments' lines. ``kinds``:
+    each line's kind as the month's rows say (``spending_schedule``); ``base``:
+    the month's reviewed plan per (date, line) — a planned line's purchases;
+    ``patterns``: each planned line's pattern in words."""
     replaces = replaces or {}
+    paid = paid or {}
+    kinds = kinds or {}
+    base = base or {}
+    patterns = patterns or {}
     first, last = month_days(year, month)
     planned_by_cat: Dict[str, Decimal] = defaultdict(lambda: ZERO)
     spent_by_cat: Dict[str, Decimal] = defaultdict(lambda: ZERO)
@@ -471,15 +545,31 @@ def build_calendar(
         key=lambda o: (o.day, o.category, -o.amount),
     )
 
-    grouped = group_lines(planned_by_cat, spent_by_cat)
-    # The forecast's bills (``commitment_expectations``): essential lines MITA
-    # can see paid, and the saved payments that belong to the month — the
-    # rule ``get_budget_status.today`` uses too (``plan.bill_line_keys``).
-    commitment_keys = plan.bill_line_keys(
-        [code for _, _, codes, _, _ in grouped for code in codes],
-        buckets,
-        [p.category for p in payments if counts_in_month(p, year, month)],
-    )
+    keyed = month_is_keyed(buckets)
+    grouped = group_lines(planned_by_cat, spent_by_cat, names)
+    # The forecast's bills: the month's commitments — the rule
+    # ``get_budget_status.today`` uses too (``plan.bill_line_keys``).
+    codes_in_month = [code for _, _, codes, _, _ in grouped for code in codes]
+    if commitment_lines is None:
+        commitment_lines = [c for c in codes_in_month if is_bill_line(c)] + [
+            p.category
+            for p in payments
+            if counts_in_month(p, year, month) and is_recordable(p.category)
+        ]
+    commitment_keys = plan.bill_line_keys(codes_in_month, buckets, commitment_lines)
+
+    # A planned line's purchases: the reviewed plan's dates and amounts,
+    # with what was spent on the line each date.
+    spent_on: Dict[Tuple[date, str], Decimal] = defaultdict(lambda: ZERO)
+    for (day, code), amount in spent.items():
+        spent_on[(day, line_key(code, buckets))] += amount
+    purchases_of: Dict[str, List[Purchase]] = defaultdict(list)
+    for (day, code), amount in sorted(base.items()):
+        if kinds.get(code) == "planned" and amount > ZERO:
+            key = line_key(code, buckets)
+            purchases_of[key].append(Purchase(key, day, amount, spent_on[(day, key)]))
+    month_open = (year, month) >= (today.year, today.month)
+    days_left = 0 if not month_open else (last - max(today, first)).days + 1
 
     lines: List[CalendarLine] = []
     group_of: Dict[str, str] = {}
@@ -491,6 +581,8 @@ def build_calendar(
         else:
             group = GROUP_EVERYDAY
         group_of[key] = group
+        kind = next((kinds[c] for c in codes if c in kinds), "legacy")
+        purchases = tuple(purchases_of.get(key, ()))
         lines.append(
             CalendarLine(
                 key=key,
@@ -501,9 +593,27 @@ def build_calendar(
                 spent=line_spent,
                 source=line_source(codes, line_planned),
                 replaces=tuple(replaces.get(key, ())),
+                spending_type=kind,
+                pattern=patterns.get(key),
+                purchases=purchases,
+                # the first still ahead: a purchase made today is not upcoming
+                next_purchase=next(
+                    (
+                        p
+                        for p in purchases
+                        if p.day > today or (p.day == today and p.spent <= ZERO)
+                    ),
+                    None,
+                ),
+                days_left=days_left,
             )
         )
     lines.sort(key=lambda line: (-line.planned, -line.spent, line.key))
+    flexible_lines = {line.key for line in lines if line.spending_type == "flexible"}
+    purchases_by_day: Dict[date, List[Purchase]] = defaultdict(list)
+    for line in lines:
+        for p in line.purchases:
+            purchases_by_day[p.day].append(p)
 
     per_day: Dict[date, Dict[str, List[Decimal]]] = defaultdict(
         lambda: defaultdict(lambda: [ZERO, ZERO])
@@ -528,6 +638,10 @@ def build_calendar(
                 set_aside=_total(entries, group_of, 0, (GROUP_SET_ASIDE,)),
                 spent=_total(entries, group_of, 1, ALL_GROUPS),
                 spent_everyday=_total(entries, group_of, 1, (GROUP_EVERYDAY,)),
+                planned_flexible=sum(
+                    (v[0] for k, v in entries.items() if k in flexible_lines), ZERO
+                ),
+                purchases=tuple(purchases_by_day.get(day, ())),
                 lines=tuple(
                     sorted(
                         (
@@ -543,8 +657,17 @@ def build_calendar(
         day += timedelta(days=1)
 
     planned_lines = {line.key for line in lines if line.planned > ZERO}
-    bills = _settled_bills(occurrences, spent, buckets, planned_lines, today)
-    reminders = _reminders(bills, payments, year, month, today, buckets, planned_lines)
+    bills = _settled_bills(occurrences, paid, buckets, planned_lines, today, keyed)
+    reminders = _reminders(
+        bills,
+        payments,
+        year,
+        month,
+        today,
+        buckets,
+        planned_lines,
+        next_month_paid,
+    )
     position = (
         "past"
         if (year, month) < (today.year, today.month)
@@ -572,6 +695,7 @@ def build_calendar(
 def saved_payments(db: Session, ctx: UserContext) -> List[SavedPayment]:
     rows = (
         db.query(
+            ScheduledExpense.id,
             ScheduledExpense.category,
             ScheduledExpense.amount,
             ScheduledExpense.merchant,
@@ -583,7 +707,11 @@ def saved_payments(db: Session, ctx: UserContext) -> List[SavedPayment]:
             ScheduledExpense.deleted_at.is_(None),
             ScheduledExpense.status == "pending",
         )
-        .order_by(ScheduledExpense.scheduled_date, ScheduledExpense.category)
+        .order_by(
+            ScheduledExpense.scheduled_date,
+            ScheduledExpense.category,
+            ScheduledExpense.id,
+        )
         .all()
     )
     return [
@@ -593,9 +721,16 @@ def saved_payments(db: Session, ctx: UserContext) -> List[SavedPayment]:
             merchant=(merchant or "").strip() or None,
             anchor=anchor,
             recurrence=recurrence,
+            obligation_id=obligation_id,
         )
-        for category, amount, merchant, anchor, recurrence in rows
+        for obligation_id, category, amount, merchant, anchor, recurrence in rows
     ]
+
+
+def _as_pairs(found) -> Dict[Tuple[UUID, date], List[Tuple[date, Decimal]]]:
+    return {
+        key: [(p.day, p.amount) for p in payments] for key, payments in found.items()
+    }
 
 
 def calendar_month(
@@ -605,21 +740,25 @@ def calendar_month(
     base plan and saved payments for the bills' reserve); never materializes a
     month (``ensure_month_plan`` writes)."""
     first, last = month_days(year, month)
-    generated = month_has_plan(db, ctx.user_id, year, month)
-    planned = plan.planned_by_day_and_category(db, ctx, year, month)
-    spent = ledger.spend_by_day_and_category(db, ctx, first, last)
+    view = plan.month_plan(db, ctx, year, month)  # the month's rows, once
+    planned, generated, kinds, base = (
+        view.planned,
+        view.generated,
+        view.kinds,
+        view.base,
+    )
+    spent = plan.month_spent(db, ctx, year, month, view)
+    commitments = plan.commitments_from(db, ctx, year, month, view)
+    needs, paid_by_line = plan.by_display_line(commitments, planned)
+    stated = stored_patterns(db, ctx.user_id) if "planned" in kinds.values() else {}
     forecast = (
         plan.forecast_from_rows(
-            planned,
-            spent,
-            year,
-            month,
-            ctx.today,
-            plan.month_commitments(db, ctx, year, month, planned),
+            planned, spent, year, month, ctx.today, needs, paid_by_line
         )
         if generated
         else None
     )
+    following = (year + 1, 1) if month == 12 else (year, month + 1)
     return build_calendar(
         year=year,
         month=month,
@@ -632,4 +771,19 @@ def calendar_month(
         stated_income=ctx.stated_monthly_income,
         other_currencies=ledger.other_currencies_in_range(db, ctx, first, last),
         replaces=budget_lines.stored_lines(db, ctx),
+        paid=_as_pairs(obligations.payments_by_due(db, ctx, year, month)),
+        next_month_paid=_as_pairs(obligations.payments_by_due(db, ctx, *following)),
+        commitment_lines=commitments.lines,
+        names=obligations.obligation_names(db, ctx),
+        kinds=kinds,
+        base=base,
+        patterns={
+            line: describe(stated[line])
+            for line, kind in kinds.items()
+            if kind == "planned" and line in stated
+            # words only when they describe this plan's own dates (a pattern
+            # changed after the month was saved applies once it is saved again)
+            and set(purchase_dates(stated[line], year, month))
+            == {d for (d, c), a in base.items() if c == line and a > 0}
+        },
     )

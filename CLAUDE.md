@@ -1142,8 +1142,10 @@ Rules:
   rebalancing backed out — a rebalancing credit is never a second bill) or the
   saved payments due when more (`app/services/monthly_obligations.py`, the one
   "due this month" rule, also the reviewed budget's); the reserve is that minus
-  what is recorded on the line, never below 0, never matched to a specific
-  transaction. Recordable = an expense can be stored under that category
+  what the expenses LINKED to the saved payment paid (capped per due date),
+  never below 0 — since 2026-11-03 never what is recorded in its category
+  (see "Behavioral budget" below); a rent / mortgage / utilities line with no
+  saved payment behind it keeps the category rule. Recordable = an expense can be stored under that category
   (`VALID_TRANSACTION_CATEGORIES`): the engine's default "insurance medical"
   allowance (every budget has one; `preview_monthly_budget` lists it as
   flexible spending) can never be recorded against, so holding it would count
@@ -1156,9 +1158,9 @@ Rules:
   commitments; `live_status.daily_budget` leaves set-aside lines out.
   `queries/plan.bill_line_keys` is the one display-line rule: the calendar's
   "Bills & commitments" group and `get_budget_status.today.everyday_*` (today
-  without bills). The same bills (`expense_tracker.month_bill_categories`)
-  are never rebalancing donors, and what is recorded under one is matched to
-  its dated rows in date order and moves only that line's money
+  without bills). The same bills (`expense_tracker.month_bill_lines`)
+  are never rebalancing donors, and a payment linked to one is matched to
+  its dated rows (its own due date first) and moves only that line's money
   (`bill_timing.retime_bill_lines`, owner decision 2026-11-02,
   `docs/chatgpt-app/bill-due-dates.md`): a bill paid early, late or in parts
   is not overspending; only spending beyond the line's whole month is. The calendar's
@@ -1167,6 +1169,45 @@ Rules:
   `tests_mcp/test_bills_reserve.py` (the scenario matrix),
   `tests_mcp/test_money_consistency.py`, `test_calendar.py`,
   `app/tests/test_budget_forecast_local_day.py`.
+- **Behavioral budget** (owner brief 2026-11-03, MCP 2.7.0, migrations 0041
+  and 0042; rules: `docs/chatgpt-app/behavioral-budget.md`). Rules:
+  - **Only a linked expense pays an obligation.** `obligation_payments`
+    (expense → saved payment + due date, one due date per expense, in parts
+    allowed) is the only thing that settles a saved payment; a purchase in
+    the same category is ordinary spending (a car part is not the car loan).
+    A linked expense pays its due date up to that date's amount; more is
+    spending beyond the bill, never another due date's payment. Existing
+    expenses are never linked by MITA. ChatGPT links with `obligation_ref`
+    on `add_transaction(s)` / `update_transaction` (`""` unlinks); an
+    unlinked expense in the category of an unpaid saved payment gets a note
+    so ChatGPT asks.
+  - **An obligation has its own plan line** `bill:<digest>`
+    (`obligation_lines.bill_key`: a one-way SHA-256 of its id — the id never
+    leaves MITA; refs are `ob_…`, AES-SIV bound to the user). One keying rule
+    for the ledger and every MCP read: `obligation_lines.plan_line_of`.
+    Labels come from `queries/obligations.obligation_names` (never the key).
+  - **Line kinds** are stamped on every row of a month laid out since 2.7.0
+    (`plan_json["_mita_line_kind_v1"]`: obligation / planned / flexible /
+    set_aside; `spending_schedule.line_kinds_of`). Planned and flexible lines
+    self-settle in `rebuild_month_plan` (their own money follows their
+    spending; only spending beyond the line's month is redistributed). A
+    month without kinds is legacy: untouched until the user saves it again.
+  - **Never invent purchase dates.** A line without a stated pattern is
+    flexible (even over every day, shown as guidance); planned lines split
+    exactly over real dates (`spending_schedule.purchase_dates`, integer
+    cents, no four-week months). Patterns are stated, never inferred
+    (`spending_patterns.source = user_confirmed` only).
+  - **Preferences never change a saved plan by themselves**:
+    `save_spending_patterns` persists; `preview_monthly_budget
+    (spending_patterns=…)` shows a change unsaved; `save_monthly_budget`
+    saves the plan, its kinds and the preview's patterns together (digest
+    covers kinds and patterns). The rollover of a month with kinds re-lays
+    it from the stored patterns and the obligations due NOW.
+  - **The mobile forecast and ChatGPT share** `obligation_lines.month_commitments`
+    (`commitments_paid` in `compute_forecast`); the MCP role needs the 0041 /
+    0042 grants in `scripts/mcp/mcp_service_role.sql`.
+  - Exact figures: `tests_mcp/test_obligation_payments.py`,
+    `tests_mcp/test_behavioral_budget.py`; F-8/R3 suites rewritten to identity.
 - **One display name per category** (`app/mcp/categories.py`): every result
   carries `category_label`; budget status and the forecast put an expense
   category on its paired plan bucket's line ("Fuel" = `transport gas` +
@@ -1410,8 +1451,8 @@ Rules:
 - **The financial calendar is an MCP App** (2026-10-24, MCP 2.2.0, 24 tools;
   `docs/chatgpt-app/financial-calendar.md`). `get_calendar_month` (data, no
   template) and `show_financial_calendar` (the ONLY tool with
-  `_meta.ui.resourceUri` → `ui://mita/financial-calendar-v2.html` since the
-    2.6.0 redesign); the
+  `_meta.ui.resourceUri` → `ui://mita/financial-calendar-v3.html` since
+    2.7.0); the
   render tool recomputes from the account and never takes figures as
   arguments. Rules:
   - **One query, both tools, the sign-in example**: `queries/calendar.py`
@@ -1439,17 +1480,19 @@ Rules:
   - **Bills on their due dates** (owner decision 2026-11-02, MCP 2.5.0,
     `docs/chatgpt-app/bill-due-dates.md`): R4 adopted, plus a bill line's own
     money following its payment and bill lines never donors. Each bill has a
-    `state` (recorded / overdue / due_today / upcoming / later) matched by
-    category in date order — "recorded", never "paid": MITA cannot link an
-    expense to a saved payment (explicit matching needs the `bill_payments`
-    proposal, an owner decision and a migration). `REMINDER_DAYS` = 5 is a
+    `state` (paid / overdue / due_today / upcoming / later): since 2.7.0
+    `paid` comes ONLY from expenses the user linked to that due date
+    (`obligation_payments`, the `bill_payments` proposal of 2.5.0, adopted by
+    the owner's brief of 2026-11-03) — never from category spending.
+    `REMINDER_DAYS` = 5 is a
     reminder in the calendar only — never an allocation, never a push, e-mail
     or scheduled job. Plans saved before 2.5.0 keep their layout until the
     user saves the month again (no silent rewrite).
-  - Known model gaps the calendar shows and does not hide: everyday
-    overspending still drains later dates (F-8 for everyday lines: R1, R2 for
-    everyday lines and R5 not adopted) and F-2. Do not change the everyday
-    rebalancing without a new owner decision.
+  - Known model gaps the calendar shows and does not hide: in LEGACY months
+    (no line kinds) everyday overspending still drains later dates per date;
+    months laid out since 2.7.0 settle planned and flexible lines within the
+    line first (R2, owner brief 2026-11-03). F-2 remains. Do not change
+    the rebalancing of legacy months without a new owner decision.
     Behaviour is pinned with hand-checkable figures in
     `tests_mcp/test_money_consistency.py` (the review month, the bill cases)
     and `tests_mcp/test_bill_due_dates.py` (the owner's November); a model

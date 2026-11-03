@@ -7,7 +7,7 @@
 <title>MITA financial calendar</title>
 <!--
   MITA's financial calendar, an MCP Apps component (io.modelcontextprotocol/ui).
-  Served by app/mcp/ui as ui://mita/financial-calendar-v2.html; rules in that
+  Served by app/mcp/ui as ui://mita/financial-calendar-v3.html; rules in that
   module and in docs/chatgpt-app/financial-calendar.md:
   * loads nothing and connects nowhere (empty CSP allowlist); data arrives in
     tool results the host delivers, more is asked for only through the host
@@ -108,7 +108,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 .mcell i>s{display:block;height:100%;border-radius:2px;background:var(--within);text-decoration:none}
 .mcell.over i>s{background:var(--over)}
 .mcell .mbill{position:absolute;right:4px;top:4px;width:6px;height:6px;border-radius:50%;background:var(--color-text-secondary)}
-.mcell .mbill.recorded{background:var(--mita-teal)}
+.mcell .mbill.paid{background:var(--mita-teal)}
 .mcell .mbill.overdue{background:var(--over)}
 .mcell .mbill.upcoming{background:var(--remind-mark)}
 .mcell .mbill.due_today{background:var(--mita-navy)}
@@ -195,7 +195,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 .fchip .ico.cat,.line .ico.cat,.rows .ico.cat{width:15px;height:15px}
 .gridcap{margin:0 2px 8px;font-size:12px;color:var(--color-text-secondary)}
 .cell .bill{width:12px;height:12px;color:var(--color-text-secondary);margin-left:auto}
-.cell .bill.recorded{color:var(--mita-teal-ink)}
+.cell .bill.paid{color:var(--mita-teal-ink)}
 .cell .bill.overdue{color:var(--over);stroke-width:2.6}
 .cell .bill.upcoming{color:var(--remind-mark);stroke-width:2.6}
 .cell .bill.due_today{color:var(--color-text-primary);stroke-width:2.6}
@@ -248,7 +248,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 /* bills: reminders, states, the month's list */
 .bstate{display:inline-flex;align-items:center;gap:4px;min-height:22px;padding:2px 8px;border-radius:var(--border-radius-full);font-size:12px;font-weight:700;line-height:1.2;white-space:nowrap;border:1px solid transparent}
 .bstate .ico{width:12px;height:12px;stroke-width:2.6}
-.bstate.recorded{color:var(--mita-teal-ink);background:var(--recorded-bg)}
+.bstate.paid{color:var(--mita-teal-ink);background:var(--recorded-bg)}
 .bstate.overdue{color:var(--color-text-danger);background:var(--over-bg)}
 .bstate.due_today{color:var(--mita-navy);background:var(--mita-yellow)}
 .bstate.upcoming{color:var(--remind);background:var(--remind-bg)}
@@ -267,8 +267,8 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 :root[data-theme=dark] .rem.due_today{border-left-color:var(--mita-yellow)}
 .rem.upcoming{border-left-color:var(--remind-mark)}
 .rem.upcoming>.ico{color:var(--remind)}
-.rem.recorded{border-left-color:var(--mita-teal)}
-.rem.recorded>.ico{color:var(--mita-teal-ink)}
+.rem.paid{border-left-color:var(--mita-teal)}
+.rem.paid>.ico{color:var(--mita-teal-ink)}
 .more-rem{font-size:12.5px;color:var(--color-text-secondary)}
 .billrows{list-style:none;padding:0;margin:0;display:grid;gap:0}
 .billrows li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;padding:9px 0;border-bottom:1px solid var(--color-border-secondary);font-size:14px}
@@ -328,7 +328,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   // ---------------------------------------------------------------------
   // Constants
   // ---------------------------------------------------------------------
-  var APP_INFO = { name: "MITA financial calendar", version: "1.0.0" };
+  var APP_INFO = { name: "MITA financial calendar", version: "3.0.0" };
   var PROTOCOL_VERSION = "2026-01-26";
   var MODES = ["inline", "fullscreen"];
   var CALENDAR_KEY = "mita/calendar";
@@ -885,9 +885,11 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     return state.payload.month.bills.filter(function (b) { return b.date === iso; });
   }
 
-  // --- bills: due dates, reminders, what is recorded (MITA's fields) ---
+  // --- bills: due dates, reminders, what is paid (MITA's fields) ---
+  // A bill is paid only by expenses the user linked to it (obligation_ref):
+  // spending in the same category never pays it.
   var REMIND_DEFAULT = 5;
-  var STATE_ORDER = { overdue: 0, due_today: 1, upcoming: 2, later: 3, recorded: 4 };
+  var STATE_ORDER = { overdue: 0, due_today: 1, upcoming: 2, later: 3, paid: 4 };
   function reminderDays(month) {
     return typeof month.reminder_days === "number" ? month.reminder_days : REMIND_DEFAULT;
   }
@@ -903,7 +905,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   function mostUrgent(bills) {
     return bills.slice().sort(function (a, b) { return STATE_ORDER[billState(a)] - STATE_ORDER[billState(b)]; })[0] || null;
   }
-  // Bills not recorded yet whose reminder window holds this date: due after
+  // Bills not paid yet whose reminder window holds this date: due after
   // it, at most reminder_days later. From today on only. A reminder, never
   // money: the bill's money stays on its due date.
   function windowBills(iso) {
@@ -914,7 +916,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       var key = b.date + "|" + b.category + "|" + b.amount + "|" + billName(b);
       if (seen[key]) return false;
       seen[key] = true;
-      return billState(b) !== "recorded" && b.date > iso && daysBetween(iso, b.date) <= reminderDays(month);
+      return billState(b) !== "paid" && b.date > iso && daysBetween(iso, b.date) <= reminderDays(month);
     });
   }
   // A band on a date only while the reminder is live: the bill is due within
@@ -925,7 +927,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   }
   function recordedHere(iso) {
     return state.payload.month.bills.filter(function (b) {
-      return b.date !== iso && (b.recorded_dates || []).indexOf(iso) !== -1;
+      return b.date !== iso && (b.paid_dates || []).indexOf(iso) !== -1;
     });
   }
   // The reminder wording: "Upcoming: <bill> <amount>, due <date>",
@@ -941,29 +943,29 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
         if (bill.days_until === 1) return name + " payment due tomorrow";
         if (bill.days_until >= reminderDays(state.payload.month)) return "Upcoming: " + name + " " + amount + ", due " + shortDate.format(parseDate(bill.date));
         return name + " payment in " + bill.days_until + " days";
-      case "recorded": return name + " recorded";
+      case "paid": return name + " paid";
       default: return name + " " + amount + ", due " + shortDate.format(parseDate(bill.date));
     }
   }
   function timingText(bill) {
-    var dates = bill.recorded_dates || [];
+    var dates = bill.paid_dates || [];
     if (!dates.length) return "";
     var on = dates.map(function (d) { return shortDate.format(parseDate(d)); }).join(" and ");
     var last = dates[dates.length - 1];
-    if (last < bill.date) return "recorded " + on + ", " + plural(daysBetween(last, bill.date), "day", "days") + " early";
-    if (dates[0] > bill.date) return "recorded " + on + ", " + plural(daysBetween(bill.date, dates[0]), "day", "days") + " late";
-    return "recorded " + on;
+    if (last < bill.date) return "paid " + on + ", " + plural(daysBetween(last, bill.date), "day", "days") + " early";
+    if (dates[0] > bill.date) return "paid " + on + ", " + plural(daysBetween(bill.date, dates[0]), "day", "days") + " late";
+    return "paid " + on;
   }
   function billSub(bill, cur) {
     var stateName = billState(bill);
-    var recorded = cents(bill.recorded) || 0;
+    var paid = cents(bill.paid) || 0;
     var due = dayShort.format(parseDate(bill.date));
-    if (stateName === "recorded") return money(bill.recorded, cur) + " under " + bill.category_label + ", " + timingText(bill);
-    var left = moneyCents(cents(bill.amount) - recorded, cur);
+    if (stateName === "paid") return money(bill.paid, cur) + " recorded by you as this payment, " + timingText(bill);
+    var left = money(bill.outstanding, cur);
     var parts = [];
-    if (recorded > 0) parts.push(money(bill.recorded, cur) + " of " + money(bill.amount, cur) + " " + timingText(bill));
-    if (stateName === "overdue") parts.push(left + " was due " + due + ", not recorded in MITA");
-    else parts.push((recorded > 0 ? left + " left, due " : "Due ") + due);
+    if (paid > 0) parts.push(money(bill.paid, cur) + " of " + money(bill.amount, cur) + " " + timingText(bill));
+    if (stateName === "overdue") parts.push(left + " was due " + due + ", not paid in MITA");
+    else parts.push((paid > 0 ? left + " left, due " : "Due ") + due);
     if (!bill.in_plan) parts.push("not in this month’s plan");
     return parts.join(" · ");
   }
@@ -971,7 +973,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     var stateName = billState(bill);
     var text;
     var mark = null;
-    if (stateName === "recorded") { text = "Recorded"; mark = "check"; }
+    if (stateName === "paid") { text = "Paid"; mark = "check"; }
     else if (stateName === "overdue") { text = "Overdue"; mark = "alert"; }
     else if (stateName === "due_today") text = "Due today";
     else if (stateName === "upcoming") text = bill.days_until === 1 ? "Tomorrow" : "In " + bill.days_until + " days";
@@ -981,8 +983,8 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   function billSpoken(bill, cur) {
     var stateName = billState(bill);
     var base = billName(bill) + " " + money(bill.amount, cur);
-    if (stateName === "recorded") return base + " due, recorded";
-    if (stateName === "overdue") return base + " was due, overdue, not recorded";
+    if (stateName === "paid") return base + " due, paid";
+    if (stateName === "overdue") return base + " was due, overdue, not paid in MITA";
     if (stateName === "due_today") return base + " due today";
     if (stateName === "upcoming") return base + " due in " + plural(bill.days_until, "day", "days");
     return base + " due";
@@ -1007,7 +1009,9 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     var pe = cents(day.planned_everyday), se = cents(day.spent_everyday);
     return {
       begun: begun,
-      planned: day.planned,
+      // A flexible budget's daily share is guidance, not a purchase: a date
+      // ahead shows only planned purchases and bills (planned_scheduled).
+      planned: day.day_kind === "future" && day.planned_scheduled !== undefined ? day.planned_scheduled : day.planned,
       spent: day.spent,
       state: day.state,
       ratio: begun && pe > 0 ? Math.min(1, se / pe) : 0,
@@ -1244,7 +1248,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   }
 
   function nextBill(month) {
-    var upcoming = month.bills.filter(function (b) { return b.date > month.today && billState(b) !== "recorded"; });
+    var upcoming = month.bills.filter(function (b) { return b.date > month.today && billState(b) !== "paid"; });
     return upcoming[0] || null;
   }
 
@@ -1258,7 +1262,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     (limit ? items.slice(0, limit) : items).forEach(function (bill) {
       var stateName = billState(bill);
       box.appendChild(el("div", { class: "rem " + stateName }, [
-        icon(stateName === "overdue" ? "alert" : stateName === "recorded" ? "check" : "bill"),
+        icon(stateName === "overdue" ? "alert" : stateName === "paid" ? "check" : "bill"),
         el("span", { class: "body" }, [
           el("span", { class: "t", text: billTitle(bill, cur) }),
           el("span", { class: "s", text: billSub(bill, cur) })
@@ -1278,7 +1282,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     var cur = month.currency;
     var box = el("section", { class: "bills-card", "aria-labelledby": "bills-title" }, [
       el("h2", { id: "bills-title", text: "Bills this month" }),
-      el("p", { class: "note", text: "Each saved bill is planned in full on its due date and announced " + reminderDays(month) + " days before. A bill counts as recorded when expenses you recorded under its category cover it — MITA can’t tell which bill an expense paid." })
+      el("p", { class: "note", text: "Each saved bill is planned in full on its due date and announced " + reminderDays(month) + " days before. A bill is paid when you tell MITA which expense paid it — a purchase in the same category never counts." })
     ]);
     var list = el("ul", { class: "billrows" });
     month.bills.forEach(function (bill) {
@@ -1327,7 +1331,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       var classes = "mcell" + (day.day_kind === "future" ? " future" : "") + (day.day_kind === "today" ? " today" : "") + (model.state === "over" ? " over" : "");
       var raw = null;
       if (day.day_kind !== "future" && cents(day.spent) > 0) raw = day.spent;
-      if (day.day_kind === "future" && cents(day.planned) > 0) raw = day.planned;
+      if (day.day_kind === "future" && cents(model.planned) > 0) raw = model.planned;
       var amount = raw === null ? "" : fitAmount(raw);
       if (activeWindow(day.date)) classes += " win";
       var cell = el("div", { class: classes }, [el("b", { text: String(parseDate(day.date).getUTCDate()) }), el("span", { class: "num fit", "data-amount": raw, text: amount })]);
@@ -1540,7 +1544,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     if (cents(s.commitments_reserved) > 0 && month.month_position !== "past") {
       items.push(el("p", { class: "callout" }, [icon("bill"), el("span", null, [
         el("strong", { text: money(s.commitments_reserved, cur) }),
-        " is held for bills not recorded as paid yet, so it is not in Left to spend. Recording a bill releases what it doesn’t use."
+        " is held for bills not paid yet, so it is not in Left to spend. Recording a payment as that bill releases it; other spending in the same category does not."
       ])]));
     }
     // Left to spend is everyday money; compare it with the everyday plan ahead.
@@ -1548,8 +1552,8 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     var ahead = month.days.reduce(function (sum, d) { return d.day_kind === "future" ? sum + cents(d.planned_everyday) : sum; }, 0);
     if (s.planned_after_today !== null && left !== null && left - ahead >= 100 && month.month_position === "current") {
       items.push(el("p", { class: "callout" }, [icon("spread"), el("span", null, [
-        "MITA’s plan holds ", el("strong", { text: money((ahead / 100).toFixed(2), cur) }),
-        " of everyday money for the dates ahead after its automatic rebalancing, which moves money from later dates to cover a day that went over. Money left unspent on earlier dates stays on those dates; the daily average counts it too."
+        "The dates ahead hold ", el("strong", { text: money((ahead / 100).toFixed(2), cur) }),
+        " of everyday money. Left to spend is more: money not spent on earlier dates stays available, and the daily average counts it too."
       ])]));
     }
     var outside = month.bills.filter(function (b) { return !b.in_plan && b.date >= month.today; });
@@ -1653,7 +1657,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       var shown = state.filter ? model.spent : day.spent;
       amountNode = el("span", { class: "amt num fit" }, cents(shown) > 0 ? amountValue(shown) : (cents(model.planned) > 0 ? amountValue("0") : ""));
     } else {
-      var plannedShown = state.filter ? model.planned : day.planned;
+      var plannedShown = model.planned;
       amountNode = el("span", { class: "amt num fit" }, cents(plannedShown) > 0 ? amountValue(plannedShown) : "");
     }
     var meter = null;
@@ -1694,16 +1698,24 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       el("span", null, [el("i", { class: "sw plan" }), "Plan, not a forecast"]),
       el("span", null, [el("i", { class: "sw overm" }), "Over the everyday plan"]),
       el("span", null, [icon("bill"), "Saved bill due"]),
+      el("span", null, [el("i", { class: "sw plan" }), "Dates ahead: planned purchases and bills only — flexible budgets have no dates"]),
       el("span", null, [el("i", { class: "sw win" }), "Bill due within " + reminderDays(state.payload.month) + " days"]),
       el("span", null, [el("i", { class: "sw todaym" }), "Today"])
     ]);
   }
 
   // A date's lines with money, largest first (MITA orders day_lines so),
-  // money set aside left out.
+  // money set aside left out — and, for dates ahead, flexible budgets too
+  // (their daily share is guidance, never a purchase on that date).
+  function lineKind(key) {
+    var line = lineByKey(key);
+    return line && line.spending_type ? line.spending_type : "legacy";
+  }
   function topLines(day, begun) {
     return dayLines(day.date).filter(function (l) {
-      return lineGroup(l.key) !== "set_aside" && (begun ? cents(l.spent) > 0 : cents(l.planned) > 0);
+      if (lineGroup(l.key) === "set_aside") return false;
+      if (begun) return cents(l.spent) > 0;
+      return cents(l.planned) > 0 && lineKind(l.key) !== "flexible";
     });
   }
 
@@ -1768,6 +1780,11 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
         el("b", { text: money(day.spent_everyday, cur) }),
         el("span", { class: "muted", text: cents(day.planned_everyday) > 0 ? "of " + money(day.planned_everyday, cur) + " planned" : "no everyday plan for this date" })
       ]));
+      var flexPast = cents(day.planned_flexible || "0");
+      if (flexPast > 0 && cents(day.planned_everyday) > 0) {
+        var bought = cents(day.planned_everyday) - flexPast;
+        everyday.appendChild(el("p", { class: "note", style: "margin-top:4px", text: (bought > 0 ? moneyCents(bought, cur) + " for planned purchases · " : "") + moneyCents(flexPast, cur) + " flexible budgets’ daily share (guidance, not a purchase)" }));
+      }
       if (cents(day.planned_everyday) > 0) {
         var ratio = Number(day.spent_everyday) / Number(day.planned_everyday);
         everyday.appendChild(el("div", { style: "margin-top:8px" }, bar(ratio, day.state === "over")));
@@ -1784,12 +1801,14 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
         everyday.appendChild(el("p", { class: "note", style: "margin-top:6px", text: "Bills and commitments recorded: " + moneyCents(committed, cur) + " · all spending " + money(day.spent, cur) }));
       }
     } else {
+      var scheduled = day.planned_scheduled !== undefined ? day.planned_scheduled : day.planned;
+      var flexShare = cents(day.planned_flexible || "0");
       everyday.appendChild(el("h3", { text: "Planned for this date" }));
       everyday.appendChild(el("div", { class: "big num" }, [
-        el("b", { text: money(day.planned, cur) }),
-        el("span", { class: "muted", text: cents(day.planned_everyday) !== cents(day.planned) ? "everyday " + money(day.planned_everyday, cur) : "everyday spending" })
+        el("b", { text: money(scheduled, cur) }),
+        el("span", { class: "muted", text: cents(scheduled) > 0 ? "planned purchases and bills" : "no purchase planned" })
       ]));
-      everyday.appendChild(el("p", { class: "note", style: "margin-top:6px", text: "No spending yet. This is MITA’s plan for the date as its automatic rebalancing left it — not a forecast." }));
+      everyday.appendChild(el("p", { class: "note", style: "margin-top:6px", text: "No spending yet. MITA’s plan for the date, not a forecast." + (flexShare > 0 ? " Flexible budgets have no purchase dates; their daily share (" + moneyCents(flexShare, cur) + ") is guidance." : "") }));
     }
     panel.appendChild(everyday);
 
@@ -1847,18 +1866,61 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       panel.appendChild(el("section", null, [el("h3", { text: "Coming up" }), comingList]));
     }
 
-    var lines = dayLines(day.date).filter(function (l) { return cents(l.planned) > 0 || cents(l.spent) > 0; });
+    var buys = day.purchases || [];
+    if (buys.length) {
+      var buyList = el("ul", { class: "rows" });
+      buys.forEach(function (p) {
+        var line = lineByKey(p.category);
+        var label = line ? line.category_label : p.category;
+        var status = cents(p.spent) > 0
+          ? money(p.spent, cur) + " spent of " + money(p.planned, cur) + " planned"
+          : (day.day_kind === "past" ? "nothing recorded · " : "") + money(p.planned, cur) + " planned";
+        buyList.appendChild(el("li", null, [
+          el("span", { class: "who" }, [catIcon(p.category), el("span", { text: label })]),
+          el("span", { class: "amtc num", text: status })
+        ]));
+      });
+      panel.appendChild(el("section", null, [
+        el("h3", { text: "Planned purchases" }), buyList,
+        el("p", { class: "note", style: "margin-top:6px", text: "A planned purchase is money set out for it, not a transaction. Spending less leaves the rest on the line." })
+      ]));
+    }
+    var flexible = month.categories.filter(function (c) { return c.spending_type === "flexible" && c.left_per_day; });
+    if (flexible.length && day.day_kind !== "past") {
+      var flexList = el("ul", { class: "rows" });
+      flexible.forEach(function (c) {
+        flexList.appendChild(el("li", { title: money(c.left_per_day, cur) + " a day exactly" }, [
+          el("span", { class: "who" }, [catIcon(c.category), el("span", null, [
+            el("span", { style: "display:block", text: c.category_label }),
+            el("span", { class: "what", text: money(c.remaining, cur) + " left this month" })
+          ])]),
+          el("span", { class: "amtc num", text: "about " + money(c.left_per_day_rounded, cur).replace(/[.,]00(?=\D*$)/, "") + " a day" })
+        ]));
+      });
+      panel.appendChild(el("section", null, [
+        el("h3", { text: "Flexible budgets" }), flexList,
+        el("p", { class: "note", style: "margin-top:6px", text: "No purchase dates: spend when you need to. The daily figure is what is left divided by the days left (exact amount on hover)." })
+      ]));
+    }
+
+    // A flexible budget's daily share is guidance, not a purchase on this
+    // date: it is listed above, and here only where something was spent.
+    var lines = dayLines(day.date).filter(function (l) {
+      if (lineKind(l.key) === "flexible") return day.day_kind !== "future" && cents(l.spent) > 0;
+      return cents(l.planned) > 0 || cents(l.spent) > 0;
+    });
     if (lines.length) {
       var rows = el("ul", { class: "rows" });
       lines.forEach(function (l) {
         var line = lineByKey(l.key);
         var label = line ? line.category_label : l.key;
         var setAside = lineGroup(l.key) === "set_aside";
+        var flexibleLine = lineKind(l.key) === "flexible";
         rows.appendChild(el("li", null, [
           el("span", { class: "who" }, [setAside ? icon("shield", "shield") : catIcon(l.key), el("span", { text: label })]),
           el("span", { class: "amtc num" }, day.day_kind === "future" || setAside
             ? (setAside ? "set aside " : "plan ") + money(l.planned, cur)
-            : money(l.spent, cur) + (cents(l.planned) > 0 ? " / " + money(l.planned, cur) : ""))
+            : money(l.spent, cur) + (flexibleLine ? " · flexible" : cents(l.planned) > 0 ? " / " + money(l.planned, cur) : ""))
         ]));
       });
       panel.appendChild(el("section", null, [el("h3", { text: day.day_kind === "future" ? "Plan by category" : "Spent / planned by category" }), rows]));
@@ -1921,6 +1983,13 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
         else if (p === 0) meta = "not in the plan";
         else if (over) meta = moneyCents(s - p, cur) + " over";
         else meta = money(line.remaining, cur) + " left";
+        if (!setAside && p > 0 && !over) {
+          if (line.spending_type === "planned" && line.next_purchase) {
+            meta += " · next " + dayShort.format(parseDate(line.next_purchase.date)) + " " + money(line.next_purchase.planned, cur);
+          } else if (line.spending_type === "flexible" && line.left_per_day_rounded) {
+            meta += " · about " + money(line.left_per_day_rounded, cur).replace(/[.,]00(?=\D*$)/, "") + " a day";
+          }
+        }
         var content = [
           el("span", { class: "nm" }, [setAside ? icon("shield", "shield") : catIcon(line.category), el("span", { text: line.category_label })]),
           el("span", { class: "val num", text: setAside ? money(line.planned, cur) : money(line.spent, cur) + " / " + money(line.planned, cur) }),
@@ -1945,7 +2014,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   }
 
   function methodText(month) {
-    return "Figures come from your MITA account (" + month.currency + ", " + month.timezone + "). Each date shows MITA’s saved plan for it and, once begun, the expenses you recorded; dates ahead show the plan, never a forecast. A date is over when everyday spending passes that date’s everyday plan; bills and commitments are counted on their own. Protected savings, and what bills not yet recorded still need, are never counted as spendable. The daily average is left to spend divided by the days left. Saved bills are planned in full on their due dates and announced " + reminderDays(month) + " days before; a bill counts as recorded when expenses recorded under its category cover it (MITA matches by category and date, not to a particular bill).";
+    return "Figures come from your MITA account (" + month.currency + ", " + month.timezone + "). Each date shows, once begun, the expenses you recorded; dates ahead show planned purchases and bills — a flexible budget has no purchase dates, only a daily figure that is guidance. A planned purchase is money set out for it, never a transaction. Protected savings, and what bills not yet paid still need, are never counted as spendable. The daily average is left to spend divided by the days left. Saved bills are planned in full on their due dates and announced " + reminderDays(month) + " days before; a bill is paid only when you tell MITA which expense paid it — other spending in the same category never counts.";
   }
 
   // ---------------------------------------------------------------------
@@ -1959,14 +2028,19 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     var day = month.days.filter(function (d) { return d.date === state.selected; })[0];
     if (day) {
       if (day.day_kind === "future") {
-        parts.push("Selected " + day.date + ": planned " + day.planned + " " + cur + " (everyday " + day.planned_everyday + ").");
+        var scheduled = day.planned_scheduled !== undefined ? day.planned_scheduled : day.planned;
+        parts.push("Selected " + day.date + ": " + scheduled + " " + cur + " of planned purchases and bills" + (day.planned_flexible && cents(day.planned_flexible) > 0 ? " (flexible budgets have no purchase dates; their daily share " + day.planned_flexible + " is guidance)" : "") + ".");
+        (day.purchases || []).forEach(function (p) {
+          var line = lineByKey(p.category);
+          parts.push("Planned purchase: " + (line ? line.category_label : p.category) + " " + p.planned + " " + cur + ".");
+        });
       } else {
         parts.push("Selected " + day.date + ": spent " + day.spent + " " + cur + ", everyday " + day.spent_everyday + " of a " + day.planned_everyday + " plan (" + day.state + ").");
       }
     }
     if (day) {
       billsOn(day.date).forEach(function (bill) {
-        parts.push("Bill due that date: " + billName(bill) + " " + bill.amount + " " + cur + " (" + billState(bill) + ", " + bill.recorded + " recorded).");
+        parts.push("Bill due that date: " + billName(bill) + " " + bill.amount + " " + cur + " (" + billState(bill) + ", " + bill.paid + " paid).");
       });
     }
     (month.reminders || []).forEach(function (bill) {

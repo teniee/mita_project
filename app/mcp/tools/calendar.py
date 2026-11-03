@@ -31,6 +31,7 @@ from app.mcp.serializers import (
     calendar_view_out,
     calendar_widget_payload,
     money,
+    obligation_refs,
 )
 from app.mcp.tools.common import READ_ONLY_DISCLAIMER, read_only_annotations, tool_meta
 from app.mcp.ui import component_callable_meta, render_tool_meta
@@ -68,12 +69,12 @@ TERMS = (
     "plan; average_per_day is the safe daily figure of get_budget_forecast, an "
     "average for each remaining day — not a budget for a particular date. bills "
     "are the dates the user's saved payments fall on this month: the plan holds "
-    "each bill's full amount on its due date, and each bill has a state "
-    "(recorded, overdue = past due and not recorded, due_today, upcoming = due "
-    "within reminder_days, later) with what is recorded against it — matched by "
-    "category in date order, so 'recorded' means recorded under the bill's "
-    "category, not proof that this particular bill was paid. reminders lists the "
-    "bills to mention now (due soon, today, or past due and not recorded)."
+    "each bill's full amount on its due date, and each bill has a state (paid, "
+    "overdue = past due and not paid in MITA, due_today, upcoming = due within "
+    "reminder_days, later) with what is paid on it — only expenses the user said "
+    "paid that bill (recorded with its obligation_ref) count; spending in the "
+    "same category never does. reminders lists the bills to mention now (due "
+    "soon, today, or past due and not paid)."
 )
 
 GET_DESCRIPTION = (
@@ -141,17 +142,16 @@ def _reminder_text(bill) -> str:
     name = o.merchant or bill.line
     when = o.day.isoformat()
     if bill.state == "overdue":
-        status = f"was due {when}, not recorded"
+        status = f"was due {when}, not paid in MITA"
     elif bill.state == "due_today":
         status = "due today"
     elif bill.days_until == 1:
         status = f"due tomorrow ({when})"
     else:
         status = f"due {when} (in {bill.days_until} days)"
-    left = o.amount - bill.recorded
     part = (
-        f", {money(bill.recorded)} recorded, {money(left)} not yet"
-        if Decimal("0") < bill.recorded < o.amount
+        f", {money(bill.paid)} paid, {money(bill.outstanding)} not yet"
+        if Decimal("0") < bill.paid < o.amount
         else ""
     )
     return f"{name} {money(o.amount)} {status}{part}"
@@ -196,9 +196,7 @@ def _shown_text(ctx: UserContext, cal, line) -> str:
         parts.append("Bills: " + "; ".join(reminders) + ".")
     else:
         upcoming = [
-            b
-            for b in cal.bills
-            if b.occurrence.day > cal.today and b.state != "recorded"
+            b for b in cal.bills if b.occurrence.day > cal.today and b.state != "paid"
         ]
         if upcoming:
             first = upcoming[0].occurrence
@@ -229,10 +227,11 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
         def body(session, user_ctx):
             y, m = resolve_month(user_ctx, year, month)
             cal = calendar_queries.calendar_month(session, user_ctx, y, m)
+            refs = obligation_refs(runtime.data_keys, user_ctx, cal)
             return ToolOutput(
-                model=calendar_month_out(user_ctx, cal),
+                model=calendar_month_out(user_ctx, cal, refs),
                 component_meta={
-                    CALENDAR_META_KEY: calendar_widget_payload(user_ctx, cal)
+                    CALENDAR_META_KEY: calendar_widget_payload(user_ctx, cal, refs)
                 },
             )
 
@@ -294,6 +293,7 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
                 "focus_date": focus_date.isoformat() if focus_date else None,
                 "category": line.key if line is not None else None,
             }
+            refs = obligation_refs(runtime.data_keys, user_ctx, cal)
             return ToolOutput(
                 model=calendar_view_out(
                     user_ctx,
@@ -302,10 +302,11 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
                     category=line.key if line is not None else None,
                     shown=_shown_text(user_ctx, cal, line),
                     notes=notes,
+                    refs=refs,
                 ),
                 text=_shown_text(user_ctx, cal, line),
                 component_meta={
-                    CALENDAR_META_KEY: calendar_widget_payload(user_ctx, cal),
+                    CALENDAR_META_KEY: calendar_widget_payload(user_ctx, cal, refs),
                     VIEW_META_KEY: view,
                 },
             )

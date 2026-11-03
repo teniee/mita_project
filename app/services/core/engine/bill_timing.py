@@ -30,10 +30,14 @@ like the real-time adjustment, and ``monthly_plan_service`` reads through it
 to the reviewed (base) plan. It is not redistribution: no
 ``redistribution_events`` row, no "redistributed" note, no mobile banner.
 
-Matching is by category and date, never by amount and never to a particular
-saved payment: MITA's data cannot say which bill an expense paid (no link
-between an expense and a saved payment). ``settle`` is also what the
-calendar uses to say what is recorded against each bill date.
+Since 2026-11-03 (docs/chatgpt-app/behavioral-budget.md) an obligation is
+settled only by the expenses the user linked to it
+(``obligation_lines``): on an obligation's line only linked payments move
+its money, each first to the due date it paid (``settle``'s ``target``),
+and a purchase in the same category is ordinary spending. The same rule —
+a line's own money follows its spending, other lines pay only beyond the
+line's whole month — is what a flexible budget and planned purchases use
+(``rebuild_month_plan``). Matching is never by amount.
 """
 
 from __future__ import annotations
@@ -49,6 +53,7 @@ from typing import (
     List,
     Mapping,
     MutableMapping,
+    Optional,
     Sequence,
     Tuple,
 )
@@ -70,42 +75,68 @@ class Settlement:
 
 def settle(
     dues: Sequence[Tuple[date, Decimal]],
-    payments: Iterable[Tuple[date, Decimal]],
+    payments: Iterable[Tuple],
 ) -> Settlement:
     """Match one line's recorded spending to its dues in date order.
 
     ``dues``: ``(due date, amount)``, several may share a date (two bills of
     one category on one day stay two). ``payments``: ``(recorded date,
-    amount)``, summed per date here. Deterministic: dates ascending, and dues
-    on one date in the order given.
+    amount)`` or ``(recorded date, amount, target due date)``. A payment with
+    a target — an expense the user linked to that due date — uses the dues
+    on its target date first (the caller passes at most what that due date
+    asks for: paying more is spending beyond the bill, never another due
+    date's payment). What it still needs, and every untargeted payment,
+    follows the date order: the money due on the payment's own date, then
+    money due earlier and unpaid (late, oldest first), then money due later
+    (early, nearest first) — which finds a bill's money where a plan saved
+    before due dates put it. Deterministic: recorded dates ascending,
+    targeted before untargeted on one date, and dues on one date in the
+    order given.
     """
     remaining = [max(ZERO, Decimal(amount)) for _, amount in dues]
     covered = [ZERO for _ in dues]
     paid: List[List[Tuple[date, Decimal]]] = [[] for _ in dues]
-    by_day: Dict[date, Decimal] = defaultdict(lambda: ZERO)
-    for day, amount in payments:
-        if Decimal(amount) > ZERO:
-            by_day[day] += Decimal(amount)
+    by_key: Dict[Tuple[date, int, date], Decimal] = defaultdict(lambda: ZERO)
+    for payment in payments:
+        day, amount = payment[0], Decimal(payment[1])
+        target = payment[2] if len(payment) > 2 else None
+        if amount > ZERO:
+            # untargeted payments sort after targeted ones on the same day
+            key = (day, 1, day) if target is None else (day, 0, target)
+            by_key[key] += amount
     order = sorted(range(len(dues)), key=lambda i: (dues[i][0], i))
-    beyond: Dict[date, Decimal] = {}
-    for day in sorted(by_day):
-        need = by_day[day]
+    beyond: Dict[date, Decimal] = defaultdict(lambda: ZERO)
+
+    def take(i: int, day: date, need: Decimal) -> Decimal:
+        amount = min(need, remaining[i])
+        if amount <= ZERO:
+            return need
+        remaining[i] -= amount
+        covered[i] += amount
+        if paid[i] and paid[i][-1][0] == day:
+            paid[i][-1] = (day, paid[i][-1][1] + amount)
+        else:
+            paid[i].append((day, amount))
+        return need - amount
+
+    for day, kind, target in sorted(by_key):
+        need = by_key[(day, kind, target)]
+        if kind == 0:
+            for i in order:
+                if need <= ZERO:
+                    break
+                if dues[i][0] == target:
+                    need = take(i, day, need)
         same = [i for i in order if dues[i][0] == day]
         earlier = [i for i in order if dues[i][0] < day]
         later = [i for i in order if dues[i][0] > day]
         for i in same + earlier + later:
             if need <= ZERO:
                 break
-            take = min(need, remaining[i])
-            if take <= ZERO:
-                continue
-            remaining[i] -= take
-            covered[i] += take
-            paid[i].append((day, take))
-            need -= take
+            need = take(i, day, need)
         if need > ZERO:
-            beyond[day] = need
-    return Settlement(covered=covered, paid=paid, beyond=beyond)
+            beyond[day] += need
+    return Settlement(covered=covered, paid=paid, beyond=dict(beyond))
 
 
 def _record(entry, delta: Decimal) -> None:
@@ -138,16 +169,24 @@ def retime_bill_lines(
     rows_by_key: MutableMapping[Tuple[date, str], object],
     spent: Mapping[Tuple[date, str], Decimal],
     bill_categories: AbstractSet[str],
+    linked: Optional[Mapping[str, Sequence[Tuple[date, Decimal, date]]]] = None,
+    linked_only: AbstractSet[str] = frozenset(),
 ) -> Dict[str, Decimal]:
-    """Move each bill line's own money to the dates its payments were
-    recorded on (``settle``). Mutates the rows in place; returns, per bill
-    category, how much moved between dates (0 when every payment fell on its
-    due date).
+    """Move each self-settling line's own money to the dates its payments
+    were recorded on (``settle``). Mutates the rows in place; returns, per
+    line, how much moved between dates (0 when every payment fell on its due
+    date).
+
+    ``linked``: per line, ``(recorded date, amount, due date paid)`` of the
+    expenses the user linked to an obligation. On a line in ``linked_only``
+    (an identified obligation) ONLY those move its money; any other spending
+    there is ordinary spending, judged date by date like everyday money.
 
     ``rows_by_key`` must hold the month's rows with their base allocations
     restored and ``spent`` accrued, and a row for every ``spent`` key
     (``rebuild_month_plan`` guarantees both).
     """
+    linked = linked or {}
     moved: Dict[str, Decimal] = {}
     for category in sorted(bill_categories):
         dues: List[Tuple[date, Decimal]] = []
@@ -161,11 +200,14 @@ def retime_bill_lines(
             if planned > ZERO:
                 dues.append((day, planned))
                 due_rows.append(row)
-        payments = [
-            (day, amount)
-            for (day, code), amount in spent.items()
-            if code == category and amount > ZERO
-        ]
+        if category in linked_only:
+            payments = list(linked.get(category, ()))
+        else:
+            payments = [
+                (day, amount)
+                for (day, code), amount in spent.items()
+                if code == category and amount > ZERO
+            ]
         if not dues or not payments:
             continue
         settlement = settle(dues, payments)

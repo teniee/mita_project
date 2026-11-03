@@ -33,6 +33,7 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Dict, FrozenSet, List, Optional, Tuple
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -44,16 +45,27 @@ from app.mcp.errors import ValidationError
 from app.mcp.queries import budget_lines, ledger
 from app.mcp.queries import setup as setup_queries
 from app.mcp.queries.periods import UserContext, month_days
-from app.services.core.engine.calendar_engine import CATEGORY_BEHAVIOR
-from app.services.core.engine.user_budget_lines import PlanDoesNotFit, is_user_line
+from app.services.core.engine.spending_schedule import (
+    KIND_NOT_APPLICABLE,
+    PatternError,
+    SpendingPattern,
+    purchase_dates,
+)
+from app.services.core.engine.user_budget_lines import (
+    ENGINE_BUCKETS,
+    PlanDoesNotFit,
+    is_user_line,
+)
 from app.services.monthly_obligations import due_dates_in_month
 from app.services.monthly_plan_service import (
     ProfileAllocation,
     allocations_from_profile,
+    behavioral_month_calendar,
     latest_plan_month_before,
     month_base_plan,
-    month_calendar,
 )
+from app.services.obligation_lines import bill_key, is_bill_key
+from app.services.spending_patterns import not_applicable, stored_patterns
 
 CENT = Decimal("0.01")
 ZERO = Decimal("0.00")
@@ -76,6 +88,13 @@ class Obligation:
     # the dates it is due on in the month, each for ``unit_amount``
     due_dates: Tuple[date, ...] = ()
     unit_amount: Decimal = ZERO
+    obligation_id: Optional[UUID] = None  # scheduled_expenses.id
+
+    @property
+    def line(self) -> str:
+        """Its own plan line (``obligation_lines``): its money never shares
+        a row with everyday money of the same category."""
+        return bill_key(self.obligation_id) if self.obligation_id else self.category
 
 
 @dataclass(frozen=True)
@@ -90,19 +109,49 @@ class HistorySummary:
 # One requested line: (name or line key, monthly amount, MITA lines it
 # replaces — None keeps the saved choice for an existing line).
 RequestLine = Tuple[str, Decimal, Optional[Tuple[str, ...]]]
+# One requested spending pattern: (line name or key, how it is bought).
+RequestPattern = Tuple[str, SpendingPattern]
+
+
+def _pattern_claim(name: str, p: SpendingPattern):
+    return (
+        name,
+        p.kind,
+        p.frequency,
+        tuple(p.weekdays),
+        tuple(p.days_of_month),
+        p.times_per_month,
+        p.anchor_date.isoformat() if p.anchor_date else None,
+        format(p.typical_amount, "f") if p.typical_amount is not None else None,
+    )
+
+
+def _pattern_from_claim(claim) -> RequestPattern:
+    name, kind, freq, wd, dom, times, anchor, typical = claim
+    return name, SpendingPattern(
+        kind=kind,
+        frequency=freq,
+        weekdays=tuple(wd),
+        days_of_month=tuple(dom),
+        times_per_month=times,
+        anchor_date=date.fromisoformat(anchor) if anchor else None,
+        typical_amount=Decimal(typical) if typical is not None else None,
+    )
 
 
 @dataclass(frozen=True)
 class DraftRequest:
-    """The user's own budget lines asked for in a preview (F-11), and lines
-    to take out of the month's plan."""
+    """The user's own budget lines asked for in a preview (F-11), lines to
+    take out of the month's plan, and how the user buys for a line (spending
+    patterns, saved with the plan)."""
 
     lines: Tuple[RequestLine, ...] = ()
     remove: Tuple[str, ...] = ()
+    patterns: Tuple[RequestPattern, ...] = ()
 
     @property
     def empty(self) -> bool:
-        return not (self.lines or self.remove)
+        return not (self.lines or self.remove or self.patterns)
 
     def claims(self, year: int, month: int, expires: int, digest: bytes) -> DraftClaims:
         return DraftClaims(
@@ -115,6 +164,7 @@ class DraftRequest:
                 for key, amount, replaces in self.lines
             ),
             self.remove,
+            tuple(_pattern_claim(name, p) for name, p in self.patterns),
         )
 
     @classmethod
@@ -125,6 +175,7 @@ class DraftRequest:
                 for key, amount, replaces in claims.lines
             ),
             tuple(claims.remove),
+            tuple(_pattern_from_claim(c) for c in claims.patterns),
         )
 
 
@@ -154,6 +205,13 @@ class BudgetDraft:
     replaces: Dict[str, Tuple[str, ...]] = field(default_factory=dict)
     changes: Tuple[LineChange, ...] = ()
     notes: Tuple[str, ...] = ()
+    # How each line's money is laid out (spending_schedule.LINE_KINDS) and
+    # the stated pattern behind it; where it came from (the user's saved
+    # pattern, or this preview); MITA lines the user said do not apply.
+    line_kinds: Dict[str, str] = field(default_factory=dict)
+    patterns: Dict[str, SpendingPattern] = field(default_factory=dict)
+    pattern_sources: Dict[str, str] = field(default_factory=dict)
+    not_applicable: Tuple[str, ...] = ()
 
     @property
     def user_lines(self) -> FrozenSet[str]:
@@ -224,6 +282,7 @@ def obligations_for_month(
     """
     rows = db.execute(
         select(
+            ScheduledExpense.id,
             ScheduledExpense.merchant,
             ScheduledExpense.category,
             ScheduledExpense.amount,
@@ -235,10 +294,14 @@ def obligations_for_month(
             ScheduledExpense.deleted_at.is_(None),
             ScheduledExpense.status == "pending",
         )
-        .order_by(ScheduledExpense.scheduled_date, ScheduledExpense.category)
+        .order_by(
+            ScheduledExpense.scheduled_date,
+            ScheduledExpense.category,
+            ScheduledExpense.id,
+        )
     ).all()
     found: List[Obligation] = []
-    for merchant, category, amount, due, recurrence in rows:
+    for obligation_id, merchant, category, amount, due, recurrence in rows:
         amount = Decimal(str(amount))
         name = (merchant or "").strip() or None
         dates = tuple(due_dates_in_month(due, recurrence, year, month))
@@ -251,18 +314,47 @@ def obligations_for_month(
             basis = f"weekly × {len(dates)} {calendar.day_name[due.weekday()]}s"
         else:
             basis = f"one-time on {due.isoformat()}"
-        found.append(Obligation(name, category, counted, basis, dates, amount))
+        found.append(
+            Obligation(name, category, counted, basis, dates, amount, obligation_id)
+        )
     return found
 
 
 def dated_bills(obligations: List[Obligation]) -> List[Tuple[date, str, Decimal]]:
-    """``(due date, category, amount)`` for every date an obligation is due
+    """``(due date, plan line, amount)`` for every date an obligation is due
     on: what ``month_calendar`` places in full on those dates."""
     return [
-        (day, item.category, item.unit_amount)
+        (day, item.line, item.unit_amount)
         for item in obligations
         for day in item.due_dates
     ]
+
+
+def comparable_saved_totals(
+    saved_totals: Dict[str, Decimal], obligations: List[Obligation]
+) -> Tuple[Dict[str, Decimal], bool]:
+    """The saved month's line totals as the draft names its lines, and
+    whether a legacy plan's obligations were re-keyed to compare them.
+
+    A plan saved before obligations had lines of their own holds each saved
+    payment's money under its category (``transportation`` 270.00 for the
+    car loan). When a category holds exactly what its obligations ask for,
+    it is those obligations: compared on their own lines, it is unchanged.
+    """
+    if any(is_bill_key(c) for c in saved_totals):
+        return dict(saved_totals), False
+    by_category: Dict[str, List[Obligation]] = {}
+    for item in obligations:
+        by_category.setdefault(item.category, []).append(item)
+    out = dict(saved_totals)
+    rekeyed = False
+    for category, items in by_category.items():
+        if out.get(category) == sum((i.amount for i in items), ZERO):
+            out.pop(category)
+            for item in items:
+                out[item.line] = out.get(item.line, ZERO) + item.amount
+            rekeyed = True
+    return out, rekeyed
 
 
 def history_before(
@@ -305,6 +397,8 @@ def _digest(
     allocation: ProfileAllocation,
     calendar_map,
     replaces: Optional[Dict[str, Tuple[str, ...]]] = None,
+    kinds: Optional[Dict[str, str]] = None,
+    patterns: Optional[Dict[str, SpendingPattern]] = None,
 ) -> bytes:
     canonical = {
         "month": f"{year:04d}-{month:02d}",
@@ -324,7 +418,14 @@ def _digest(
         canonical["lines"] = sorted(
             (key, sorted((replaces or {}).get(key, ()))) for key in allocation.manual
         )
-    text = json.dumps(canonical, separators=(",", ":"))
+    if kinds:
+        # What each line is (a planned purchase and a flexible budget can
+        # share dates) and the patterns that would be saved with the plan.
+        canonical["kinds"] = sorted(kinds.items())
+        canonical["patterns"] = sorted(
+            _pattern_claim(line, pattern) for line, pattern in (patterns or {}).items()
+        )
+    text = json.dumps(canonical, separators=(",", ":"), default=str)
     return hashlib.sha256(text.encode()).digest()
 
 
@@ -427,7 +528,7 @@ def build_draft(
     obligations = obligations_for_month(db, ctx, year, month)
     fixed: Dict[str, Decimal] = {}
     for item in obligations:
-        fixed[item.category] = fixed.get(item.category, ZERO) + item.amount
+        fixed[item.line] = fixed.get(item.line, ZERO) + item.amount
 
     saved = month_base_plan(db, ctx.user_id, year, month)
     saved_totals = _by_category(saved)
@@ -453,6 +554,29 @@ def build_draft(
     lines, replaces, resolved = _user_lines(
         db, ctx, f"{year:04d}-{month:02d}", line_totals, request
     )
+    # How the user buys for each line: their saved patterns, overridden by
+    # the ones asked for in this preview (saved with the plan).
+    stored = stored_patterns(db, ctx.user_id)
+    asked = _requested_patterns(request.patterns, lines)
+    patterns: Dict[str, SpendingPattern] = {
+        line: p for line, p in stored.items() if line in lines or line in ENGINE_BUCKETS
+    }
+    patterns.update(asked)
+    # A line of the user's own that takes the place of one of MITA's lines
+    # keeps how the user said they buy for it ("groceries every Wednesday",
+    # then "my groceries are €200"), unless it has a pattern of its own.
+    for key in lines:
+        if key in patterns:
+            continue
+        inherited = [
+            patterns[code]
+            for code in replaces.get(key, ())
+            if code in patterns and patterns[code].kind != KIND_NOT_APPLICABLE
+        ]
+        if len(inherited) == 1:
+            patterns[key] = inherited[0]
+    sources = {line: (ASKED if line in asked else SAVED) for line in patterns}
+    excluded = tuple(sorted(not_applicable(patterns)))
     try:
         allocation = allocations_from_profile(
             monthly_income=income,
@@ -460,7 +584,8 @@ def build_draft(
             region=ctx.region,
             fixed_expenses=fixed,
             manual_allocations=lines,
-            replaced_buckets={code for codes in replaces.values() for code in codes},
+            replaced_buckets={code for codes in replaces.values() for code in codes}
+            | set(excluded),
         )
     except PlanDoesNotFit as error:
         details = {"reason": "plan_exceeds_income", "currency": ctx.currency}
@@ -475,24 +600,49 @@ def build_draft(
             "stated monthly net income, so MITA cannot build a budget. Check both "
             "with the user."
         ) from None
-    calendar_map = month_calendar(
-        year, month, allocation.allocations, dated_bills(obligations)
+    calendar_map, kinds = behavioral_month_calendar(
+        year, month, allocation.allocations, dated_bills(obligations), patterns
     )
+    shown = {
+        line: p
+        for line, p in patterns.items()
+        if line in allocation.allocations or line in excluded
+    }
+    for line, pattern in sorted(shown.items()):
+        if (
+            pattern.typical_amount is not None
+            and kinds.get(line) == "planned"
+            and line in allocation.allocations
+        ):
+            dates = purchase_dates(pattern, year, month)
+            each = (allocation.allocations[line] / len(dates)).quantize(
+                CENT, ROUND_HALF_UP
+            )
+            if dates and abs(each - pattern.typical_amount) >= CENT:
+                notes.append(
+                    f"{label(line)}: {len(dates)} purchases this month of about "
+                    f"{format(each, 'f')} each from its monthly amount; the user "
+                    f"said a purchase is usually {format(pattern.typical_amount, 'f')}."
+                )
+    compared, rekeyed = comparable_saved_totals(saved_totals, obligations)
+    if saved and rekeyed:
+        notes.append(OWN_LINES_NOTE.format(month=f"{year:04d}-{month:02d}"))
     if (
         saved
-        and saved_totals == allocation.allocations
+        and compared == allocation.allocations
         and saved != _entries(calendar_map)
+        and not rekeyed
     ):
         notes.append(LAYOUT_ONLY_NOTE.format(month=f"{year:04d}-{month:02d}"))
     changes = tuple(
         LineChange(
-            category, saved_totals.get(category), allocation.allocations.get(category)
+            category, compared.get(category), allocation.allocations.get(category)
         )
         for category in sorted(
-            set(saved_totals) | set(allocation.allocations),
+            set(compared) | set(allocation.allocations),
             key=lambda c: (source_of(c) != "set_by_you", c),
         )
-        if saved and saved_totals.get(category) != allocation.allocations.get(category)
+        if saved and compared.get(category) != allocation.allocations.get(category)
     )
     return BudgetDraft(
         year=year,
@@ -502,15 +652,80 @@ def build_draft(
         obligations=obligations,
         allocation=allocation,
         calendar_map=calendar_map,
-        digest=_digest(year, month, allocation, calendar_map, replaces),
+        digest=_digest(year, month, allocation, calendar_map, replaces, kinds, asked),
         existing_plan=bool(saved),
         history=history_before(db, ctx, year, month),
-        request=resolved,
+        request=DraftRequest(
+            resolved.lines,
+            resolved.remove,
+            tuple(sorted(asked.items())),
+        ),
         replaces={key: replaces.get(key, ()) for key in allocation.manual},
         changes=changes,
         notes=tuple(notes + _same_name_notes(allocation)),
+        line_kinds=kinds,
+        patterns=shown,
+        pattern_sources={line: sources[line] for line in shown},
+        not_applicable=excluded,
     )
 
+
+# Where a line's pattern came from.
+SAVED = "saved"  # the user stated it earlier (spending_patterns)
+ASKED = "this_preview"  # stated now, saved with the plan
+
+
+def resolve_line(name: str, user_lines) -> str:
+    """The plan line a name refers to: one of the user's own lines (by name
+    or ``my:`` key), else one of MITA's lines (by code or display name)."""
+    text = " ".join(str(name or "").split())
+    folded = text.casefold()
+    for key in user_lines:
+        if folded in (key.casefold(), label(key).casefold()):
+            return key
+    for code in ENGINE_BUCKETS:
+        if folded in (code.casefold(), PLAN_LABELS.get(code, "").casefold()):
+            return code
+    raise ValidationError(
+        f"'{text[:60]}' is not a line of this plan. Name one of the user's own "
+        "lines (budget_lines) or one of MITA's lines "
+        f"({', '.join(sorted(ENGINE_BUCKETS))}).",
+        details={"reason": "unknown_budget_line"},
+    )
+
+
+def _requested_patterns(
+    requested: Tuple[RequestPattern, ...], user_lines
+) -> Dict[str, SpendingPattern]:
+    found: Dict[str, SpendingPattern] = {}
+    for name, pattern in requested:
+        line = resolve_line(name, user_lines)
+        if line in found:
+            raise ValidationError(
+                f"{label(line)} has more than one spending pattern. Give each "
+                "line one pattern.",
+                details={"reason": "duplicate_pattern"},
+            )
+        try:
+            pattern = pattern.validated()
+        except PatternError as error:
+            raise ValidationError(f"{label(line)}: {error}") from None
+        if pattern.kind == KIND_NOT_APPLICABLE and line not in ENGINE_BUCKETS:
+            raise ValidationError(
+                f"{label(line)} is the user's own line: to take it out of the "
+                "plan, use remove_lines.",
+                details={"reason": "not_applicable_user_line"},
+            )
+        found[line] = pattern
+    return found
+
+
+OWN_LINES_NOTE = (
+    "The plan saved for {month} kept the user's regular payments under their "
+    "categories. Saving this preview gives each saved payment a line of its "
+    "own (same amount, on its due dates): only an expense the user says paid "
+    "it settles it — other spending in the same category no longer does."
+)
 
 LAYOUT_ONLY_NOTE = (
     "No amount differs from the plan saved for {month}. Saving this preview "
@@ -532,10 +747,6 @@ def _by_category(plan: Dict[Tuple[date, str], Decimal]) -> Dict[str, Decimal]:
     for (_, category), amount in plan.items():
         totals[category] = totals.get(category, ZERO) + amount
     return totals
-
-
-def layout_of(category: str) -> str:
-    return CATEGORY_BEHAVIOR.get(category, "spread")
 
 
 def region_note(region: Optional[str]) -> str:
