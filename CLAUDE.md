@@ -1263,7 +1263,10 @@ Rules:
   `scripts/mcp/benchmark_capacity.py` on a LOCAL `*capacity*` database
   (600k transactions, 1.47M plan rows, 500k events): every tool query p95
   ≤ 20 ms, 1–6 statements, index scans only — no index added (no 0040). Re-run
-  it after any query-layer change; never against staging/production.
+  it after any query-layer change; never against staging/production. Re-run
+  2026-11-04 for 2.7.0: a calendar path reading the month's rows five times
+  measured p95 53.4 ms — fixed by one read (`queries/plan.month_plan`):
+  calendar p95 14.4 ms, status 11.1, forecast 10.0, spending profile 6.1.
   `scripts/mcp/e2e_v2.py` is the public acceptance conversation (sign-up →
   budget → writes → new connection → history → goal → feedback → negatives →
   analytics audit → cleanup); it refuses production hosts.

@@ -211,6 +211,7 @@ def operations() -> Dict[str, Callable]:
         recurring,
     )
     from app.mcp.queries import setup as setup_queries
+    from app.mcp.queries import spending
 
     def summary(s, ctx):
         y, m = ctx.today.year, ctx.today.month
@@ -243,6 +244,7 @@ def operations() -> Dict[str, Callable]:
         "recurring": lambda s, ctx: recurring.recurring_expenses(s, ctx),
         "goals": lambda s, ctx: goals.list_goals(s, ctx, ("active",)),
         "setup_status": lambda s, ctx: setup_queries.setup_state(s, ctx),
+        "spending_profile": lambda s, ctx: spending.spending_profile(s, ctx),
         "budget_preview": lambda s, ctx: budget_draft.build_draft(s, ctx, 2026, 10),
         "calendar_month": lambda s, ctx: calendar.calendar_month(s, ctx, 2026, 10),
     }

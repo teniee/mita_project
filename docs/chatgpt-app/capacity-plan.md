@@ -110,6 +110,20 @@ that job must be added deliberately; (3) partition `analytics.events` by month.
 
 ## Writes
 
+**Re-run 2026-11-04 (behavioral budget, MCP 2.7.0, migrations to 0042 on the
+local `mita_capacity` database; `behavioral-budget.md`).** The first version
+of the new calendar path read the month's plan rows five times and computed
+the commitments twice: `calendar_month` p95 53.4 ms, budget status 19.8 ms.
+Fixed before commit by one read of the month's rows
+(`queries/plan.month_plan`: plan, base plan, line kinds and redistribution
+from the same rows) and one commitments computation: `calendar_month` p50
+13.5 ms, p95 14.4 ms; budget status p95 11.1 ms; forecast p95 10.0 ms; setup
+status p95 13.3 ms; the new spending profile (`get_setup_status.spending`)
+p95 6.1 ms; budget preview p95 11.1 ms; recurring p95 3.7 ms. All within the
+20 ms target; no index added (the link table is read by its unique
+`transaction_id` and `(user_id, due_date)` indexes). Financial climate and
+the month summary still vary run to run on this laptop, as before.
+
 Write tools run the canonical ledger path (advisory lock + month rebuild):
 `add_transaction` p50 was 30–45 ms in the test suite against a month with
 ~250 plan rows. Batches apply items sequentially under one lock, so a

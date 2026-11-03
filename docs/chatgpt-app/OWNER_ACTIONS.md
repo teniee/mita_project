@@ -55,6 +55,29 @@ MCP 2.4.0 (F-11: the user's own budget lines, `user-budget-lines.md`):
 Staging acceptance (v2) is closed; production is untouched. Keep staging
 running until production is live; teardown is in staging.md.
 
+## Added by the behavioral budget (2026-11-03, MCP 2.7.0, `behavioral-budget.md`)
+
+Nothing below is done; nothing is deployed.
+
+1. **Review the money-model change** (your brief of 2026-11-03): only linked
+   payments settle a bill; planned purchases on real dates; flexible budgets
+   as envelopes (R2 for lines laid out by the new engine); `not_applicable`
+   MITA lines. Mobile-only months keep their layout and per-date rebalancing.
+2. **Staging migrations 0041 and 0042** from the operator machine through a
+   temporary TCP proxy (remove it afterwards), then the grants in
+   `scripts/mcp/mcp_service_role.sql` (`obligation_payments`,
+   `spending_patterns`) for `mita_mcp`.
+3. **Pin staging to the 2.7.0 commit** and run the public checks
+   (`scripts/mcp/e2e_http.py`, `staging_failure_modes.py`).
+4. **Your November in real ChatGPT:** "Show my November budget again and
+   save it" (bills on their own lines, your lines flexible unless you say how
+   you buy); tell ChatGPT which recorded expenses paid the phone and the
+   loans, if any (`obligation_ref`) — the €60 car part and the €23.50
+   cosmetics stay ordinary spending; try "I buy groceries every Wednesday"
+   and "I have no medical insurance", then preview and save.
+5. **Production** only after that: the same migrations (applied by
+   `mita-production`'s `start.sh` on merge) and grants.
+
 ## Added by the 2026-10-27 compliance audit (`openai-compliance-2026-10-27.md`)
 
 **O-12b Data residency of the OpenAI project.** "Projects with EU data
