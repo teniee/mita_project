@@ -58,7 +58,7 @@ from sqlalchemy.orm import Session
 from app.core.category_priority import is_set_aside
 from app.db.models import ScheduledExpense
 from app.mcp.categories import group_lines, line_key, line_source
-from app.mcp.queries import ledger, plan
+from app.mcp.queries import budget_lines, ledger, plan
 from app.mcp.queries.periods import UserContext, month_days
 from app.services.core.engine.bill_timing import settle
 from app.services.core.engine.budget_forecast_engine import ForecastResult
@@ -163,6 +163,8 @@ class CalendarLine:
     planned: Decimal
     spent: Decimal
     source: Optional[str] = None  # categories.line_source
+    # a user line's stored MITA lines it takes the place of (mcp_budget_lines)
+    replaces: Tuple[str, ...] = ()
 
     @property
     def remaining(self) -> Decimal:
@@ -444,9 +446,12 @@ def build_calendar(
     forecast: Optional[ForecastResult] = None,
     stated_income: Optional[Decimal] = None,
     other_currencies: Sequence[str] = (),
+    replaces: Optional[Mapping[str, Sequence[str]]] = None,
 ) -> CalendarMonth:
     """The calendar of one month from per-(local day, stored category) plan
-    and spend. Pure: no I/O, no clock."""
+    and spend. Pure: no I/O, no clock. ``replaces``: the user's own lines and
+    the MITA lines each takes the place of, as stored."""
+    replaces = replaces or {}
     first, last = month_days(year, month)
     planned_by_cat: Dict[str, Decimal] = defaultdict(lambda: ZERO)
     spent_by_cat: Dict[str, Decimal] = defaultdict(lambda: ZERO)
@@ -495,6 +500,7 @@ def build_calendar(
                 planned=line_planned,
                 spent=line_spent,
                 source=line_source(codes, line_planned),
+                replaces=tuple(replaces.get(key, ())),
             )
         )
     lines.sort(key=lambda line: (-line.planned, -line.spent, line.key))
@@ -625,4 +631,5 @@ def calendar_month(
         forecast=forecast,
         stated_income=ctx.stated_monthly_income,
         other_currencies=ledger.other_currencies_in_range(db, ctx, first, last),
+        replaces=budget_lines.stored_lines(db, ctx),
     )

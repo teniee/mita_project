@@ -30,7 +30,7 @@ only from a signed preview, feedback only on explicit request.
 | `get_financial_climate` | compact factual overview: averages, pace vs earlier months, plan adherence, late-month share, obligations, goals | months | finance:read |
 | `preview_monthly_budget` | a budget draft from stated facts and MITA's engine, keeping the user's own budget lines exactly (`budget_lines`: their label and amount, and which MITA lines they `replace`; `source: set_by_you`) and allocating only the money left; a plan over the income is refused with every part named; returns a signed `draft_token`; **saves nothing** | month, budget_lines, remove_lines | finance:read |
 | `get_calendar_month` | the month as data, date by date: each date's plan, spending and state, budget lines in groups (commitments / set aside / everyday), saved bills by date with their state (recorded / overdue / due today / upcoming / later, since 2.5.0) and `reminders` (bills due within 5 days, today or overdue), a summary with the safe daily average; callable by the calendar component | year, month | finance:read |
-| `show_financial_calendar` | **the only tool bound to a UI component**: shows the interactive calendar (`ui://mita/financial-calendar-v1.html`); figures from the account, never from arguments; short view for the model, the month for the component (`_meta`) | year, month, focus_date, category | finance:read |
+| `show_financial_calendar` | **the only tool bound to a UI component**: shows the interactive calendar (`ui://mita/financial-calendar-v2.html`, since 2.6.0); figures from the account, never from arguments; short view for the model, the month for the component (`_meta`) | year, month, focus_date, category | finance:read |
 
 ## Write
 

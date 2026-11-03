@@ -1050,6 +1050,9 @@ class CalendarLineOut(_Out):
     source: Optional[LineSource] = Field(
         description=SOURCE_DESCRIPTION + " Null when nothing was planned on the line."
     )
+    replaces: List[str] = Field(
+        description="For a line the user set: MITA's own lines it takes the place of, as saved. Empty otherwise."
+    )
 
 
 class CalendarDayOut(_Out):

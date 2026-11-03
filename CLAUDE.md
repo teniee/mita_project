@@ -1410,7 +1410,8 @@ Rules:
 - **The financial calendar is an MCP App** (2026-10-24, MCP 2.2.0, 24 tools;
   `docs/chatgpt-app/financial-calendar.md`). `get_calendar_month` (data, no
   template) and `show_financial_calendar` (the ONLY tool with
-  `_meta.ui.resourceUri` → `ui://mita/financial-calendar-v1.html`); the
+  `_meta.ui.resourceUri` → `ui://mita/financial-calendar-v2.html` since the
+    2.6.0 redesign); the
   render tool recomputes from the account and never takes figures as
   arguments. Rules:
   - **One query, both tools, the sign-in example**: `queries/calendar.py`
@@ -1455,9 +1456,19 @@ Rules:
     change must update those figures deliberately, and every scenario there
     also checks status / forecast / calendar / stored rows / the mobile API's
     figures against each other.
-  - **Money is never cut off on a narrow phone**: the component's `fitText`
-    shrinks, then rounds a date grid to whole euros (said under it), stacks
-    tiles and buttons; the harness checks 320 and 360 px.
+  - **Money is never cut off on a narrow phone**: a phone's date grid shows
+    whole euros (said under it; exact figures in each date's label and
+    detail), `fitText` shrinks what still does not fit, stacks tiles and
+    buttons; the harness checks 320, 360 and 390 px.
+  - **The 2.6.0 redesign** (owner, 2026-11-03): no "PLAN" label in date
+    cells (one caption says plan vs spent), larger cells and amounts,
+    category families as monochrome OUTLINED icons (OpenAI UI guidelines:
+    system fonts, system colours for text and icons, brand colour only on
+    accents, badges and the primary button; no logo in the UI) — a user line
+    takes the icon of the MITA line it `replaces`, as saved
+    (`CalendarLineOut.replaces`). The component holds no account data of its
+    own (`test_the_component_holds_no_account_data_of_its_own`); every figure
+    comes from the tool result for the signed-in user.
   - Regressions: `tests_mcp/test_calendar.py`; the local MCP Apps host
     `scripts/mcp/calendar_widget_review.py` (sign-up, tools, sandboxed iframe,
     axe, PNG) → `docs/chatgpt-app/review/calendar-v1/`.

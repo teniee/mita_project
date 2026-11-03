@@ -371,6 +371,53 @@ async def test_the_owner_s_bills_are_planned_whole_on_their_due_dates(
         ("Laptop loan", "2026-11-25", "later"),
     ]
     assert seen.cal["reminders"] == []
+    # the user's lines carry the MITA lines they replace, as saved (icons)
+    replaces = {c["category"]: c["replaces"] for c in seen.cal["categories"]}
+    assert (replaces["my:Fuel"], replaces["my:Groceries"]) == (
+        ["transport gas"],
+        ["groceries"],
+    )
+    assert replaces["my:Cigarettes"] == [] and replaces["transport public"] == []
+
+
+async def test_another_account_gets_its_own_calendar_and_an_empty_one_without_a_plan(
+    mcp, seed
+):
+    """Nothing of the owner's month reaches another account: a different
+    user gets their own figures, a user without a budget the empty state."""
+    owner, owner_token = await owner_account(mcp, seed)
+    m = mcp.at(SETUP)
+    other = await seed.user(income="0", onboarded=False, name=None, country="ZZ")
+    other_token = m.token(other)
+    await call(
+        m,
+        other_token,
+        "update_financial_profile",
+        {
+            "monthly_net_income": 3100,
+            "currency": "EUR",
+            "timezone": TZ,
+            "monthly_savings_target": 300,
+        },
+    )
+    before = await call(
+        m, other_token, "get_calendar_month", {"year": 2026, "month": 11}
+    )
+    assert before["plan_status"] == "not_generated" and before["bills"] == []
+    assert before["summary"]["total_planned"] is None
+    await add_bill(m, other_token, "Rent", "900.00", "rent", 3)
+    preview = await call(m, other_token, "preview_monthly_budget", {"month": "2026-11"})
+    await call(
+        m, other_token, "save_monthly_budget", {"draft_token": preview["draft_token"]}
+    )
+    mine = await call(m, other_token, "get_calendar_month", {"year": 2026, "month": 11})
+    owners = await call(
+        m, owner_token, "get_calendar_month", {"year": 2026, "month": 11}
+    )
+    assert mine["summary"]["total_planned"] != owners["summary"]["total_planned"]
+    assert [b["name"] for b in mine["bills"]] == ["Rent"]
+    assert [b["name"] for b in owners["bills"]] == ["Phone", "Car loan", "Laptop loan"]
+    assert not any(c["category"].startswith("my:") for c in mine["categories"])
 
 
 async def test_reminders_announce_a_bill_five_days_ahead_without_money(

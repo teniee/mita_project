@@ -600,6 +600,7 @@ def calendar_month_out(ctx: UserContext, cal: CalendarMonth) -> CalendarMonthOut
                 spent=money(line.spent),
                 remaining=money(line.remaining),
                 source=line.source,  # type: ignore[arg-type]
+                replaces=list(line.replaces),
             )
             for line in cal.lines
         ],

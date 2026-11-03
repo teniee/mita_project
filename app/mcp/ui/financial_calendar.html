@@ -7,7 +7,7 @@
 <title>MITA financial calendar</title>
 <!--
   MITA's financial calendar, an MCP Apps component (io.modelcontextprotocol/ui).
-  Served by app/mcp/ui as ui://mita/financial-calendar-v1.html; rules in that
+  Served by app/mcp/ui as ui://mita/financial-calendar-v2.html; rules in that
   module and in docs/chatgpt-app/financial-calendar.md:
   * loads nothing and connects nowhere (empty CSP allowlist); data arrives in
     tool results the host delivers, more is asked for only through the host
@@ -21,8 +21,6 @@
 :root{
   color-scheme:light;
   --mita-navy:#193C57;--mita-navy-2:#2B5876;--mita-yellow:#FFD25F;--mita-teal:#14B8A6;--mita-teal-ink:#0B6E64;
-  --fam-groceries:#008300;--fam-dining:#eb6834;--fam-transport:#2a78d6;--fam-shopping:#eda100;
-  --fam-fun:#e87ba4;--fam-health:#1baf7a;--fam-home:#6250d6;--fam-other:#898781;
   --over:#d03b3b;--over-bg:rgba(208,59,59,.09);--within:#14B8A6;--track:rgba(13,13,13,.08);
   --remind:#8a5300;--remind-mark:#c27a00;--remind-bg:rgba(237,161,0,.15);--recorded-bg:rgba(20,184,166,.12);
   --color-background-primary:#ffffff;--color-background-secondary:#f6f5f2;--color-background-tertiary:#ecebe6;
@@ -33,12 +31,10 @@
   --shadow-sm:0 1px 2px rgba(0,0,0,.06),0 0 0 1px rgba(0,0,0,.02);
   --shadow-md:0 6px 20px rgba(0,0,0,.07),0 1px 3px rgba(0,0,0,.06);
   --shadow-lg:0 18px 44px rgba(0,0,0,.13),0 3px 8px rgba(0,0,0,.06);
-  --cell-h:62px;
+  --cell-h:70px;
 }
 :root[data-theme=dark]{
   color-scheme:dark;
-  --fam-groceries:#2c9b2c;--fam-dining:#d95926;--fam-transport:#3987e5;--fam-shopping:#c98500;
-  --fam-fun:#d55181;--fam-health:#199e70;--fam-home:#9085e9;--fam-other:#898781;
   --over:#e66767;--over-bg:rgba(230,103,103,.15);--within:#2cc5b4;--track:rgba(255,255,255,.10);--mita-teal-ink:#5EEAD4;
   --remind:#f2b33d;--remind-mark:#f2b33d;--remind-bg:rgba(242,179,61,.16);--recorded-bg:rgba(44,197,180,.14);
   --color-background-primary:#212121;--color-background-secondary:#2a2a2a;--color-background-tertiary:#343434;
@@ -77,7 +73,6 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 .link{border:0;background:none;padding:0;font-weight:650;text-decoration:underline;text-underline-offset:3px;cursor:pointer;color:inherit;font-size:inherit}
 .muted{color:var(--color-text-secondary)}
 .note{font-size:13px;line-height:1.5;color:var(--color-text-secondary)}
-.dot{width:8px;height:8px;border-radius:50%;flex:none;display:inline-block}
 .bar{position:relative;height:6px;border-radius:999px;background:var(--track);overflow:hidden}
 .bar>i{position:absolute;inset:0 auto 0 0;border-radius:999px;background:var(--within);transition:width .35s ease}
 .bar.over>i{background:var(--over)}
@@ -127,8 +122,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
 /* fitText(): money is never cut off on a narrow screen */
 .mini.tight .mcell span{font-size:9.5px;letter-spacing:-.02em}
-.grid.tight .cell .amt{font-size:10px;letter-spacing:-.02em}
-.grid.tight .cell .amt .pl{font-size:8.5px;letter-spacing:0}
+.grid.tight .cell .amt{font-size:11px;letter-spacing:-.02em}
 .kpis.stack,.tiles.stack{grid-template-columns:repeat(2,minmax(0,1fr))}
 .kpis.stack>:last-child:nth-child(odd),.tiles.stack>:last-child:nth-child(odd){grid-column:1/-1}
 .actions.stack{grid-template-columns:1fr}
@@ -188,16 +182,18 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 :root[data-theme=dark] .cell.today{border-color:var(--mita-yellow)}
 .cell[aria-selected=true]{transform:translateY(-2px);box-shadow:var(--shadow-lg);border-color:var(--color-text-primary);z-index:1}
 .cell.blank{visibility:hidden;pointer-events:none}
-.cell .d{display:flex;align-items:center;justify-content:space-between;gap:2px;font-size:12px;font-weight:720;line-height:1}
+.cell .d{display:flex;align-items:center;justify-content:space-between;gap:2px;font-size:13px;font-weight:700;line-height:1;color:var(--color-text-primary)}
 .cell .tday{font-size:9.5px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;padding:2px 4px;border-radius:5px;background:var(--mita-yellow);color:var(--mita-navy);line-height:1}
-.cell .amt{font-size:12px;font-weight:720;line-height:1.1;white-space:nowrap;overflow:hidden}
-.cell.future .amt{font-weight:600;color:var(--color-text-secondary)}
-.cell .amt .pl{display:block;font-size:10px;font-weight:600;color:var(--color-text-tertiary);text-transform:uppercase;letter-spacing:.04em;margin-bottom:1px}
+.cell .amt{font-size:14px;font-weight:720;line-height:1.1;white-space:nowrap;overflow:hidden;letter-spacing:-.01em}
+.cell.future .amt{font-weight:620;color:var(--color-text-secondary)}
 .cell .meter{height:3px;border-radius:2px;background:var(--track);overflow:hidden}
 .cell .meter>i{display:block;height:100%;background:var(--within)}
 .cell.over .meter>i{background:var(--over)}
-.cell .marks{display:flex;align-items:center;gap:3px;min-height:8px}
-.cell .marks .dot{width:6px;height:6px}
+.cell .marks{display:flex;align-items:center;gap:3px;min-height:13px}
+.ico.cat{width:13px;height:13px;color:var(--color-text-secondary);stroke-width:1.8}
+.cell .marks .ico.cat{width:12px;height:12px}
+.fchip .ico.cat,.line .ico.cat,.rows .ico.cat{width:15px;height:15px}
+.gridcap{margin:0 2px 8px;font-size:12px;color:var(--color-text-secondary)}
 .cell .bill{width:12px;height:12px;color:var(--color-text-secondary);margin-left:auto}
 .cell .bill.recorded{color:var(--mita-teal-ink)}
 .cell .bill.overdue{color:var(--over);stroke-width:2.6}
@@ -293,28 +289,29 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 .loading{display:grid;gap:10px}
 .loading .grid .cell{cursor:default;animation:pulse 1.2s ease-in-out infinite}
 @media (min-width:560px){
-  :root{--cell-h:74px}
+  :root{--cell-h:80px}
   .cell{padding:8px 8px 7px}
-  .cell .amt{font-size:13px}
+  .cell .amt{font-size:15px}
+  .cell .marks .ico.cat{width:14px;height:14px}
   .tiles{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
 @media (min-width:900px){
-  :root{--cell-h:86px}
+  :root{--cell-h:90px}
   .group .lines{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:28px}
   .summary{grid-template-columns:minmax(0,.9fr) minmax(0,1.6fr);align-items:stretch}
   .main{grid-template-columns:minmax(0,1fr) 340px;align-items:start}
   .detail{position:sticky;top:12px}
 }
 @media (max-width:559px){
-  .cell{padding:5px 4px 4px;border-radius:10px}
-  .cell .amt{font-size:11px}
+  .cell{padding:6px 4px 5px;border-radius:10px}
+  .cell .amt{font-size:13px}
   .cell .tday{display:none}
 }
 @media (max-width:380px){
   .kpi{padding:8px}
   .kpi dd{font-size:14px}
-  .cell{padding:5px 3px 4px;border-radius:10px}
-  .cell .amt{font-size:11px}
+  .cell{padding:6px 3px 5px;border-radius:10px}
+  .cell .amt{font-size:12px}
   .hero-fig{font-size:32px}
 }
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.cell[aria-selected=true]{transform:none}}
@@ -359,10 +356,6 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   Object.keys(FAMILIES).forEach(function (family) {
     FAMILIES[family].forEach(function (code) { FAMILY_OF[code] = family; });
   });
-  var FAMILY_VAR = {
-    groceries: "--fam-groceries", dining: "--fam-dining", transport: "--fam-transport", shopping: "--fam-shopping",
-    fun: "--fam-fun", health: "--fam-health", home: "--fam-home", other: "--fam-other"
-  };
 
   var ICONS = {
     prev: "M15 18l-6-6 6-6",
@@ -376,8 +369,18 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     calendar: "M4 5h16v15H4zM4 10h16M9 3v4M15 3v4",
     close: "M6 6l12 12M18 6L6 18",
     info: "M12 11v5M12 7.6h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z",
-    spread: "M4 18h16M7 14v4M12 9v9M17 12v6"
+    spread: "M4 18h16M7 14v4M12 9v9M17 12v6",
+    // category families: outlined, monochrome (OpenAI UI guidelines)
+    cart: "M3 4h2l2.2 10.2a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.8L19.5 8H6.1M9.5 19.5h.01M16.5 19.5h.01",
+    cup: "M5 8h11v4.5A5.5 5.5 0 0 1 10.5 18h0A5.5 5.5 0 0 1 5 12.5zM16 9.5h1.5a2.5 2.5 0 0 1 0 5H16M8 3.5v2M11 3.5v2M14 3.5v2",
+    car: "M4 13.5l1.8-4.6A2 2 0 0 1 7.7 7.6h8.6a2 2 0 0 1 1.9 1.3l1.8 4.6V18H4zM4 13.5h16M7.5 18v2M16.5 18v2M7.5 15.8h.01M16.5 15.8h.01",
+    bag: "M6 8.5h12l-1 11.5H7zM9 8.5V7a3 3 0 0 1 6 0v1.5",
+    ticket: "M4 7.5h16v3a1.5 1.5 0 0 0 0 3v3H4v-3a1.5 1.5 0 0 0 0-3zM14.5 7.5v9",
+    heart: "M12 19.5S5 15.2 5 10a3.8 3.8 0 0 1 7-2.1A3.8 3.8 0 0 1 19 10c0 5.2-7 9.5-7 9.5z",
+    home: "M4 11l8-6.5 8 6.5M6.5 9.5V19.5h11V9.5M10 19.5v-5h4v5",
+    tag: "M4 12V4.5h7.5l8.5 8.5-7.5 7.5zM8 8h.01"
   };
+  var FAMILY_ICON = { groceries: "cart", dining: "cup", transport: "car", shopping: "bag", fun: "ticket", health: "heart", home: "home", other: "tag" };
 
   // ---------------------------------------------------------------------
   // State
@@ -808,8 +811,9 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     return Math.abs(n) >= 1000 ? wholeFormat.format(n) : plainFormat.format(n);
   }
   function fitAmount(value) {
-    // Every cent where a cell has room; whole amounts from 100 on a phone.
-    return window.innerWidth < 560 ? tinyAmount(value) : cellAmount(value);
+    // Every cent where a cell has room; whole euros in a phone's date grid
+    // (said under it; each date's label and detail keep the exact figure).
+    return window.innerWidth < 560 ? wholeAmount(value) : cellAmount(value);
   }
   function amountValue(value) {
     return el("span", { class: "v", "data-amount": value, text: fitAmount(value) });
@@ -863,12 +867,19 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 
   function familyOf(key) {
     var line = lineByKey(key);
-    return familyOfCodes(key, line ? line.category_codes : [key]);
+    if (!line) return familyOfCodes(key, [key]);
+    return familyOfCodes(key, (line.replaces || []).concat(line.category_codes));
   }
 
-  function familyColor(key) {
-    return "var(" + FAMILY_VAR[familyOf(key)] + ")";
+  // A category's outlined icon: its family, from MITA's data (a user line
+  // takes the family of the MITA line it replaces, as the user saved it).
+  function catIcon(key) {
+    return icon(FAMILY_ICON[familyOf(key)] || "tag", "cat");
   }
+  function catIconOfCodes(key, codes) {
+    return icon(FAMILY_ICON[familyOfCodes(key, codes)] || "tag", "cat");
+  }
+
 
   function dayLines(iso) {
     var lines = (state.payload.day_lines && state.payload.day_lines[iso]) || [];
@@ -922,8 +933,9 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       return b.date !== iso && (b.recorded_dates || []).indexOf(iso) !== -1;
     });
   }
-  // The owner's wording: "Upcoming: Laptop €70, due Nov 25", "… in 3 days",
-  // "… due tomorrow", "… due today: €70", "… overdue".
+  // The reminder wording: "Upcoming: <bill> <amount>, due <date>",
+  // "… payment in N days", "… due tomorrow", "… due today: <amount>",
+  // "… payment overdue".
   function billTitle(bill, cur) {
     var name = billName(bill);
     var amount = money(bill.amount, cur);
@@ -1031,6 +1043,13 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       parts.push(prefix + (cents(model.planned) > 0 ? "planned " + money(model.planned, cur) : "nothing planned"));
     }
     var cur2 = m.currency;
+    if (!state.filter) {
+      var named = topLines(day, model.begun).slice(0, 3).map(function (l) {
+        var line = lineByKey(l.key);
+        return (line ? line.category_label : l.key) + " " + money(model.begun ? l.spent : l.planned, cur2);
+      });
+      if (named.length) parts.push((model.begun ? "by category: " : "planned by category: ") + named.join(", "));
+    }
     billsOn(day.date).forEach(function (bill) { parts.push(billSpoken(bill, cur2)); });
     windowBills(day.date).forEach(function (bill) {
       parts.push("reminder: " + billName(bill) + " " + money(bill.amount, cur2) + " due in " + plural(daysBetween(day.date, bill.date), "day", "days"));
@@ -1075,10 +1094,6 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     path.setAttribute("d", ICONS[name]);
     svg.appendChild(path);
     return svg;
-  }
-
-  function dot(color) {
-    return el("span", { class: "dot", style: "background:" + color, "aria-hidden": "true" });
   }
 
   function bar(ratio, over) {
@@ -1573,7 +1588,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       group.appendChild(el("button", {
         class: "fchip", type: "button", id: "filter-" + index, "aria-pressed": state.filter === line.category ? "true" : "false",
         onclick: function () { setFilter(state.filter === line.category ? null : line.category); }
-      }, [dot(familyColor(line.category)), line.category_label]));
+      }, [catIcon(line.category), line.category_label]));
     });
     if (spendingLines.length > limit) {
       group.appendChild(el("button", { class: "fchip more", type: "button", id: "filter-more", "aria-expanded": state.moreFilters ? "true" : "false", onclick: function () {
@@ -1590,7 +1605,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     var cur = month.currency;
     var over = cents(line.remaining) < 0;
     return el("div", { class: "banner", role: "status" }, [
-      el("span", null, [dot(familyColor(line.category)),
+      el("span", null, [catIcon(line.category),
         el("strong", { text: line.category_label }),
         "spent " + money(line.spent, cur) + " of " + money(line.planned, cur) + " planned · " +
         (over ? moneyCents(-cents(line.remaining), cur) + " over" : money(line.remaining, cur) + " left")]),
@@ -1602,8 +1617,9 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     var box = el("div", { class: "calendar", "aria-busy": state.busy ? "true" : "false" });
     var weekdays = el("div", { class: "weekdays", "aria-hidden": "true" });
     weekdayHeaders(weekdayShort).forEach(function (name) { weekdays.appendChild(el("div", { text: name })); });
+    box.insertBefore(el("p", { class: "gridcap", text: gridCaption(month) }), box.firstChild);
     box.appendChild(weekdays);
-    var grid = el("div", { class: "grid", role: "grid", "aria-label": monthTitle(month) + " calendar" });
+    var grid = el("div", { class: "grid" + (state.width < 560 ? " whole" : ""), role: "grid", "aria-label": monthTitle(month) + " calendar" });
     var cells = [];
     for (var b = leadingBlanks(month.days[0].date); b > 0; b--) cells.push(el("div", { class: "cell blank", "aria-hidden": "true" }));
     var focusable = state.selected || (month.month_position === "current" ? month.today : month.days[0].date);
@@ -1614,8 +1630,15 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       grid.appendChild(row);
     }
     box.appendChild(grid);
+    if (state.width < 560) box.appendChild(el("p", { class: "fit-note", text: "Whole euros on this screen; select a date for the exact figures." }));
     box.appendChild(legend());
     return box;
+  }
+
+  function gridCaption(month) {
+    if (month.month_position === "future") return "Each date shows MITA’s plan for it.";
+    if (month.month_position === "past") return "Each date shows what you recorded.";
+    return "Dates so far show what you spent; dates ahead show MITA’s plan.";
   }
 
   function cellView(day, focusable) {
@@ -1635,7 +1658,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       amountNode = el("span", { class: "amt num fit" }, cents(shown) > 0 ? amountValue(shown) : (cents(model.planned) > 0 ? amountValue("0") : ""));
     } else {
       var plannedShown = state.filter ? model.planned : day.planned;
-      amountNode = el("span", { class: "amt num fit" }, cents(plannedShown) > 0 ? [el("span", { class: "pl", text: "plan" }), amountValue(plannedShown)] : "");
+      amountNode = el("span", { class: "amt num fit" }, cents(plannedShown) > 0 ? amountValue(plannedShown) : "");
     }
     var meter = null;
     if (model.begun && (model.state === "over" || model.state === "within")) {
@@ -1643,15 +1666,19 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     }
     var marks = el("span", { class: "marks", "aria-hidden": "true" });
     var due = mostUrgent(billsOn(day.date));
-    // A phone's cell holds three dots, or one dot beside the bill or "over"
-    // icon, or the two icons alone: the bill is never the one cut off.
-    var icons = (model.state === "over" ? 1 : 0) + (due ? 1 : 0);
-    var room = state.width < 560 ? [3, 1, 0][icons] : 3;
+    // The date's largest categories as icons (spent so far; planned ahead),
+    // as many as the cell holds beside the "over" and bill marks — the bill
+    // is never the one cut off.
+    var flags = (model.state === "over" ? 1 : 0) + (due ? 1 : 0);
+    var room = state.width < 360 ? [1, 0, 0][flags] : state.width < 560 ? [2, 1, 0][flags] : [3, 2, 1][flags];
     if (!state.filter) {
-      dayLines(day.date)
-        .filter(function (l) { return lineGroup(l.key) !== "set_aside" && (model.begun ? cents(l.spent) > 0 : cents(l.planned) > 0); })
-        .slice(0, room)
-        .forEach(function (l) { marks.appendChild(dot(familyColor(l.key))); });
+      var families = {};
+      topLines(day, model.begun).forEach(function (l) {
+        var family = familyOf(l.key);
+        if (families[family] || Object.keys(families).length >= room) return;
+        families[family] = true;
+        marks.appendChild(catIcon(l.key));
+      });
     }
     if (model.state === "over") marks.appendChild(el("span", { class: "flag" }, icon("alert")));
     if (due) marks.appendChild(icon("bill", "bill " + billState(due)));
@@ -1674,6 +1701,14 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       el("span", null, [el("i", { class: "sw win" }), "Bill due within " + reminderDays(state.payload.month) + " days"]),
       el("span", null, [el("i", { class: "sw todaym" }), "Today"])
     ]);
+  }
+
+  // A date's lines with money, largest first (MITA orders day_lines so),
+  // money set aside left out.
+  function topLines(day, begun) {
+    return dayLines(day.date).filter(function (l) {
+      return lineGroup(l.key) !== "set_aside" && (begun ? cents(l.spent) > 0 : cents(l.planned) > 0);
+    });
   }
 
   function onGridKey(event, iso) {
@@ -1824,7 +1859,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
         var label = line ? line.category_label : l.key;
         var setAside = lineGroup(l.key) === "set_aside";
         rows.appendChild(el("li", null, [
-          el("span", { class: "who" }, [setAside ? icon("shield", "shield") : dot(familyColor(l.key)), el("span", { text: label })]),
+          el("span", { class: "who" }, [setAside ? icon("shield", "shield") : catIcon(l.key), el("span", { text: label })]),
           el("span", { class: "amtc num" }, day.day_kind === "future" || setAside
             ? (setAside ? "set aside " : "plan ") + money(l.planned, cur)
             : money(l.spent, cur) + (cents(l.planned) > 0 ? " / " + money(l.planned, cur) : ""))
@@ -1856,7 +1891,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     var list = el("ul", { class: "rows" });
     items.forEach(function (t) {
       list.appendChild(el("li", null, [
-        el("span", { class: "who" }, [dot("var(" + FAMILY_VAR[familyOfCodes(t.category, [t.category])] + ")"), el("span", null, [el("span", { style: "display:block", text: t.merchant || t.category_label }), t.merchant ? el("span", { class: "what", text: t.category_label }) : null])]),
+        el("span", { class: "who" }, [catIconOfCodes(t.category, [t.category]), el("span", null, [el("span", { style: "display:block", text: t.merchant || t.category_label }), t.merchant ? el("span", { class: "what", text: t.category_label }) : null])]),
         el("span", { class: "amtc num", text: money(t.amount, t.currency || month.currency) })
       ]));
     });
@@ -1891,7 +1926,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
         else if (over) meta = moneyCents(s - p, cur) + " over";
         else meta = money(line.remaining, cur) + " left";
         var content = [
-          el("span", { class: "nm" }, [setAside ? icon("shield", "shield") : dot(familyColor(line.category)), el("span", { text: line.category_label })]),
+          el("span", { class: "nm" }, [setAside ? icon("shield", "shield") : catIcon(line.category), el("span", { text: line.category_label })]),
           el("span", { class: "val num", text: setAside ? money(line.planned, cur) : money(line.spent, cur) + " / " + money(line.planned, cur) }),
           setAside ? null : bar(p > 0 ? s / p : (s > 0 ? 1 : 0), over || (p === 0 && s > 0)),
           el("span", { class: "meta" + (over ? " over" : ""), text: meta })
@@ -2190,8 +2225,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
           text("!", cx + cellW - 20, cy + 30, "800", 16, "#ffffff", "center");
         }
       } else if (cents(day.planned) > 0) {
-        text("PLAN", cx + 13, cy + 58, "700", 13, INK3);
-        text(cellAmount(day.planned), cx + 13, cy + 82, "600", 20, INK2, "left", cellW - 26);
+        text(cellAmount(day.planned), cx + 13, cy + 70, "600", 21, INK2, "left", cellW - 26);
       }
       if (billDates[day.date]) {
         c.fillStyle = BILL_DOT[billDates[day.date]] || INK3;

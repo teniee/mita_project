@@ -581,6 +581,41 @@ def test_the_component_source_has_no_remote_code_or_html_injection():
     assert called <= {"get_calendar_month", "list_transactions"}, called
 
 
+def test_the_component_holds_no_account_data_of_its_own():
+    """Every figure, bill and line the calendar shows comes from the tool
+    result for the signed-in account: the component carries no money
+    amount, currency sign, account fact or saved-payment name of its own."""
+    html = calendar_html()
+    script = html[html.index("<script>") : html.index("</script>")]
+    assert "€" not in html and "£" not in html
+    assert not re.search(r"\$\s?[0-9]", html)  # no "$12"-style amount
+    # no money literal other than a zero default ("0.00" for a filtered
+    # date with nothing on the line)
+    assert not re.search(r"[\"'](?!0\.00[\"'])[0-9]+\.[0-9]{2}[\"']", script)
+    assert not re.search(r"\b(?:2[ ,]?000|1[ ,]?130|270|370|70|30)\.[0-9]{2}\b", script)
+    for text in (
+        "Phone",
+        "Car loan",
+        "Laptop",
+        "Kindergarten",
+        "Fuel",
+        "Cigarettes",
+        "Europe/Sofia",
+        "EUR",
+    ):
+        assert text not in script, text
+
+
+def test_the_component_uses_outlined_category_icons_not_colour_dots():
+    """2.6.0 redesign: monochrome outlined icons per category family (OpenAI
+    UI guidelines), no PLAN label repeated in the date cells."""
+    html = calendar_html()
+    assert "function dot(" not in html and "--fam-groceries" not in html
+    for name in ("cart", "cup", "car", "bag", "ticket", "heart", "home", "tag"):
+        assert f'    {name}: "M' in html, name
+    assert '"pl", text: "plan"' not in html and 'text("PLAN"' not in html
+
+
 # --- the pure builder ----------------------------------------------------------------
 
 

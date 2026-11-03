@@ -36,6 +36,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import base64
+import hashlib
 import io
 import json
 import secrets
@@ -59,7 +60,7 @@ sys.path.insert(0, str(ROOT))
 from _target_guard import assert_writable_target  # noqa: E402
 from e2e_v2 import _pg, cleanup, connect  # noqa: E402
 
-CALENDAR_URI = "ui://mita/financial-calendar-v1.html"
+CALENDAR_URI = "ui://mita/financial-calendar-v2.html"
 # The spec's default when a resource declares no domains (SEP-1865, "Host
 # Behavior"), minus 'self' — the review frame has an opaque origin.
 VIEW_CSP = (
@@ -614,6 +615,25 @@ def _review(args, mcp: McpBridge, out: Path, today: date) -> None:
         == {"connectDomains": [], "resourceDomains": []},
     )
     widget = content["text"]
+    served = hashlib.sha256(widget.encode()).hexdigest()
+    local = hashlib.sha256(
+        (ROOT / "app" / "mcp" / "ui" / "financial_calendar.html").read_bytes()
+    ).hexdigest()
+    print(f"      component {CALENDAR_URI} sha256 {served[:16]}")
+    check(
+        "the server serves this commit's component, byte for byte",
+        served == local,
+        f"served {served[:16]} local {local[:16]}",
+    )
+    tools = mcp.run(mcp.client.list_tools()).tools
+    render = next(t for t in tools if t.name == "show_financial_calendar")
+    meta = render.meta or {}
+    check(
+        "the render tool points ChatGPT at this component",
+        meta.get("ui", {}).get("resourceUri") == CALENDAR_URI
+        and meta.get("openai/outputTemplate") == CALENDAR_URI,
+        json.dumps(meta)[:300],
+    )
     tool_input: dict = {}
     summary = month_data["summary"]
 

@@ -11,7 +11,7 @@ open MCP Apps standard (`io.modelcontextprotocol/ui`), which ChatGPT implements
 |---|---|---|
 | Data tool `get_calendar_month` | `app/mcp/tools/calendar.py` | Read-only, `finance:read`. The month as data: summary, budget lines with their group, every date (plan, spend, state), saved bills by date. No template. Callable by the model and by the component. |
 | Render tool `show_financial_calendar` | same | Read-only, `finance:read`. The only tool bound to the component (`_meta.ui.resourceUri`, alias `openai/outputTemplate`). Arguments choose the month, an optional date to open on and an optional category filter — never figures. Returns a short view for the model (`structuredContent`, text) and the month for the component (`_meta["mita/calendar"]`, never shown to the model). |
-| Component | `app/mcp/ui/financial_calendar.html`, served by `app/mcp/ui/__init__.py` as `ui://mita/financial-calendar-v1.html` (`text/html;profile=mcp-app`) | One HTML document, vanilla JS, no build step, no dependency. |
+| Component | `app/mcp/ui/financial_calendar.html`, served by `app/mcp/ui/__init__.py` as `ui://mita/financial-calendar-v2.html` since 2.6.0 (v1 before; a new URI is ChatGPT's cache key) (`text/html;profile=mcp-app`) | One HTML document, vanilla JS, no build step, no dependency. |
 | Query layer | `app/mcp/queries/calendar.py` | `calendar_month` (five indexed reads in the READ ONLY transaction) and the pure `build_calendar` (also used by the sign-in page's fictional example). |
 | Day expenses | existing `list_transactions` | The component lists a selected date's expenses with it (merchant names stay out of the month payload). |
 | Review harness | `scripts/mcp/calendar_widget_review.py` | A local MCP Apps host: real sign-up, real tools, the component in a sandboxed iframe under the spec's restrictive CSP. Not ChatGPT. |
@@ -155,6 +155,15 @@ dedicated task. The calendar never adds a figure that would hide them.
   what the standard lacks (widget state, file upload/download) and is
   feature-detected; its globals also hydrate the component if the bridge is
   missing.
+* **2.6.0 redesign** (owner, 2026-11-03): date cells without a repeated
+  "PLAN" label (a caption above the grid: dates so far show what was spent,
+  dates ahead MITA's plan; future cells dashed), larger cells and amounts
+  (whole euros in a phone's grid, cents wider), each date's largest
+  categories as monochrome outlined family icons (cart, cup, car, bag,
+  ticket, heart, home, tag) — from that date's own lines, money set aside
+  left out — also on the filter chips, category list and the date's rows. A
+  user line takes the icon of the MITA line it replaces (`replaces`, as
+  saved), else the tag. No colour dots.
 * **Look**: the system font stack and the host's CSS variables (OpenAI: no
   custom fonts, no custom gradients, system colours for text; ChatGPT adds the
   logo and name). MITA colour only on accents: the primary button (navy/yellow,
