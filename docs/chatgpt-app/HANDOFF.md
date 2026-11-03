@@ -1,5 +1,17 @@
 # Handoff — MITA in ChatGPT (MCP), 2026-11-03
 
+## Current state: the redesigned calendar live on staging, waiting for the owner's real-ChatGPT run (MCP 2.6.0)
+
+| Item | State |
+|---|---|
+| Brief | owner 2026-11-03: acceptance only in real ChatGPT with the owner's own account; no fixture or hardcoded data at runtime; the redesign (no PLAN labels, larger cells, category icons, contrast, MITA accents, phone first) live in the real plugin |
+| Code | `f59401b` redesign + `ui://mita/financial-calendar-v2.html` + `replaces` on calendar lines; `c5a317c` the inline card's grid; CI 41682268134 / 41686073137 green |
+| Staging | deployment `62d3a0d1` (`c5a317c`), `/health` 2.6.0; the served component is this commit's file byte for byte; live per-user figures from the database verified with new fictional accounts (`staging.md`) |
+| Runtime data | every figure comes from the tool result for the signed-in account (`queries/calendar.calendar_month`, read-only queries on its own rows); the component holds no account data (tested); the sign-in page's fictional example is the only fixed data and never reaches the calendar |
+| Owner next | `calendar-owner-test.md` steps 35–41 on the phone after Settings → Apps → MITA Finance Staging v2 → Refresh and a new chat; then steps 26–34 |
+| Needs a decision | the staging database proxy (refused by an automated permission check): read-only owner snapshot, `e2e_http.py`, `staging_failure_modes.py`, deleting fictional accounts |
+
+
 ## Current state: F-8 for bills — due dates, reminders, paying them (MCP 2.5.0, 2026-11-03)
 
 Owner brief 2026-11-02 after the real-ChatGPT run (OAuth, 24 tools, F-11 and
