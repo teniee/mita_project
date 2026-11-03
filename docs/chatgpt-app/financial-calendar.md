@@ -158,7 +158,8 @@ dedicated task. The calendar never adds a figure that would hide them.
 * **2.6.0 redesign** (owner, 2026-11-03): date cells without a repeated
   "PLAN" label (a caption above the grid: dates so far show what was spent,
   dates ahead MITA's plan; future cells dashed), larger cells and amounts
-  (whole euros in a phone's grid, cents wider), each date's largest
+  (whole euros in a phone's grids — inline card and fullscreen — cents
+  wider), each date's largest
   categories as monochrome outlined family icons (cart, cup, car, bag,
   ticket, heart, home, tag) — from that date's own lines, money set aside
   left out — also on the filter chips, category list and the date's rows. A

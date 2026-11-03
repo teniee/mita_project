@@ -89,6 +89,37 @@ Save as PNG (step 14) again on the phone: the image shows the bill dots; on
 ChatGPT Desktop for macOS the "right-click to save" fallback opens DevTools
 (known, 2026-11-02) — use the browser or the phone there.
 
+### 2.6.0 — the redesigned calendar in real ChatGPT (your own account, phone first)
+
+Only this run counts as acceptance: the local test host and Playwright
+screenshots are development tools, not ChatGPT.
+
+Before you start:
+
+1. `https://mita-mcp-staging-staging.up.railway.app/health` says
+   `"version":"2.6.0"`.
+2. On a computer, open chatgpt.com → your profile → **Settings → Apps**
+   (shown as Plugins or Connectors in some builds) → **MITA Finance Staging
+   v2** → **Refresh** (it reloads the tool list; the calendar now points at a
+   new component, `…-v2.html`, so ChatGPT cannot reuse the old one). If
+   Refresh is missing: Disconnect, then connect again with the same e-mail
+   (Sign in tab) — your data stays, it is in MITA, not in ChatGPT.
+3. On the phone, update the ChatGPT app and start a **new chat** (an old chat
+   keeps the old component).
+
+| # | Do (on the phone) | Pass when | 📸 | Result |
+|---|---|---|---|---|
+| 35 | Type exactly: **Show my financial calendar for November 2026.** | ChatGPT calls MITA (it may ask to allow it the first time) and shows the inline card with your figures: income-based average a day, left to spend, savings kept; no "PLAN" words in the dates; small grey icons per date; bill marks on your bills' dates. | inline | |
+| 36 | **Open calendar.** Tap 10, 15 and 25 November. | Each date lists your own bill (Phone €30.00, Car loan €270.00, Laptop loan €70.00) and its lines with icons. With your plan saved before 2.5.0 the dates still read 52.00 / 38.99 / 51.96 (old layout, unchanged); after step 26 they read 65.80 / 308.99 / 105.78 (everyday + the bill). | dates | |
+| 37 | Filter **Fuel**, then **Show all**; open **More**; tap **›** (December) and **‹** back. | Fuel's own dates only, then all; December shows its plan or "No saved plan" and the offer to plan it. | filter | |
+| 38 | **Save as PNG.** | The image appears or downloads; on the phone press and hold it to save. | image | |
+| 39 | Close ChatGPT, open a **new chat**: **Show my financial calendar for November 2026.** | The same figures as step 35 — read again from MITA. | — | |
+| 40 | Change one amount, e.g. **Set my Fuel budget to €220 for November.** Read the preview; approve the save when ChatGPT asks. | The preview shows Fuel €200.00 → €220.00 and nothing saved before you approve; after approval "saved". | preview | |
+| 41 | **Show my financial calendar for November 2026.** (same chat or a new one) | Fuel's line in the categories shows €220.00; MITA's own lines are recomputed from your stated facts; your other lines are unchanged. | categories | |
+
+Rotate the phone once and switch to dark mode once during 35–41: nothing
+cut off or overlapping.
+
 ## What Claude checks after your run (server side, read-only)
 
 With the test address you send: the account's figures recomputed from the

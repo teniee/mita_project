@@ -95,11 +95,11 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 .kpi.savings dd{color:var(--mita-teal-ink)}
 .mini{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;margin-top:14px}
 .mini .wd{font-size:11px;font-weight:650;color:var(--color-text-tertiary);text-align:center;padding-bottom:1px}
-.mcell{position:relative;height:42px;border-radius:9px;background:var(--color-background-secondary);padding:4px 5px 0;display:flex;flex-direction:column;justify-content:space-between;min-width:0;overflow:hidden}
-.mcell b{font-size:10.5px;font-weight:700;line-height:1;color:var(--color-text-secondary)}
-.mcell span{font-size:10.5px;font-weight:650;line-height:1;padding-bottom:7px;white-space:nowrap;overflow:hidden;color:var(--color-text-primary)}
+.mcell{position:relative;height:50px;border-radius:10px;background:var(--color-background-secondary);padding:5px 5px 0;display:flex;flex-direction:column;justify-content:space-between;min-width:0;overflow:hidden}
+.mcell b{font-size:11.5px;font-weight:700;line-height:1;color:var(--color-text-secondary)}
+.mcell span{font-size:13px;font-weight:720;line-height:1;padding-bottom:8px;white-space:nowrap;overflow:hidden;color:var(--color-text-primary);letter-spacing:-.01em}
 .mcell.future{background:transparent;border:1px dashed var(--color-border-primary)}
-.mcell.future span{color:var(--color-text-tertiary);font-weight:550}
+.mcell.future span{color:var(--color-text-secondary);font-weight:620}
 .mcell.blank{background:transparent;border:0}
 .mcell.over{background:var(--over-bg)}
 .mcell.today{background:var(--mita-yellow)}
@@ -121,7 +121,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 .inote .over{color:var(--color-text-danger);font-weight:600}
 .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
 /* fitText(): money is never cut off on a narrow screen */
-.mini.tight .mcell span{font-size:9.5px;letter-spacing:-.02em}
+.mini.tight .mcell span{font-size:11px;letter-spacing:-.02em}
 .grid.tight .cell .amt{font-size:11px;letter-spacing:-.02em}
 .kpis.stack,.tiles.stack{grid-template-columns:repeat(2,minmax(0,1fr))}
 .kpis.stack>:last-child:nth-child(odd),.tiles.stack>:last-child:nth-child(odd){grid-column:1/-1}
@@ -818,11 +818,6 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   function amountValue(value) {
     return el("span", { class: "v", "data-amount": value, text: fitAmount(value) });
   }
-  function tinyAmount(value) {
-    var n = Number(value);
-    return Math.abs(n) >= 100 ? wholeFormat.format(n) : plainFormat.format(n);
-  }
-
   function parseDate(iso) {
     var parts = iso.split("-").map(Number);
     return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
@@ -1146,7 +1141,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       var grid = grids[i];
       if (!clipped(grid, ".fit")) continue;
       grid.classList.add("tight");
-      if (!clipped(grid, ".fit")) continue;
+      if (!clipped(grid, ".fit") || grid.classList.contains("whole")) continue;
       var values = grid.querySelectorAll("[data-amount]");
       for (var j = 0; j < values.length; j++) values[j].textContent = wholeAmount(values[j].getAttribute("data-amount"));
       var note = el("p", { class: "fit-note", text: grid.classList.contains("mini") ? "Amounts rounded to whole euros to fit this screen." : "Amounts rounded to whole euros to fit this screen; select a date for the exact figures." });
@@ -1324,7 +1319,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     }
     card.appendChild(kpis);
 
-    var grid = el("div", { class: "mini", "aria-hidden": "true" });
+    var grid = el("div", { class: "mini" + (state.width < 560 ? " whole" : ""), "aria-hidden": "true" });
     weekdayHeaders(weekdayNarrow).forEach(function (name) { grid.appendChild(el("div", { class: "wd", text: name })); });
     for (var b = leadingBlanks(month.days[0].date); b > 0; b--) grid.appendChild(el("div", { class: "mcell blank" }));
     month.days.forEach(function (day) {
@@ -1333,7 +1328,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       var raw = null;
       if (day.day_kind !== "future" && cents(day.spent) > 0) raw = day.spent;
       if (day.day_kind === "future" && cents(day.planned) > 0) raw = day.planned;
-      var amount = raw === null ? "" : tinyAmount(raw);
+      var amount = raw === null ? "" : fitAmount(raw);
       if (activeWindow(day.date)) classes += " win";
       var cell = el("div", { class: classes }, [el("b", { text: String(parseDate(day.date).getUTCDate()) }), el("span", { class: "num fit", "data-amount": raw, text: amount })]);
       if (model.begun && (model.state === "over" || model.state === "within")) {
@@ -1344,6 +1339,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       grid.appendChild(cell);
     });
     card.appendChild(grid);
+    if (state.width < 560) card.appendChild(el("p", { class: "fit-note", text: "Whole euros here; open the calendar for the exact figures." }));
     card.appendChild(el("p", { class: "vh", text: inlineSummaryText(month) }));
 
     var reminders = remindersBlock(month, 2);
