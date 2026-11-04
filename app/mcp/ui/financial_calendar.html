@@ -186,7 +186,8 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 .cell .tday{font-size:9.5px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;padding:2px 4px;border-radius:5px;background:var(--mita-yellow);color:var(--mita-navy);line-height:1}
 .cell .amt{font-size:14px;font-weight:720;line-height:1.1;white-space:nowrap;overflow:hidden;letter-spacing:-.01em}
 .cell.future .amt{font-weight:620;color:var(--color-text-secondary)}
-.cell .amt.guide,.mcell span.guide{font-weight:560;color:var(--color-text-tertiary,var(--color-text-secondary));opacity:.85}
+/* the daily guide: told apart by "≈" and a lighter weight, never by a pale colour (WCAG AA 4.5:1; axe failed tertiary + opacity) */
+.cell .amt.guide,.mcell span.guide{font-weight:500;color:var(--color-text-secondary)}
 .chip-proposed{font-size:11px;font-weight:650;padding:1px 6px;border-radius:6px;border:1px dashed var(--color-border-primary);color:var(--color-text-secondary);margin-left:6px;white-space:nowrap}
 .meta.fast{color:var(--remind)}
 .cell .meter{height:3px;border-radius:2px;background:var(--track);overflow:hidden}
@@ -1220,7 +1221,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       return el("div", { class: "hero" }, [
         el("span", { class: "hero-fig num", text: money(s.average_per_day, cur) }),
         el("span", { class: "hero-cap", text: caption }),
-        flex ? el("span", { class: "hero-cap", style: "display:block;margin-top:2px", text: "Flexible budgets: about " + money(s.flexible_per_day_rounded, cur).replace(/[.,]00(?=\D*$)/, "") + " a day of " + money(s.flexible_left, cur) + " left" }) : null
+        flex ? el("span", { class: "hero-cap", style: "display:block;margin-top:2px", text: "Flexible budgets: " + money(s.flexible_left, cur) + " left in their lines · about " + money(s.flexible_per_day_rounded, cur).replace(/[.,]00(?=\D*$)/, "") + " a day as guidance" }) : null
       ]);
     }
     if (month.plan_status === "generated") {
@@ -1722,7 +1723,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       el("span", null, [el("i", { class: "sw overm" }), "Over the everyday plan"]),
       el("span", null, [icon("bill"), "Saved bill due"]),
       el("span", null, [el("i", { class: "sw plan" }), "Dates ahead: planned purchases and bills"]),
-      el("span", null, [el("b", { class: "num", style: "font-weight:560;opacity:.85", text: "≈" }), "Flexible budgets' daily guide — not a purchase"]),
+      el("span", null, [el("b", { class: "num", style: "font-weight:500", text: "≈" }), "Flexible budgets' daily guide — not a purchase"]),
       el("span", null, [el("i", { class: "sw win" }), "Bill due within " + reminderDays(state.payload.month) + " days"]),
       el("span", null, [el("i", { class: "sw todaym" }), "Today"])
     ]);

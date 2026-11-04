@@ -163,9 +163,14 @@ once, as a convenience.
 * Dates: `planned_scheduled` (planned purchases + bills) and
   `planned_flexible` (guidance) add up to `planned`; `purchases` (each with
   `proposed`). Dates ahead show `planned_scheduled` in bold; a date with
-  nothing scheduled shows the flexible budgets' daily guide, muted, as "≈€X"
-  (`summary.flexible_per_day` = Σ each flexible line's `left_per_day`) — never
-  a fabricated purchase, never an empty day.
+  nothing scheduled shows the flexible budgets' daily guide as "≈€X"
+  (`summary.flexible_per_day` = Σ each flexible line's `left_per_day`, never
+  more than the month's safe average a day and never below 0: the user's own
+  lines are never donors, so after an overspend nothing could cover — or a
+  bill paid without its link — the envelopes can still show money that is no
+  longer safe; then the safe average is the guide) — never a fabricated
+  purchase, never an empty day. Told apart by "≈" and a lighter weight, in
+  `--color-text-secondary` (WCAG AA; a paler colour failed axe).
 * **Daily intelligence for flexible lines** (owner, 2026-11-04), all from the
   forecast engine's own per-category figures (the ones behind
   `categories_at_risk`): `pace_per_day` (spent ÷ days elapsed) against

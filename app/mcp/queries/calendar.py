@@ -367,10 +367,19 @@ class CalendarMonth:
     @property
     def flexible_per_day(self) -> Optional[Decimal]:
         """The flexible budgets' guidance for each day left, today included:
-        the sum of each line's left per day. Guidance, not cash on hand."""
+        the sum of each line's left per day — never more than the month's
+        safe average a day (the forecast's safe_daily_limit, never below 0).
+        Envelopes can still hold money that is no longer safe to spend (an
+        overspend nothing could cover, a bill paid without its link); then
+        the safe average is the guide. Guidance, not cash on hand."""
         days = [line.guidance()[0] for line in self.flexible_lines]
         known = [d for d in days if d is not None]
-        return sum(known, ZERO) if known else None
+        if not known:
+            return None
+        guide = sum(known, ZERO)
+        if self.forecast is not None and self.position != "past":
+            guide = min(guide, max(ZERO, self.forecast.safe_daily_limit))
+        return guide
 
     @property
     def bills_due_after_today(self) -> Decimal:

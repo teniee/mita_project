@@ -792,3 +792,48 @@ async def test_freed_money_is_shown_and_can_be_given_to_chosen_lines(mcp, seed):
         spending_patterns=excluded,
     )
     assert line(chosen, "my:Groceries")["amount"] == "300.00"
+
+
+async def test_the_daily_guide_never_exceeds_the_safe_average(mcp, seed, connection):
+    """Envelopes can still hold money that is no longer safe to spend. The
+    user's own lines are never donors, so €1,500 of shopping nobody planned
+    leaves Cigarettes and Coffee and walks full while the month's safe
+    average collapses: the guide on dates without a purchase is then the
+    safe average (never below 0), not the envelopes' sum."""
+    user, token = await person(mcp, seed)
+    m2 = mcp.at(at(2))
+    draft = await preview(
+        m2,
+        token,
+        budget_lines=[
+            {"label": "Cigarettes", "amount": 200},
+            {"label": "Coffee and walks", "amount": 100},
+        ],
+    )
+    await save(m2, token, draft)
+    m5 = mcp.at(at(5))
+    before = await look(m5, token, connection, user, month=11, today=date(2026, 11, 5))
+    envelopes = sum(
+        D(x["left_per_day"])
+        for x in before.cal["categories"]
+        if x["spending_type"] == "flexible"
+    )
+    assert D(before.summary["flexible_per_day"]) == envelopes  # nothing to cap
+    await call(
+        m5,
+        token,
+        "add_transaction",
+        {"amount": "1500.00", "category": "shopping", "idempotency_key": key()},
+    )
+    seen = await look(m5, token, connection, user, month=11, today=date(2026, 11, 5))
+    cig = seen.line("my:Cigarettes")
+    assert cig["remaining"] == "200.00"  # never a donor
+    envelopes = sum(
+        D(x["left_per_day"])
+        for x in seen.cal["categories"]
+        if x["spending_type"] == "flexible"
+    )
+    safe = D(seen.summary["average_per_day"])
+    assert safe < envelopes
+    assert D(seen.summary["flexible_per_day"]) == max(D("0.00"), safe)
+    assert seen.summary["average_per_day"] == seen.forecast["safe_daily_limit"]

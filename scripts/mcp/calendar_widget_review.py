@@ -60,7 +60,10 @@ sys.path.insert(0, str(ROOT))
 from _target_guard import assert_writable_target  # noqa: E402
 from e2e_v2 import _pg, cleanup, connect  # noqa: E402
 
-CALENDAR_URI = "ui://mita/financial-calendar-v2.html"
+# The service's own constant, never a copy: the harness stayed on -v2 after
+# 2.7.0 moved the component to -v3 and failed with "Unknown resource".
+from app.mcp.ui import CALENDAR_URI  # noqa: E402
+
 # The spec's default when a resource declares no domains (SEP-1865, "Host
 # Behavior"), minus 'self' — the review frame has an opaque origin.
 VIEW_CSP = (
@@ -224,8 +227,23 @@ def seed(mcp: McpBridge, today: date) -> None:
         (22, "14.90", "entertainment", "Streaming"),
         (23, "39.60", "groceries", "Lidl"),
     ]
+    # Since 2.7.0 only an expense linked to a saved payment pays it; ChatGPT
+    # asks and links the rent, kindergarten and utilities payments, so does
+    # this month (unlinked, each would be everyday spending AND still held).
+    refs = {
+        item["merchant"]: item["obligation_ref"]
+        for item in mcp.ok("get_recurring_expenses", {})["structuredContent"][
+            "scheduled_recurring"
+        ]
+    }
     items = [
-        {"amount": amount, "category": category, "date": on(day), "merchant": merchant}
+        {
+            "amount": amount,
+            "category": category,
+            "date": on(day),
+            "merchant": merchant,
+            **({"obligation_ref": refs[merchant]} if merchant in refs else {}),
+        }
         for day, amount, category, merchant in spending
         if day <= today.day
     ]
@@ -822,7 +840,14 @@ def _review(args, mcp: McpBridge, out: Path, today: date) -> None:
             None,
         )
         if groceries:
-            host.frame.click('button.fchip:has-text("Groceries")')
+            chip = 'button.fchip:has-text("Groceries")'
+            if host.frame.query_selector(chip) is None:
+                # A phone shows the largest lines first; since 2.7.0 every
+                # saved payment is a line of its own, so the rest sit behind
+                # "More (N)" — tap it as a person would.
+                host.frame.click("#filter-more")
+                host.settle(300)
+            host.frame.click(chip)
             host.wait_for(".banner")
             host.settle(400)
             banner = host.frame.inner_text(".banner")
@@ -953,9 +978,10 @@ def _review(args, mcp: McpBridge, out: Path, today: date) -> None:
         host.shot(out, "12-export-fallback", full=True)
         host.close()
 
-        # 6. Narrow phones (a 360 dp Android's chat column is about 320 px):
-        #    nothing overflows sideways and no amount, tile or button is cut.
-        for width, height in ((320, 640), (360, 740), (390, 844)):
+        # 6. Phones (a 360 dp Android's chat column is about 320 px; 430 px is
+        #    a large iPhone): nothing overflows sideways and no amount, tile or
+        #    button is cut.
+        for width, height in ((320, 640), (360, 740), (390, 844), (430, 932)):
             host = HostPage(
                 webkit,
                 mcp,
@@ -978,7 +1004,7 @@ def _review(args, mcp: McpBridge, out: Path, today: date) -> None:
                     fit["overflow"] <= 0 and not fit["cut"],
                     json.dumps(fit),
                 )
-            if width in (320, 390):
+            if width in (320, 390, 430):
                 host.frame_shot(out, f"13-fullscreen-{width}")
             host.close()
 
@@ -1048,6 +1074,7 @@ def _review(args, mcp: McpBridge, out: Path, today: date) -> None:
             "show_financial_calendar",
             "update_financial_profile",
             "add_recurring_expense",
+            "get_recurring_expenses",
             "preview_monthly_budget",
             "save_monthly_budget",
             "create_savings_goal",

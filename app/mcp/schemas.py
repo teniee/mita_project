@@ -1250,7 +1250,9 @@ class CalendarSummaryOut(_Out):
     flexible_per_day: Optional[Money] = Field(
         description=(
             "The flexible budgets' guidance for each day left, today included (the sum "
-            "of each flexible line's left_per_day). Guidance for flexible spending, not "
+            "of each flexible line's left_per_day), never more than average_per_day "
+            "(never below 0): when spending elsewhere used money the envelopes still "
+            "show, the safe average is the guide. Guidance for flexible spending, not "
             "cash on hand; null for a month without flexible budgets or one that ended."
         ),
         pattern=MONEY_PATTERN,

@@ -1202,8 +1202,9 @@ Rules:
   - **Daily guidance stays the headline.** Flexible lines carry the forecast
     engine's pace (`pace_per_day` vs `planned_per_day`, `pace_status`,
     `days_until_exhausted`) and the revised `left_per_day`; the calendar shows
-    `summary.flexible_per_day` as a muted "≈" on dates with nothing scheduled.
-    Never a second calculation of pace.
+    `summary.flexible_per_day` as "≈" on dates with nothing scheduled — never
+    more than the safe average a day (`safe_daily_limit`, floored at 0), in
+    an AA-contrast colour. Never a second calculation of pace.
   - **Freed money is shown** (`preview_monthly_budget.freed_money`, F-12):
     a `not_applicable` line's money vs the same engine run keeping it;
     explicit redistribution only through `budget_lines`.
