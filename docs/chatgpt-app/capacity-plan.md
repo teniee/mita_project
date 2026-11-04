@@ -124,6 +124,15 @@ p95 6.1 ms; budget preview p95 11.1 ms; recurring p95 3.7 ms. All within the
 `transaction_id` and `(user_id, due_date)` indexes). Financial climate and
 the month summary still vary run to run on this laptop, as before.
 
+**Re-run 2026-11-04, after the 2.7.0 continuation** (pace from the forecast,
+proposed dates, freed money: one more engine run in the preview, no new
+SQL), 5 runs: `calendar_month` p50 13.4 / p95 14.1 ms, budget preview p95
+10.5, budget status 10.4, forecast 9.6, setup status 12.1, spending profile
+6.0 — unchanged. The month summary measured p95 34.7 ms in one 3-run pass and
+12.5 ms in the 5-run pass (noise on this laptop); financial climate p95
+≈ 27 ms in both, as in the earlier run — above the 20 ms target, untouched
+by 2.7.0, worth a look before load grows.
+
 Write tools run the canonical ledger path (advisory lock + month rebuild):
 `add_transaction` p50 was 30–45 ms in the test suite against a month with
 ~250 plan rows. Batches apply items sequentially under one lock, so a
