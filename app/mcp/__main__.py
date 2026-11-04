@@ -28,7 +28,14 @@ REQUIRED_TABLES = (
     "mcp_idempotency_keys",  # 0038
     "product_feedback",  # 0039
     "analytics_identities",  # 0039
+    "mcp_budget_lines",  # 0040
+    "obligation_payments",  # 0041
+    "spending_patterns",  # 0042
 )
+# Connected as mita_mcp, information_schema.tables lists only the tables the
+# role has a privilege on, so this also fails while a grant is missing: a
+# deployment that reaches a database without its migrations or grants never
+# becomes healthy, and Railway keeps the previous one serving.
 
 
 async def database_ready() -> bool:

@@ -1216,6 +1216,12 @@ Rules:
   - **The mobile forecast and ChatGPT share** `obligation_lines.month_commitments`
     (`commitments_paid` in `compute_forecast`); the MCP role needs the 0041 /
     0042 grants in `scripts/mcp/mcp_service_role.sql`.
+  - **Not ready without its tables and grants.** A table the service needs
+    goes into `app/mcp/__main__.REQUIRED_TABLES` and the role's grants
+    (`tests_mcp/test_readiness.py`): `/health` stays 503 until every one is
+    visible to `mita_mcp`, so a deployment that outruns its migration never
+    becomes healthy. `scripts/mcp/smoke_behavioral_270.py` drives the 2.7.0
+    writes over HTTP; run it against a server connected as `mita_mcp`.
   - Exact figures: `tests_mcp/test_obligation_payments.py`,
     `tests_mcp/test_behavioral_budget.py`; F-8/R3 suites rewritten to identity.
 - **One display name per category** (`app/mcp/categories.py`): every result
