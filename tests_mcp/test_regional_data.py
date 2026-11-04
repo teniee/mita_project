@@ -417,3 +417,69 @@ def test_since_period_bounds_the_request():
     assert since_period(catalog.HICP, date(2026, 11, 4)) == "2025-09"
     assert since_period(catalog.PLI, date(2026, 11, 4)) == "2022"
     assert since_period(catalog.HBS, date(2026, 11, 4)) == "2015"
+
+
+# --- 2.8 M3: official prices households pay (Eurostat, half-yearly) -----------------
+
+
+def test_household_energy_prices_are_amounts_with_their_currency():
+    """GET .../nrg_pc_204?currency=EUR&freq=S&nrg_cons=KWH2500-4999&tax=I_TAX
+    &unit=KWH&siec=E7000&geo=BG&geo=DE&sinceTimePeriod=2025-S1 (and nrg_pc_202
+    with GJ20-199 / G3000)."""
+    power, rejected = eurostat.parse(
+        catalog.ELECTRICITY, load("eurostat_nrg_pc_204.json"), "https://example/e"
+    )
+    assert rejected == 0
+    assert [(o.period, o.value) for o in by(power, geo_code="BG")] == [
+        ("2025-S1", D("0.130000")),
+        ("2025-S2", D("0.135500")),
+        ("2026-S1", D("0.134100")),
+    ]
+    latest = by(power, geo_code="BG", period="2026-S1")[0]
+    assert (latest.unit_kind, latest.currency, latest.period_type) == (
+        "currency_amount",
+        "EUR",
+        "half_year",
+    )
+    assert latest.period_start == date(2026, 1, 1)
+    assert "per kWh" in latest.unit and "taxes" in latest.unit
+    assert latest.category == "E7000"
+    gas, rejected = eurostat.parse(
+        catalog.GAS, load("eurostat_nrg_pc_202.json"), "https://example/g"
+    )
+    assert rejected == 0
+    assert by(gas, geo_code="DE", period="2026-S1")[0].value == D("0.115600")
+    # Half-yearly, published about four months after the half: 2026-S1 is
+    # current in November 2026; 2025-S1 would be stale by then.
+    assert not is_stale(catalog.ELECTRICITY, date(2026, 1, 1), NOW.date())
+    assert is_stale(catalog.ELECTRICITY, date(2025, 7, 1), date(2026, 11, 4))
+
+
+def test_an_amount_in_another_currency_is_rejected_never_converted():
+    """The national-currency column changed meaning for Bulgaria in 2026
+    (BGN → EUR): MITA asks for EUR and refuses any other currency."""
+    payload = load("eurostat_nrg_pc_204.json")
+    payload["dimension"]["currency"]["category"]["index"] = {"NAC": 0}
+    payload["dimension"]["currency"]["category"]["label"] = {"NAC": "National currency"}
+    found, rejected = eurostat.parse(catalog.ELECTRICITY, payload, "https://example/e")
+    assert found == [] and rejected == 6
+
+
+def test_a_price_outside_its_plausible_range_is_rejected():
+    common = dict(
+        series_key="k",
+        category="E7000",
+        category_label="Electricity",
+        geo_code="BG",
+        provider_status=None,
+        published_at=None,
+        source_url="https://example",
+        currency="EUR",
+    )
+    for bad in ("0", "13.5", "-0.1"):  # 13.5 EUR per kWh: a unit mix-up
+        with pytest.raises(RejectedValue):
+            build(catalog.ELECTRICITY, period="2026-S1", value=bad, **common)
+    with pytest.raises(RejectedValue):
+        build(catalog.ELECTRICITY, period="2026-S3", value="0.13", **common)
+    ok = build(catalog.ELECTRICITY, period="2026-S1", value="0.1341", **common)
+    assert ok.currency == "EUR"

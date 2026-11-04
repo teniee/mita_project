@@ -1827,6 +1827,7 @@ class CalendarViewOut(_Out):
 # --- get_regional_context (2.8, Milestone 2) -----------------------------------
 
 RegionalIndicator = Literal[
+    "household_energy_price",
     "consumer_price_inflation",
     "consumer_price_inflation_annual",
     "price_level_index",
@@ -1840,6 +1841,8 @@ RegionalCategory = Literal[
     "transport",
     "recreation",
     "restaurants",
+    "electricity",
+    "gas",
 ]
 
 
@@ -1852,14 +1855,21 @@ class RegionalStatisticOut(_Out):
     category_label: str = Field(description="The category as the provider names it.")
     value: str = Field(
         description=(
-            "The figure exactly as published (in unit, never money): e.g. 6.0 for "
-            "a 6.0 % annual rise, 59.1 for a price level at 59.1 % of the EU "
-            "average, 246 for 246 per mille of household spending."
+            "The figure exactly as published, in its unit: e.g. 6.0 for a 6.0 % "
+            "annual rise, 59.1 for a price level at 59.1 % of the EU average, 246 "
+            "for 246 per mille of household spending, 0.135 for an average "
+            "electricity price of 0.135 EUR per kWh (an amount only with currency)."
         )
     )
     display: str = Field(description="A short rendering with its unit, for a summary.")
-    unit_kind: Literal["percent_change", "index", "price_level_index", "per_mille"]
+    unit_kind: Literal[
+        "percent_change", "index", "price_level_index", "per_mille", "currency_amount"
+    ]
     unit: str
+    currency: Optional[str] = Field(
+        default=None,
+        description="For an amount of money only: its ISO currency (never converted).",
+    )
     base_period: Optional[str] = Field(
         description="For an index: what equals 100 (e.g. EU27_2020=100)."
     )

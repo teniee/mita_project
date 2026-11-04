@@ -36,6 +36,7 @@ BOUNDS = {
     "index": (Decimal("0.000001"), Decimal("100000")),
     "price_level_index": (Decimal("0.000001"), Decimal("1000")),
     "per_mille": (Decimal("0"), Decimal("1000")),
+    "currency_amount": (Decimal("0.000001"), Decimal("1000000000")),
 }
 EXTREME = {"percent_change": Decimal("100")}
 
@@ -76,10 +77,16 @@ class Observation:
 
 
 def parse_period(text: str) -> Tuple[str, date]:
-    """``'2026-10'`` → month, ``'2026-Q2'`` → quarter, ``'2025'`` → year."""
+    """``'2026-10'`` → month, ``'2026-Q2'`` → quarter, ``'2026-S1'`` → half
+    year, ``'2025'`` → year."""
     value = text.strip()
     if len(value) == 4 and value.isdigit():
         return "year", date(int(value), 1, 1)
+    if len(value) == 7 and value[4] == "-" and value[5] == "S":
+        half = int(value[6])
+        if half not in (1, 2):
+            raise RejectedValue(f"bad half year {value!r}")
+        return "half_year", date(int(value[:4]), 1 if half == 1 else 7, 1)
     if len(value) == 7 and value[4] == "-" and value[5] == "Q":
         quarter = int(value[6])
         if not 1 <= quarter <= 4:
@@ -102,8 +109,10 @@ def build(
     provider_status: Optional[str],
     published_at: Optional[datetime],
     source_url: str,
+    currency: Optional[str] = None,
 ) -> Observation:
-    """A checked observation of ``spec``, or ``RejectedValue``."""
+    """A checked observation of ``spec``, or ``RejectedValue``. An amount of
+    money must be in the dataset's currency: never converted, rejected."""
     if value is None or value == "":
         raise RejectedValue("missing value")  # never stored as zero
     try:
@@ -112,7 +121,9 @@ def build(
         raise RejectedValue("not a number") from None
     if not number.is_finite():
         raise RejectedValue("not a finite number")
-    low, high = BOUNDS[spec.unit_kind]
+    if spec.currency is not None and currency != spec.currency:
+        raise RejectedValue("an amount in another currency")
+    low, high = spec.value_range or BOUNDS[spec.unit_kind]
     if not low <= number <= high:
         raise RejectedValue(f"{spec.unit_kind} out of bounds")
     period_type, start = parse_period(period)
@@ -147,6 +158,7 @@ def build(
         published_at=published_at,
         source_url=source_url,
         license=spec.license,
+        currency=spec.currency,
         quality_flags=tuple(flags),
     )
 

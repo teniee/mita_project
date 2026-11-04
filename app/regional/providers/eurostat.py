@@ -24,11 +24,27 @@ FILTERS = {
     "prc_hicp_minr": {"freq": "M", "unit": "RCH_A"},
     "prc_ppp_ind": {"freq": "A", "na_item": "PLI_EU27_2020"},
     "hbs_str_t211": {"freq": "A", "unit": "PM"},
+    "nrg_pc_204": {
+        "freq": "S",
+        "nrg_cons": "KWH2500-4999",
+        "unit": "KWH",
+        "tax": "I_TAX",
+        "currency": "EUR",
+    },
+    "nrg_pc_202": {
+        "freq": "S",
+        "nrg_cons": "GJ20-199",
+        "unit": "KWH",
+        "tax": "I_TAX",
+        "currency": "EUR",
+    },
 }
 CATEGORY_DIMENSION = {
     "prc_hicp_minr": "coicop18",
     "prc_ppp_ind": "ppp_cat",
     "hbs_str_t211": "coicop",
+    "nrg_pc_204": "siec",
+    "nrg_pc_202": "siec",
 }
 
 
@@ -109,6 +125,7 @@ def parse(
                     provider_status=status.get(str(flat)),
                     published_at=published,
                     source_url=source_url,
+                    currency=coordinate.get("currency"),
                 )
             )
         except RejectedValue:

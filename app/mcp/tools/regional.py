@@ -31,8 +31,10 @@ DESCRIPTION = (
     "restaurants (Eurostat HICP for EU, EFTA and candidate countries; OECD CPI "
     "elsewhere); how high the price level is compared with the EU average "
     "(Eurostat purchasing power parities); how households there divide their "
-    "spending (Eurostat household budget survey); and yearly inflation (World "
-    "Bank). Use when the user asks how prices or costs in their country "
+    "spending (Eurostat household budget survey); yearly inflation (World "
+    "Bank); and the average price households pay per kWh of electricity and "
+    "gas, taxes included (Eurostat, half-yearly). MITA has no shop prices. Use "
+    "when the user asks how prices or costs in their country "
     "compare or change, or to put a budget line in context. Every figure has "
     "its source, period, unit and limitation, and stale figures say so: they "
     "are national averages to compare with — not prices at a shop, not city "
@@ -57,6 +59,10 @@ def display(row) -> str:
     if row.unit_kind == "per_mille":
         share = (value / 10).quantize(Decimal("0.1"), ROUND_HALF_UP)
         return f"{share} % of household spending"
+    if row.unit_kind == "currency_amount":
+        amount = format(value.normalize(), "f")
+        per = " per kWh" if "per kWh" in (row.unit or "") else ""
+        return f"{amount} {row.currency}{per}, taxes included, national average"
     return format(value.normalize(), "f")
 
 
@@ -76,6 +82,7 @@ def statistic_out(item: regional.Statistic) -> RegionalStatisticOut:
         display=display(row),
         unit_kind=row.unit_kind,
         unit=row.unit,
+        currency=row.currency,
         base_period=row.base_period,
         period=row.period,
         stale=item.stale,
@@ -144,10 +151,11 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
             Optional[str],
             Field(
                 description=(
-                    "Narrow the answer: inflation, price_levels or "
-                    "household_spending. Omit for all three."
+                    "Narrow the answer: inflation, price_levels, "
+                    "household_spending or prices (average electricity and gas "
+                    "prices households pay). Omit for all."
                 ),
-                pattern=r"^(inflation|price_levels|household_spending)$",
+                pattern=r"^(inflation|price_levels|household_spending|prices)$",
             ),
         ] = None,
         category: Annotated[

@@ -15,9 +15,11 @@ is:
 * ``unit_kind`` — ``percent_change`` (an inflation rate), ``index`` (a price
   index with its ``base_period``), ``price_level_index`` (a PPP-based price
   level against ``base_period``, e.g. EU27_2020 = 100), ``per_mille`` (a
-  share of household spending); never mixed in one column without it;
-* ``unit`` — the provider's own wording; ``currency`` only where the value
-  is an amount of money (none of the first datasets are);
+  share of household spending), ``currency_amount`` (an average price paid,
+  e.g. EUR per kWh of household electricity); never mixed in one column
+  without it;
+* ``unit`` — the provider's own wording with what it covers; ``currency``
+  exactly when the value is an amount of money (checked);
 * ``classification`` — ``COICOP_2018`` (Eurostat HICP ver.2, OECD) or
   ``COICOP_1999`` (Eurostat PPP and HBS): "CP12" means different things in
   them;
@@ -86,7 +88,7 @@ def upgrade():
         sa.Column("geo_level", sa.String(length=16), nullable=False),
         sa.Column("geo_code", sa.String(length=8), nullable=False),
         sa.Column("period", sa.String(length=10), nullable=False),
-        sa.Column("period_type", sa.String(length=8), nullable=False),
+        sa.Column("period_type", sa.String(length=10), nullable=False),
         sa.Column("period_start", sa.Date(), nullable=False),
         sa.Column("value", sa.Numeric(20, 6), nullable=False),
         sa.Column("unit_kind", sa.String(length=24), nullable=False),
@@ -131,7 +133,7 @@ def upgrade():
             "geo_level IN ('country', 'region')", name="ck_regional_observations_geo"
         ),
         sa.CheckConstraint(
-            "period_type IN ('month', 'quarter', 'year')",
+            "period_type IN ('month', 'quarter', 'half_year', 'year')",
             name="ck_regional_observations_period_type",
         ),
         sa.CheckConstraint(

@@ -91,7 +91,7 @@ class RegionalObservation(Base):
             "geo_level IN ('country', 'region')", name="ck_regional_observations_geo"
         ),
         CheckConstraint(
-            "period_type IN ('month', 'quarter', 'year')",
+            "period_type IN ('month', 'quarter', 'half_year', 'year')",
             name="ck_regional_observations_period_type",
         ),
         CheckConstraint(
@@ -121,7 +121,7 @@ class RegionalObservation(Base):
     geo_level = Column(String(16), nullable=False)
     geo_code = Column(String(8), nullable=False)
     period = Column(String(10), nullable=False)
-    period_type = Column(String(8), nullable=False)
+    period_type = Column(String(10), nullable=False)
     period_start = Column(Date, nullable=False)
     value = Column(Numeric(20, 6), nullable=False)
     unit_kind = Column(String(24), nullable=False)

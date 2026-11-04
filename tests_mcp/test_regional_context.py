@@ -47,7 +47,14 @@ def observations():
     rows, _ = oecd.parse(
         catalog.OECD_CPI, (FIXTURES / "oecd_prices.csv").read_text(), "oecd"
     )
-    return found + rows
+    found += rows
+    for spec, name in (
+        (catalog.ELECTRICITY, "eurostat_nrg_pc_204.json"),
+        (catalog.GAS, "eurostat_nrg_pc_202.json"),
+    ):
+        rows, _ = eurostat.parse(spec, json.loads((FIXTURES / name).read_text()), name)
+        found += rows
+    return found
 
 
 async def store(connection):
@@ -325,3 +332,28 @@ async def test_recorded_history_is_shown_on_its_line(mcp, seed):
     assert line(draft, "clothing")["recorded_average"] is None  # nothing recorded
     # MITA's amount is still MITA's: history is shown, never applied.
     assert line(draft, "groceries")["source"] == "calculated_by_mita"
+
+
+async def test_official_prices_households_pay(mcp, seed, connection):
+    """Milestone 3's official service price: what households in the user's
+    country pay per kWh, with its currency, band and period — for the US
+    none (Eurostat's licence), and never a shop price for anyone."""
+    await store(connection)
+    m, token = await person(mcp, seed, "BG")
+    result = await context(m, token, topic="prices")
+    stats = index(result)
+    power = stats[("household_energy_price", "electricity")]
+    assert (power["value"], power["currency"], power["period"]) == (
+        "0.1341",
+        "EUR",
+        "2026-S1",
+    )
+    assert power["display"] == "0.1341 EUR per kWh, taxes included, national average"
+    assert power["unit_kind"] == "currency_amount" and power["stale"] is False
+    assert "band DC" in power["unit"]
+    assert "not the user's tariff or bill" in power["limitation"]
+    gas = stats[("household_energy_price", "gas")]
+    assert (gas["value"], gas["period"]) == ("0.0654", "2026-S1")
+    m, token = await person(mcp, seed, "US")
+    us = await context(m, token, topic="prices")
+    assert (us["status"], us["statistics"]) == ("unavailable", [])

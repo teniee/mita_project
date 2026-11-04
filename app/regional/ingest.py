@@ -75,6 +75,8 @@ def since_period(spec: Dataset, today: date) -> str:
     if spec.period_type == "month":
         index = today.year * 12 + today.month - 1 - 14
         return f"{index // 12:04d}-{index % 12 + 1:02d}"
+    if spec.period_type == "half_year":
+        return f"{today.year - 2}-S1"
     if spec.dataset == "hbs_str_t211":
         return "2015"
     return str(today.year - 4)

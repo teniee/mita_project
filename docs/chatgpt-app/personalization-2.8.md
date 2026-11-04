@@ -378,3 +378,73 @@ Tests: `tests_mcp/test_regional_context.py` (comparisons on the right
 lines, user line via `replaces`, none when off, a draft saved after
 statistics arrive, exact recorded averages 300/330/360 → 330.00 and gas on
 Fuel). MCP suite 780 passed.
+
+## 13. Milestone 3 — local prices: evaluation and proof of concept
+
+**ChatGPT's own search.** An MCP tool cannot call ChatGPT's web search (no
+such mechanism in the plugin reference); the model may search when the host
+allows it. Treated as opportunistic: the skill says a price found that way is
+ChatGPT's, attributed, and becomes an amount only when the user sets it.
+Behaviour in real ChatGPT is part of the owner's acceptance (it cannot be
+tested from here).
+
+**Server-side providers, verified 2026-11-04** (live requests; nothing
+activated that costs money):
+
+| Provider | Coverage (measured) | Freshness | What it prices | Access | Licence / terms | Cost | Verdict |
+|---|---|---|---|---|---|---|---|
+| Eurostat household energy prices (`nrg_pc_204`, `nrg_pc_202`) | EU, EFTA, candidates; 190 electricity and 150 gas series ingested | half-yearly; 2026-S1 published 2026-10-19 | average EUR per kWh households pay, taxes included, by consumption band | the JSON-stat API MITA already uses | reuse authorised with source acknowledged | free | **implemented** (below) |
+| EC Weekly Oil Bulletin | EU27 | weekly | pump prices of petrol, diesel, heating oil, LPG, with and without taxes | an XLSX history file only (~4 MB, no API) | "reproduction is authorised provided the source is acknowledged" | free | worth adding for Fuel; needs an XLSX parser in the MCP lock (a new dependency through `pip-audit`) — **owner decision** |
+| Open Prices (Open Food Facts) | 340,837 prices worldwide; **Bulgaria: 38 stores, 284 prices** (Burgas, Varna, Gabrovo…); currency BGN: 18 prices; US: 392 stores, mostly California | crowdsourced, by date | shelf prices by barcode with package size, store (OpenStreetMap) | API without a country filter for prices (by store only) | API code AGPL-3.0; **data licence not stated** in the API or README; records carry contributors' usernames (never to pass on) | free; no published rate limit | too sparse for the owner's market; licence to confirm — not used |
+| OpenAI Responses API `web_search` | worldwide | live | anything on the web, with citations | API key, billing | OpenAI terms; only item + country sent | **$10 / 1,000 calls + search content** (8,000 input tokens per call billed at model rates for gpt-4o-mini / gpt-4.1-mini, non-preview tool) | the only general product/service option; **paid — owner approval** |
+| Numbeo, SerpAPI / Google Shopping | — | — | — | — | not verified; scraping-based or restrictive commercial terms | paid | not recommended |
+| Official tariffs (e.g. Sofia public transport) | per city | irregular | fares | web pages, no API | per-site terms | — | no per-site scrapers (brief); honest "no source" instead |
+
+**Cost of the paid option** (OpenAI pricing page, read 2026-11-04;
+gpt-4.1-mini standard: $0.40 / 1M input, $1.60 / 1M output). One lookup ≈
+$0.010 (call) + 8,000 × $0.40/1M ($0.0032, search content) + ~600 prompt
+tokens ($0.00024) + ~500 output tokens ($0.0008) ≈ **$0.0142** (gpt-4o-mini:
+≈ $0.0116). Assumptions: 5 lookups per active user a month on average, a
+hard quota of 10, no cache:
+
+| Active users | Typical (5 / user) | At the quota (10 / user) | With a 30 % shared cache hit rate (typical) |
+|---|---|---|---|
+| 100 | $7.10 | $14.20 | $4.97 |
+| 1,000 | $71.00 | $142.00 | $49.70 |
+| 10,000 | $710.00 | $1,420.00 | $497.00 |
+
+Not included: the tokens of the conversation itself (ChatGPT's, not MITA's),
+retries, and any per-result verification call.
+
+**Implemented proof of concept — official prices households pay** (no new
+dependency, no cost, no new migration: `regional_observations` already keeps
+amounts apart — `unit_kind = currency_amount` requires a currency):
+`ELECTRICITY` (`nrg_pc_204`: band DC 2,500–4,999 kWh a year, all taxes and
+levies included, EUR per kWh) and `GAS` (`nrg_pc_202`: band D2 20–199 GJ,
+EUR per kWh, GCV), half-yearly (`half_year` periods: `2026-S1`), stale after
+400 days, plausible 0.001–5 EUR per kWh. Asked in EUR only: a cell in any
+other currency is rejected, never converted (Bulgaria's "national currency"
+column changed from BGN to EUR in 2026). Shown by
+`get_regional_context(topic="prices")`. Real figures: Bulgaria 2026-S1
+electricity 0.1341, gas 0.0654 EUR per kWh (Germany 0.3618 and 0.1156).
+
+**The brief's price cases**:
+
+| Case | Result |
+|---|---|
+| a common grocery product | no reliable source for Bulgaria (Open Prices: 284 prices for the country); MITA says it has no shop prices |
+| a local public transport fare | no machine-readable trustworthy source; said so — the user's own amount (e.g. the €26 card) is kept |
+| a specific product with package size | not available server-side without the paid search; ChatGPT's own search may answer, attributed |
+| a service price | ✔ electricity and gas per kWh, official, with band, taxes and period |
+| no reliable result | ✔ `unavailable`, never an estimate (tested: US prices) |
+| stale price | ✔ computed from the period (2025-S1 is stale in November 2026; tested) |
+| incompatible currencies | ✔ rejected, never converted (tested) |
+| source outage | ✔ last good values kept, run `failed` (tested) |
+| cross-user privacy | ✔ shared reference data; nothing about any user is sent to a provider; one copy per country |
+
+**Owner decisions** to go further: (1) the paid search, its model and quota;
+(2) an XLSX dependency for the Oil Bulletin (fuel); (3) Open Prices' data
+licence, if its coverage grows. A `local_price_observations` table for shop
+quotes (merchant, package size, unit price, promotion, observed date,
+expiry, confidence) is designed in §5 and added only with an approved
+provider — never fixture-only.

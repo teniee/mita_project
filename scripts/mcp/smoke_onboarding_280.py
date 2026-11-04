@@ -243,6 +243,16 @@ async def regional(s: Session, country: str, expect: bool):
         check("never Eurostat for the US (its licence)", "eurostat" not in providers)
     else:
         check("Eurostat for an EU country", "eurostat" in providers, str(providers))
+        prices = await call(s, "get_regional_context", {"topic": "prices"})
+        power = [x for x in prices["statistics"] if x["category"] == "electricity"]
+        check(
+            f"{country}: the electricity price households pay, in EUR per kWh",
+            len(power) == 1
+            and power[0]["currency"] == "EUR"
+            and power[0]["unit_kind"] == "currency_amount"
+            and "per kWh" in power[0]["unit"],
+            str(power)[:200],
+        )
     check(
         "every figure has its source, period, unit and limitation",
         all(

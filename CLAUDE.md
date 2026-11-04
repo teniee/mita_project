@@ -1260,7 +1260,11 @@ Rules:
     Every value carries `unit_kind`, unit, classification (COICOP 2018 for
     HICP ver.2, COICOP 1999 for PPP, HBS and the OECD), period and
     provenance; a missing cell is never a zero; stale is computed at read
-    time. Verify a dataset code or unit against the provider's live API
+    time. An amount (`currency_amount`, e.g. household electricity EUR per
+    kWh) is asked for in one currency and any other is rejected, never
+    converted. MITA has no shop prices: paid web search, the Oil Bulletin
+    XLSX and Open Prices are owner decisions (`personalization-2.8.md` §13).
+    Verify a dataset code or unit against the provider's live API
     before using it (`prc_hicp_manr` stopped at 2025; World Bank BG "LCU"
     is EUR since 2026).
   - **Beside the plan, never in it** (2.8 M4): preview lines carry

@@ -25,6 +25,7 @@ countries (Eurostat copyright notice: data for other countries, e.g. the USA,
 from __future__ import annotations
 
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Dict, Optional, Tuple
 
 EUROSTAT = "eurostat"
@@ -106,6 +107,7 @@ HBS_CATEGORIES: Tuple[Tuple[str, str], ...] = (
 )
 
 # MITA's own indicator codes.
+ENERGY_PRICE = "household_energy_price"
 INFLATION = "consumer_price_inflation"
 INFLATION_ANNUAL = "consumer_price_inflation_annual"
 PRICE_LEVEL = "price_level_index"
@@ -128,6 +130,10 @@ class Dataset:
     label: str  # what it measures, in plain words
     limitation: str  # what it is not
     categories: Tuple[Tuple[str, str], ...] = ()
+    # For an amount of money: its currency (asked for explicitly; a cell in
+    # another currency is rejected, never converted) and plausible range.
+    currency: Optional[str] = None
+    value_range: Optional[Tuple[Decimal, Decimal]] = None
 
 
 HICP = Dataset(
@@ -218,11 +224,71 @@ OECD_CPI = Dataset(
     categories=OECD_CATEGORIES,
 )
 
-DATASETS: Tuple[Dataset, ...] = (HICP, PLI, HBS, WB_INFLATION, OECD_CPI)
+# Average prices households actually pay (Eurostat, half-yearly, verified
+# 2026-11-04: latest 2026-S1, updated 2026-10-19): a real unit price, not an
+# index — Milestone 3's official "service price". In EUR only: the national
+# currency column changed meaning for BG in 2026 (BGN -> EUR).
+ELECTRICITY = Dataset(
+    provider=EUROSTAT,
+    dataset="nrg_pc_204",
+    indicator=ENERGY_PRICE,
+    unit_kind="currency_amount",
+    unit=(
+        "EUR per kWh, all taxes and levies included, households using 2,500 to "
+        "4,999 kWh a year (band DC)"
+    ),
+    base_period=None,
+    classification=None,
+    period_type="half_year",
+    max_age_days=400,
+    license=LICENSE_EUROSTAT,
+    label="Average electricity price paid by households",
+    limitation=(
+        "A national average per kWh for a typical household band, taxes "
+        "included: not the user's tariff or bill, not a city figure."
+    ),
+    categories=(("E7000", "Electricity"),),
+    currency="EUR",
+    value_range=(Decimal("0.001"), Decimal("5")),
+)
+GAS = Dataset(
+    provider=EUROSTAT,
+    dataset="nrg_pc_202",
+    indicator=ENERGY_PRICE,
+    unit_kind="currency_amount",
+    unit=(
+        "EUR per kWh (gross calorific value), all taxes and levies included, "
+        "households using 20 to 199 GJ a year (band D2)"
+    ),
+    base_period=None,
+    classification=None,
+    period_type="half_year",
+    max_age_days=400,
+    license=LICENSE_EUROSTAT,
+    label="Average natural gas price paid by households",
+    limitation=(
+        "A national average per kWh for a typical household band, taxes "
+        "included: not the user's tariff or bill, not a city figure."
+    ),
+    categories=(("G3000", "Natural gas"),),
+    currency="EUR",
+    value_range=(Decimal("0.001"), Decimal("5")),
+)
+
+DATASETS: Tuple[Dataset, ...] = (
+    HICP,
+    PLI,
+    HBS,
+    WB_INFLATION,
+    OECD_CPI,
+    ELECTRICITY,
+    GAS,
+)
 
 # Which provider answers an indicator for a country first: the harmonised
 # EU measure where it may be used, then the OECD's.
 PROVIDER_PRIORITY: Dict[str, Tuple[str, ...]] = {
+    ENERGY_PRICE: (EUROSTAT,),
     INFLATION: (EUROSTAT, OECD),
     INFLATION_ANNUAL: (WORLD_BANK,),
     PRICE_LEVEL: (EUROSTAT,),
@@ -259,9 +325,12 @@ CATEGORY_KEYS: Dict[Optional[str], str] = {
     "CP09": "recreation",
     "CP11": "restaurants",
     "A0111": "restaurants",
+    "E7000": "electricity",
+    "G3000": "gas",
 }
 TOPICS: Dict[str, Tuple[str, ...]] = {
     "inflation": (INFLATION, INFLATION_ANNUAL),
     "price_levels": (PRICE_LEVEL,),
     "household_spending": (SPENDING_SHARE,),
+    "prices": (ENERGY_PRICE,),
 }
