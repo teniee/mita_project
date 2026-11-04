@@ -63,7 +63,11 @@ running until production is live; teardown is in staging.md.
    guidance; R2 for lines laid out by the new engine; `not_applicable` MITA
    lines with the freed money shown; proposed dates for "about once a
    week"). ChatGPT MCP App only; Flutter is legacy.
-2. **Decide the secure database path for staging** (BLOCKING, 2026-11-04).
+2. **Secure database path — DONE 2026-11-04** (owner authorised a temporary
+   SSH key `mita-staging-270`; used, then revoked and deleted). Staging runs
+   2.7.0 `2ab2e0f` (deployment `390805cb`, alembic 0042): `staging.md` →
+   "MCP 2.7.0". The original wording follows for the record.
+   **Decide the secure database path for staging** (BLOCKING, 2026-11-04).
    The migrations run online as the table owner; a TCP proxy is ruled out by
    your brief; Railway's private path is SSH via `ssh.railway.com`, which
    needs an SSH key on your Railway account — none is registered. Either
@@ -72,7 +76,9 @@ running until production is live; teardown is in staging.md.
    (you remove it afterwards at railway.com/account/ssh-keys; removal asks
    for your 2FA). Account keys reach every service you can, production
    included.
-3. **Then, in that order**: Railway volume backup, migrations 0041 + 0042,
+3. **DONE 2026-11-04** (a logical dump on the volume instead of a Railway
+   volume backup, which needs a Pro workspace). **Then, in that order**:
+   Railway volume backup, migrations 0041 + 0042,
    the two grants in `scripts/mcp/mcp_service_role.sql`, verification, pin
    staging to the 2.7.0 commit, public checks with fictional accounts, your
    account's fingerprint unchanged (`scripts/mcp/staging_account_fingerprint.py`).

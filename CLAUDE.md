@@ -1407,10 +1407,9 @@ Rules:
   over public HTTPS with `scripts/mcp/e2e_http.py` and
   `scripts/mcp/staging_failure_modes.py`; results in
   `docs/chatgpt-app/staging-acceptance.md`. Real-ChatGPT acceptance is owner-run.
-  Since 2026-11-03 17:58 UTC it runs `c5a317c` (deployment `62d3a0d1`, MCP
-  2.6.0, alembic 0040; 2.7.0 is prepared but not deployed — it needs 0041 /
-  0042 first, `staging.md` → "MCP 2.7.0"; fictional review accounts are
-  still there, `staging.md` → "Left on staging"); every staging secret and both database
+  Since 2026-11-04 07:27 UTC it runs `2ab2e0f` (deployment `390805cb`, MCP
+  2.7.0, alembic 0042, `staging.md` → "MCP 2.7.0"; the earlier fictional
+  review accounts were deleted the same day); every staging secret and both database
   passwords were rotated on 2026-10-23 after Railway's 2026-10-21 security
   incident (`staging.md` → "Credential rotation"). It is connected as
   `mita_mcp`, so a missing grant shows up there before production; staging
@@ -1422,7 +1421,10 @@ Rules:
   Migrations and checks reach staging from the operator machine over
   Railway's private SSH path (`ssh.railway.com`: `railway ssh`, `ssh -L`
   into the project's private network), which needs an SSH key on the
-  owner's Railway account — registering one is the owner's decision. If no
+  owner's Railway account — registering one is the owner's decision (on
+  2026-11-04 the owner authorised a temporary key, revoked after use). A
+  Railway volume backup needs a Pro workspace: back up with `pg_dump -Fc`
+  onto the Postgres volume over SSH and restore-test it. If no
   secure path exists, stop and report; never deploy code whose migrations
   or grants are missing. Prove the owner's account untouched with
   `scripts/mcp/staging_account_fingerprint.py` (counts and digests only)
