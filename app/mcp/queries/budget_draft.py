@@ -180,6 +180,21 @@ class DraftRequest:
 
 
 @dataclass(frozen=True)
+class FreedMoney:
+    """Where the money of MITA's lines the user said do not apply went,
+    measured against the same engine run with those lines kept: shown, never
+    moved silently (F-12)."""
+
+    excluded: Dict[str, Decimal]  # what each left-out line would have had
+    added: Dict[str, Decimal]  # what each of MITA's other lines gained
+    unallocated: Decimal  # what stayed unassigned to any line
+
+    @property
+    def total(self) -> Decimal:
+        return sum(self.excluded.values(), ZERO)
+
+
+@dataclass(frozen=True)
 class LineChange:
     category: str
     before: Optional[Decimal]
@@ -212,6 +227,7 @@ class BudgetDraft:
     patterns: Dict[str, SpendingPattern] = field(default_factory=dict)
     pattern_sources: Dict[str, str] = field(default_factory=dict)
     not_applicable: Tuple[str, ...] = ()
+    freed: Optional["FreedMoney"] = None
 
     @property
     def user_lines(self) -> FrozenSet[str]:
@@ -600,6 +616,29 @@ def build_draft(
             "stated monthly net income, so MITA cannot build a budget. Check both "
             "with the user."
         ) from None
+    freed = _freed_money(
+        allocation,
+        excluded,
+        dict(
+            monthly_income=income,
+            savings_goal=savings,
+            region=ctx.region,
+            fixed_expenses=fixed,
+            manual_allocations=lines,
+            replaced_buckets={code for codes in replaces.values() for code in codes},
+        ),
+    )
+    if freed is not None:
+        gained = sum((a for a in freed.added.values() if a > ZERO), ZERO)
+        notes.append(
+            "Leaving out "
+            + ", ".join(label(c) for c in sorted(freed.excluded))
+            + f" freed {format(freed.total, 'f')}: MITA's other lines got "
+            f"{format(gained, 'f')} by its usual shares and "
+            f"{format(freed.unallocated, 'f')} stays unallocated (freed_money). "
+            "Show the user; to give it to particular lines instead, set their "
+            "amounts with budget_lines (kept exactly) and preview again."
+        )
     calendar_map, kinds = behavioral_month_calendar(
         year, month, allocation.allocations, dated_bills(obligations), patterns
     )
@@ -667,6 +706,36 @@ def build_draft(
         patterns=shown,
         pattern_sources={line: sources[line] for line in shown},
         not_applicable=excluded,
+        freed=freed,
+    )
+
+
+def _freed_money(
+    allocation: ProfileAllocation, excluded: Tuple[str, ...], engine_inputs: dict
+) -> Optional[FreedMoney]:
+    """The engine run without the exclusions, compared line by line."""
+    if not excluded:
+        return None
+    try:
+        kept = allocations_from_profile(**engine_inputs)
+    except ValueError:  # PlanDoesNotFit included: nothing to compare with
+        return None
+    left_out = {
+        code: kept.discretionary[code]
+        for code in excluded
+        if kept.discretionary.get(code, ZERO) > ZERO
+    }
+    if not left_out:
+        return None
+    added = {
+        code: amount - kept.discretionary.get(code, ZERO)
+        for code, amount in allocation.discretionary.items()
+        if amount != kept.discretionary.get(code, ZERO)
+    }
+    return FreedMoney(
+        excluded=left_out,
+        added=added,
+        unallocated=allocation.unallocated - kept.unallocated,
     )
 
 

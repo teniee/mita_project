@@ -59,7 +59,9 @@ Month = Annotated[
 
 TERMS = (
     "Each date has its saved plan (planned: every line except money set aside; "
-    "planned_everyday: its everyday part) and, once begun, recorded spending; a "
+    "planned_everyday: its everyday part; planned_scheduled: its planned "
+    "purchases and bills; planned_flexible: the flexible budgets' daily share, "
+    "guidance only) and, once begun, recorded spending; a "
     "day's state compares everyday spending with that date's everyday plan (over, "
     "within, unplanned, quiet; future dates planned or free — never a forecast). "
     "The summary splits the plan into commitments (bills: rent, mortgage and "
@@ -186,6 +188,19 @@ def _shown_text(ctx: UserContext, cal, line) -> str:
             parts.append(
                 f"{over} day{'s' if over != 1 else ''} went over the everyday plan."
             )
+        per_day = cal.flexible_per_day if cal.position != "past" else None
+        if per_day is not None:
+            parts.append(
+                f"Flexible budgets: {money(cal.flexible_left)} left, about "
+                f"{money(per_day)} a day as guidance (not purchases on dates)."
+            )
+        fast = [
+            line.label
+            for line in cal.flexible_lines
+            if line.pace_status in ("faster_than_pace", "over_limit")
+        ]
+        if fast and cal.position != "past":
+            parts.append("Spending faster than its pace: " + ", ".join(fast) + ".")
     else:
         parts.append(
             "MITA has no saved plan for this month, so the calendar shows recorded "

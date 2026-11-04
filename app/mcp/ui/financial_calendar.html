@@ -186,6 +186,9 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 .cell .tday{font-size:9.5px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;padding:2px 4px;border-radius:5px;background:var(--mita-yellow);color:var(--mita-navy);line-height:1}
 .cell .amt{font-size:14px;font-weight:720;line-height:1.1;white-space:nowrap;overflow:hidden;letter-spacing:-.01em}
 .cell.future .amt{font-weight:620;color:var(--color-text-secondary)}
+.cell .amt.guide,.mcell span.guide{font-weight:560;color:var(--color-text-tertiary,var(--color-text-secondary));opacity:.85}
+.chip-proposed{font-size:11px;font-weight:650;padding:1px 6px;border-radius:6px;border:1px dashed var(--color-border-primary);color:var(--color-text-secondary);margin-left:6px;white-space:nowrap}
+.meta.fast{color:var(--remind)}
 .cell .meter{height:3px;border-radius:2px;background:var(--track);overflow:hidden}
 .cell .meter>i{display:block;height:100%;background:var(--within)}
 .cell.over .meter>i{background:var(--over)}
@@ -226,8 +229,9 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 .rows li:last-child{border-bottom:0}
 .rows .who{display:flex;align-items:center;gap:9px;min-width:0}
 .rows .who>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rows .what{display:block;font-size:12px;color:var(--color-text-secondary)}
-.rows .amtc{font-weight:650;white-space:nowrap;text-align:right}
+.rows .what{display:block;font-size:12px;color:var(--color-text-secondary);white-space:normal}
+.rows .what.fast{color:var(--remind)}
+.rows .amtc{font-weight:650;white-space:nowrap;text-align:right;flex-shrink:0}
 .breakdown{margin-top:14px;padding:16px;border-radius:var(--border-radius-xl);background:var(--color-background-primary);border:1px solid var(--color-border-secondary);box-shadow:var(--shadow-md)}
 .breakdown h2{font-size:17px}
 .group{margin-top:14px}
@@ -990,6 +994,14 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     return base + " due";
   }
 
+  // The flexible budgets' guidance for each day left (summary.flexible_per_day):
+  // shown on dates ahead with nothing scheduled, as "≈", never as a purchase.
+  function flexGuide(month) {
+    var s = month.summary;
+    if (month.plan_status !== "generated" || month.month_position === "past") return null;
+    return s.flexible_per_day && cents(s.flexible_per_day) > 0 ? s.flexible_per_day : null;
+  }
+
   function lineGroup(key) {
     var line = lineByKey(key);
     return line ? line.group : "everyday";
@@ -1039,7 +1051,9 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       if (model.state === "over") parts.push("over the plan");
       if (model.state === "unplanned") parts.push("no everyday plan for this date");
     } else {
-      parts.push(prefix + (cents(model.planned) > 0 ? "planned " + money(model.planned, cur) : "nothing planned"));
+      parts.push(prefix + (cents(model.planned) > 0 ? "planned " + money(model.planned, cur) : "no purchase or bill planned"));
+      var guideDay = !state.filter ? flexGuide(m) : null;
+      if (guideDay) parts.push("flexible budgets about " + money(guideDay, cur) + " a day, guidance");
     }
     var cur2 = m.currency;
     if (!state.filter) {
@@ -1202,9 +1216,11 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       var caption = month.month_position === "future"
         ? "a day on average · " + plural(days, "day", "days") + " in " + monthOnly.format(monthDate(month))
         : "a day on average · " + plural(days, "day", "days") + " left";
+      var flex = flexGuide(month);
       return el("div", { class: "hero" }, [
         el("span", { class: "hero-fig num", text: money(s.average_per_day, cur) }),
-        el("span", { class: "hero-cap", text: caption })
+        el("span", { class: "hero-cap", text: caption }),
+        flex ? el("span", { class: "hero-cap", style: "display:block;margin-top:2px", text: "Flexible budgets: about " + money(s.flexible_per_day_rounded, cur).replace(/[.,]00(?=\D*$)/, "") + " a day of " + money(s.flexible_left, cur) + " left" }) : null
       ]);
     }
     if (month.plan_status === "generated") {
@@ -1334,7 +1350,11 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       if (day.day_kind === "future" && cents(model.planned) > 0) raw = model.planned;
       var amount = raw === null ? "" : fitAmount(raw);
       if (activeWindow(day.date)) classes += " win";
-      var cell = el("div", { class: classes }, [el("b", { text: String(parseDate(day.date).getUTCDate()) }), el("span", { class: "num fit", "data-amount": raw, text: amount })]);
+      var guide = raw === null && day.day_kind === "future" ? flexGuide(month) : null;
+      var amountSpan = guide
+        ? el("span", { class: "num fit guide", text: "≈" + wholeAmount(guide) })
+        : el("span", { class: "num fit", "data-amount": raw, text: amount });
+      var cell = el("div", { class: classes }, [el("b", { text: String(parseDate(day.date).getUTCDate()) }), amountSpan]);
       if (model.begun && (model.state === "over" || model.state === "within")) {
         cell.appendChild(el("i", null, el("s", { style: "width:" + (model.ratio * 100).toFixed(1) + "%" })));
       }
@@ -1658,7 +1678,10 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       amountNode = el("span", { class: "amt num fit" }, cents(shown) > 0 ? amountValue(shown) : (cents(model.planned) > 0 ? amountValue("0") : ""));
     } else {
       var plannedShown = model.planned;
-      amountNode = el("span", { class: "amt num fit" }, cents(plannedShown) > 0 ? amountValue(plannedShown) : "");
+      var guide = !state.filter && cents(plannedShown) <= 0 ? flexGuide(state.payload.month) : null;
+      amountNode = guide
+        ? el("span", { class: "amt num fit guide" }, "≈" + wholeAmount(guide))
+        : el("span", { class: "amt num fit" }, cents(plannedShown) > 0 ? amountValue(plannedShown) : "");
     }
     var meter = null;
     if (model.begun && (model.state === "over" || model.state === "within")) {
@@ -1698,7 +1721,8 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       el("span", null, [el("i", { class: "sw plan" }), "Plan, not a forecast"]),
       el("span", null, [el("i", { class: "sw overm" }), "Over the everyday plan"]),
       el("span", null, [icon("bill"), "Saved bill due"]),
-      el("span", null, [el("i", { class: "sw plan" }), "Dates ahead: planned purchases and bills only — flexible budgets have no dates"]),
+      el("span", null, [el("i", { class: "sw plan" }), "Dates ahead: planned purchases and bills"]),
+      el("span", null, [el("b", { class: "num", style: "font-weight:560;opacity:.85", text: "≈" }), "Flexible budgets' daily guide — not a purchase"]),
       el("span", null, [el("i", { class: "sw win" }), "Bill due within " + reminderDays(state.payload.month) + " days"]),
       el("span", null, [el("i", { class: "sw todaym" }), "Today"])
     ]);
@@ -1802,13 +1826,29 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       }
     } else {
       var scheduled = day.planned_scheduled !== undefined ? day.planned_scheduled : day.planned;
-      var flexShare = cents(day.planned_flexible || "0");
-      everyday.appendChild(el("h3", { text: "Planned for this date" }));
-      everyday.appendChild(el("div", { class: "big num" }, [
-        el("b", { text: money(scheduled, cur) }),
-        el("span", { class: "muted", text: cents(scheduled) > 0 ? "planned purchases and bills" : "no purchase planned" })
-      ]));
-      everyday.appendChild(el("p", { class: "note", style: "margin-top:6px", text: "No spending yet. MITA’s plan for the date, not a forecast." + (flexShare > 0 ? " Flexible budgets have no purchase dates; their daily share (" + moneyCents(flexShare, cur) + ") is guidance." : "") }));
+      var dayGuide = flexGuide(month);
+      if (cents(scheduled) > 0) {
+        everyday.appendChild(el("h3", { text: "Planned for this date" }));
+        everyday.appendChild(el("div", { class: "big num" }, [
+          el("b", { text: money(scheduled, cur) }),
+          el("span", { class: "muted", text: "planned purchases and bills" })
+        ]));
+        everyday.appendChild(el("p", { class: "note", style: "margin-top:6px", text: "No spending yet. MITA’s plan for the date, not a forecast." + (dayGuide ? " Flexible budgets add about " + money(dayGuide, cur) + " a day of guidance." : "") }));
+      } else if (dayGuide) {
+        everyday.appendChild(el("h3", { text: "To spend on flexible budgets" }));
+        everyday.appendChild(el("div", { class: "big num" }, [
+          el("b", { text: "≈" + money(dayGuide, cur) }),
+          el("span", { class: "muted", text: "a day, guidance — not a purchase" })
+        ]));
+        everyday.appendChild(el("p", { class: "note", style: "margin-top:6px", text: "No purchase or bill is planned for this date. This is what your flexible budgets leave for each day from today: spend less one day and more another — it is a pace, not cash set out for this date." }));
+      } else {
+        everyday.appendChild(el("h3", { text: "Planned for this date" }));
+        everyday.appendChild(el("div", { class: "big num" }, [
+          el("b", { text: money(scheduled, cur) }),
+          el("span", { class: "muted", text: "nothing planned" })
+        ]));
+        everyday.appendChild(el("p", { class: "note", style: "margin-top:6px", text: "No spending yet. MITA’s plan for the date, not a forecast." }));
+      }
     }
     panel.appendChild(everyday);
 
@@ -1876,13 +1916,16 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
           ? money(p.spent, cur) + " spent of " + money(p.planned, cur) + " planned"
           : (day.day_kind === "past" ? "nothing recorded · " : "") + money(p.planned, cur) + " planned";
         buyList.appendChild(el("li", null, [
-          el("span", { class: "who" }, [catIcon(p.category), el("span", { text: label })]),
+          el("span", { class: "who" }, [catIcon(p.category), el("span", null, [
+            el("span", { text: label }),
+            p.proposed ? el("span", { class: "chip-proposed", text: "proposed date" }) : null
+          ])]),
           el("span", { class: "amtc num", text: status })
         ]));
       });
       panel.appendChild(el("section", null, [
         el("h3", { text: "Planned purchases" }), buyList,
-        el("p", { class: "note", style: "margin-top:6px", text: "A planned purchase is money set out for it, not a transaction. Spending less leaves the rest on the line." })
+        el("p", { class: "note", style: "margin-top:6px", text: "A planned purchase is money set out for it, not a transaction. Spending less leaves the rest on the line." + (buys.some(function (p) { return p.proposed; }) ? " A proposed date is MITA’s suggestion: you named how often, not the day." : "") })
       ]));
     }
     var flexible = month.categories.filter(function (c) { return c.spending_type === "flexible" && c.left_per_day; });
@@ -1892,7 +1935,8 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
         flexList.appendChild(el("li", { title: money(c.left_per_day, cur) + " a day exactly" }, [
           el("span", { class: "who" }, [catIcon(c.category), el("span", null, [
             el("span", { style: "display:block", text: c.category_label }),
-            el("span", { class: "what", text: money(c.remaining, cur) + " left this month" })
+            el("span", { class: "what", text: money(c.remaining, cur) + " left this month" }),
+            c.pace_status === "faster_than_pace" ? el("span", { class: "what fast", text: "spending faster than its pace" }) : null
           ])]),
           el("span", { class: "amtc num", text: "about " + money(c.left_per_day_rounded, cur).replace(/[.,]00(?=\D*$)/, "") + " a day" })
         ]));
@@ -1985,16 +2029,17 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
         else meta = money(line.remaining, cur) + " left";
         if (!setAside && p > 0 && !over) {
           if (line.spending_type === "planned" && line.next_purchase) {
-            meta += " · next " + dayShort.format(parseDate(line.next_purchase.date)) + " " + money(line.next_purchase.planned, cur);
+            meta += " · next " + dayShort.format(parseDate(line.next_purchase.date)) + " " + money(line.next_purchase.planned, cur) + (line.next_purchase.proposed ? " (proposed)" : "");
           } else if (line.spending_type === "flexible" && line.left_per_day_rounded) {
             meta += " · about " + money(line.left_per_day_rounded, cur).replace(/[.,]00(?=\D*$)/, "") + " a day";
+            if (line.pace_status === "faster_than_pace") meta += " · faster than its pace";
           }
         }
         var content = [
           el("span", { class: "nm" }, [setAside ? icon("shield", "shield") : catIcon(line.category), el("span", { text: line.category_label })]),
           el("span", { class: "val num", text: setAside ? money(line.planned, cur) : money(line.spent, cur) + " / " + money(line.planned, cur) }),
           setAside ? null : bar(p > 0 ? s / p : (s > 0 ? 1 : 0), over || (p === 0 && s > 0)),
-          el("span", { class: "meta" + (over ? " over" : ""), text: meta })
+          el("span", { class: "meta" + (over ? " over" : line.pace_status === "faster_than_pace" ? " fast" : ""), text: meta })
         ];
         if (setAside) {
           holder.appendChild(el("div", { class: "line static" }, content));

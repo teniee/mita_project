@@ -500,6 +500,7 @@ NOTE_MONTH_ENDED = "The month has ended, so there is no daily average for it."
 
 def calendar_summary_out(cal: CalendarMonth) -> CalendarSummaryOut:
     planned = cal.plan_generated
+    flexible_day = cal.flexible_per_day if planned else None
     forecast = cal.forecast
     month_open = cal.position != "past"
     left = (
@@ -542,6 +543,15 @@ def calendar_summary_out(cal: CalendarMonth) -> CalendarSummaryOut:
             money(cal.planned_after_today) if planned and month_open else None
         ),
         bills_due_after_today=money(cal.bills_due_after_today),
+        flexible_left=(
+            money(cal.flexible_left) if planned and cal.flexible_lines else None
+        ),
+        flexible_per_day=optional_money(flexible_day),
+        flexible_per_day_rounded=(
+            str(flexible_day.quantize(Decimal("1"), ROUND_HALF_UP))
+            if flexible_day is not None
+            else None
+        ),
     )
 
 
@@ -565,7 +575,11 @@ def _calendar_notes(ctx: UserContext, cal: CalendarMonth) -> List[str]:
 
 def _purchase_out(p) -> CalendarPurchaseOut:
     return CalendarPurchaseOut(
-        category=p.line, date=p.day, planned=money(p.planned), spent=money(p.spent)
+        category=p.line,
+        date=p.day,
+        planned=money(p.planned),
+        spent=money(p.spent),
+        proposed=p.proposed,
     )
 
 
@@ -589,6 +603,7 @@ def _day_out(day) -> CalendarDayOut:
 
 def _line_out(line) -> CalendarLineOut:
     per_day, per_week = line.guidance()
+    flexible = line.spending_type == "flexible"
     return CalendarLineOut(
         category=line.key,
         category_label=line.label,
@@ -612,6 +627,13 @@ def _line_out(line) -> CalendarLineOut:
             else None
         ),
         left_per_week=optional_money(per_week),
+        purchase_dates_stated=(
+            line.purchase_dates_stated if line.spending_type == "planned" else None
+        ),
+        pace_per_day=optional_money(line.pace_per_day if flexible else None),
+        planned_per_day=optional_money(line.planned_per_day if flexible else None),
+        pace_status=line.pace_status,  # type: ignore[arg-type]
+        days_until_exhausted=line.days_until_exhausted if flexible else None,
     )
 
 

@@ -436,7 +436,9 @@ async def test_changing_groceries_to_twice_a_month(mcp, seed, connection):
     }
     status = await call(m5, token, "get_setup_status")
     stated = {x["category"]: x for x in status["spending"]["lines"]}
-    assert stated["my:Groceries"]["pattern"] == "2 times a month"
+    assert (
+        stated["my:Groceries"]["pattern"] == "2 times a month (dates proposed by MITA)"
+    )
     ledger_after = (
         await connection.execute(
             text(
@@ -622,3 +624,171 @@ async def test_the_whole_flow_through_mcp(mcp, seed, connection):
     assert refused.is_error
     their_status = await call(mcp.at(at(15)), other_token, "get_setup_status")
     assert their_status["spending"]["lines"] == []
+
+
+# --- approximate patterns: dates MITA proposes are said to be proposed --------------
+
+
+async def test_fuel_about_once_a_week_gets_proposed_dates(mcp, seed, connection):
+    """'€200 a month on fuel, I refuel about once a week for ~€50' gives a
+    frequency and an amount, not a weekday: MITA proposes one date a week
+    (4, 11, 18, 25 Nov), says they are proposed, and keeps €200 exact."""
+    user, token = await person(mcp, seed)
+    m = mcp.at(at(2))
+    weekly = [
+        {
+            "line": "Fuel",
+            "kind": "planned",
+            "frequency": "weekly",
+            "typical_amount": "50",
+        }
+    ]
+    draft = await preview(
+        m,
+        token,
+        budget_lines=[{"label": "Fuel", "amount": 200, "replaces": ["transport gas"]}],
+        spending_patterns=weekly,
+    )
+    fuel = line(draft, "my:Fuel")
+    assert fuel["amount"] == "200.00"
+    assert fuel["pattern"] == "about once a week (dates proposed by MITA)"
+    assert fuel["purchase_dates_stated"] is False
+    assert [
+        (p["date"][-2:], p["amount"], p["proposed"]) for p in fuel["purchases"]
+    ] == [
+        ("04", "50.00", True),
+        ("11", "50.00", True),
+        ("18", "50.00", True),
+        ("25", "50.00", True),
+    ]
+    await save(m, token, draft)
+    seen = await look(m, token, connection, user, month=11, today=date(2026, 11, 2))
+    cal_fuel = seen.line("my:Fuel")
+    assert cal_fuel["purchase_dates_stated"] is False
+    assert all(p["proposed"] for p in cal_fuel["purchases"])
+    assert cal_fuel["next_purchase"]["date"] == "2026-11-04"
+
+
+# --- daily intelligence for flexible budgets ----------------------------------------
+
+
+async def test_flexible_budgets_keep_a_daily_guide_and_flag_fast_spending(
+    mcp, seed, connection
+):
+    """Cigarettes €200 and Coffee and walks €100, both flexible. By 5 Nov the
+    user spent €90 on cigarettes: within the month's €200, but at 90 / 5 =
+    18.00 a day against 200 / 30 = 6.67 planned (2.70× the pace) — faster
+    than its pace, not over its limit. The day's guide is what is left of
+    each envelope over the 26 days left (5-30 Nov)."""
+    user, token = await person(mcp, seed)
+    m2 = mcp.at(at(2))
+    draft = await preview(
+        m2,
+        token,
+        budget_lines=[
+            {"label": "Cigarettes", "amount": 200},
+            {"label": "Coffee and walks", "amount": 100},
+        ],
+    )
+    await save(m2, token, draft)
+    m5 = mcp.at(at(5))
+    await call(
+        m5,
+        token,
+        "add_transaction",
+        {"amount": "90.00", "budget_line": "Cigarettes", "idempotency_key": key()},
+    )
+    seen = await look(m5, token, connection, user, month=11, today=date(2026, 11, 5))
+    cig = seen.line("my:Cigarettes")
+    assert (cig["spent"], cig["remaining"]) == ("90.00", "110.00")
+    assert (cig["pace_per_day"], cig["planned_per_day"]) == ("18.00", "6.67")
+    assert cig["pace_status"] == "faster_than_pace"
+    assert cig["left_per_day"] == "4.23"  # 110.00 / 26 days, the revised safe pace
+    assert cig["days_until_exhausted"] == 6  # 110 / 18 at this pace
+    coffee = seen.line("my:Coffee and walks")
+    assert (coffee["pace_status"], coffee["left_per_day"]) == ("not_started", "3.85")
+    # One source: the forecast's at-risk list names the same line, same pace.
+    risk = {c["category"]: c for c in seen.forecast["categories_at_risk"]}
+    assert risk["my:Cigarettes"]["daily_pace"] == "18.00"
+    # The day's guide for flexible spending, shown on dates with no purchase.
+    summary = seen.summary
+    assert D(summary["flexible_left"]) == D(cig["remaining"]) + D(
+        coffee["remaining"]
+    ) + sum(
+        D(x["remaining"])
+        for x in seen.cal["categories"]
+        if x["spending_type"] == "flexible"
+        and x["category"] not in ("my:Cigarettes", "my:Coffee and walks")
+    )
+    per_day = sum(
+        D(x["left_per_day"])
+        for x in seen.cal["categories"]
+        if x["spending_type"] == "flexible"
+    )
+    assert D(summary["flexible_per_day"]) == per_day
+    assert summary["flexible_per_day_rounded"] == str(round(per_day))
+    # A date ahead without a purchase holds no scheduled money — and still
+    # its flexible share — never a fabricated purchase.
+    day20 = seen.day(20)
+    assert day20["planned_scheduled"] == "0.00" and D(day20["planned_flexible"]) > 0
+    # Spending past the envelope is over its limit.
+    await call(
+        m5,
+        token,
+        "add_transaction",
+        {"amount": "120.00", "budget_line": "Cigarettes", "idempotency_key": key()},
+    )
+    seen = await look(m5, token, connection, user, month=11, today=date(2026, 11, 5))
+    cig = seen.line("my:Cigarettes")
+    assert (cig["remaining"], cig["pace_status"]) == ("-10.00", "over_limit")
+    assert cig["left_per_day"] == "0.00"
+
+
+# --- F-12: money of a line that does not apply is shown, never moved silently --------
+
+
+async def test_freed_money_is_shown_and_can_be_given_to_chosen_lines(mcp, seed):
+    _user, token = await person(mcp, seed)
+    m = mcp.at(at(2))
+    lines = [
+        {"label": "Fuel", "amount": 200, "replaces": ["transport gas"]},
+        {"label": "Cigarettes", "amount": 200},
+    ]
+    kept = await preview(m, token, budget_lines=lines)
+    kept_by = {a["category"]: D(a["amount"]) for a in kept["category_allocations"]}
+    excluded = [
+        {"line": "Medical insurance", "kind": "not_applicable"},
+        {"line": "transport public", "kind": "not_applicable"},
+    ]
+    draft = await preview(m, token, budget_lines=lines, spending_patterns=excluded)
+    freed = draft["freed_money"]
+    would = {x["category"]: x["amount_freed"] for x in draft["not_applicable_lines"]}
+    assert would == {
+        "insurance medical": format(kept_by["insurance medical"], "f"),
+        "transport public": format(kept_by["transport public"], "f"),
+    }
+    assert (
+        D(freed["total"]) == kept_by["insurance medical"] + kept_by["transport public"]
+    )
+    # Conserved to the cent: what other lines gained + what stays unallocated.
+    gained = sum(D(x["amount"]) for x in freed["to_other_lines"])
+    assert gained + D(freed["unallocated"]) == D(freed["total"])
+    for x in freed["to_other_lines"]:
+        now = D(line(draft, x["category"])["amount"])
+        assert now - kept_by[x["category"]] == D(x["amount"])
+    assert any("freed" in w and "budget_lines" in w for w in draft["warnings"])
+    # The user's own amounts never move, and the exclusion is not persisted.
+    assert line(draft, "my:Fuel")["amount"] == "200.00"
+    again = await preview(m, token, budget_lines=lines)
+    assert any(
+        a["category"] == "insurance medical" for a in again["category_allocations"]
+    )
+    # Explicit redistribution: the user gives groceries an exact amount.
+    chosen = await preview(
+        m,
+        token,
+        budget_lines=lines
+        + [{"label": "Groceries", "amount": 300, "replaces": ["groceries"]}],
+        spending_patterns=excluded,
+    )
+    assert line(chosen, "my:Groceries")["amount"] == "300.00"

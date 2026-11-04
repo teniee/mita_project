@@ -28,6 +28,8 @@ from app.mcp.schemas import (
     ExcludedLineOut,
     FinancialSummaryOut,
     ForecastOut,
+    FreedLineOut,
+    FreedMoneyOut,
     HistoryUsedOut,
     ObligationOut,
     PlanChangeOut,
@@ -342,7 +344,11 @@ def preview_out(
                 else "mita_default"
             ),
             purchases=[
-                PlannedPurchaseOut(date=day, amount=money(value))
+                PlannedPurchaseOut(
+                    date=day,
+                    amount=money(value),
+                    proposed=not dates_are_stated(pattern),
+                )
                 for (day, line), value in sorted(entries.items())
                 if line == key and planned
             ],
@@ -397,9 +403,34 @@ def preview_out(
         savings_allocation=money(alloc.savings),
         category_allocations=categories,
         not_applicable_lines=[
-            ExcludedLineOut(category=code, category_label=category_label(code))
+            ExcludedLineOut(
+                category=code,
+                category_label=category_label(code),
+                amount_freed=optional_money(
+                    draft.freed.excluded.get(code) if draft.freed else None
+                ),
+            )
             for code in draft.not_applicable
         ],
+        freed_money=(
+            FreedMoneyOut(
+                total=money(draft.freed.total),
+                to_other_lines=[
+                    FreedLineOut(
+                        category=code,
+                        category_label=category_label(code),
+                        amount=money(amount),
+                    )
+                    for code, amount in sorted(
+                        draft.freed.added.items(), key=lambda kv: (-kv[1], kv[0])
+                    )
+                    if amount > 0
+                ],
+                unallocated=money(draft.freed.unallocated),
+            )
+            if draft.freed is not None
+            else None
+        ),
         user_set_total=money(draft.user_set_total),
         unallocated=money(alloc.unallocated),
         flexible_total=money(alloc.discretionary_total),

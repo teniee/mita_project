@@ -1196,7 +1196,17 @@ Rules:
     flexible (even over every day, shown as guidance); planned lines split
     exactly over real dates (`spending_schedule.purchase_dates`, integer
     cents, no four-week months). Patterns are stated, never inferred
-    (`spending_patterns.source = user_confirmed` only).
+    (`spending_patterns.source = user_confirmed` only). A frequency without a
+    day ("about once a week") gets dates MITA PROPOSES, always labelled
+    (`proposed`, `purchase_dates_stated: false`).
+  - **Daily guidance stays the headline.** Flexible lines carry the forecast
+    engine's pace (`pace_per_day` vs `planned_per_day`, `pace_status`,
+    `days_until_exhausted`) and the revised `left_per_day`; the calendar shows
+    `summary.flexible_per_day` as a muted "≈" on dates with nothing scheduled.
+    Never a second calculation of pace.
+  - **Freed money is shown** (`preview_monthly_budget.freed_money`, F-12):
+    a `not_applicable` line's money vs the same engine run keeping it;
+    explicit redistribution only through `budget_lines`.
   - **Preferences never change a saved plan by themselves**:
     `save_spending_patterns` persists; `preview_monthly_budget
     (spending_patterns=…)` shows a change unsaved; `save_monthly_budget`

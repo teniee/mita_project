@@ -131,9 +131,11 @@ class SpendingPattern:
         if frequency == DAILY:
             weekdays, days, times, anchor = (), (), None, None
         elif frequency in (WEEKDAYS, WEEKLY):
-            if not weekdays:
-                raise PatternError("say which day(s) of the week the purchase happens.")
-            if frequency == WEEKLY and len(weekdays) != 1:
+            if not weekdays and frequency == WEEKDAYS:
+                raise PatternError("say which days of the week the purchases happen.")
+            # "Once a week" with no day named is approximate: MITA proposes
+            # one date a week and says so (``dates_are_stated``).
+            if frequency == WEEKLY and len(weekdays) > 1:
                 frequency = WEEKDAYS  # "every Monday and Thursday"
             days, times, anchor = (), None, None
         elif frequency == BIWEEKLY:
@@ -187,6 +189,10 @@ def purchase_dates(pattern: SpendingPattern, year: int, month: int) -> List[date
     frequency = pattern.frequency
     if frequency == DAILY:
         return days
+    if frequency == WEEKLY and not pattern.weekdays:
+        # About once a week, no day named: proposed every seven days from the
+        # 4th, the middle of the first week (4, 11, 18, 25 every month).
+        return [d for d in days if d.day % 7 == 4]
     if frequency in (WEEKDAYS, WEEKLY):
         return [d for d in days if d.weekday() in pattern.weekdays]
     if frequency == BIWEEKLY:
@@ -205,10 +211,13 @@ def purchase_dates(pattern: SpendingPattern, year: int, month: int) -> List[date
 
 
 def dates_are_stated(pattern: SpendingPattern) -> bool:
-    """True when the user named the dates or weekdays; False when MITA spaced
-    a number of purchases over the month (``times_per_month`` without days)."""
+    """True when the user named the dates or weekdays; False when MITA
+    proposed them: a number of purchases a month, or "once a week", with no
+    day named. Proposed dates are said to be proposed, never presented as
+    the user's."""
     pattern = pattern.validated()
-    return not (pattern.frequency == TIMES_PER_MONTH and not pattern.weekdays)
+    approximate = pattern.frequency in (TIMES_PER_MONTH, WEEKLY)
+    return not (approximate and not pattern.weekdays)
 
 
 @dataclass(frozen=True)
@@ -256,6 +265,8 @@ def describe(pattern: Optional[SpendingPattern]) -> str:
     if f == DAILY:
         return "every day"
     if f == WEEKLY:
+        if not names:
+            return "about once a week (dates proposed by MITA)"
         return f"every {names[0]}"
     if f == WEEKDAYS:
         return "every " + ", ".join(names)
@@ -263,7 +274,9 @@ def describe(pattern: Optional[SpendingPattern]) -> str:
         return f"every other {names[0]} (from {pattern.anchor_date.isoformat()})"
     if f == TIMES_PER_MONTH:
         times = f"{pattern.times_per_month} times a month"
-        return times + (" on " + "/".join(names) if names else "")
+        return times + (
+            " on " + "/".join(names) if names else " (dates proposed by MITA)"
+        )
     ordinal = ", ".join(str(d) for d in pattern.days_of_month)
     return (
         f"on day {ordinal} of each month"

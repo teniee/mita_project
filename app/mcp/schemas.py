@@ -776,6 +776,9 @@ class PlannedPurchaseOut(_Out):
     amount: Money = money_field(
         "Money planned for that purchase (an allocation, not a transaction)."
     )
+    proposed: bool = Field(
+        description="True when MITA proposed the date (the user named no day): say so."
+    )
 
 
 SpendingType = Literal["planned", "flexible"]
@@ -842,6 +845,31 @@ class AllocationOut(_Out):
 class ExcludedLineOut(_Out):
     category: str
     category_label: str = category_label_field()
+    amount_freed: Optional[Money] = Field(
+        default=None,
+        description="What MITA's rules would have given this line if it applied.",
+        pattern=MONEY_PATTERN,
+    )
+
+
+class FreedLineOut(_Out):
+    category: str
+    category_label: str = category_label_field()
+    amount: Money = money_field("What this line gained from the freed money.")
+
+
+class FreedMoneyOut(_Out):
+    total: Money = money_field(
+        "What the lines the user said do not apply would have had."
+    )
+    to_other_lines: List[FreedLineOut] = Field(
+        description=(
+            "Where MITA's usual shares put it: its other lines, before the user "
+            "chooses. To give it to particular lines instead (more for groceries), "
+            "set those lines' amounts in budget_lines — kept exactly."
+        )
+    )
+    unallocated: Money = money_field("What stayed unassigned to any line.")
 
 
 class PlanChangeOut(_Out):
@@ -899,6 +927,13 @@ class BudgetPreviewOut(_Out):
             "MITA's lines the user said they do not have (spending pattern "
             "not_applicable): left out of the plan."
         )
+    )
+    freed_money: Optional[FreedMoneyOut] = Field(
+        default=None,
+        description=(
+            "Where the money of not_applicable_lines went (compared with the same "
+            "plan keeping them). Show it to the user; nothing moves without a save."
+        ),
     )
     user_set_total: Money = money_field(
         "Sum of the user's own budget lines (source set_by_you)."
@@ -1208,6 +1243,22 @@ class CalendarSummaryOut(_Out):
         ),
         pattern=MONEY_PATTERN,
     )
+    flexible_left: Optional[Money] = Field(
+        description="What the month's flexible budgets still hold (each line never below 0).",
+        pattern=MONEY_PATTERN,
+    )
+    flexible_per_day: Optional[Money] = Field(
+        description=(
+            "The flexible budgets' guidance for each day left, today included (the sum "
+            "of each flexible line's left_per_day). Guidance for flexible spending, not "
+            "cash on hand; null for a month without flexible budgets or one that ended."
+        ),
+        pattern=MONEY_PATTERN,
+    )
+    flexible_per_day_rounded: Optional[str] = Field(
+        description="flexible_per_day in whole currency units, for a short summary.",
+        pattern=r"^\d+$",
+    )
     bills_due_after_today: Money = money_field(
         "Saved regular payments that fall due after today in this month, as scheduled (a bill already paid early is still counted here; see bills[].state)."
     )
@@ -1220,7 +1271,16 @@ class CalendarPurchaseOut(_Out):
         "Money planned for the purchase (an allocation, not a transaction)."
     )
     spent: Money = money_field("Recorded on that line on that date.")
+    proposed: bool = Field(
+        description=(
+            "True when MITA proposed this date (the user gave a frequency, e.g. "
+            "'about once a week', but no day): say it is a proposed date, not one "
+            "the user chose."
+        )
+    )
 
+
+PaceStatus = Literal["not_started", "on_pace", "faster_than_pace", "over_limit"]
 
 CalendarSpendingType = Literal[
     "obligation", "planned", "flexible", "set_aside", "legacy"
@@ -1277,6 +1337,31 @@ class CalendarLineOut(_Out):
     left_per_week: Optional[Money] = Field(
         description="For flexible lines: left_per_day × 7 (all that is left when under a week remains).",
         pattern=MONEY_PATTERN,
+    )
+    purchase_dates_stated: Optional[bool] = Field(
+        description="For planned lines: false when MITA proposed the dates (no day named)."
+    )
+    pace_per_day: Optional[Money] = Field(
+        description=(
+            "For flexible lines: spent so far ÷ days elapsed (the forecast engine's "
+            "pace). Compare with planned_per_day: the recommended pace, not a limit."
+        ),
+        pattern=MONEY_PATTERN,
+    )
+    planned_per_day: Optional[Money] = Field(
+        description="For flexible lines: the month's amount ÷ the days of the month (recommended pace).",
+        pattern=MONEY_PATTERN,
+    )
+    pace_status: Optional[PaceStatus] = Field(
+        description=(
+            "For flexible lines: not_started; on_pace; faster_than_pace (spending at "
+            "least 1.2× the recommended pace — the forecast's at-risk rule: still "
+            "within the monthly limit, but it would run out early); over_limit "
+            "(beyond the month's amount). Spending fast is not overspending."
+        )
+    )
+    days_until_exhausted: Optional[int] = Field(
+        description="For flexible lines: days the rest lasts at the current pace (0 = used up); null before any spending."
     )
 
 

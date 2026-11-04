@@ -85,9 +85,25 @@ twice in November = 8 and 23; weekdays optional; the result says MITA spaced
 them), `monthly` / `dates` (day of the month, the last day when shorter:
 31 → 28 Feb 2027, 29 Feb 2028). November 2026: €200 every Wednesday = 4 × 50.00
 (4, 11, 18, 25); every Monday = 5 × 40.00 — never a four-week month.
-`not_applicable` leaves one of MITA's lines out of the plan (its money is not
-re-assigned to another line by the engine: the engine only scales down).
-A user line that replaces exactly one MITA line keeps that line's pattern.
+**Approximate patterns (owner, 2026-11-04).** "About once a week, ~€50" gives
+a frequency and an amount, not a day: `weekly` with no weekday is allowed and
+MITA PROPOSES one date a week (the 4th, 11th, 18th, 25th); `times_per_month`
+without weekdays likewise. Proposed dates are always labelled
+(`dates_are_stated` = false → `purchase_dates_stated: false`, `proposed: true`
+on each purchase, "(dates proposed by MITA)" in words); the monthly amount is
+exact; the typical amount is shown, never used to change it.
+
+`not_applicable` leaves one of MITA's lines out of the plan. Its money is
+shown, never moved silently: the preview's `freed_money` compares with the
+same engine run keeping the line — what each left-out line would have had,
+what MITA's other lines gained by its usual shares, what stays unallocated
+(conserved to the cent) — and the user directs it explicitly with
+`budget_lines` (exact amounts, e.g. groceries €300). A line the user disabled
+(`not_applicable`), one they never configured (`pattern_source:
+mita_default`) and one MITA merely suggested (`source: calculated_by_mita`)
+stay distinct in every result; a disabled line is never restored by a later
+preview. A user line that replaces exactly one MITA line keeps that line's
+pattern.
 
 ### 3.3 Source semantics
 
@@ -145,8 +161,20 @@ once, as a convenience.
   `left_per_day` (exact) + `left_per_day_rounded` + `left_per_week` —
   arithmetic, not a forecast.
 * Dates: `planned_scheduled` (planned purchases + bills) and
-  `planned_flexible` (guidance) add up to `planned`; `purchases`. Dates ahead
-  show only `planned_scheduled`: no purchase is fabricated to fill a date.
+  `planned_flexible` (guidance) add up to `planned`; `purchases` (each with
+  `proposed`). Dates ahead show `planned_scheduled` in bold; a date with
+  nothing scheduled shows the flexible budgets' daily guide, muted, as "≈€X"
+  (`summary.flexible_per_day` = Σ each flexible line's `left_per_day`) — never
+  a fabricated purchase, never an empty day.
+* **Daily intelligence for flexible lines** (owner, 2026-11-04), all from the
+  forecast engine's own per-category figures (the ones behind
+  `categories_at_risk`): `pace_per_day` (spent ÷ days elapsed) against
+  `planned_per_day` (the recommended pace), `pace_status` (not_started /
+  on_pace / faster_than_pace at ≥ 1.2× — within the limit but running out
+  early / over_limit), `days_until_exhausted`, and the revised safe pace
+  `left_per_day` / `left_per_week`. Spending fast is not overspending; the
+  monthly limit is. The summary carries `flexible_left`, `flexible_per_day`
+  (+ rounded); the model's text names lines spending faster than their pace.
 
 ## 7. Before / after — the owner's November
 

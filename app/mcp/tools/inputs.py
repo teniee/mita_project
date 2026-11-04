@@ -122,9 +122,12 @@ PATTERN_KIND_HELP = (
     "MITA leaves it out of the plan. Only what the user said; never guess."
 )
 FREQUENCY_HELP = (
-    "For planned: daily; weekly (one weekday) or weekdays (several, e.g. Mon-Fri) "
-    "with weekdays; biweekly with next_date; times_per_month with times_per_month "
-    "(weekdays optional); monthly (one day) or dates (several) with days_of_month."
+    "For planned: daily; weekly with one weekday, or with none when the user "
+    "named no day ('I refuel about once a week') — MITA then PROPOSES one date a "
+    "week and says the dates are proposed; weekdays (several, e.g. Mon-Fri) with "
+    "weekdays; biweekly with next_date; times_per_month with times_per_month "
+    "(weekdays optional; without them the dates are proposed); monthly (one day) "
+    "or dates (several) with days_of_month."
 )
 
 

@@ -60,11 +60,16 @@ from app.mcp.categories import group_lines, line_key, line_source
 from app.mcp.queries import budget_lines, ledger, obligations, plan
 from app.mcp.queries.periods import UserContext, month_days
 from app.services.core.engine.budget_forecast_engine import (
+    RISK_PACE_RATIO,
     ForecastResult,
     is_bill_line,
     is_recordable,
 )
-from app.services.core.engine.spending_schedule import describe, purchase_dates
+from app.services.core.engine.spending_schedule import (
+    dates_are_stated,
+    describe,
+    purchase_dates,
+)
 from app.services.monthly_obligations import due_dates_in_month, due_in_month
 from app.services.obligation_lines import bill_key, month_is_keyed
 from app.services.spending_patterns import stored_patterns
@@ -131,6 +136,7 @@ class Purchase:
     day: date
     planned: Decimal
     spent: Decimal
+    proposed: bool = False  # a date MITA proposed, not one the user named
 
 
 @dataclass(frozen=True)
@@ -197,6 +203,16 @@ class CalendarLine:
     purchases: Tuple[Purchase, ...] = ()
     next_purchase: Optional[Purchase] = None  # the first from today on
     days_left: int = 0  # today and the days after it, for a month not ended
+    # True when the user named the purchase days; False when MITA proposed
+    # them (about once a week / N times a month with no day named).
+    purchase_dates_stated: Optional[bool] = None
+    # The forecast engine's pace for this line (get_budget_forecast's own
+    # per-category figures): spent per day so far, the plan per day of the
+    # month, and spent pace ÷ planned pace.
+    pace_per_day: Optional[Decimal] = None
+    planned_per_day: Optional[Decimal] = None
+    pace_ratio: Optional[Decimal] = None
+    days_until_exhausted: Optional[int] = None
 
     @property
     def remaining(self) -> Decimal:
@@ -215,6 +231,28 @@ class CalendarLine:
             else left
         )
         return per_day, per_week
+
+    @property
+    def pace_status(self) -> Optional[str]:
+        """For a flexible line: not_started | on_pace | faster_than_pace
+        (spending at least RISK_PACE_RATIO × its planned pace — the
+        forecast's "at risk" rule) | over_limit (beyond the month's amount).
+        Guidance, not a verdict on any date."""
+        if self.spending_type != "flexible" or self.planned <= ZERO:
+            return None
+        if self.spent > self.planned:
+            return PACE_OVER_LIMIT
+        if self.spent <= ZERO:
+            return PACE_NOT_STARTED
+        if self.pace_ratio is not None and self.pace_ratio >= RISK_PACE_RATIO:
+            return PACE_FAST
+        return PACE_ON
+
+
+PACE_NOT_STARTED = "not_started"
+PACE_ON = "on_pace"
+PACE_FAST = "faster_than_pace"
+PACE_OVER_LIMIT = "over_limit"
 
 
 @dataclass(frozen=True)
@@ -315,6 +353,24 @@ class CalendarMonth:
         day that went over, and money left unspent on a past date stays on
         that date (``realtime_rebalancer.rebalance_after_overspend``)."""
         return sum((d.planned for d in self.days if d.kind == "future"), ZERO)
+
+    @property
+    def flexible_lines(self) -> List[CalendarLine]:
+        return [line for line in self.lines if line.spending_type == "flexible"]
+
+    @property
+    def flexible_left(self) -> Decimal:
+        """What the flexible budgets still hold for the month (never below 0
+        per line: an overspent line holds nothing)."""
+        return sum((max(ZERO, line.remaining) for line in self.flexible_lines), ZERO)
+
+    @property
+    def flexible_per_day(self) -> Optional[Decimal]:
+        """The flexible budgets' guidance for each day left, today included:
+        the sum of each line's left per day. Guidance, not cash on hand."""
+        days = [line.guidance()[0] for line in self.flexible_lines]
+        known = [d for d in days if d is not None]
+        return sum(known, ZERO) if known else None
 
     @property
     def bills_due_after_today(self) -> Decimal:
@@ -508,6 +564,7 @@ def build_calendar(
     kinds: Optional[Mapping[str, str]] = None,
     base: Optional[Mapping[Tuple[date, str], Decimal]] = None,
     patterns: Optional[Mapping[str, str]] = None,
+    stated_dates: Optional[Mapping[str, bool]] = None,
 ) -> CalendarMonth:
     """The calendar of one month from per-(local day, plan line) plan and
     spend. Pure: no I/O, no clock. ``replaces``: the user's own lines and
@@ -526,6 +583,7 @@ def build_calendar(
     kinds = kinds or {}
     base = base or {}
     patterns = patterns or {}
+    stated_dates = stated_dates or {}
     first, last = month_days(year, month)
     planned_by_cat: Dict[str, Decimal] = defaultdict(lambda: ZERO)
     spent_by_cat: Dict[str, Decimal] = defaultdict(lambda: ZERO)
@@ -567,10 +625,23 @@ def build_calendar(
     for (day, code), amount in sorted(base.items()):
         if kinds.get(code) == "planned" and amount > ZERO:
             key = line_key(code, buckets)
-            purchases_of[key].append(Purchase(key, day, amount, spent_on[(day, key)]))
+            purchases_of[key].append(
+                Purchase(
+                    key,
+                    day,
+                    amount,
+                    spent_on[(day, key)],
+                    proposed=stated_dates.get(key) is False,
+                )
+            )
     month_open = (year, month) >= (today.year, today.month)
     days_left = 0 if not month_open else (last - max(today, first)).days + 1
 
+    pace = (
+        {c.category: c for c in forecast.all_categories}
+        if forecast is not None and plan_generated
+        else {}
+    )
     lines: List[CalendarLine] = []
     group_of: Dict[str, str] = {}
     for key, name, codes, line_planned, line_spent in grouped:
@@ -606,6 +677,13 @@ def build_calendar(
                     None,
                 ),
                 days_left=days_left,
+                purchase_dates_stated=stated_dates.get(key),
+                pace_per_day=pace[key].daily_pace if key in pace else None,
+                planned_per_day=pace[key].planned_per_day if key in pace else None,
+                pace_ratio=pace[key].overspend_ratio if key in pace else None,
+                days_until_exhausted=(
+                    pace[key].days_until_exhausted if key in pace else None
+                ),
             )
         )
     lines.sort(key=lambda line: (-line.planned, -line.spent, line.key))
@@ -751,6 +829,17 @@ def calendar_month(
     commitments = plan.commitments_from(db, ctx, year, month, view)
     needs, paid_by_line = plan.by_display_line(commitments, planned)
     stated = stored_patterns(db, ctx.user_id) if "planned" in kinds.values() else {}
+    # A stored pattern describes a planned line only when it gives this plan's
+    # own dates (one changed after the month was saved applies once it is
+    # saved again).
+    current = {
+        line: stated[line]
+        for line, kind in kinds.items()
+        if kind == "planned"
+        and line in stated
+        and set(purchase_dates(stated[line], year, month))
+        == {d for (d, c), a in base.items() if c == line and a > 0}
+    }
     forecast = (
         plan.forecast_from_rows(
             planned, spent, year, month, ctx.today, needs, paid_by_line
@@ -777,13 +866,6 @@ def calendar_month(
         names=obligations.obligation_names(db, ctx),
         kinds=kinds,
         base=base,
-        patterns={
-            line: describe(stated[line])
-            for line, kind in kinds.items()
-            if kind == "planned" and line in stated
-            # words only when they describe this plan's own dates (a pattern
-            # changed after the month was saved applies once it is saved again)
-            and set(purchase_dates(stated[line], year, month))
-            == {d for (d, c), a in base.items() if c == line and a > 0}
-        },
+        patterns={line: describe(p) for line, p in current.items()},
+        stated_dates={line: dates_are_stated(p) for line, p in current.items()},
     )
