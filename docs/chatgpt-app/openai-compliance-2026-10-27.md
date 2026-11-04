@@ -306,3 +306,17 @@ The intended sequence holds. Insertions from today's documents:
 5. C5 review account in production (data entered through ChatGPT), C3 the
    5 + 3 cases on web and phone, C4 the video, release ZIP (`--release`),
    upload, resolve findings, domain verification, scan, submit.
+
+## 2.8 re-check (2026-11-04, `personalization-2.8.md`)
+
+Re-read from the official Markdown pages (`plugins/plugin-guidelines.md`,
+`plugins/guides/security-privacy.md`, `plugins/reference.md`):
+
+| Requirement (quoted) | 2.8 | Status |
+|---|---|---|
+| "Avoid requesting raw location fields (for example, city or coordinates) in your input schema. When location is needed, obtain it through the client's controlled side channel" | only `country` (ISO 3166-1) on `update_financial_profile`, after the user confirms it; `_meta["openai/userLocation"]` read per call, country only, offered as a question; city, region, coordinates dropped on arrival; `test_tool_contract` LOCATION_FIELD still enforced; a `city` argument is refused (tested) | PASS — country is coarser than the guideline's examples; noted for the reviewer |
+| userLocation: "hints only; servers should never rely on them for authorization decisions and must tolerate their absence" | never used for authorization; absent or malformed → no suggestion (tested) | PASS |
+| "Collection minimization … Avoid 'just in case' fields" | no city, no "people supported", no employer; each new field changes what MITA shows (country → statistics; income schedule → variable-income check; answers → personalized plan) | PASS |
+| `readOnlyHint` / `destructiveHint` / `openWorldHint` explicit and accurate | `get_regional_context`: read-only, not destructive, `openWorldHint` false (MITA's own stored copy — a bounded catalog; no live lookup); `update_financial_profile` stays destructive (overwrites; "skip region" clears the country) | PASS |
+| "Do not scrape external websites, relay queries, or integrate with third-party APIs without proper authorization and compliance with that party's terms" | official APIs only, under their reuse terms (Eurostat: source acknowledged, EU/EFTA/candidates only; World Bank CC BY 4.0); OECD terms to be confirmed by the owner (oecd.org refuses automated reads); no scraping; nothing relayed per user | PASS, OECD **[OWNER]** |
+| Privacy policy: categories of data, purposes, controls | new stored data: confirmed country and source, income schedule, setup answers — text proposed in `legal/policy-redline.md` (2.8 addition) | **[OWNER/counsel]** before submission |

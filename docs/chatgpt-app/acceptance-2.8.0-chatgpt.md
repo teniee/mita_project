@@ -42,6 +42,16 @@ starts empty on purpose.
 | C2 | "I'd rather not say where I live." | ChatGPT confirms MITA no longer keeps a country; your budget is unchanged. | — | |
 | C3 | "My income varies, at least 1,200 a month." → "Show my budget preview." | The preview says MITA still plans on the 1,500 you stated and shows what a 1,200 month would mean; it does not lower anything by itself. | preview | |
 
+## C2 — official statistics (after the first ingestion on staging)
+
+| # | Do | Pass when | 📸 | Result |
+|---|---|---|---|---|
+| R1 | (fictional account, country Bulgaria) "How fast are food prices rising here?" | A national figure with its source and period (Eurostat, a recent month), called a national average — not a shop price, not your cost. | answer | |
+| R2 | "How much is electricity per kWh in Bulgaria?" | About 0.13 EUR per kWh (2026-S1), households, taxes included, with its band and source; not called your tariff. | answer | |
+| R3 | "What does a loaf of bread cost at the Lidl in Varna?" | MITA says it has no shop prices; if ChatGPT searches the web, it says so and the figure is not MITA's. | answer | |
+| R4 | "Build my budget for this month." | Lines like groceries show the national price change next to them as context; no amount moved because of it. | preview | |
+| R5 | "Turn off regional statistics." → ask R1 again | No statistics; the budget is unchanged. | — | |
+
 ## D — your own staging account (read-only until you save)
 
 | # | Do | Pass when | 📸 | Result |

@@ -112,6 +112,42 @@ Every account the checks created was deleted (5 users, as before); the
 temporary proxy was removed and Postgres no longer answers there. Rollback:
 re-pin `73ff153` (per-IP limits then break again, nothing else changes).
 
+## MCP 2.8.0 — prepared, NOT deployed (waiting for database access)
+
+Code on `feat/chatgpt-auth-ui` (personalized onboarding and regional context,
+`personalization-2.8.md` §10–§13); staging still runs 2.7.0 (`2ab2e0f`).
+2.8.0 must not be pinned before its migrations and grants exist: `/health`
+stays 503 until `mcp_setup_answers` and `regional_observations` are visible
+to `mita_mcp`, so Railway would keep 2.7.0 serving, but the procedure is:
+
+| # | Step | Notes |
+|---|---|---|
+| 0 | owner authorises the private database path (a temporary SSH key on the owner's Railway account, as on 2026-11-04) | **the blocker**; never a TCP proxy |
+| 1 | `staging_account_fingerprint.py` | the owner's digests, before |
+| 2 | `pg_dump -Fc` onto the Postgres volume; restore-test into a temporary database | as for 2.7.0 |
+| 3 | `alembic upgrade 0044` through the tunnel (owner role) | 0042 → 0043 → 0044; additive only |
+| 4 | `mcp_service_role.sql` | adds `UPDATE (country, region) ON users`, `mcp_setup_answers`, `SELECT ON regional_observations` |
+| 5 | `regional_ingest_role.sql` | new `mita_regional_ingest`; password generated into a 0600 file, never printed, deleted after use |
+| 6 | first ingestion: `python -m app.regional.ingest` as `mita_regional_ingest` through the tunnel | 7 requests; expect ~6,000 observations, 0 rejected; a second run all unchanged |
+| 7 | pin the 2.8 head commit (`connect-service-source`) | `/health` 200 `"version":"2.8.0"` |
+| 8 | `smoke_onboarding_280.py --expect-statistics`, `smoke_behavioral_270.py`, `e2e_v2.py`, `e2e_http.py`, `staging_failure_modes.py` | fictional accounts, cleaned up |
+| 9 | `staging_account_fingerprint.py` | identical to step 1 |
+| 10 | close the tunnel, revoke the key | — |
+| 11 | owner: `acceptance-2.8.0-chatgpt.md` on a phone | the only acceptance that counts |
+
+Schedule (owner decision): a cron service in `mita-mcp-staging` from the same
+image, `python -m app.regional.ingest`, `0 6 * * 1`, restart never, no
+domain, the ingest role's `DATABASE_URL`. Without it the operator re-runs
+step 6 weekly. Rollback: re-pin `2ab2e0f` (2.7.0 ignores the new columns
+and tables).
+
+Verified locally with the same scripts and roles (fresh database at 0044,
+server as `mita_mcp`, job as `mita_regional_ingest`): 6,013 observations
+ingested from 7 requests, second run unchanged; `smoke_onboarding_280.py
+--expect-statistics` 77/77; `smoke_behavioral_270.py` 66/66 and `e2e_v2.py`
+85/85 (on 0043); no error or permission line; no location, e-mail or amount
+in the log.
+
 ## MCP 2.7.0 — deployed 2026-11-04 07:27 UTC (`2ab2e0f`, deployment `390805cb`)
 
 Owner-authorised release (brief of 2026-11-04): a temporary Railway SSH key,
