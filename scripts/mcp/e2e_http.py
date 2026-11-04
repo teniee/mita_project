@@ -56,6 +56,7 @@ TOOLS = [
     ("get_goals", {"status": "all"}),
     ("get_spending_history", {}),
     ("get_financial_climate", {}),
+    ("get_regional_context", {}),  # MITA's own statistics table (0044)
     ("preview_monthly_budget", {}),  # writes nothing; needs the seeded income/currency
     ("get_calendar_month", {}),
     ("show_financial_calendar", {}),  # the component's tool: the model's short view

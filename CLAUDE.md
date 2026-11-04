@@ -1251,6 +1251,18 @@ Rules:
     setup line: a MITA suggestion is never the user's amount or choice.
   - Variable income is planned on the stated income; `variable_income`
     shows the stated minimum month by arithmetic only.
+  - **Regional statistics are reference data, never a budget input**
+    (migration 0044, `app/regional/`, `get_regional_context`). Ingested by
+    a batch job (`python -m app.regional.ingest`, staging-only: it refuses
+    `ENVIRONMENT=production`) with its own role
+    (`scripts/mcp/regional_ingest_role.sql`); the MCP role only SELECTs.
+    No tool call reaches a provider; no user data leaves MITA for one.
+    Every value carries `unit_kind`, unit, classification (COICOP 2018 for
+    HICP ver.2, COICOP 1999 for PPP, HBS and the OECD), period and
+    provenance; a missing cell is never a zero; stale is computed at read
+    time. Verify a dataset code or unit against the provider's live API
+    before using it (`prc_hicp_manr` stopped at 2025; World Bank BG "LCU"
+    is EUR since 2026).
   - Eurostat data only for EU/EFTA/candidate countries (its licence).
 - **One display name per category** (`app/mcp/categories.py`): every result
   carries `category_label`; budget status and the forecast put an expense

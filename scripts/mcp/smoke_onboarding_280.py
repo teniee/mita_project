@@ -19,7 +19,12 @@ or a broken migration shows up before a person sees it:
   for either, the lines they never mentioned listed with MITA's suggestion,
   every euro accounted for, a month at the minimum income shown;
 * a preview saves nothing; a save needs the draft; setup survives a new
-  connection; the other account sees none of it.
+  connection; the other account sees none of it;
+* ``get_regional_context`` (0044): Bulgarian statistics from Eurostat for a
+  user in Bulgaria, OECD and World Bank — never Eurostat — for one in the
+  United States, every figure with its source and period; nothing without a
+  country. ``--expect-statistics`` requires figures (run it after the
+  ingestion job filled the target).
 
 Prints PASS/FAIL names only (no tokens, codes, passwords). Refuses
 production hosts (scripts/_target_guard.py). With --database-url it deletes
@@ -222,7 +227,36 @@ async def family(s: Session):
     ]
 
 
-async def run(base: str, database_url: Optional[str]) -> None:
+async def regional(s: Session, country: str, expect: bool):
+    result = await call(s, "get_regional_context")
+    stats = result["statistics"]
+    if not expect and result["status"] == "unavailable":
+        check(f"{country}: no figures yet, said honestly", stats == [])
+        return
+    check(
+        f"{country}: official statistics for the user's country",
+        result["status"] == "available" and result["country"] == country and stats,
+        result["status"],
+    )
+    providers = {x["provider"] for x in stats}
+    if country == "US":
+        check("never Eurostat for the US (its licence)", "eurostat" not in providers)
+    else:
+        check("Eurostat for an EU country", "eurostat" in providers, str(providers))
+    check(
+        "every figure has its source, period, unit and limitation",
+        all(
+            x["source"]
+            and x["period"]
+            and x["unit"]
+            and x["limitation"]
+            and x["source_url"].startswith("https://")
+            for x in stats
+        ),
+    )
+
+
+async def run(base: str, database_url: Optional[str], expect: bool = False) -> None:
     emails = [f"ob280-{uuid.uuid4().hex[:10]}@example.test" for _ in range(2)]
     password = "S280-" + secrets.token_urlsafe(14) + "!"
     try:
@@ -235,7 +269,7 @@ async def run(base: str, database_url: Optional[str]) -> None:
         first = await connect(base, emails[0], password, register=True)
         async with Session(base, first["access"], "smoke-280-1") as a:
             listed = (await a._client.list_tools()).tools
-            check("25 tools are published", len(listed) == 25, str(len(listed)))
+            check("26 tools are published", len(listed) == 26, str(len(listed)))
             profile_tool = next(
                 t for t in listed if t.name == "update_financial_profile"
             )
@@ -273,6 +307,7 @@ async def run(base: str, database_url: Optional[str]) -> None:
             check(
                 "the reviewed plan is saved after the yes", saved["status"] == "saved"
             )
+            await regional(a, "BG", expect)
 
         again = await connect(base, emails[0], password, register=False)
         async with Session(base, again["access"], "smoke-280-1b") as a2:
@@ -336,6 +371,18 @@ async def run(base: str, database_url: Optional[str]) -> None:
                 b, "update_financial_profile", {"city": "Varna"}, ok=False
             )
             check("a city argument is refused", refused.is_error)
+            await call(b, "update_financial_profile", {"country": "US"})
+            await regional(b, "US", expect)
+            await call(
+                b,
+                "update_financial_profile",
+                {"setup_answers": [{"topic": "region", "answer": "skipped"}]},
+            )
+            none = await call(b, "get_regional_context")
+            check(
+                "no country, no statistics",
+                none["status"] == "no_country" and none["statistics"] == [],
+            )
     finally:
         if database_url:
             for email in emails:
@@ -347,13 +394,18 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--base-url", required=True)
     parser.add_argument("--database-url")
+    parser.add_argument(
+        "--expect-statistics",
+        action="store_true",
+        help="require regional figures (after the ingestion job ran)",
+    )
     args = parser.parse_args()
     try:
         base = assert_writable_target(args.base_url, purpose="mcp smoke 2.8.0")
     except ProductionTargetError as exc:
         print(f"refused: {exc}", file=sys.stderr)
         return 2
-    asyncio.run(run(base, args.database_url))
+    asyncio.run(run(base, args.database_url, args.expect_statistics))
     return 0
 
 

@@ -48,6 +48,8 @@ EXPECTED = {
     "get_goals": (READ, False, True, FINANCE_READ, False),
     "get_spending_history": (READ, False, True, FINANCE_READ, False),
     "get_financial_climate": (READ, False, True, FINANCE_READ, False),
+    # MITA's own copy of official statistics for the user's country (2.8).
+    "get_regional_context": (READ, False, True, FINANCE_READ, False),
     "preview_monthly_budget": (READ, False, True, FINANCE_READ, False),
     "get_calendar_month": (READ, False, True, FINANCE_READ, False),
     # The only tool bound to a UI component (the calendar).

@@ -1762,3 +1762,83 @@ class CalendarViewOut(_Out):
         description="What the user now sees. The figures on screen are MITA's, not the arguments'."
     )
     notes: List[str]
+
+
+# --- get_regional_context (2.8, Milestone 2) -----------------------------------
+
+RegionalIndicator = Literal[
+    "consumer_price_inflation",
+    "consumer_price_inflation_annual",
+    "price_level_index",
+    "household_spending_share",
+]
+RegionalCategory = Literal[
+    "all_items",
+    "food",
+    "clothing",
+    "housing",
+    "transport",
+    "recreation",
+    "restaurants",
+]
+
+
+class RegionalStatisticOut(_Out):
+    indicator: RegionalIndicator
+    indicator_label: str = Field(
+        description="What the figure measures, in plain words."
+    )
+    category: RegionalCategory
+    category_label: str = Field(description="The category as the provider names it.")
+    value: str = Field(
+        description=(
+            "The figure exactly as published (in unit, never money): e.g. 6.0 for "
+            "a 6.0 % annual rise, 59.1 for a price level at 59.1 % of the EU "
+            "average, 246 for 246 per mille of household spending."
+        )
+    )
+    display: str = Field(description="A short rendering with its unit, for a summary.")
+    unit_kind: Literal["percent_change", "index", "price_level_index", "per_mille"]
+    unit: str
+    base_period: Optional[str] = Field(
+        description="For an index: what equals 100 (e.g. EU27_2020=100)."
+    )
+    period: str = Field(description="The reference period: YYYY-MM or YYYY.")
+    stale: bool = Field(
+        description=(
+            "True when the figure is older than its usual publication cycle allows. "
+            "Say how old it is; never present it as current."
+        )
+    )
+    quality_flags: List[str] = Field(
+        description=(
+            "estimated / provisional (the provider's own flag), revised, "
+            "break_suspected, extreme_value. Mention estimated or provisional."
+        )
+    )
+    geographic_scope: str = Field(description="Always a whole country.")
+    source: str = Field(description="Attribution to show with the figure.")
+    provider: Literal["eurostat", "worldbank", "oecd"]
+    dataset: str
+    source_url: str = Field(description="The official request MITA's copy came from.")
+    published_at: Optional[dt.datetime] = Field(
+        description="When the provider last updated the dataset, if it says."
+    )
+    retrieved_at: dt.datetime = Field(description="When MITA last confirmed the value.")
+    license: str
+    limitation: str = Field(description="What this figure is not. Say it.")
+
+
+class RegionalContextOut(_Out):
+    status: Literal["available", "no_country", "turned_off", "unavailable"] = Field(
+        description=(
+            "no_country: the user has not confirmed a country (ask, then "
+            "update_financial_profile country). turned_off: the user turned "
+            "regional statistics off. unavailable: MITA has no figures for that "
+            "country yet — say so; never estimate one."
+        )
+    )
+    country: Optional[str]
+    country_name: Optional[str]
+    statistics: List[RegionalStatisticOut]
+    notes: List[str]

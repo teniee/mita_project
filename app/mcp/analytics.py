@@ -98,6 +98,7 @@ TOOL_FEATURES: Dict[str, str] = {
     "create_savings_goal": "goals",
     "get_spending_history": "history",
     "get_financial_climate": "history",
+    "get_regional_context": "regional",
     "submit_feedback": "feedback",
     "set_usage_analytics": "privacy",
 }

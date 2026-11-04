@@ -13,6 +13,7 @@ from app.mcp.tools import (
     history,
     profile,
     recurring,
+    regional,
     setup,
     spending,
     transactions,
@@ -30,6 +31,7 @@ READ_TOOLS = (
     "get_goals",
     "get_spending_history",
     "get_financial_climate",
+    "get_regional_context",
     "preview_monthly_budget",
     "get_calendar_month",
     "show_financial_calendar",
@@ -62,4 +64,5 @@ def register_tools(server: MCPServer, runtime: McpRuntime) -> None:
     recurring.register(server, runtime)
     goals.register(server, runtime)
     history.register(server, runtime)
+    regional.register(server, runtime)
     feedback.register(server, runtime)

@@ -32,6 +32,7 @@ Facts that hold for every tool:
 | `get_goals` | Lists the user's savings goals with a deterministic projection. |
 | `get_spending_history` | Aggregates up to 12 months of the user's expenses. |
 | `get_financial_climate` | Summarizes the user's recent months from saved data. |
+| `get_regional_context` | Reads MITA's own stored copy of official statistics for the user's confirmed country; calls no provider and changes nothing. `openWorldHint` false: a bounded catalog MITA ingests on a schedule, not a web search. |
 | `preview_monthly_budget` | Computes a budget draft and returns a signed token holding only the month and a digest; nothing is stored. Saving is a separate, destructive tool (`save_monthly_budget`). |
 | `get_calendar_month` | Returns the month date by date from saved plan rows and expenses. |
 | `show_financial_calendar` | Renders the calendar component from the same read query; takes no figures as arguments. The component itself can call only `get_calendar_month` and `list_transactions`. |

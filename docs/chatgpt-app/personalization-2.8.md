@@ -262,3 +262,80 @@ grants; pin the 2.8 commit; `/health` 200 `"version":"2.8.0"` (503 until
 `staging_account_fingerprint.py` before and after (the owner's November must
 be identical). Rollback: re-pin `2ab2e0f` — 2.7.0 ignores the new columns
 and table.
+
+## 11. Milestone 2 — implemented (migration 0044, `get_regional_context`)
+
+**Data layer** (`app/regional/`, a batch job — never inside a tool call):
+`catalog.py` (every dataset, code, unit and licence verified live on
+2026-11-04), one adapter per provider (`providers/`), `observations.py`
+(normalization and checks), `http.py` (timeouts, up to 4 attempts with
+exponential backoff and jitter on 413/429/5xx and network errors,
+`Retry-After` honoured, one request at a time with a minimum interval per
+provider — OECD 75 s, far under its 60 downloads an hour), `ingest.py`
+(`python -m app.regional.ingest [--provider …] [--dry-run]`; refuses
+`ENVIRONMENT=production`).
+
+| Indicator | Provider · dataset | Countries | Unit · classification | Cadence · stale after |
+|---|---|---|---|---|
+| `consumer_price_inflation` | Eurostat `prc_hicp_minr` (RCH_A) | EU27, EFTA, candidates | % over 12 months · COICOP 2018 | monthly · 100 days |
+| `consumer_price_inflation` | OECD `DF_PRICES_ALL` (CPI, GY) | OECD members + BG, HR, RO | % over 12 months · COICOP 1999 | monthly · 100 days |
+| `price_level_index` | Eurostat `prc_ppp_ind` (PLI_EU27_2020) | EU27, EFTA, candidates | EU27_2020 = 100 · COICOP 1999 | yearly · 900 days |
+| `household_spending_share` | Eurostat `hbs_str_t211` | EU27, EFTA, candidates | per mille · COICOP 1999 | survey (2020) · 7 years |
+| `consumer_price_inflation_annual` | World Bank `FP.CPI.TOTL.ZG` | every country | annual % · all items | yearly · 900 days |
+
+Categories: all items, food, clothing, housing, transport, recreation,
+restaurants (provider codes kept; mapped to these keys for asking). The
+read side prefers, per indicator and category, a fresh figure over a stale
+one, then Eurostat over the OECD (the harmonised EU measure).
+
+**Quality**: a missing cell is never stored (no zeros); impossible values
+are rejected (a fall of more than 100 %, a share above 1000 ‰, a yearly
+period in a monthly dataset); provider flags kept (`estimated`,
+`provisional`, `break_in_series`); a changed value is `revised`; a level
+(price level, share) that moves more than 30 % is `break_suspected` (BGN →
+EUR re-denomination divides by 1.95583); |inflation| > 100 % is kept and
+flagged `extreme_value`; `stale` is computed at read time from each
+dataset's cadence, so an outage ages values instead of deleting them.
+Upserts are idempotent (keyed by provider, dataset, series, period); a
+failed provider leaves every stored value untouched.
+
+**Not ingested, deliberately**: PPP conversion factors (their "local
+currency unit" changes meaning when a country changes currency — the World
+Bank's BG series is now in EUR); the World Bank ICP 2021 (reference year
+2021, a multi-dimensional API) — evaluated, deferred; city-level prices (no
+official source measures them).
+
+**Verified locally on real data** (fresh database at 0044, roles from the
+scripts): the job as `mita_regional_ingest` (`regional_ingest_role.sql`:
+SELECT/INSERT/UPDATE on the two tables, the identity sequence; no user
+table) — 5 requests, 5,673 observations inserted (HICP 3,276, PLI 648, HBS
+372, World Bank 573, OECD 804), 0 rejected; the second run: all 5,673
+unchanged. The MCP server as `mita_mcp` (SELECT only): `/health` 2.8.0
+(`regional_observations` in `REQUIRED_TABLES`);
+`smoke_onboarding_280.py --expect-statistics` 75/75 — Bulgaria from
+Eurostat (HICP 6.0 % in 2026-10, flash `estimated`; food price level 88.8
+vs 56.9 overall, 2024), the US from the OECD (CPI 3.7 %, 2026-09; its
+category series end in 2024-12 and come back `stale`) and the World Bank,
+never Eurostat; no country → nothing.
+
+**Tests**: `tests_mcp/test_regional_data.py` (parsers on recorded real
+responses, aggregates dropped, licence-restricted countries never queried,
+values checked never invented, retries/backoff/no retry on 4xx, idempotent
+upsert, revisions, re-denomination break, a failed provider keeps the last
+values, no user column, amount-without-currency refused);
+`tests_mcp/test_regional_context.py` (BG and US through the tool, filters,
+no country / turned off / unavailable, statistics never change a preview).
+
+**Staging procedure for 0044** (with 0043, one owner-authorised session):
+backup → `alembic upgrade 0044` → `mcp_service_role.sql` (adds `SELECT ON
+regional_observations`) → `regional_ingest_role.sql` (new role; password
+generated into a 0600 file, never printed) → first ingestion run from the
+operator machine over the same private path, as `mita_regional_ingest` →
+pin the 2.8 commit → `smoke_onboarding_280.py --expect-statistics`.
+**Schedule**: weekly is enough (Monday 06:00 UTC: HICP and OECD CPI are
+monthly, the rest yearly; every run is idempotent and costs 5 requests).
+On Railway that is a separate cron service in `mita-mcp-staging` from the
+same image with start command `python -m app.regional.ingest`, cron
+`0 6 * * 1`, restart policy never, no public domain and the ingest role's
+`DATABASE_URL` — **a new service is an infrastructure change: owner
+decision.** Until then the job runs from the operator machine.

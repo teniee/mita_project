@@ -1,6 +1,6 @@
 -- Least-privilege database role for the MITA MCP service (ChatGPT app).
 --
--- Run ONCE per environment as the database owner, AFTER migrations 0037-0043
+-- Run ONCE per environment as the database owner, AFTER migrations 0037-0044
 -- (re-run after a migration adds an MCP table; every statement is idempotent):
 --   psql "$DATABASE_URL" -v mcp_password="$(openssl rand -hex 24)" \
 --        -f scripts/mcp/mcp_service_role.sql
@@ -55,6 +55,9 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON
   mcp_user_profiles, mcp_idempotency_keys, product_feedback, analytics_identities,
   mcp_budget_lines, mcp_setup_answers
   TO mita_mcp;
+-- Regional reference data (0044): shared official statistics, read only. The
+-- ingestion job writes them with its own role (regional_ingest_role.sql).
+GRANT SELECT ON regional_observations TO mita_mcp;
 GRANT USAGE ON SCHEMA analytics TO mita_mcp;
 GRANT INSERT ON analytics.events TO mita_mcp;
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA analytics TO mita_mcp;

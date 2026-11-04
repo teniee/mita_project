@@ -41,6 +41,7 @@ from .notification_log import NotificationLog
 from .ocr_job import OCRJob
 from .push_token import PushToken
 from .redistribution_event import RedistributionEvent
+from .regional import RegionalIngestionRun, RegionalObservation
 from .scheduled_expense import ScheduledExpense
 from .subscription import Subscription
 from .transaction import Transaction
@@ -58,6 +59,8 @@ __all__ = [
     "McpSetupAnswer",
     "McpUserProfile",
     "ObligationPayment",
+    "RegionalIngestionRun",
+    "RegionalObservation",
     "SpendingPattern",
     "ProductFeedback",
     "AnalyticsIdentity",
