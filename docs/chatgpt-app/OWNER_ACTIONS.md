@@ -57,24 +57,30 @@ running until production is live; teardown is in staging.md.
 
 ## Added by the behavioral budget (2026-11-03, MCP 2.7.0, `behavioral-budget.md`)
 
-Nothing below is done; nothing is deployed.
-
-1. **Review the money-model change** (your brief of 2026-11-03): only linked
-   payments settle a bill; planned purchases on real dates; flexible budgets
-   as envelopes (R2 for lines laid out by the new engine); `not_applicable`
-   MITA lines. Mobile-only months keep their layout and per-date rebalancing.
-2. **Staging migrations 0041 and 0042** from the operator machine through a
-   temporary TCP proxy (remove it afterwards), then the grants in
-   `scripts/mcp/mcp_service_role.sql` (`obligation_payments`,
-   `spending_patterns`) for `mita_mcp`.
-3. **Pin staging to the 2.7.0 commit** and run the public checks
-   (`scripts/mcp/e2e_http.py`, `staging_failure_modes.py`).
-4. **Your November in real ChatGPT:** "Show my November budget again and
-   save it" (bills on their own lines, your lines flexible unless you say how
-   you buy); tell ChatGPT which recorded expenses paid the phone and the
-   loans, if any (`obligation_ref`) — the €60 car part and the €23.50
-   cosmetics stay ordinary spending; try "I buy groceries every Wednesday"
-   and "I have no medical insurance", then preview and save.
+1. **Review the money-model change** — DONE: architecture approved in your
+   brief of 2026-11-04 (only linked payments settle a bill; planned
+   purchases on real dates; flexible budgets as envelopes with daily
+   guidance; R2 for lines laid out by the new engine; `not_applicable` MITA
+   lines with the freed money shown; proposed dates for "about once a
+   week"). ChatGPT MCP App only; Flutter is legacy.
+2. **Decide the secure database path for staging** (BLOCKING, 2026-11-04).
+   The migrations run online as the table owner; a TCP proxy is ruled out by
+   your brief; Railway's private path is SSH via `ssh.railway.com`, which
+   needs an SSH key on your Railway account — none is registered. Either
+   register a key yourself and run `staging.md` → "MCP 2.7.0" steps 0–8, or
+   authorize the operator to create a dedicated key `mita-staging-2.7.0`
+   (you remove it afterwards at railway.com/account/ssh-keys; removal asks
+   for your 2FA). Account keys reach every service you can, production
+   included.
+3. **Then, in that order**: Railway volume backup, migrations 0041 + 0042,
+   the two grants in `scripts/mcp/mcp_service_role.sql`, verification, pin
+   staging to the 2.7.0 commit, public checks with fictional accounts, your
+   account's fingerprint unchanged (`scripts/mcp/staging_account_fingerprint.py`).
+4. **Your acceptance in real ChatGPT, phone first:**
+   `acceptance-2.7.0-chatgpt.md` (A–D on a new fictional account; E is your
+   own November — preview only, saved only if you say "save"; the €60 car
+   part and the €23.50 cosmetics stay ordinary spending unless you say they
+   paid a loan).
 5. **Production** only after that: the same migrations (applied by
    `mita-production`'s `start.sh` on merge) and grants.
 

@@ -1400,20 +1400,26 @@ Rules:
   over public HTTPS with `scripts/mcp/e2e_http.py` and
   `scripts/mcp/staging_failure_modes.py`; results in
   `docs/chatgpt-app/staging-acceptance.md`. Real-ChatGPT acceptance is owner-run.
-  Since 2026-11-02 22:39 UTC it runs `fad9110` (deployment `ef108adc`, MCP
-  2.5.0, alembic 0040: bills on their due dates, F-8; verified over public
-  HTTPS in `staging.md`; fictional review accounts are still there,
-  `staging.md` → "Left on staging"); every staging secret and both database
+  Since 2026-11-03 17:58 UTC it runs `c5a317c` (deployment `62d3a0d1`, MCP
+  2.6.0, alembic 0040; 2.7.0 is prepared but not deployed — it needs 0041 /
+  0042 first, `staging.md` → "MCP 2.7.0"; fictional review accounts are
+  still there, `staging.md` → "Left on staging"); every staging secret and both database
   passwords were rotated on 2026-10-23 after Railway's 2026-10-21 security
   incident (`staging.md` → "Credential rotation"). It is connected as
   `mita_mcp`, so a missing grant shows up there before production; staging
   acceptance closed 2026-10-19 (`docs/chatgpt-app/HANDOFF.md`);
   `scripts/mcp/e2e_v2.py` results are in `staging-acceptance-v2.md`, whose §6
-  is the owner's real-ChatGPT script. Migrations reach staging only from the
-  operator machine through a temporary TCP proxy — remove it afterwards and
-  verify Postgres no longer answers there (`delete-tcp-proxy` can lose its
-  response and still apply; the proxy host may still accept a bare TCP
-  handshake).
+  is the owner's real-ChatGPT script. **Never a TCP proxy to reach the
+  database** (owner brief 2026-11-04: PostgreSQL is never exposed publicly to
+  work around tooling; the proxies of October were the old practice).
+  Migrations and checks reach staging from the operator machine over
+  Railway's private SSH path (`ssh.railway.com`: `railway ssh`, `ssh -L`
+  into the project's private network), which needs an SSH key on the
+  owner's Railway account — registering one is the owner's decision. If no
+  secure path exists, stop and report; never deploy code whose migrations
+  or grants are missing. Prove the owner's account untouched with
+  `scripts/mcp/staging_account_fingerprint.py` (counts and digests only)
+  before and after each step.
 - **Secret values never pass through a chat, a tool argument or a log.**
   Generate into a 0600 file (`generate_keys.py --out`), set with
   `railway variable set NAME --stdin --skip-deploys`, and inspect only through

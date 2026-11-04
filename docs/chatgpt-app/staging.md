@@ -1,4 +1,4 @@
-# MITA MCP — staging (observed 2026-10-03, v2 update 2026-10-13, credentials rotated 2026-10-23, MCP 2.4.0 since 2026-10-28, `0af8435` deployed 2026-11-02, MCP 2.5.0 `fad9110` since 2026-11-02 22:39 UTC, MCP 2.6.0 `c5a317c` since 2026-11-03 17:58 UTC)
+# MITA MCP — staging (observed 2026-10-03, v2 update 2026-10-13, credentials rotated 2026-10-23, MCP 2.4.0 since 2026-10-28, `0af8435` deployed 2026-11-02, MCP 2.5.0 `fad9110` since 2026-11-02 22:39 UTC, MCP 2.6.0 `c5a317c` since 2026-11-03 17:58 UTC; MCP 2.7.0 prepared 2026-11-04, not deployed: needs a secure database path for 0041/0042)
 
 ## What exists
 
@@ -111,6 +111,75 @@ Verified on staging (status codes and counts only):
 Every account the checks created was deleted (5 users, as before); the
 temporary proxy was removed and Postgres no longer answers there. Rollback:
 re-pin `73ff153` (per-IP limits then break again, nothing else changes).
+
+## MCP 2.7.0 — release prepared 2026-11-04, stopped before the migration (database access)
+
+2.7.0 needs migrations 0041 (`obligation_payments`) and 0042
+(`spending_patterns`) and their `mita_mcp` grants **before** the service runs
+it: every bill, calendar and budget read touches those tables. So the order
+is backup → migrate → grant → verify → pin → public checks, and nothing after
+the backup has been done. Staging still runs 2.6.0 (`c5a317c`).
+
+Verified without database access (2026-11-04):
+
+| Check | Result |
+|---|---|
+| target | project `mita-mcp-staging` (`497476f2…`), environment `staging` (`0f67cf7a…`): exactly two services — `mita-mcp-staging` (`833466fc…`, pinned `c5a317c`, deployment `62d3a0d1` SUCCESS) and `Postgres` (`0d97d1f6…`, `ghcr.io/railwayapp-templates/postgres-ssl:18`, volume `postgres-volume` 5,000 MB at `/var/lib/postgresql/data`); nothing of the production project |
+| public exposure | `Postgres` has no TCP proxy (`list-tcp-proxies` empty) |
+| ordering | `0039 → 0040 → 0041 → 0042`, one head; staging recorded at `0040` since 2026-10-28; env.py runs the whole upgrade in ONE transaction (both tables or neither) |
+| DDL | rendered offline from the two migrations' own operations: two `CREATE TABLE`, two `CREATE INDEX` on the new table, foreign keys to `users`, `scheduled_expenses`, `transactions` (a brief SHARE ROW EXCLUSIVE lock on those three while the keys are created); no existing table, column or row changes |
+| grants | `scripts/mcp/mcp_service_role.sql`: `SELECT, INSERT, DELETE ON obligation_payments`, `SELECT, INSERT, UPDATE, DELETE ON spending_patterns` (the file is idempotent; only those two lines are new) |
+| rollback, code | re-pin `c5a317c`: 2.6.0 never reads the new tables. Safe until someone saves a month under 2.7.0; after that 2.6.0 would show its `bill:<digest>` lines as unknown categories, so that month is saved again under 2.6.0 first |
+| rollback, schema | `alembic downgrade 0040` drops only the two new tables (links and stated patterns are lost; expenses and plans are untouched); then the code must be 2.6.0 |
+| the owner's account | nothing in the release writes to it: 2.7.0 changes no stored row on deploy; the payment rule (only a linked expense pays a bill) applies to every figure from then on, and the owner's next recorded expense re-derives November's in-month adjustments under it (`acceptance-2.7.0-chatgpt.md` → E). The saved November is replaced only if the owner says "save" after a preview |
+
+**Blocker — no secure database path from the operator machine.** The
+migration runs online (env.py refuses offline SQL for the chain) as the
+table owner. A TCP proxy is ruled out (owner brief 2026-11-04: never expose
+PostgreSQL publicly to work around tooling). Railway's private path is SSH
+through `ssh.railway.com` (`railway ssh`, `ssh -L` into the project's private
+network), and it needs an SSH key registered on the Railway account: none is
+(`railway ssh keys` → "No SSH keys registered with Railway"), and this
+machine has none. Registering one adds a credential to the owner's account
+(account keys reach every service the account can, production included;
+removing one asks for the owner's 2FA) — the owner's decision, not taken.
+2.7.0 is therefore not deployed: it would fail without the tables.
+
+Once a key exists (owner registers one, or authorizes a dedicated
+`mita-staging-2.7.0` key and removes it afterwards):
+
+```bash
+P=497476f2-de93-44b7-b170-2b175c8d5621; E=staging
+# 0. tunnel into the private network through the MCP service (no public port)
+ssh -N -L 15432:postgres.railway.internal:5432 \
+  mita-mcp-staging-staging.up.railway.app@ssh.railway.com &
+# 1. the owner's account before (counts and digests only; e-mail in a 0600 file)
+railway run -p $P -e $E -s Postgres -- .venv-api/bin/python \
+  scripts/mcp/staging_account_fingerprint.py --email-file ~/.mita/owner-email \
+  --host-port 127.0.0.1:15432
+# 2. backup (Railway volume backup; needs CLI >= 5.33 — `brew upgrade railway`)
+railway postgres pitr backup create -p $P -e $E -s Postgres --name pre-0041-0042
+railway postgres pitr backup list -p $P -e $E -s Postgres --json
+# 3. migrate, as the owner role from the Postgres service's own variables
+railway run -p $P -e $E -s Postgres -- sh -c \
+  'DATABASE_URL="postgresql://$PGUSER:$PGPASSWORD@127.0.0.1:15432/$PGDATABASE" \
+   .venv-api/bin/alembic upgrade 0042'
+# 4. grants (psql is in the database container; local socket, no password)
+railway ssh -p $P -e $E -s Postgres -- sh -c \
+  'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -c "GRANT SELECT, INSERT, DELETE ON obligation_payments TO mita_mcp; GRANT SELECT, INSERT, UPDATE, DELETE ON spending_patterns TO mita_mcp;"'
+# 5. verify: alembic 0042; has_table_privilege('mita_mcp', …) for each grant
+#    and nothing more; step 1 again → identical digests
+# 6. pin: connect-service-source commitSha=<2.7.0 commit>; wait for SUCCESS;
+#    /health "2.7.0"; tools/list 25 incl. save_spending_patterns;
+#    resources/read ui://mita/financial-calendar-v3.html sha256 = the commit's file
+# 7. public checks with fictional accounts: e2e_http.py and
+#    staging_failure_modes.py (through the tunnel), e2e_v2.py,
+#    calendar_widget_review.py --axe; clean up with e2e_v2.cleanup (and the
+#    accounts listed under "Left on staging"); step 1 again → identical
+# 8. log scan; close the tunnel; remove the key (railway.com/account/ssh-keys)
+```
+
+Then the owner's run in real ChatGPT: `acceptance-2.7.0-chatgpt.md`.
 
 ## MCP 2.6.0 — deployed 2026-11-03 (`f59401b` 17:33 UTC, then `c5a317c` 17:58 UTC, deployment `62d3a0d1`)
 
@@ -239,7 +308,10 @@ on 2026-10-24.
 
 ```bash
 # from a directory linked to the staging project (railway link …)
-railway run --service Postgres -- sh -c '…'   # needs a temporary TCP proxy for local DB access
+# database access only through Railway SSH (no TCP proxy, owner brief
+# 2026-11-04): ssh -N -L 15432:postgres.railway.internal:5432 \
+#   mita-mcp-staging-staging.up.railway.app@ssh.railway.com   (needs a key)
+railway run --service Postgres -- sh -c '…'   # build STAGING_DB_URL on 127.0.0.1:15432
 PYTHONPATH=. .venv-mcp/bin/python scripts/mcp/e2e_http.py \
   --base-url https://mita-mcp-staging-staging.up.railway.app \
   --database-url "$STAGING_DB_URL" --state /tmp/e2e.json --phase first
@@ -253,10 +325,11 @@ tokens, codes or passwords; both refuse production hosts. v2 adds
 `scripts/mcp/e2e_v2.py --base-url … [--database-url …]` (the acceptance
 conversation; results in `staging-acceptance-v2.md`).
 
-Removing the proxy: Railway's `delete-tcp-proxy` can lose its response and
-still apply a little later. Confirm with `list-tcp-proxies` (empty) and a
-connection attempt through the old endpoint (no Postgres answer) — the
-proxy host may still accept a bare TCP handshake on the port.
+Removing a proxy (the pre-2026-11-04 practice, now ruled out): Railway's
+`delete-tcp-proxy` can lose its response and still apply a little later.
+Confirm with `list-tcp-proxies` (empty) and a connection attempt through the
+old endpoint (no Postgres answer) — the proxy host may still accept a bare
+TCP handshake on the port.
 
 ## Tearing staging down
 
