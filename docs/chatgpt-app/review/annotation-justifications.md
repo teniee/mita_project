@@ -22,7 +22,7 @@ Facts that hold for every tool:
 | Tool | readOnlyHint true because |
 |---|---|
 | `get_profile` | Returns the connected profile's opaque id, display name and masked e-mail. |
-| `get_setup_status` | Reports which profile facts are saved and what is missing. |
+| `get_setup_status` | Reports which profile facts are saved and what is missing, and the derived onboarding stage; reading ChatGPT's approximate location stores nothing. |
 | `get_financial_summary` | Totals one month from the user's recorded expenses and saved plan. |
 | `list_transactions` | Lists the user's own recorded expenses for a date range. |
 | `get_spending_breakdown` | Totals the user's expenses by category. |
@@ -40,7 +40,7 @@ Facts that hold for every tool:
 
 | Tool | destructiveHint | Why |
 |---|---|---|
-| `update_financial_profile` | **true** | Overwrites the previous value of each field sent (income, currency, timezone, household size, savings target); only fields the user stated are sent. It does not change a saved budget. |
+| `update_financial_profile` | **true** | Overwrites the previous value of each field sent (income, currency, timezone, household size, savings target; since 2.8 also the confirmed country, the income schedule, the regional switch and setup answers — "skipped" for the region clears the stored country); only fields the user stated are sent. It does not change a saved budget. |
 | `save_spending_patterns` | **true** | Overwrites the earlier spending pattern of each line sent (how the user buys for it: on known days, flexible, or a MITA line that does not apply); only what the user stated is sent. It never changes a saved monthly plan — the user previews and saves a month to apply it. Saving the same patterns again changes nothing. |
 | `add_transaction` | false | Inserts one new expense; nothing existing is deleted or overwritten. MITA then recalculates this month's derived plan (its automatic redistribution) while keeping the reviewed base plan; deleting the expense reverses that. An `idempotency_key` makes a retried call a no-op. |
 | `add_transactions` | false | Same as `add_transaction` for up to 25 new expenses, all or none. |

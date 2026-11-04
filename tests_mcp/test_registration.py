@@ -123,7 +123,15 @@ async def test_new_user_registers_and_continues_the_same_authorization(
         "timezone": None,
         "household_size": None,
         "monthly_savings_target": None,
+        # 2.8: a new account states nothing — ChatGPT sign-up's "ZZ" is not a
+        # country.
+        "country": None,
+        "income_regularity": None,
+        "pay_frequency": None,
+        "pay_days": [],
+        "minimum_monthly_income": None,
     }
+    assert status["onboarding"]["stage"] == "not_started"
     assert status["transaction_count"] == 0 and status["monthly_plan_exists"] is False
     assert status["suggested_next_step"] == "complete_profile"
 

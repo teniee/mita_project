@@ -31,9 +31,13 @@ from app.mcp.schemas import (
     FreedLineOut,
     FreedMoneyOut,
     HistoryUsedOut,
+    NotIncludedLineOut,
     ObligationOut,
+    PersonalizationOut,
     PlanChangeOut,
     PlannedPurchaseOut,
+    UnconfirmedMoneyOut,
+    VariableIncomeOut,
 )
 from app.mcp.serializers import (
     budget_status_out,
@@ -139,7 +143,13 @@ PREVIEW_DESCRIPTION = (
     "user's lines exceed the income, MITA refuses and names each part: ask the "
     "user what to change. It returns fixed obligations, savings, category "
     "allocations (each with its source), unallocated money, a daily average, "
-    "assumptions, warnings and data sources. Show the figures to the user; if "
+    "assumptions, warnings and data sources. personalization says whether the "
+    "plan is preliminary (MITA's default lines as suggestions: line_status "
+    "mita_suggested — say so and ask which apply) or personalized (only lines "
+    "the user confirmed; not_included lists MITA's lines they never mentioned "
+    "with what MITA would suggest — ask, never add them yourself); "
+    "variable_income, for income that varies, shows a month at the stated "
+    "minimum. Show the figures to the user; if "
     "they confirm, call save_monthly_budget with the draft_token. Never present a "
     "preview as saved, never call an amount the user's unless its source is "
     "set_by_you, and never recompute, split or edit the numbers yourself. Needs "
@@ -150,6 +160,7 @@ PREVIEW_DESCRIPTION = (
 
 EngineLine = Literal[tuple(sorted(ENGINE_BUCKETS))]  # type: ignore[valid-type]
 CENT = Decimal("0.01")
+ZERO_MONEY = Decimal("0.00")
 
 REPLACES_HELP = (
     "MITA's own lines this line takes the place of, so the same spending is not "
@@ -207,6 +218,28 @@ SAVE_DESCRIPTION = (
 )
 
 
+def variable_income_out(ctx, draft: budget_draft.BudgetDraft):
+    """For variable income only: the plan against a month at the stated
+    minimum — exact arithmetic on stated figures, no other basis chosen."""
+    if ctx.income_regularity != "variable":
+        return None
+    committed = draft.fixed_total + draft.allocation.savings + draft.user_set_total
+    minimum = ctx.minimum_monthly_income
+    return VariableIncomeOut(
+        planned_on=money(draft.income),
+        minimum_monthly_income=optional_money(minimum),
+        committed=money(committed),
+        shortfall_at_minimum=(
+            money(max(ZERO_MONEY, draft.plan_total - minimum))
+            if minimum is not None
+            else None
+        ),
+        committed_exceeds_minimum=(
+            committed > minimum if minimum is not None else None
+        ),
+    )
+
+
 def preview_out(
     ctx, draft: budget_draft.BudgetDraft, token: str, expires: int
 ) -> BudgetPreviewOut:
@@ -231,6 +264,36 @@ def preview_out(
         )
     if draft.obligations:
         assumptions.append("Repeating obligations count in full for the month.")
+    elif draft.payments_state == "none":
+        assumptions.append("The user said they have no regular payments.")
+    if draft.personalization == "personalized":
+        assumptions.append(
+            "Personalized: MITA budgets only the lines the user confirmed (their "
+            "own lines and the spending they described). Lines they never "
+            "mentioned are in not_included, not budgeted; their money stays "
+            "unallocated and free to spend."
+        )
+    else:
+        open_parts = [
+            f"{name} ({state.replace('_', ' ')})"
+            for name, state in (
+                ("regular payments", draft.payments_state),
+                ("everyday spending", draft.spending_state),
+            )
+            if state not in ("answered", "none", "described")
+        ]
+        assumptions.append(
+            "Preliminary: not confirmed yet — "
+            + "; ".join(open_parts)
+            + ". Lines marked mita_suggested are MITA's default lines, not the "
+            "user's choices; ask which apply."
+        )
+    if ctx.income_regularity == "variable":
+        assumptions.append(
+            "The user said their income varies: the plan uses the monthly net "
+            f"income they stated ({money(draft.income)}); variable_income shows "
+            "what a month at their minimum would mean."
+        )
     if ctx.household_size is not None:
         assumptions.append(
             f"Household size ({ctx.household_size}) is recorded but MITA's "
@@ -242,7 +305,7 @@ def preview_out(
             "free to spend."
         )
     warnings: List[str] = []
-    if not draft.obligations:
+    if not draft.obligations and draft.payments_state != "none":
         warnings.append(NO_OBLIGATIONS_WARNING)
     if draft.existing_plan:
         warnings.append(
@@ -325,6 +388,9 @@ def preview_out(
         kind = draft.line_kinds.get(key, "flexible")
         pattern = draft.patterns.get(key)
         planned = kind == "planned"
+        confirmed = source == SET_BY_YOU or (
+            pattern is not None and pattern.kind != "not_applicable"
+        )
         per_day = (
             (amount / draft.days_in_month).quantize(CENT, ROUND_HALF_UP)
             if not planned
@@ -362,6 +428,7 @@ def preview_out(
             typical_amount=optional_money(
                 pattern.typical_amount if pattern is not None else None
             ),
+            line_status="user_confirmed" if confirmed else "mita_suggested",
         )
 
     categories = [
@@ -431,6 +498,43 @@ def preview_out(
             if draft.freed is not None
             else None
         ),
+        not_included=[
+            NotIncludedLineOut(
+                category=code,
+                category_label=category_label(code),
+                would_suggest=money(amount),
+            )
+            for code, amount in sorted(
+                (draft.unconfirmed.excluded if draft.unconfirmed else {}).items(),
+                key=lambda kv: (-kv[1], kv[0]),
+            )
+        ],
+        not_included_money=(
+            UnconfirmedMoneyOut(
+                total=money(draft.unconfirmed.total),
+                to_other_lines=[
+                    FreedLineOut(
+                        category=code,
+                        category_label=category_label(code),
+                        amount=money(amount),
+                    )
+                    for code, amount in sorted(
+                        draft.unconfirmed.added.items(),
+                        key=lambda kv: (-kv[1], kv[0]),
+                    )
+                    if amount > 0
+                ],
+                unallocated=money(draft.unconfirmed.unallocated),
+            )
+            if draft.unconfirmed is not None
+            else None
+        ),
+        personalization=PersonalizationOut(
+            level=draft.personalization,
+            regular_payments=draft.payments_state,
+            everyday_spending=draft.spending_state,
+        ),
+        variable_income=variable_income_out(ctx, draft),
         user_set_total=money(draft.user_set_total),
         unallocated=money(alloc.unallocated),
         flexible_total=money(alloc.discretionary_total),

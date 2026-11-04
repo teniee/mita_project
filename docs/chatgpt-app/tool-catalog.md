@@ -18,7 +18,7 @@ only from a signed preview, feedback only on explicit request.
 | Tool | Purpose | Inputs | Scope |
 |---|---|---|---|
 | `get_profile` | which MITA account is connected: opaque id, display name (when set), masked e-mail — exactly OpenAI's profile schema (`openai/profile` tool; since 2026-10-27 no currency/timezone: those are in `get_setup_status`) | — | profile:read |
-| `get_setup_status` | what MITA already knows, what is missing, plan/records counts, next step; since 2.7.0 `spending` (how the user buys, line by line; lines without a stated pattern; MITA lines that do not apply) and the optional step `describe_spending` | — | profile:read |
+| `get_setup_status` | what MITA already knows, what is missing, plan/records counts, next step; since 2.7.0 `spending` (how the user buys, line by line; lines without a stated pattern; MITA lines that do not apply) and the optional step `describe_spending`; since 2.8 `onboarding` (derived stage, preliminary/personalized readiness, topic states, next and optional questions — a returning user is never asked again) and `region` (the confirmed country and its source, the regional switch, ChatGPT's approximate country only as a suggestion) | — | profile:read |
 | `get_financial_summary` | one month: income stated, plan, spent, remaining, top 3 categories | year, month | finance:read |
 | `list_transactions` | expenses for a range with opaque `ref`s; keyset paging (`next_cursor`) | start_date, end_date, category, merchant, limit, cursor | finance:read |
 | `get_spending_breakdown` | spending by category for a range | start_date, end_date | finance:read |
@@ -36,7 +36,7 @@ only from a signed preview, feedback only on explicit request.
 
 | Tool | Purpose | Destructive | Idempotent | How retries are safe | Scope |
 |---|---|---|---|---|---|
-| `update_financial_profile` | save stated income, currency, timezone, household size, savings target | yes (overwrites) | yes | same values → `unchanged` | finance:write |
+| `update_financial_profile` | save stated income, currency, timezone, household size, savings target; since 2.8 the confirmed country (ISO code; never a city, address or coordinates), income regularity, pay frequency and days, minimum monthly income for variable income, the regional switch and `setup_answers` (`none` / `described` / `skipped`) | yes (overwrites) | yes | same values → `unchanged` | finance:write |
 | `save_spending_patterns` | save how the user buys for each line: planned (frequency + days), flexible, or a MITA line that does not apply; never changes a saved plan (`plans_to_review`) — since 2.7.0 | yes (overwrites a line's pattern) | yes | same patterns → `unchanged` | finance:write |
 | `add_transaction` | record one expense, under a category or one of the user's own budget lines (`budget_line`), or as the payment of a saved payment (`obligation_ref`, since 2.7.0: the only thing that pays a bill) | no | yes | `idempotency_key` → `already_recorded` | finance:write |
 | `add_transactions` | record up to 25 expenses, all or nothing | no | yes | `idempotency_key` | finance:write |

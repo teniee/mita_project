@@ -1,4 +1,4 @@
-"""Per-user state of the ChatGPT app (MCP service) — migrations 0038–0040.
+"""Per-user state of the ChatGPT app (MCP service) — migrations 0038–0043.
 
 Written only by MCP tools and the ChatGPT consent page. Income, currency,
 timezone and monthly savings remain canonical on ``users``; these tables hold
@@ -14,6 +14,7 @@ from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
+    Numeric,
     SmallInteger,
     String,
     Text,
@@ -35,6 +36,15 @@ class McpUserProfile(Base):
     ``users`` column defaults (USD, UTC, 0) are not choices.
     ``usage_analytics_enabled`` is the user's answer on the MITA consent page
     or through ``set_usage_analytics``; with no row, nothing is linked to them.
+
+    Since 0043 (personalized onboarding, all stated by the user): the country
+    itself stays on ``users.country``; ``country_confirmed_at`` and
+    ``country_source`` record that the user confirmed it (``stated``, or
+    ``chatgpt_location_confirmed`` when it is the country of ChatGPT's
+    approximate location). ``regional_context_enabled`` is the user's switch
+    for regional statistics. The income schedule: ``income_regularity``,
+    ``pay_frequency``, ``pay_days`` and, for variable income only,
+    ``minimum_monthly_income``. No city, address or coordinates.
     """
 
     __tablename__ = "mcp_user_profiles"
@@ -42,6 +52,29 @@ class McpUserProfile(Base):
         CheckConstraint(
             "household_size IS NULL OR household_size BETWEEN 1 AND 20",
             name="ck_mcp_user_profiles_household_size",
+        ),
+        CheckConstraint(
+            "country_source IS NULL OR country_source IN "
+            "('stated', 'chatgpt_location_confirmed')",
+            name="ck_mcp_user_profiles_country_source",
+        ),
+        CheckConstraint(
+            "(country_source IS NULL) = (country_confirmed_at IS NULL)",
+            name="ck_mcp_user_profiles_country_confirmed",
+        ),
+        CheckConstraint(
+            "income_regularity IS NULL OR income_regularity IN ('regular', 'variable')",
+            name="ck_mcp_user_profiles_income_regularity",
+        ),
+        CheckConstraint(
+            "pay_frequency IS NULL OR pay_frequency IN "
+            "('monthly', 'twice_monthly', 'every_two_weeks', 'weekly', 'irregular')",
+            name="ck_mcp_user_profiles_pay_frequency",
+        ),
+        CheckConstraint(
+            "minimum_monthly_income IS NULL OR (minimum_monthly_income >= 0 "
+            "AND income_regularity IS NOT NULL AND income_regularity = 'variable')",
+            name="ck_mcp_user_profiles_minimum_income",
         ),
     )
 
@@ -57,10 +90,45 @@ class McpUserProfile(Base):
     savings_confirmed_at = Column(DateTime(timezone=True), nullable=True)
     usage_analytics_enabled = Column(Boolean, nullable=False, default=False)
     usage_analytics_updated_at = Column(DateTime(timezone=True), nullable=True)
+    country_confirmed_at = Column(DateTime(timezone=True), nullable=True)
+    country_source = Column(String(32), nullable=True)
+    regional_context_enabled = Column(Boolean, nullable=False, default=True)
+    income_regularity = Column(String(16), nullable=True)
+    pay_frequency = Column(String(20), nullable=True)
+    pay_days = Column(JSONB, nullable=False, default=list)
+    minimum_monthly_income = Column(Numeric(12, 2), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=_now)
     updated_at = Column(
         DateTime(timezone=True), nullable=False, default=_now, onupdate=_now
     )
+
+
+class McpSetupAnswer(Base):
+    """An answer to one of MITA's setup questions that no other table holds
+    (migration 0043): "I have no regular payments" (``regular_payments`` =
+    ``none``), "that is what I regularly spend on" (``everyday_spending`` =
+    ``described``), or the user's choice to skip a question (``skipped``).
+    No row means never answered — never "none". Cascades with the user."""
+
+    __tablename__ = "mcp_setup_answers"
+    __table_args__ = (
+        CheckConstraint(
+            "topic IN ('regular_payments', 'everyday_spending', "
+            "'irregular_expenses', 'income_schedule', 'region')",
+            name="ck_mcp_setup_answers_topic",
+        ),
+        CheckConstraint(
+            "answer IN ('none', 'described', 'skipped')",
+            name="ck_mcp_setup_answers_answer",
+        ),
+    )
+
+    user_id = Column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    topic = Column(String(32), primary_key=True)
+    answer = Column(String(16), nullable=False)
+    answered_at = Column(DateTime(timezone=True), nullable=False, default=_now)
 
 
 class McpIdempotencyKey(Base):

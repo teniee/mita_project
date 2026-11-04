@@ -1,6 +1,6 @@
 -- Least-privilege database role for the MITA MCP service (ChatGPT app).
 --
--- Run ONCE per environment as the database owner, AFTER migrations 0037-0040
+-- Run ONCE per environment as the database owner, AFTER migrations 0037-0043
 -- (re-run after a migration adds an MCP table; every statement is idempotent):
 --   psql "$DATABASE_URL" -v mcp_password="$(openssl rand -hex 24)" \
 --        -f scripts/mcp/mcp_service_role.sql
@@ -27,10 +27,13 @@ SELECT format('GRANT CONNECT ON DATABASE %I TO mita_mcp', current_database())
 GRANT USAGE ON SCHEMA public TO mita_mcp;
 GRANT SELECT ON alembic_version TO mita_mcp;
 
--- Accounts: sign-up inserts; consent page lockout; profile fields the tools save.
+-- Accounts: sign-up inserts; consent page lockout; profile fields the tools save
+-- (country since 0043: the country the user confirmed; region is cleared when
+-- it belongs to another country).
 GRANT SELECT, INSERT ON users TO mita_mcp;
 GRANT UPDATE (failed_login_attempts, account_locked_until, monthly_income,
-              savings_goal, currency, timezone, has_onboarded, updated_at)
+              savings_goal, currency, timezone, has_onboarded, updated_at,
+              country, region)
   ON users TO mita_mcp;
 
 -- Financial records, written only through the canonical domain writers.
@@ -46,11 +49,11 @@ GRANT SELECT, INSERT ON redistribution_events TO mita_mcp;
 GRANT SELECT, INSERT, DELETE ON obligation_payments TO mita_mcp;
 GRANT SELECT, INSERT, UPDATE, DELETE ON spending_patterns TO mita_mcp;
 
--- The MCP service's own tables (0037-0040).
+-- The MCP service's own tables (0037-0040, 0043).
 GRANT SELECT, INSERT, UPDATE, DELETE ON
   mcp_oauth_clients, mcp_oauth_authorization_codes, mcp_oauth_refresh_tokens,
   mcp_user_profiles, mcp_idempotency_keys, product_feedback, analytics_identities,
-  mcp_budget_lines
+  mcp_budget_lines, mcp_setup_answers
   TO mita_mcp;
 GRANT USAGE ON SCHEMA analytics TO mita_mcp;
 GRANT INSERT ON analytics.events TO mita_mcp;

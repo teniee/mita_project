@@ -153,3 +153,14 @@ months, indexes included → **≈ 1.9 MB per user per year**, dominated by
 * One MCP replica: rate limits are in-process (`app/mcp/ratelimit.py`).
 * DB pool: 5 + 10 overflow per process; the analytics writer uses at most one.
 * Statement timeouts: 5 s reads, 10 s writes.
+
+**Re-run 2026-11-04, MCP 2.8.0 (personalized onboarding, migration 0043 on
+the local `mita_capacity` database), 5 runs.** `get_setup_status` reads the
+user's setup answers and own-line count (2 more statements: 8; the
+earlier-plan lookup runs only when the current month has none): p50 10.3 /
+p95 13.4 ms (2.7.0: 12.1). The preview reads the answers (6 statements) and
+runs the engine once more only when lines are left out: p95 11.1 ms (10.5).
+Calendar p95 14.6, budget status 10.6, forecast 9.8, spending profile 6.1 —
+unchanged; month summary p95 19.8 and financial climate 24.9 ms, untouched
+by 2.8 and as before. No index added (`mcp_setup_answers` is read by its
+primary key prefix `user_id`).

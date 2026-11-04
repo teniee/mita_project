@@ -38,6 +38,21 @@ def test_the_2_7_tables_are_required():
     } <= set(REQUIRED_TABLES)
 
 
+def test_the_2_8_table_and_column_grants_are_required():
+    """0043: setup answers are required; the confirmed country is written to
+    ``users.country`` (and an app region of another country cleared), so the
+    service role needs those two column grants — a missing one would surface
+    only when a user confirms a country."""
+    assert "mcp_setup_answers" in set(REQUIRED_TABLES)
+    assert "mcp_setup_answers" in granted_tables()
+    sql = re.sub(
+        r"--[^\n]*", "", (ROOT / "scripts/mcp/mcp_service_role.sql").read_text()
+    )
+    update = re.search(r"GRANT UPDATE \(([^)]*)\)\s+ON users TO mita_mcp", sql)
+    columns = {c.strip() for c in update.group(1).split(",")}
+    assert {"country", "region"} <= columns
+
+
 def test_every_required_table_is_granted_to_the_service_role():
     granted = granted_tables()
     assert "obligation_payments" in granted and "spending_patterns" in granted

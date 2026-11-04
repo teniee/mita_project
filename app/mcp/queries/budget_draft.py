@@ -11,6 +11,14 @@ never spread over other days.
 Recorded history only produces warnings: it never changes an allocation.
 No regional cost data, no income-class labels, no LLM.
 
+Personalized onboarding (2.8): when the user said the spending they described
+is what they regularly spend on (``mcp_setup_answers.everyday_spending =
+described``), MITA's lines they never confirmed are ``unknown`` and left out —
+the same engine run, with those lines among the replaced buckets — and their
+money stays unallocated (spendable, inside the daily figure). They are listed
+with what MITA would suggest, so the user can add them. Without that answer a
+draft is computed exactly as before (every MITA line suggested).
+
 Budget lines the user names and sets themselves (F-11: "Fuel €200",
 "Cigarettes €200") are kept exactly — the month's saved lines plus the ones
 asked for in this preview — and MITA allocates only the money left, leaving
@@ -38,6 +46,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.config.country_profiles_loader import CONFIG_DIR as PROFILE_DIR
 from app.db.models import ScheduledExpense
 from app.mcp.categories import PLAN_LABELS, label, source_of
 from app.mcp.crypto import DraftClaims
@@ -228,6 +237,13 @@ class BudgetDraft:
     pattern_sources: Dict[str, str] = field(default_factory=dict)
     not_applicable: Tuple[str, ...] = ()
     freed: Optional["FreedMoney"] = None
+    # 2.8: MITA lines left out because the user never confirmed them (with
+    # what MITA would suggest), where that money went, and how much MITA
+    # knows: "personalized" or "preliminary", the topics still open.
+    unconfirmed: Optional["FreedMoney"] = None
+    personalization: str = "preliminary"
+    payments_state: str = "unknown"
+    spending_state: str = "unknown"
 
     @property
     def user_lines(self) -> FrozenSet[str]:
@@ -593,15 +609,27 @@ def build_draft(
             patterns[key] = inherited[0]
     sources = {line: (ASKED if line in asked else SAVED) for line in patterns}
     excluded = tuple(sorted(not_applicable(patterns)))
+    replaced_by_user = {code for codes in replaces.values() for code in codes}
+    answers = setup_queries.setup_answers(db, ctx.user_id)
+    unknown: Tuple[str, ...] = ()
+    if setup_queries.personalized_spending(answers):
+        confirmed = {
+            line for line, p in patterns.items() if p.kind != KIND_NOT_APPLICABLE
+        }
+        unknown = tuple(
+            sorted(ENGINE_BUCKETS - confirmed - set(excluded) - replaced_by_user)
+        )
+    engine_inputs = dict(
+        monthly_income=income,
+        savings_goal=savings,
+        region=ctx.region,
+        fixed_expenses=fixed,
+        manual_allocations=lines,
+    )
     try:
         allocation = allocations_from_profile(
-            monthly_income=income,
-            savings_goal=savings,
-            region=ctx.region,
-            fixed_expenses=fixed,
-            manual_allocations=lines,
-            replaced_buckets={code for codes in replaces.values() for code in codes}
-            | set(excluded),
+            **engine_inputs,
+            replaced_buckets=replaced_by_user | set(excluded) | set(unknown),
         )
     except PlanDoesNotFit as error:
         details = {"reason": "plan_exceeds_income", "currency": ctx.currency}
@@ -616,17 +644,25 @@ def build_draft(
             "stated monthly net income, so MITA cannot build a budget. Check both "
             "with the user."
         ) from None
+    # Each comparison is the draft against the same engine run with exactly
+    # one set of lines kept, so each conserves to the cent and names only
+    # lines of this draft: not_applicable lines (as in 2.7.0 when nothing is
+    # unconfirmed) and the lines the user never confirmed.
     freed = _freed_money(
         allocation,
         excluded,
-        dict(
-            monthly_income=income,
-            savings_goal=savings,
-            region=ctx.region,
-            fixed_expenses=fixed,
-            manual_allocations=lines,
-            replaced_buckets={code for codes in replaces.values() for code in codes},
-        ),
+        dict(engine_inputs, replaced_buckets=replaced_by_user | set(unknown)),
+    )
+    unconfirmed = (
+        _compare(
+            allocations_from_profile(
+                **engine_inputs, replaced_buckets=replaced_by_user | set(excluded)
+            ),
+            allocation,
+            unknown,
+        )
+        if unknown
+        else None
     )
     if freed is not None:
         gained = sum((a for a in freed.added.values() if a > ZERO), ZERO)
@@ -683,6 +719,24 @@ def build_draft(
         )
         if saved and compared.get(category) != allocation.allocations.get(category)
     )
+    payments_state = (
+        "answered"
+        if obligations
+        else {
+            setup_queries.ANSWER_NONE: "none",
+            setup_queries.ANSWER_SKIPPED: "skipped",
+        }.get(answers.get(setup_queries.TOPIC_REGULAR_PAYMENTS), "unknown")
+    )
+    spending_answer = answers.get(setup_queries.TOPIC_EVERYDAY_SPENDING)
+    spending_state = (
+        "described"
+        if spending_answer == setup_queries.ANSWER_DESCRIBED
+        else (
+            "skipped"
+            if spending_answer == setup_queries.ANSWER_SKIPPED
+            else ("partially_known" if (stored or lines) else "unknown")
+        )
+    )
     return BudgetDraft(
         year=year,
         month=month,
@@ -707,6 +761,39 @@ def build_draft(
         pattern_sources={line: sources[line] for line in shown},
         not_applicable=excluded,
         freed=freed,
+        unconfirmed=unconfirmed,
+        personalization=(
+            "personalized"
+            if payments_state in ("answered", "none") and spending_state == "described"
+            else "preliminary"
+        ),
+        payments_state=payments_state,
+        spending_state=spending_state,
+    )
+
+
+def _compare(
+    kept: ProfileAllocation, allocation: ProfileAllocation, left_out: Tuple[str, ...]
+) -> Optional[FreedMoney]:
+    """``allocation`` (lines ``left_out`` removed) against ``kept`` (the same
+    engine run keeping them): what they had, what the other lines gained, what
+    stayed unallocated."""
+    excluded = {
+        code: kept.discretionary[code]
+        for code in left_out
+        if kept.discretionary.get(code, ZERO) > ZERO
+    }
+    if not excluded:
+        return None
+    added = {
+        code: amount - kept.discretionary.get(code, ZERO)
+        for code, amount in allocation.discretionary.items()
+        if amount != kept.discretionary.get(code, ZERO)
+    }
+    return FreedMoney(
+        excluded=excluded,
+        added=added,
+        unallocated=allocation.unallocated - kept.unallocated,
     )
 
 
@@ -720,23 +807,7 @@ def _freed_money(
         kept = allocations_from_profile(**engine_inputs)
     except ValueError:  # PlanDoesNotFit included: nothing to compare with
         return None
-    left_out = {
-        code: kept.discretionary[code]
-        for code in excluded
-        if kept.discretionary.get(code, ZERO) > ZERO
-    }
-    if not left_out:
-        return None
-    added = {
-        code: amount - kept.discretionary.get(code, ZERO)
-        for code, amount in allocation.discretionary.items()
-        if amount != kept.discretionary.get(code, ZERO)
-    }
-    return FreedMoney(
-        excluded=left_out,
-        added=added,
-        unallocated=allocation.unallocated - kept.unallocated,
-    )
+    return _compare(kept, allocation, excluded)
 
 
 # Where a line's pattern came from.
@@ -819,6 +890,25 @@ def _by_category(plan: Dict[Tuple[date, str], Decimal]) -> Dict[str, Decimal]:
 
 
 def region_note(region: Optional[str]) -> str:
+    """Which of MITA's own allocation rules the engine used — truthfully: a
+    country without rules of its own uses the default ones."""
     if region in UNSTATED_REGIONS:
         return "No region is stated, so MITA's default allocation rules are used."
-    return f"MITA's allocation rules for region {region} are used."
+    if not has_region_rules(region):
+        return (
+            f"MITA has no allocation rules specific to {region}, so its default "
+            "rules are used (MITA's own shares, not regional statistics)."
+        )
+    return (
+        f"MITA's allocation rules for region {region} are used (MITA's own "
+        "shares, not regional statistics)."
+    )
+
+
+def has_region_rules(region: Optional[str]) -> bool:
+    """True when the engine has a profile of its own for ``region``
+    (``app/config/country_profiles/<REGION>.yaml``; DEFAULT is not one)."""
+    code = (region or "").strip().upper()
+    if not code or code == "DEFAULT" or not all(c.isalnum() or c == "-" for c in code):
+        return False
+    return (PROFILE_DIR / f"{code}.yaml").is_file()

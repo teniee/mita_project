@@ -322,6 +322,22 @@ def test_skill_names_only_published_tools():
         "per_day",  # a field of a preview line
         "per_day_rounded",  # a field of a preview line
         "obligation_ref",  # an argument of add_transaction / update_transaction
+        # 2.8 personalized onboarding
+        "spending",  # a field of get_setup_status
+        "established",  # an onboarding.stage value
+        "country",  # an argument of update_financial_profile
+        "minimum_monthly_income",  # an argument of update_financial_profile
+        "setup_answers",  # an argument of update_financial_profile
+        "none",  # a setup answer
+        "described",  # a setup answer
+        "skipped",  # a setup answer
+        "personalization",  # a field of preview_monthly_budget's result
+        "personalized",  # a personalization level
+        "preliminary",  # a personalization level
+        "not_included",  # a field of preview_monthly_budget's result
+        "variable_income",  # a field of preview_monthly_budget's result
+        "calculated_by_mita",  # a source value
+        "mita_suggested",  # a line_status value
     }
     assert named and named <= set(PUBLISHED_TOOLS), named - set(PUBLISHED_TOOLS)
 

@@ -77,6 +77,12 @@ async def test_conversational_profile_is_saved_and_survives_a_new_session(
         "timezone": "Europe/Sofia",
         "household_size": 2,
         "monthly_savings_target": "400.00",
+        # 2.8 optional facts: unknown until the user states them.
+        "country": None,
+        "income_regularity": None,
+        "pay_frequency": None,
+        "pay_days": [],
+        "minimum_monthly_income": None,
     }
     assert result["profile_complete"] is True and result["missing_fields"] == []
     # Real ChatGPT built a final-looking budget before rent was known: the

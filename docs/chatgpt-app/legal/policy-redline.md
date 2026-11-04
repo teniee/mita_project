@@ -91,6 +91,22 @@ periods for feedback and linked statistics.
 Also list OpenAI as a recipient **for users who connect the ChatGPT app**,
 separately from the in-app AI features.
 
+**2.8 addition (personalized onboarding, `../personalization-2.8.md`)** —
+the sentence "never your … locations" stays true for what MITA sends, but
+MITA now stores what the user tells it about where they live and how they
+are paid. Proposed text **[CONFIRM with counsel]**:
+
+> **Where you live and how you are paid.** If you tell MITA in ChatGPT the
+> country where you usually live and spend money, whether your income is
+> regular, when it arrives or the least you receive in a month, MITA saves
+> it to tailor your budget. ChatGPT may share your approximate location
+> with MITA during a conversation; MITA uses only its country, only to ask
+> you whether that is where you live, and never stores it. MITA never asks
+> for your city, address or exact location. You can change or remove your
+> country at any time ("I'd rather not say where I live") and turn
+> regional statistics off; deleting your account deletes all of it.
+
+
 ## D. Age clause (Step 5 decides)
 
 * **Variant (a), recommended for submission — 13+:**

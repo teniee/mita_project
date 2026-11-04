@@ -1226,12 +1226,32 @@ Rules:
   - Exact figures: `tests_mcp/test_obligation_payments.py`,
     `tests_mcp/test_behavioral_budget.py`; F-8/R3 suites rewritten to identity.
 - **2.8 personalized onboarding and regional context** (owner brief
-  2026-11-04, in progress; assessment and decisions:
-  `docs/chatgpt-app/personalization-2.8.md`). Country only — never a city,
-  address or coordinates as a tool input (OpenAI plugin guidelines); ChatGPT's
-  `_meta["openai/userLocation"]` is a suggestion the user confirms, never
-  stored itself. Without new onboarding answers a preview computes exactly as
-  in 2.7.0. Eurostat data only for EU/EFTA/candidate countries (its licence).
+  2026-11-04, MCP 2.8.0, migration 0043; rules and decisions:
+  `docs/chatgpt-app/personalization-2.8.md`). Rules:
+  - **Country only** — never a city, address or coordinates as a tool input
+    (OpenAI plugin guidelines; `test_tool_contract` LOCATION_FIELD). ChatGPT's
+    `_meta["openai/userLocation"]` is reduced to its country by the runtime
+    (`app/mcp/location_hint.py`, bound per call) and only suggested
+    (`get_setup_status.region.suggestion`); the user's answer is stored on
+    `users.country` with `mcp_user_profiles.country_source`. Never store,
+    log or emit the hint; a country changes no currency, expense or plan.
+  - **Unknown is not zero, not none, not yes.** `mcp_setup_answers` holds
+    only the user's own `none` / `described` / `skipped`; no row = never
+    asked. The onboarding stage is derived on every call (`SetupState.stage`),
+    never stored; a returning user (any saved plan) is `established` and is
+    never asked again.
+  - **Personalized only on the user's word**: after `everyday_spending =
+    described`, MITA's lines without a stated pattern are `unknown`, left out
+    through the engine's replaced buckets and listed in `not_included` with
+    `would_suggest`; their money stays unallocated (still in the daily
+    figure). Without that answer the engine call is exactly 2.7.0's. Each
+    comparison (`freed_money`, `not_included_money`) is the draft against one
+    engine run keeping one set of lines: conserved to the cent.
+  - `line_status` (`user_confirmed` / `mita_suggested`) on every preview and
+    setup line: a MITA suggestion is never the user's amount or choice.
+  - Variable income is planned on the stated income; `variable_income`
+    shows the stated minimum month by arithmetic only.
+  - Eurostat data only for EU/EFTA/candidate countries (its licence).
 - **One display name per category** (`app/mcp/categories.py`): every result
   carries `category_label`; budget status and the forecast put an expense
   category on its paired plan bucket's line ("Fuel" = `transport gas` +

@@ -38,6 +38,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from app.db.models import User
+from app.mcp import location_hint
 from app.mcp.analytics import Analytics, CallTelemetry, bind_call, unbind_call
 from app.mcp.auth.fingerprint import (
     CREDENTIAL_CLAIM,
@@ -253,6 +254,9 @@ class McpRuntime:
         meta = _request_meta(ctx)
         telemetry = CallTelemetry(tool=tool, intent=intent)
         binding = bind_call(telemetry)
+        # Only the country of ChatGPT's approximate location, only for this
+        # call (app/mcp/location_hint.py); the rest of the hint is dropped.
+        hint = location_hint.bind(location_hint.country_from_meta(meta))
         try:
             token, user_id = self._identify(required_scope)
             client = token.client_id
@@ -292,6 +296,7 @@ class McpRuntime:
             )
             return self._error_result(InternalError(INTERNAL_MESSAGE))
         finally:
+            location_hint.unbind(hint)
             unbind_call(binding)
             duration_ms = (time.perf_counter() - started) * 1000
             metrics.tool_call(tool, outcome, duration_ms)

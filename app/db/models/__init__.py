@@ -25,6 +25,7 @@ from .mcp_app import (
     AnalyticsIdentity,
     McpBudgetLine,
     McpIdempotencyKey,
+    McpSetupAnswer,
     McpUserProfile,
     ProductFeedback,
 )
@@ -54,6 +55,7 @@ __all__ = [
     "McpOAuthClient",
     "McpBudgetLine",
     "McpIdempotencyKey",
+    "McpSetupAnswer",
     "McpUserProfile",
     "ObligationPayment",
     "SpendingPattern",

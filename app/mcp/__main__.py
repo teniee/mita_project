@@ -31,6 +31,7 @@ REQUIRED_TABLES = (
     "mcp_budget_lines",  # 0040
     "obligation_payments",  # 0041
     "spending_patterns",  # 0042
+    "mcp_setup_answers",  # 0043
 )
 # Connected as mita_mcp, information_schema.tables lists only the tables the
 # role has a privilege on, so this also fails while a grant is missing: a

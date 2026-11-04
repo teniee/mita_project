@@ -479,6 +479,26 @@ ProfileField = Literal[
     "household_size",
     "monthly_savings_target",
 ]
+# Everything update_financial_profile can change (the five fields above are
+# the basic profile; the rest are optional, 2.8).
+UpdatedField = Literal[
+    "monthly_net_income",
+    "currency",
+    "timezone",
+    "household_size",
+    "monthly_savings_target",
+    "country",
+    "income_regularity",
+    "pay_frequency",
+    "pay_days",
+    "minimum_monthly_income",
+    "regional_comparisons",
+    "setup_answers",
+]
+IncomeRegularity = Literal["regular", "variable"]
+PayFrequency = Literal[
+    "monthly", "twice_monthly", "every_two_weeks", "weekly", "irregular"
+]
 
 
 class KnownProfileOut(_Out):
@@ -497,6 +517,32 @@ class KnownProfileOut(_Out):
     )
     monthly_savings_target: Optional[Money] = Field(
         description="Amount the user wants to save each month. Null when not stated.",
+        pattern=MONEY_PATTERN,
+    )
+    country: Optional[str] = Field(
+        default=None,
+        description=(
+            "ISO 3166-1 alpha-2 code of the country where the user said they "
+            "usually live and spend money. Null until the user confirms one."
+        ),
+    )
+    income_regularity: Optional[IncomeRegularity] = Field(
+        default=None,
+        description="regular: about the same every month; variable: it changes. Null when not stated.",
+    )
+    pay_frequency: Optional[PayFrequency] = Field(
+        default=None, description="How often income arrives. Null when not stated."
+    )
+    pay_days: List[int] = Field(
+        default_factory=list,
+        description="Days of the month income usually arrives on, as stated (31 = last day).",
+    )
+    minimum_monthly_income: Optional[Money] = Field(
+        default=None,
+        description=(
+            "For variable income: the least the user said they receive in a "
+            "month. Null when not stated."
+        ),
         pattern=MONEY_PATTERN,
     )
 
@@ -522,6 +568,121 @@ NEXT_STEP_DESCRIPTION = (
 )
 
 
+OnboardingStage = Literal[
+    "not_started",
+    "in_progress",
+    "basic_profile_completed",
+    "spending_partially_known",
+    "ready_for_preliminary_budget",
+    "ready_for_personalized_budget",
+    "optional_questions_skipped",
+    "established",
+]
+BudgetReadiness = Literal["not_ready", "preliminary", "personalized"]
+SetupTopic = Literal[
+    "profile",
+    "region",
+    "income_schedule",
+    "regular_payments",
+    "everyday_spending",
+    "irregular_expenses",
+]
+TopicState = Literal[
+    "answered", "none", "described", "partially_known", "skipped", "unknown"
+]
+STAGE_DESCRIPTION = (
+    "Where setup stands, derived from what is saved (so it survives "
+    "reconnecting): not_started; in_progress (basic profile incomplete); "
+    "basic_profile_completed (regular payments not asked yet); "
+    "spending_partially_known; ready_for_preliminary_budget; "
+    "ready_for_personalized_budget; optional_questions_skipped (the user chose "
+    "to skip — a budget is preliminary); established (a returning user with a "
+    "saved plan: never make them repeat setup)."
+)
+READINESS_DESCRIPTION = (
+    "not_ready: income, currency or timezone missing. preliminary: a budget "
+    "can be previewed, but MITA does not know the user's regular payments or "
+    "everyday spending, so it suggests its default lines — say so. "
+    "personalized: the user answered both; MITA budgets only the lines they "
+    "confirmed."
+)
+TOPIC_STATE_DESCRIPTION = (
+    "answered (saved facts, e.g. payments saved or a country confirmed), none "
+    "(the user said they have none), described, partially_known, skipped (the "
+    "user chose not to answer — do not ask again unless they bring it up), "
+    "unknown (never asked — not the same as none)."
+)
+
+
+class SetupTopicOut(_Out):
+    topic: SetupTopic
+    state: TopicState = Field(description=TOPIC_STATE_DESCRIPTION)
+    needed_for_personalized_budget: bool = Field(
+        description="True for regular_payments and everyday_spending."
+    )
+
+
+class OnboardingOut(_Out):
+    stage: OnboardingStage = Field(description=STAGE_DESCRIPTION)
+    budget_readiness: BudgetReadiness = Field(description=READINESS_DESCRIPTION)
+    topics: List[SetupTopicOut]
+    next_questions: List[SetupTopic] = Field(
+        description=(
+            "Topics to ask about now, in this order, combined into as few short "
+            "messages as possible. Empty for a returning user."
+        )
+    )
+    optional_questions: List[SetupTopic] = Field(
+        description=(
+            "For a returning user: topics never answered. Ask only if the user "
+            "wants to update how MITA plans; never block anything on them."
+        )
+    )
+
+
+class CountrySuggestionOut(_Out):
+    country: str = Field(description="ISO 3166-1 alpha-2 code.")
+    country_name: str
+    source: Literal["chatgpt_approximate_location"] = Field(
+        description=(
+            "The country of ChatGPT's approximate location for this "
+            "conversation — where the user is now, not necessarily where they "
+            "live. A suggestion to ask about, never a fact."
+        )
+    )
+
+
+class RegionOut(_Out):
+    country: Optional[str] = Field(
+        description="The country the user confirmed (ISO 3166-1 alpha-2); null until then."
+    )
+    country_name: Optional[str]
+    source: Optional[Literal["stated", "chatgpt_location_confirmed"]] = Field(
+        description=(
+            "stated: the user named it; chatgpt_location_confirmed: the user "
+            "confirmed the country of ChatGPT's approximate location."
+        )
+    )
+    regional_context: bool = Field(
+        description="The user's switch for regional statistics (true unless they turned it off)."
+    )
+    suggestion: Optional[CountrySuggestionOut] = Field(
+        description=(
+            "Only while no country is confirmed: ask, e.g. 'Do you normally "
+            "live and spend money in Bulgaria, or should MITA use another "
+            "country?' Save only the user's answer."
+        )
+    )
+
+
+LineStatus = Literal["user_confirmed", "mita_suggested"]
+LINE_STATUS_DESCRIPTION = (
+    "user_confirmed: the user named this line or said they have this spending "
+    "(a stated pattern); mita_suggested: one of MITA's default lines the user "
+    "has not confirmed — say it is MITA's suggestion and ask whether it applies."
+)
+
+
 class SpendingLineOut(_Out):
     category: str = Field(
         description="The line's code ('my:<label>' for the user's own lines)."
@@ -529,6 +690,9 @@ class SpendingLineOut(_Out):
     category_label: str = category_label_field()
     source: Literal["set_by_you", "calculated_by_mita"] = Field(
         description="set_by_you: the user's own line; calculated_by_mita: MITA's suggestion."
+    )
+    line_status: LineStatus = Field(
+        default="mita_suggested", description=LINE_STATUS_DESCRIPTION
     )
     monthly_amount: Optional[Money] = Field(
         description="In the current month's saved plan; null when the month has no plan.",
@@ -596,6 +760,8 @@ class SetupStatusOut(_Out):
             "re-ask what is stated here."
         )
     )
+    onboarding: OnboardingOut
+    region: RegionOut
     notes: List[str]
 
 
@@ -628,11 +794,13 @@ class SpendingPatternsOut(_Out):
 
 class ProfileUpdateOut(_Out):
     status: Literal["updated", "unchanged"]
-    updated_fields: List[ProfileField]
+    updated_fields: List[UpdatedField]
     profile: KnownProfileOut
     profile_complete: bool
     missing_fields: List[ProfileField]
     suggested_next_step: NextStep = Field(description=NEXT_STEP_DESCRIPTION)
+    onboarding: OnboardingOut
+    region: RegionOut
     notes: List[str]
 
 
@@ -840,6 +1008,58 @@ class AllocationOut(_Out):
         description="What one purchase usually costs, as the user said; null when not said.",
         pattern=MONEY_PATTERN,
     )
+    line_status: LineStatus = Field(
+        default="mita_suggested", description=LINE_STATUS_DESCRIPTION
+    )
+
+
+class NotIncludedLineOut(_Out):
+    category: str
+    category_label: str = category_label_field()
+    would_suggest: Money = money_field(
+        "What MITA's rules would give this line if the user says they have this "
+        "spending (MITA's suggestion, not the user's amount)."
+    )
+
+
+class PersonalizationOut(_Out):
+    level: Literal["preliminary", "personalized"] = Field(
+        description=(
+            "personalized: the user answered the regular-payments question and "
+            "described their everyday spending, so only lines they confirmed are "
+            "budgeted. preliminary: something is still unknown — present the "
+            "plan as a first draft with MITA's suggestions."
+        )
+    )
+    regular_payments: TopicState = Field(description=TOPIC_STATE_DESCRIPTION)
+    everyday_spending: TopicState = Field(description=TOPIC_STATE_DESCRIPTION)
+
+
+class VariableIncomeOut(_Out):
+    planned_on: Money = money_field(
+        "The monthly net income the plan uses: the figure the user stated."
+    )
+    minimum_monthly_income: Optional[Money] = Field(
+        description="The least the user said they receive in a month; null when not stated.",
+        pattern=MONEY_PATTERN,
+    )
+    committed: Money = money_field(
+        "Bills and fixed payments, savings and the user's own lines: what the "
+        "plan cannot lower by itself."
+    )
+    shortfall_at_minimum: Optional[Money] = Field(
+        description=(
+            "How much the whole plan (plan_total) exceeds a month at the minimum "
+            "income (0.00 when it fits); null without a minimum."
+        ),
+        pattern=MONEY_PATTERN,
+    )
+    committed_exceeds_minimum: Optional[bool] = Field(
+        description=(
+            "True when even the committed part is more than a minimum month; "
+            "null without a minimum."
+        )
+    )
 
 
 class ExcludedLineOut(_Out):
@@ -870,6 +1090,19 @@ class FreedMoneyOut(_Out):
         )
     )
     unallocated: Money = money_field("What stayed unassigned to any line.")
+
+
+class UnconfirmedMoneyOut(_Out):
+    total: Money = money_field("What MITA would have suggested for not_included.")
+    to_other_lines: List[FreedLineOut] = Field(
+        description=(
+            "What lines of this plan gained instead, by MITA's usual shares "
+            "(only when they had been scaled down)."
+        )
+    )
+    unallocated: Money = money_field(
+        "What stayed unallocated: still free to spend and inside the daily figure."
+    )
 
 
 class PlanChangeOut(_Out):
@@ -933,6 +1166,29 @@ class BudgetPreviewOut(_Out):
         description=(
             "Where the money of not_applicable_lines went (compared with the same "
             "plan keeping them). Show it to the user; nothing moves without a save."
+        ),
+    )
+    not_included: List[NotIncludedLineOut] = Field(
+        default_factory=list,
+        description=(
+            "MITA's lines the user never mentioned, left out because they said "
+            "the spending they described is what they regularly spend on. Not "
+            "budgeted, not zero: ask once whether any applies; if one does, "
+            "save its pattern (save_spending_patterns) or their amount "
+            "(budget_lines) and preview again."
+        ),
+    )
+    not_included_money: Optional[UnconfirmedMoneyOut] = Field(
+        default=None,
+        description="Where the money of not_included went (compared with keeping them).",
+    )
+    personalization: PersonalizationOut
+    variable_income: Optional[VariableIncomeOut] = Field(
+        default=None,
+        description=(
+            "Only when the user said their income varies: what the plan means "
+            "in a month at their minimum. MITA still plans on the stated "
+            "monthly figure; never pick another basis yourself."
         ),
     )
     user_set_total: Money = money_field(

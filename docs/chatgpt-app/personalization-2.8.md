@@ -194,3 +194,71 @@ approximate location as a suggestion — **owner/counsel**.
 | M3 | local price provider comparison; a proof of concept only with a free, licensed source behind a flag (off) | any paid provider (owner) |
 | M4 | statistics and verified prices as labelled suggestions in previews (never amounts by themselves) | — |
 | M5 | staging: backup, 0043/0044, grants, pin, checks | **database access**: the established path needs a temporary SSH key on the owner's Railway account (owner decision, as on 2026-11-04); no TCP proxy |
+
+## 10. Milestone 1 — implemented (MCP 2.8.0, migration 0043)
+
+**Stage** (`get_setup_status.onboarding.stage`, derived on every call from
+stored facts — nothing to keep in sync, survives reconnecting):
+
+| Stage | When |
+|---|---|
+| `not_started` | nothing stated, nothing recorded |
+| `in_progress` | something stated, income / currency / timezone incomplete |
+| `basic_profile_completed` | profile complete, regular payments never asked |
+| `spending_partially_known` | payments answered; some patterns or own lines, not "that is everything" |
+| `ready_for_preliminary_budget` | payments answered, everyday spending unknown |
+| `optional_questions_skipped` | the user skipped payments or everyday spending |
+| `ready_for_personalized_budget` | payments saved or "none", and everyday spending `described` |
+| `established` | any saved plan: a returning user — `next_questions` empty, open topics only in `optional_questions` |
+
+Topic states: `answered` (facts saved), `none`, `described`,
+`partially_known`, `skipped`, `unknown` (never asked — not "none"). A saved
+payment outranks an earlier "none"; "none" over saved payments is refused.
+
+**Line states in a preview**: `line_status` `user_confirmed` (the user's own
+line, or a planned/flexible pattern on a MITA line) / `mita_suggested`;
+`not_applicable_lines` as in 2.7.0; `not_included` (unknown: only after
+`everyday_spending = described`, with `would_suggest` and
+`not_included_money` — conserved: total = Σ to_other_lines + unallocated).
+`personalization.level` is `personalized` only with payments
+answered/none AND spending described. Without the answer the engine call is
+the 2.7.0 one (same allocations and digest: `test_an_existing_user_is_not_sent_back_through_setup`).
+
+**Region**: `users.country` + `mcp_user_profiles.country_confirmed_at` /
+`country_source`; an app `users.region` of another country is cleared (the
+engine would keep that country's rules). The hint is bound per call by the
+runtime (`app/mcp/location_hint.py`), country only; never in analytics or
+logs. `setup_answers region skipped` resets the country to `ZZ`. The region
+text in a preview now says when MITA has no rules of its own for a country
+(BG uses the DEFAULT profile, exactly like `ZZ` — no figure changes).
+
+**Variable income**: `variable_income` in the preview — planned on the
+stated income; `committed` (bills + savings + own lines), `plan_total`
+against the stated minimum. MITA picks no other basis.
+
+**Not done, deliberately**: city / admin region (OpenAI guidelines; no
+city-level source), "people supported" (no figure uses it), irregular
+expenses as monthly payments (only a dated goal the user agrees to). Bills
+stay `monthly`/`weekly` (`add_recurring_expense` has no one-time or annual
+recurrence; an annual bill becomes a goal only if the user wants money set
+aside).
+
+**Tests**: `tests_mcp/test_personalized_onboarding.py` (two people → two
+budgets with hand-checked figures; no fuel without a car, no rent with a
+mortgage; suggestions vs choices and the conservation of left-out money;
+none/skipped/unknown; validation; income schedule; the location hint as a
+question, travelling, moving, skipping; truthful region text; an existing
+user unchanged and never re-asked, a stale draft refused; a new connection
+and another account). Readiness and grants: `test_readiness.py`. HTTP smoke
+for staging: `scripts/mcp/smoke_onboarding_280.py`.
+
+**Staging procedure for 0043** (as for 0041/0042): pre-migration
+`pg_dump -Fc` on the Postgres volume, restore test; `alembic upgrade 0043`
+over the private SSH path; re-run `scripts/mcp/mcp_service_role.sql` (adds
+`UPDATE (country, region) ON users` and `mcp_setup_answers`); verify the
+grants; pin the 2.8 commit; `/health` 200 `"version":"2.8.0"` (503 until
+`mcp_setup_answers` is visible to `mita_mcp`); `smoke_onboarding_280.py`,
+`smoke_behavioral_270.py`, `e2e_v2.py`, `e2e_http.py`, failure modes;
+`staging_account_fingerprint.py` before and after (the owner's November must
+be identical). Rollback: re-pin `2ab2e0f` — 2.7.0 ignores the new columns
+and table.

@@ -8,7 +8,9 @@ need a legal decision are marked **[OWNER]**.
 | Data | Where | Why MITA needs it | Source | Retention | Shown to the user | In analytics | Sensitivity | On account deletion |
 |---|---|---|---|---|---|---|---|---|
 | E-mail, password hash (bcrypt), name, token_version, lockout counters | `users` | sign-in, grant binding | user (sign-up / app) | life of the account | e-mail masked in `get_profile` | no | personal / credential | deleted |
-| Country | `users.country` | the app's region rules | app; ChatGPT sign-up stores `ZZ` ("not stated") | life of the account | no | no | low | deleted |
+| Country | `users.country` | the app's region rules; since 2.8 the country the user confirmed in ChatGPT (where they usually live and spend money) | app; ChatGPT sign-up stores `ZZ` ("not stated"); in ChatGPT only the user's answer — ChatGPT's approximate location is offered as a question, never stored | life of the account; "prefer not to say" resets it to `ZZ` | yes (`get_setup_status.region`) | no | low | deleted |
+| Country confirmation and source (`stated` / `chatgpt_location_confirmed`), regional-statistics switch, income regularity, pay frequency and days, minimum monthly income (variable income) | `mcp_user_profiles` (0043) | personalized budgets: what applies to the user, a month at their minimum | stated by the user | life of the account | yes | field names only (`financial_profile_updated.fields`) | financial (income figures), else low | deleted (cascade) |
+| Setup answers: "no regular payments", "that is what I spend on", "skip" per topic | `mcp_setup_answers` (0043) | never re-ask; budget only confirmed lines | stated by the user | life of the account | yes (`onboarding.topics`) | field name only | low | deleted (cascade) |
 | Monthly net income, currency, timezone, monthly savings target | `users` | budgeting | stated by the user | life of the account | yes (`get_setup_status`) | no | financial | deleted |
 | Household size, which profile fields the user confirmed, usage-statistics choice | `mcp_user_profiles` | setup state; consent | stated by the user | life of the account | yes | no (the choice itself is not an event) | low | deleted (cascade) |
 | Expenses: date, amount, currency, category, merchant | `transactions` | the ledger | user (app or ChatGPT; receipt photos are read by ChatGPT, never received by MITA) | until the user deletes them or the account (soft delete keeps the row, excluded everywhere) | yes | no | financial | per existing account-deletion behaviour |
@@ -27,7 +29,11 @@ need a legal decision are marked **[OWNER]**.
 
 ChatGPT prompts, responses or transcripts; receipt images; raw ChatGPT
 session or subject ids; precise location; bank or card data; passwords in
-any log; amounts, merchants or titles in analytics or logs.
+any log; amounts, merchants or titles in analytics or logs. ChatGPT's
+approximate location (`_meta["openai/userLocation"]`: city, region,
+country, timezone, coordinates) is never stored or logged: only its country
+code is read, for the current call, to suggest a question; a city, address or
+coordinates are never asked for and never stored.
 
 ## What ChatGPT receives
 

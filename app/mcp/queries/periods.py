@@ -12,6 +12,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from app.db.models import McpUserProfile, User
+from app.mcp.countries import country_code
 from app.mcp.errors import AuthError, ValidationError
 from app.services.core.engine.expense_tracker import local_day_of, local_day_utc_window
 
@@ -41,6 +42,17 @@ class UserContext:
     timezone_confirmed: bool = False
     savings_confirmed: bool = False
     usage_analytics_enabled: bool = False
+    # Personalized onboarding (0043): the country the user confirmed (None
+    # until then — ChatGPT sign-up's "ZZ" and the app's registration default
+    # are not statements), its source, the regional switch and the income
+    # schedule, all as stated.
+    country: Optional[str] = None
+    country_source: Optional[str] = None
+    regional_context_enabled: bool = True
+    income_regularity: Optional[str] = None
+    pay_frequency: Optional[str] = None
+    pay_days: Tuple[int, ...] = ()
+    minimum_monthly_income: Optional[Decimal] = None
 
 
 def load_user_context(
@@ -78,6 +90,29 @@ def load_user_context(
         timezone_confirmed=bool(profile and profile.timezone_confirmed_at),
         savings_confirmed=bool(profile and profile.savings_confirmed_at),
         usage_analytics_enabled=bool(profile and profile.usage_analytics_enabled),
+        country=(
+            country_code(user.country)
+            if profile is not None and profile.country_confirmed_at is not None
+            else None
+        ),
+        country_source=(
+            profile.country_source
+            if profile is not None and profile.country_confirmed_at is not None
+            else None
+        ),
+        regional_context_enabled=(
+            bool(profile.regional_context_enabled)
+            if profile is not None and profile.regional_context_enabled is not None
+            else True
+        ),
+        income_regularity=profile.income_regularity if profile else None,
+        pay_frequency=profile.pay_frequency if profile else None,
+        pay_days=tuple(int(d) for d in (profile.pay_days or ())) if profile else (),
+        minimum_monthly_income=(
+            Decimal(str(profile.minimum_monthly_income))
+            if profile is not None and profile.minimum_monthly_income is not None
+            else None
+        ),
     )
 
 
