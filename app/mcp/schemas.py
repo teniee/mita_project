@@ -953,6 +953,40 @@ SpendingType = Literal["planned", "flexible"]
 PatternSource = Literal["user_confirmed", "mita_default"]
 
 
+class RegionalComparisonOut(_Out):
+    """An official national figure next to a budget line — for comparison
+    only: it never set or changes the line's amount (2.8 M4)."""
+
+    category: str = Field(
+        description="The statistic's category: food, transport, restaurants…"
+    )
+    category_label: str = Field(description="The category as the provider names it.")
+    display: str = Field(
+        description="The figure with its unit, e.g. '6.0 % over 12 months'."
+    )
+    period: str
+    stale: bool = Field(
+        description="True when too old to call current: give its period."
+    )
+    estimated: bool = Field(
+        description="True when the provider marks it estimated or provisional."
+    )
+    geographic_scope: str = Field(
+        description="Always a whole country, never a city or shop."
+    )
+    source: str = Field(description="Attribution to show with it.")
+    limitation: str = Field(description="What the figure is not.")
+
+
+class RegionalSummaryOut(_Out):
+    country: str
+    country_name: str
+    statistics_shown: int = Field(
+        description="How many lines carry a regional_comparison."
+    )
+    note: str
+
+
 class AllocationOut(_Out):
     category: str = Field(
         description=(
@@ -1010,6 +1044,25 @@ class AllocationOut(_Out):
     )
     line_status: LineStatus = Field(
         default="mita_suggested", description=LINE_STATUS_DESCRIPTION
+    )
+    recorded_average: Optional[Money] = Field(
+        default=None,
+        description=(
+            "What the user's recorded expenses on this line averaged per month "
+            "over history.months_used complete months; null without history. A "
+            "fact to compare with (calculated from recorded history): to use it, "
+            "the user sets it as their amount (budget_lines). MITA never does."
+        ),
+        pattern=MONEY_PATTERN,
+    )
+    regional_comparison: Optional[RegionalComparisonOut] = Field(
+        default=None,
+        description=(
+            "The official national price change for this kind of spending in the "
+            "user's confirmed country, from MITA's copy of official statistics. "
+            "Comparison only: say so, give source and period; never use it to "
+            "change an amount."
+        ),
     )
 
 
@@ -1189,6 +1242,13 @@ class BudgetPreviewOut(_Out):
             "Only when the user said their income varies: what the plan means "
             "in a month at their minimum. MITA still plans on the stated "
             "monthly figure; never pick another basis yourself."
+        ),
+    )
+    regional: Optional[RegionalSummaryOut] = Field(
+        default=None,
+        description=(
+            "When the user confirmed a country and kept regional statistics on: "
+            "which lines carry an official comparison. None otherwise."
         ),
     )
     user_set_total: Money = money_field(

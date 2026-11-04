@@ -47,7 +47,7 @@ NOTE_COMPARISON = (
 )
 
 
-def _display(row) -> str:
+def display(row) -> str:
     value = Decimal(str(row.value))
     if row.unit_kind == "percent_change":
         rounded = value.quantize(Decimal("0.1"), ROUND_HALF_UP)
@@ -73,7 +73,7 @@ def statistic_out(item: regional.Statistic) -> RegionalStatisticOut:
         category=item.category_key,
         category_label=row.category_label or "All items",
         value=_value(row),
-        display=_display(row),
+        display=display(row),
         unit_kind=row.unit_kind,
         unit=row.unit,
         base_period=row.base_period,

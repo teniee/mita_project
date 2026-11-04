@@ -1263,6 +1263,11 @@ Rules:
     time. Verify a dataset code or unit against the provider's live API
     before using it (`prc_hicp_manr` stopped at 2025; World Bank BG "LCU"
     is EUR since 2026).
+  - **Beside the plan, never in it** (2.8 M4): preview lines carry
+    `recorded_average` (the user's own history on the line) and
+    `regional_comparison` (official national inflation for that spending),
+    read after the draft so neither can enter its digest. No amount is
+    derived from a statistic without an owner-approved method.
   - Eurostat data only for EU/EFTA/candidate countries (its licence).
 - **One display name per category** (`app/mcp/categories.py`): every result
   carries `category_label`; budget status and the forecast put an expense

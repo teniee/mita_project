@@ -339,3 +339,42 @@ same image with start command `python -m app.regional.ingest`, cron
 `0 6 * * 1`, restart policy never, no public domain and the ingest role's
 `DATABASE_URL` — **a new service is an infrastructure change: owner
 decision.** Until then the job runs from the operator machine.
+
+## 12. Milestone 4 — implemented (statistics and history next to budget lines)
+
+Done before Milestone 3, deliberately: it needs no provider decision; local
+price observations join it once a provider is approved (§13).
+
+Each preview line (`category_allocations`) carries, as context only:
+
+* `recorded_average` — what the user's own expenses on that line averaged
+  per month over `history.months_used` complete months (expense categories
+  on their paired plan line, `categories.line_key`: `gas` on Fuel,
+  `dining` on Dining out). This is the brief's Example E: real history
+  outranks a statistic — but as a fact to offer ("your groceries averaged
+  €330 over three months; use that?"); it becomes an amount only when the
+  user sets it (`budget_lines`).
+* `regional_comparison` — the official national price change for that kind
+  of spending in the user's confirmed country (`get_regional_context`'s
+  inflation figure: groceries → food, dining out and coffee → restaurants,
+  transport lines → transport, clothing, entertainment and hobbies →
+  recreation; a user line through the MITA line it replaces), with scope
+  (country), source, period, `stale`, `estimated` and limitation.
+* `regional` (preview-level): the country and how many lines carry a
+  comparison. None without a confirmed country or with the switch off.
+
+Read after the draft is computed, so a statistic can never be an input of
+it: the digest covers allocations and layout only, and a draft reviewed
+before new statistics arrive still saves (tested). No line's amount is
+derived from a statistic in 2.8: turning a household-budget share or a price
+index into an amount needs a method the owner approves (a national average
+share of all consumption is not a share of one person's flexible money).
+Priority order of the brief, as implemented: obligations and the user's own
+amounts are the plan; history and statistics are shown beside it; MITA's
+defaults fill only what nobody stated. One more indexed statement in a
+preview with a confirmed country (0.55 ms on the real data).
+
+Tests: `tests_mcp/test_regional_context.py` (comparisons on the right
+lines, user line via `replaces`, none when off, a draft saved after
+statistics arrive, exact recorded averages 300/330/360 → 330.00 and gas on
+Fuel). MCP suite 780 passed.

@@ -12,9 +12,10 @@ from app.mcp import analytics
 from app.mcp.auth.scopes import FINANCE_READ, FINANCE_WRITE
 from app.mcp.categories import CALCULATED_BY_MITA, PLAN_LABELS, SET_BY_YOU
 from app.mcp.categories import label as category_label
-from app.mcp.categories import source_of
+from app.mcp.categories import line_key, source_of
+from app.mcp.countries import country_name
 from app.mcp.crypto import MAX_DRAFT_TOKEN_CHARS
-from app.mcp.queries import budget_draft, ledger, plan
+from app.mcp.queries import budget_draft, ledger, plan, regional
 from app.mcp.queries import setup as setup_queries
 from app.mcp.queries.periods import load_user_context, month_days, resolve_month
 from app.mcp.runtime import McpRuntime
@@ -36,6 +37,8 @@ from app.mcp.schemas import (
     PersonalizationOut,
     PlanChangeOut,
     PlannedPurchaseOut,
+    RegionalComparisonOut,
+    RegionalSummaryOut,
     UnconfirmedMoneyOut,
     VariableIncomeOut,
 )
@@ -46,6 +49,7 @@ from app.mcp.serializers import (
     money,
     optional_money,
 )
+from app.mcp.tools import regional as regional_tools
 from app.mcp.tools.common import (
     NO_MONEY_MOVEMENT,
     READ_ONLY_DISCLAIMER,
@@ -56,6 +60,7 @@ from app.mcp.tools.common import (
 from app.mcp.tools.inputs import SpendingPatternIn
 from app.mcp.tools.inputs import money as money_input
 from app.mcp.writes import budget as budget_writes
+from app.regional import catalog
 from app.services.core.engine.spending_schedule import dates_are_stated, describe
 from app.services.core.engine.user_budget_lines import ENGINE_BUCKETS, MAX_LABEL_CHARS
 
@@ -149,7 +154,12 @@ PREVIEW_DESCRIPTION = (
     "the user confirmed; not_included lists MITA's lines they never mentioned "
     "with what MITA would suggest — ask, never add them yourself); "
     "variable_income, for income that varies, shows a month at the stated "
-    "minimum. Show the figures to the user; if "
+    "minimum. Each line may carry recorded_average (what the user's own "
+    "expenses on it averaged) and regional_comparison (the official national "
+    "price change for that kind of spending in their confirmed country): "
+    "context to show with its source and period, never a reason to change an "
+    "amount — the user decides, and their amounts go in budget_lines. Show the "
+    "figures to the user; if "
     "they confirm, call save_monthly_budget with the draft_token. Never present a "
     "preview as saved, never call an amount the user's unless its source is "
     "set_by_you, and never recompute, split or edit the numbers yourself. Needs "
@@ -240,8 +250,27 @@ def variable_income_out(ctx, draft: budget_draft.BudgetDraft):
     )
 
 
+def regional_comparison_out(item) -> RegionalComparisonOut:
+    row = item.row
+    return RegionalComparisonOut(
+        category=item.category_key,
+        category_label=row.category_label or "All items",
+        display=regional_tools.display(row),
+        period=row.period,
+        stale=item.stale,
+        estimated=bool({"estimated", "provisional"} & set(row.quality_flags or [])),
+        geographic_scope="country",
+        source=f"{catalog.ATTRIBUTION[row.provider]} ({row.dataset})",
+        limitation=item.spec.limitation,
+    )
+
+
 def preview_out(
-    ctx, draft: budget_draft.BudgetDraft, token: str, expires: int
+    ctx,
+    draft: budget_draft.BudgetDraft,
+    token: str,
+    expires: int,
+    regional_ctx: Optional[regional.RegionalContext] = None,
 ) -> BudgetPreviewOut:
     alloc = draft.allocation
     month_label = f"{draft.year:04d}-{draft.month:02d}"
@@ -383,6 +412,18 @@ def preview_out(
         return (-item[1], item[0])
 
     entries = draft.calendar_entries()
+    # The user's own recorded spending per line (expense categories on their
+    # paired plan line, as get_budget_status shows them): a fact to compare.
+    buckets = set(alloc.allocations)
+    recorded: dict = {}
+    for code, average in history.category_averages.items():
+        key = line_key(code, buckets)
+        recorded[key] = recorded.get(key, Decimal("0.00")) + average
+    comparisons = (
+        regional.inflation_by_category(regional_ctx)
+        if regional_ctx is not None and regional_ctx.status == regional.STATUS_AVAILABLE
+        else {}
+    )
 
     def allocation(key: str, amount, source: str, replaces) -> AllocationOut:
         kind = draft.line_kinds.get(key, "flexible")
@@ -429,6 +470,15 @@ def preview_out(
                 pattern.typical_amount if pattern is not None else None
             ),
             line_status="user_confirmed" if confirmed else "mita_suggested",
+            recorded_average=(
+                optional_money(recorded.get(key)) if history.months_used else None
+            ),
+            regional_comparison=(
+                regional_comparison_out(comparisons[category])
+                if (category := regional.comparison_category(key, tuple(replaces)))
+                in comparisons
+                else None
+            ),
         )
 
     categories = [
@@ -535,6 +585,21 @@ def preview_out(
             everyday_spending=draft.spending_state,
         ),
         variable_income=variable_income_out(ctx, draft),
+        regional=(
+            RegionalSummaryOut(
+                country=regional_ctx.country,
+                country_name=country_name(regional_ctx.country),
+                statistics_shown=sum(
+                    1 for c in categories if c.regional_comparison is not None
+                ),
+                note=(
+                    "Official national figures next to lines, for comparison only: "
+                    "they set no amount and change nothing in the plan."
+                ),
+            )
+            if comparisons
+            else None
+        ),
         user_set_total=money(draft.user_set_total),
         unallocated=money(alloc.unallocated),
         flexible_total=money(alloc.discretionary_total),
@@ -704,6 +769,11 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
                 tuple((p.line, p.pattern()) for p in spending_patterns or []),
             )
             draft = budget_draft.build_draft(session, user_ctx, y, m, request)
+            # Comparison only, from MITA's own table; read after the draft, so
+            # it can never be an input of it (the digest is computed above).
+            regional_ctx = regional.regional_context(
+                session, user_ctx, topic="inflation"
+            )
             now = runtime.clock()
             expires = int((now + budget_draft.DRAFT_TTL).timestamp())
             token = runtime.data_keys.budget_draft(
@@ -715,7 +785,7 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
                 - (user_ctx.today.year * 12 + user_ctx.today.month),
                 existing_plan=draft.existing_plan,
             )
-            return preview_out(user_ctx, draft, token, expires)
+            return preview_out(user_ctx, draft, token, expires, regional_ctx)
 
         return await runtime.execute(
             "preview_monthly_budget",

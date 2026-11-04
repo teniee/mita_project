@@ -162,6 +162,9 @@ async def test_fuel_200_is_kept_exactly_and_takes_mitas_fuel_line(
             "typical_amount": None,
             # The user named it, so the category is theirs (2.8).
             "line_status": "user_confirmed",
+            # No recorded history and no confirmed country (2.8 M4).
+            "recorded_average": None,
+            "regional_comparison": None,
         }
     ]
     mita = by_source(draft, "calculated_by_mita")

@@ -199,5 +199,129 @@ async def test_statistics_never_change_a_budget(mcp, seed, connection):
     before = structured(await m.call(token, "preview_monthly_budget", {}))
     await store(connection)
     after = structured(await m.call(token, "preview_monthly_budget", {}))
-    assert after["category_allocations"] == before["category_allocations"]
+
+    def amounts(draft):
+        return [(a["category"], a["amount"]) for a in draft["category_allocations"]]
+
+    assert amounts(after) == amounts(before)
     assert after["unallocated"] == before["unallocated"]
+    assert after["plan_total"] == before["plan_total"]
+    # Only the comparisons are new.
+    assert before["regional"] is None and after["regional"]["country"] == "BG"
+
+
+# --- 2.8 M4: statistics and history next to budget lines, comparison only ----------
+
+
+async def budget_user(mcp, seed, *, country="BG"):
+    m = mcp.at(NOON)
+    user = await seed.user(currency="EUR", tz="Europe/Sofia", country="ZZ")
+    token = m.token(user)
+    structured(
+        await m.call(
+            token,
+            "update_financial_profile",
+            {
+                "monthly_net_income": 1500,
+                "currency": "EUR",
+                "timezone": "Europe/Sofia",
+                "country": country,
+            },
+        )
+    )
+    return user, m, token
+
+
+def line(draft, code):
+    return next(a for a in draft["category_allocations"] if a["category"] == code)
+
+
+async def test_preview_lines_carry_national_comparisons(mcp, seed, connection):
+    await store(connection)
+    _user, m, token = await budget_user(mcp, seed)
+    draft = structured(
+        await m.call(
+            token,
+            "preview_monthly_budget",
+            {
+                "budget_lines": [
+                    {"label": "Fuel", "amount": 200, "replaces": ["transport gas"]}
+                ]
+            },
+        )
+    )
+    groceries = line(draft, "groceries")["regional_comparison"]
+    assert groceries == {
+        "category": "food",
+        "category_label": "Food and non-alcoholic beverages",
+        "display": "1.6 % over 12 months",
+        "period": "2026-09",
+        "stale": False,
+        "estimated": False,
+        "geographic_scope": "country",
+        "source": "Source: Eurostat (prc_hicp_minr)",
+        "limitation": catalog.HICP.limitation,
+    }
+    # The user's Fuel line is compared through the MITA line it replaces.
+    fuel = line(draft, "my:Fuel")["regional_comparison"]
+    assert (fuel["category"], fuel["display"]) == ("transport", "16.4 % over 12 months")
+    # No restaurants figure was ingested in these fixtures: none is shown.
+    assert line(draft, "dining out")["regional_comparison"] is None
+    # MITA's own public-transport line gets the same transport figure.
+    assert line(draft, "transport public")["regional_comparison"]["category"] == (
+        "transport"
+    )
+    assert draft["regional"]["country"] == "BG"
+    assert draft["regional"]["statistics_shown"] == 3
+    # A comparison never set an amount: Fuel stays exactly 200.00.
+    assert line(draft, "my:Fuel")["amount"] == "200.00"
+
+
+async def test_switched_off_or_no_country_means_no_comparison(mcp, seed, connection):
+    await store(connection)
+    _user, m, token = await budget_user(mcp, seed)
+    structured(
+        await m.call(token, "update_financial_profile", {"regional_comparisons": False})
+    )
+    draft = structured(await m.call(token, "preview_monthly_budget", {}))
+    assert draft["regional"] is None
+    assert all(a["regional_comparison"] is None for a in draft["category_allocations"])
+
+
+async def test_a_reviewed_draft_saves_after_statistics_arrive(mcp, seed, connection):
+    """The digest covers allocations and layout only: statistics ingested
+    between the preview and the yes cannot invalidate (or change) the plan."""
+    _user, m, token = await budget_user(mcp, seed)
+    draft = structured(await m.call(token, "preview_monthly_budget", {}))
+    assert draft["regional"] is None  # nothing ingested yet
+    await store(connection)
+    saved = structured(
+        await m.call(
+            token, "save_monthly_budget", {"draft_token": draft["draft_token"]}
+        )
+    )
+    assert saved["status"] == "saved"
+    assert saved["plan_total"] == draft["plan_total"]
+
+
+async def test_recorded_history_is_shown_on_its_line(mcp, seed):
+    """Three complete months of groceries (Aug–Oct 2026): 300, 330, 360 →
+    330.00 a month on the groceries line; gas expenses on MITA's Fuel line."""
+    user, m, token = await budget_user(mcp, seed)
+    for month, amount in ((8, "300.00"), (9, "330.00"), (10, "360.00")):
+        await seed.txn(
+            user,
+            amount,
+            "groceries",
+            datetime(2026, month, 12, 9, 0, tzinfo=timezone.utc),
+        )
+        await seed.txn(
+            user, "45.00", "gas", datetime(2026, month, 20, 9, 0, tzinfo=timezone.utc)
+        )
+    draft = structured(await m.call(token, "preview_monthly_budget", {}))
+    assert draft["history"]["months_used"] == 3
+    assert line(draft, "groceries")["recorded_average"] == "330.00"
+    assert line(draft, "transport gas")["recorded_average"] == "45.00"
+    assert line(draft, "clothing")["recorded_average"] is None  # nothing recorded
+    # MITA's amount is still MITA's: history is shown, never applied.
+    assert line(draft, "groceries")["source"] == "calculated_by_mita"

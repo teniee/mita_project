@@ -338,6 +338,8 @@ def test_skill_names_only_published_tools():
         "variable_income",  # a field of preview_monthly_budget's result
         "calculated_by_mita",  # a source value
         "mita_suggested",  # a line_status value
+        "recorded_average",  # a field of a preview line (2.8 M4)
+        "regional_comparison",  # a field of a preview line (2.8 M4)
     }
     assert named and named <= set(PUBLISHED_TOOLS), named - set(PUBLISHED_TOOLS)
 

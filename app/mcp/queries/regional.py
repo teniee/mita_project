@@ -109,3 +109,36 @@ def regional_context(
     if not chosen:
         return RegionalContext(STATUS_UNAVAILABLE, ctx.country)
     return RegionalContext(STATUS_AVAILABLE, ctx.country, tuple(chosen))
+
+
+# Which official category a budget line is compared with (2.8 M4). MITA's own
+# lines by code; a line of the user's by the MITA line it replaces. Bills keep
+# their own figures: a rent or loan is a contract, not a price index.
+LINE_CATEGORIES: Dict[str, str] = {
+    "groceries": "food",
+    "dining out": "restaurants",
+    "coffee": "restaurants",
+    "transport public": "transport",
+    "transport gas": "transport",
+    "clothing": "clothing",
+    "entertainment events": "recreation",
+    "hobbies": "recreation",
+}
+
+
+def comparison_category(line: str, replaces: Tuple[str, ...] = ()) -> Optional[str]:
+    if line in LINE_CATEGORIES:
+        return LINE_CATEGORIES[line]
+    for code in replaces:
+        if code in LINE_CATEGORIES:
+            return LINE_CATEGORIES[code]
+    return None
+
+
+def inflation_by_category(result: RegionalContext) -> Dict[str, Statistic]:
+    """The monthly inflation figure per category key (``all_items``, ``food``…)."""
+    return {
+        s.category_key: s
+        for s in result.statistics
+        if s.row.indicator == catalog.INFLATION
+    }
