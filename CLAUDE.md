@@ -1225,6 +1225,13 @@ Rules:
     writes over HTTP; run it against a server connected as `mita_mcp`.
   - Exact figures: `tests_mcp/test_obligation_payments.py`,
     `tests_mcp/test_behavioral_budget.py`; F-8/R3 suites rewritten to identity.
+- **2.8 personalized onboarding and regional context** (owner brief
+  2026-11-04, in progress; assessment and decisions:
+  `docs/chatgpt-app/personalization-2.8.md`). Country only — never a city,
+  address or coordinates as a tool input (OpenAI plugin guidelines); ChatGPT's
+  `_meta["openai/userLocation"]` is a suggestion the user confirms, never
+  stored itself. Without new onboarding answers a preview computes exactly as
+  in 2.7.0. Eurostat data only for EU/EFTA/candidate countries (its licence).
 - **One display name per category** (`app/mcp/categories.py`): every result
   carries `category_label`; budget status and the forecast put an expense
   category on its paired plan bucket's line ("Fuel" = `transport gas` +
