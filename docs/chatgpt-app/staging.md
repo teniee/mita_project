@@ -1,4 +1,4 @@
-# MITA MCP — staging (observed 2026-10-03, v2 update 2026-10-13, credentials rotated 2026-10-23, MCP 2.4.0 since 2026-10-28, `0af8435` deployed 2026-11-02, MCP 2.5.0 `fad9110` since 2026-11-02 22:39 UTC, MCP 2.6.0 `c5a317c` since 2026-11-03 17:58 UTC; MCP 2.7.0 `2ab2e0f` since 2026-11-04 07:27 UTC, alembic 0042)
+# MITA MCP — staging (observed 2026-10-03, v2 update 2026-10-13, credentials rotated 2026-10-23, MCP 2.4.0 since 2026-10-28, `0af8435` deployed 2026-11-02, MCP 2.5.0 `fad9110` since 2026-11-02 22:39 UTC, MCP 2.6.0 `c5a317c` since 2026-11-03 17:58 UTC; MCP 2.7.0 `2ab2e0f` since 2026-11-04 07:27 UTC; MCP 2.8.0 `601a3d7` since 2026-11-04 23:19 UTC, alembic 0044)
 
 ## What exists
 
@@ -6,8 +6,8 @@
 |---|---|---|
 | Railway project | `mita-mcp-staging` (`497476f2-de93-44b7-b170-2b175c8d5621`) — **separate project**, no access to the production project's variables, services or database | STAGING VERIFIED |
 | Environment | `staging` (`0f67cf7a-5ce4-472e-a842-2e5448d64c08`) | STAGING VERIFIED |
-| MCP service | `mita-mcp-staging` (`833466fc-f7f2-4d51-8db1-48edfbb46057`), Dockerfile `deploy/mcp/Dockerfile`, healthcheck `/health`, restart ON_FAILURE ×5, **1 replica** (region `asia-southeast1-eqsg3a`), source `teniee/mita_project` @ `feat/chatgpt-auth-ui` **pinned to commit `2ab2e0f`** (MCP 2.7.0: the behavioral budget, calendar `ui://mita/financial-calendar-v3.html`) since 2026-11-04 07:27 UTC, deployment `390805cb-8188-45ba-9cf6-3d1e4fa3a2e8` (before: `c5a317c` / `62d3a0d1` 2.6.0 from 2026-11-03 17:58 UTC). Deploy another commit by connecting the source again with it — not "Redeploy", which rebuilds the current one (before: `f59401b` / `148b5467` 2.6.0 from 2026-11-03 17:33 UTC, `fad9110` / `ef108adc` 2.5.0 from 2026-11-02 22:39 UTC, `0af8435` / `ef207e6e` 2.4.0 with V7 from 2026-11-02 18:42 UTC, `73ff153` / `56524faf` 2.4.0 from 2026-10-28 19:10 UTC, `2817bb6` / `724189ec` 2.3.0 from 2026-10-28 02:08 UTC, `dbdc118` / `7fd7783b` 2.2.0 — the financial calendar and the v4 sign-in page — from 2026-10-24 20:10 UTC, `de96251` / `b4f6d2fd` from 2026-10-23 20:13 UTC — the v3 sign-in page, not approved, and `opentelemetry-api` 1.45.1 —, `1e24bf4` / `dd8b4894` from 2026-10-23 18:02 UTC, `ee388c0` / `33783139` from 2026-10-23 12:12 UTC, `79efb1d` / `87d26668` 2.1.0 from 2026-10-18 — the re-pin of 2026-10-21 waited for Railway's build pause —, `461abcf` / `174528cf` 2.0.0 from 2026-10-13, `fcd7ae3` from 2026-10-11, `842d365` on which the v1 real-ChatGPT acceptance ran). Pushes do not redeploy it | STAGING VERIFIED |
-| Database | Railway Postgres 18 template (18.6), private network only, alembic `0042` (since 2026-11-04: `obligation_payments`, `spending_patterns`, granted to `mita_mcp`; `0040` since 2026-10-28). The MCP service connects as the least-privilege role `mita_mcp` (`scripts/mcp/mcp_service_role.sql`) on `postgres.railway.internal`; the read-only `mita_analytics_reader` exists (password not kept — reset before use). Both stored passwords were rotated on 2026-10-23 (see "Credential rotation"). Temporary TCP proxies used for migrations and checks (2026-10-03, 2026-10-13, 2026-10-18, three times on 2026-10-23, twice on 2026-10-28, once on 2026-11-02) were removed and verified no longer serving Postgres; none was opened on 2026-10-24 (no migration; see "Left on staging") | STAGING VERIFIED |
+| MCP service | `mita-mcp-staging` (`833466fc-f7f2-4d51-8db1-48edfbb46057`), Dockerfile `deploy/mcp/Dockerfile`, healthcheck `/health`, restart ON_FAILURE ×5, **1 replica** (region `asia-southeast1-eqsg3a`), source `teniee/mita_project` @ `feat/chatgpt-auth-ui` **pinned to commit `601a3d7`** (MCP 2.8.0: personalized onboarding and regional statistics) since 2026-11-04 23:19 UTC, deployment `618cd6d9-681a-4194-9abe-68487713f512` (before: `2ab2e0f` / `390805cb` 2.7.0 from 2026-11-04 07:27 UTC, `c5a317c` / `62d3a0d1` 2.6.0 from 2026-11-03 17:58 UTC). Deploy another commit by connecting the source again with it — not "Redeploy", which rebuilds the current one (before: `f59401b` / `148b5467` 2.6.0 from 2026-11-03 17:33 UTC, `fad9110` / `ef108adc` 2.5.0 from 2026-11-02 22:39 UTC, `0af8435` / `ef207e6e` 2.4.0 with V7 from 2026-11-02 18:42 UTC, `73ff153` / `56524faf` 2.4.0 from 2026-10-28 19:10 UTC, `2817bb6` / `724189ec` 2.3.0 from 2026-10-28 02:08 UTC, `dbdc118` / `7fd7783b` 2.2.0 — the financial calendar and the v4 sign-in page — from 2026-10-24 20:10 UTC, `de96251` / `b4f6d2fd` from 2026-10-23 20:13 UTC — the v3 sign-in page, not approved, and `opentelemetry-api` 1.45.1 —, `1e24bf4` / `dd8b4894` from 2026-10-23 18:02 UTC, `ee388c0` / `33783139` from 2026-10-23 12:12 UTC, `79efb1d` / `87d26668` 2.1.0 from 2026-10-18 — the re-pin of 2026-10-21 waited for Railway's build pause —, `461abcf` / `174528cf` 2.0.0 from 2026-10-13, `fcd7ae3` from 2026-10-11, `842d365` on which the v1 real-ChatGPT acceptance ran). Pushes do not redeploy it | STAGING VERIFIED |
+| Database | Railway Postgres 18 template (18.6), private network only, alembic `0044` (since 2026-11-04 23:0x UTC: `mcp_setup_answers`, `regional_observations`, `regional_ingestion_runs`; `0042` since 2026-11-04 07:2x; `0040` since 2026-10-28). The MCP service connects as the least-privilege role `mita_mcp` (`scripts/mcp/mcp_service_role.sql`) on `postgres.railway.internal`; the read-only `mita_analytics_reader` exists (password not kept — reset before use). Both stored passwords were rotated on 2026-10-23 (see "Credential rotation"). Temporary TCP proxies used for migrations and checks (2026-10-03, 2026-10-13, 2026-10-18, three times on 2026-10-23, twice on 2026-10-28, once on 2026-11-02) were removed and verified no longer serving Postgres; none was opened on 2026-10-24 (no migration; see "Left on staging") | STAGING VERIFIED |
 | Public URL | `https://mita-mcp-staging-staging.up.railway.app` (Railway-managed TLS) | STAGING VERIFIED |
 | Custom domain | none (not needed for staging) | — |
 
@@ -112,41 +112,52 @@ Every account the checks created was deleted (5 users, as before); the
 temporary proxy was removed and Postgres no longer answers there. Rollback:
 re-pin `73ff153` (per-IP limits then break again, nothing else changes).
 
-## MCP 2.8.0 — prepared, NOT deployed (waiting for database access)
+## MCP 2.8.0 — deployed 2026-11-04 23:19 UTC (`601a3d7`, deployment `618cd6d9`)
 
-Code on `feat/chatgpt-auth-ui` (personalized onboarding and regional context,
-`personalization-2.8.md` §10–§13); staging still runs 2.7.0 (`2ab2e0f`).
-2.8.0 must not be pinned before its migrations and grants exist: `/health`
-stays 503 until `mcp_setup_answers` and `regional_observations` are visible
-to `mita_mcp`, so Railway would keep 2.7.0 serving, but the procedure is:
+Owner-authorised release (decision of 2026-11-04/05: "a new temporary Railway
+SSH key exclusively for MITA staging"); nothing public was opened. Code:
+`601a3d7d96a86eceb88600cea33f16243d74582b` (CI run 41899516821 green: Backend,
+MCP incl. the container end-to-end step, Mobile).
 
-| # | Step | Notes |
-|---|---|---|
-| 0 | owner authorises the private database path (a temporary SSH key on the owner's Railway account, as on 2026-11-04) | **the blocker**; never a TCP proxy |
-| 1 | `staging_account_fingerprint.py` | the owner's digests, before |
-| 2 | `pg_dump -Fc` onto the Postgres volume; restore-test into a temporary database | as for 2.7.0 |
-| 3 | `alembic upgrade 0044` through the tunnel (owner role) | 0042 → 0043 → 0044; additive only |
-| 4 | `mcp_service_role.sql` | adds `UPDATE (country, region) ON users`, `mcp_setup_answers`, `SELECT ON regional_observations` |
-| 5 | `regional_ingest_role.sql` | new `mita_regional_ingest`; password generated into a 0600 file, never printed, deleted after use |
-| 6 | first ingestion: `python -m app.regional.ingest` as `mita_regional_ingest` through the tunnel | 7 requests; expect ~6,000 observations, 0 rejected; a second run all unchanged |
-| 7 | pin the 2.8 head commit (`connect-service-source`) | `/health` 200 `"version":"2.8.0"` |
-| 8 | `smoke_onboarding_280.py --expect-statistics`, `smoke_behavioral_270.py`, `e2e_v2.py`, `e2e_http.py`, `staging_failure_modes.py` | fictional accounts, cleaned up |
-| 9 | `staging_account_fingerprint.py` | identical to step 1 |
-| 10 | close the tunnel, revoke the key | — |
-| 11 | owner: `acceptance-2.8.0-chatgpt.md` on a phone | the only acceptance that counts |
+| Step | Result |
+|---|---|
+| isolation | project `mita-mcp-staging` / environment `staging`: services `Postgres` and `mita-mcp-staging` only, no staged changes, **no TCP proxy on either**; production is the separate project `Mita Finance` (`d44d0580`), never addressed |
+| access | temporary ED25519 key `mita-staging-280` (`SHA256:6i1rfRz3ncfO75C7xHVMezYc6w+DV1NneDrHSCCcZOg`) in a dedicated agent on a 0700 scratch socket (`~/.ssh` untouched), registered on the owner's account; `railway ssh` with explicit project/environment/service; `ssh -L` bound to 127.0.0.1. Account keys reach every service, so every command named staging explicitly |
+| target | database `railway`, system identifier `7692536193956495422`, alembic `0042`, 4 accounts, 13 MB |
+| owner's account | identified read-only by the stated facts (income 2,000, savings 500, saved payments 30/70/270, a real address) — exactly one; e-mail kept in a 0600 file, never printed. Fingerprint (`staging_account_fingerprint.py`, now digesting `mcp_user_profiles` by its pre-0043 columns so a migration's added columns cannot look like a change): November 175 plan rows, 7 live expenses, 3 saved payments, 5 own lines, 0 links, 0 patterns |
+| backup | `pg_dump -Fc` onto the volume: `/var/lib/postgresql/data/mita-backups/pre-0043-0044-20261105.dump` (186,415 bytes, sha256 `f0511f8126552c54…`, root-only 0600). Restore-tested into a temporary database: no errors, row counts identical across all 43 tables (4 users, 34 expenses, 369 plan rows, 6 saved payments); temporary database dropped. The 2.7.0 dump is still there |
+| migrations | `alembic upgrade 0044` through the tunnel as the owner role: 0042 → 0043 → 0044; 3 new tables, 7 new `mcp_user_profiles` columns; row counts unchanged |
+| grants | `mcp_service_role.sql`: `mita_mcp` + DML on `mcp_setup_answers`, `SELECT` (only) on `regional_observations`, `UPDATE (country, region)` added to its `users` columns. `regional_ingest_role.sql`: `mita_regional_ingest` with SELECT/INSERT/UPDATE on the two regional tables and the identity sequence, nothing else (cannot read `users`; not superuser); its password was generated into a 0600 file, never printed, deleted after use, and the role set **NOLOGIN** afterwards |
+| OECD | **excluded** from this release (owner rule): its terms page refuses automated reads, the API's dataflow metadata carries no licence and is annotated `NonProductionDataflow: true`. Code unchanged; the job simply ran `--provider eurostat` and `--provider worldbank`. A user in the US gets World Bank yearly inflation only |
+| ingestion | run 1 (operator machine, through the tunnel): 6 requests, **5,209 observations** inserted (HICP 3,276, PLI 648, HBS 372, electricity 190, gas 150, World Bank 573), 0 rejected. Idempotency: HICP and PLI confirmed unchanged through the tunnel (slow: one round trip per unchanged row from Bulgaria to Singapore), the rest interrupted twice by tunnel drops (the run records were closed as `failed`, nothing partial stored); then the deployed code inside the MCP container (in-region): all 6 datasets, 5,209 unchanged, 0 new, 0 updated, 0 rejected, 28 s |
+| provenance | every row has provider, dataset, series key, period, unit kind, classification, licence, provider update time, retrieval time and its HTTPS request; 0 missing sources, 0 amounts without a currency, 0 OECD rows, 0 Eurostat rows for the US; 193 countries |
+| deploy | `connect-service-source` → `601a3d7…`; deployment `618cd6d9-681a-4194-9abe-68487713f512` SUCCESS 23:19 UTC; `/health` 200 `"version":"2.8.0"` (readiness needs `mcp_setup_answers` and `regional_observations` visible to `mita_mcp`) |
+| checks (fictional accounts, public HTTPS) | `smoke_onboarding_280.py --expect-statistics` **77/77** (26 tools; onboarding stages, setup answers, country from ChatGPT's hint only as a question, personalized vs preliminary previews, no fuel without a car, no rent with a mortgage, variable income, a preview saves nothing, a returning user never re-asked, another account sees nothing; Bulgaria's statistics from Eurostat incl. the electricity price, the US from the World Bank, never Eurostat) · `smoke_behavioral_270.py` **66/66** · `e2e_v2.py` **85/85** (OAuth sign-up, profile, budgets, F-11 lines, expenses, retries, a new connection, history, goal, feedback, negatives, analytics audit) · `e2e_http.py` phase 1 passed (tools/list exactly the 26 published tools, every read tool) + **22/22** after a service restart · `staging_failure_modes.py` **25/25** (incl. the `/authorize` 429 and V7 per-IP buckets) |
+| logs | deployment `618cd6d9`: no error line; 6 warnings — 4 "oauth register rejected redirect", 2 "refresh token reuse": the fail-closed tests; no e-mail, location, token, password or name (filter searches, the filter checked against a known term) |
+| clean-up | every account the checks created deleted: 4 accounts and 10 OAuth clients (6 with tokens) as after 2.7.0; no orphan rows |
+| owner's account after | after the migration, deploy and every check (2026-11-04 ~23:30): **identical** in every data table. By 2026-11-05 16:45 it held 6 more expenses and 2 more November plan rows, all created at 08:11 UTC in one batch — the owner's own use of 2.8.0 in ChatGPT (7 token refreshes of their connection since); 0 rows created during any release window, none of the 175 earlier plan rows replaced |
+| revocation | tunnel closed; key removed (`railway ssh keys list` → "No SSH keys registered with Railway."); agent stopped; key files, private SSH config, known_hosts, the e-mail and password files deleted; production (`d4c2547c`, 2026-09-29), `main`, PR #287 and Flutter untouched |
 
-Schedule (owner decision): a cron service in `mita-mcp-staging` from the same
-image, `python -m app.regional.ingest`, `0 6 * * 1`, restart never, no
-domain, the ingest role's `DATABASE_URL`. Without it the operator re-runs
-step 6 weekly. Rollback: re-pin `2ab2e0f` (2.7.0 ignores the new columns
-and tables).
+Left on staging: 4 accounts, 10 OAuth clients, both dumps (delete each once
+its release is accepted), the regional data (5,209 observations, refreshed
+manually until a weekly job is approved), `mita_regional_ingest` NOLOGIN.
 
-Verified locally with the same scripts and roles (fresh database at 0044,
-server as `mita_mcp`, job as `mita_regional_ingest`): 6,013 observations
-ingested from 7 requests, second run unchanged; `smoke_onboarding_280.py
---expect-statistics` 77/77; `smoke_behavioral_270.py` 66/66 and `e2e_v2.py`
-85/85 (on 0043); no error or permission line; no location, e-mail or amount
-in the log.
+Rollback: re-pin `2ab2e0f` (2.7.0 ignores the new columns and tables), or
+restore the dump.
+
+**Weekly refresh — prepared, not created (owner approval needed).** A cron
+service in `mita-mcp-staging`, same image and pinned commit, start command
+`sh -c "python -m app.regional.ingest --provider eurostat && python -m app.regional.ingest --provider worldbank"`,
+cron `0 6 * * 1` (UTC), restart policy never, no domain, no volume, no TCP
+proxy; one variable `DATABASE_URL` for `mita_regional_ingest` on
+`postgres.railway.internal` (after `ALTER ROLE … LOGIN PASSWORD` with a new
+generated password) and `ENVIRONMENT=staging`; no MCP secret. Cost (Railway
+pricing page, read 2026-11-05: RAM $0.000231 / GB-minute, CPU $0.000463 /
+vCPU-minute, egress $0.05 / GB): measured 28 s in-region per run; assuming 1
+minute, 0.25 GB and 0.5 vCPU ≈ $0.0003 a run, **≈ $0.001 a month** at 4.35
+runs (pessimistic 3 min × 1 GB × 1 vCPU: ≈ $0.009 a month); requests and
+database traffic stay on the private network or are inbound. The workspace's
+Hobby plan includes $5 of usage a month.
 
 ## MCP 2.7.0 — deployed 2026-11-04 07:27 UTC (`2ab2e0f`, deployment `390805cb`)
 

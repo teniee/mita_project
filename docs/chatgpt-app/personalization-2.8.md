@@ -448,3 +448,70 @@ licence, if its coverage grows. A `local_price_observations` table for shop
 quotes (merchant, package size, unit price, promotion, observed date,
 expiry, confidence) is designed in §5 and added only with an approved
 provider — never fixture-only.
+
+
+## 14. Status after the staging release (2026-11-05)
+
+Staging runs 2.8.0 (`601a3d7`, `staging.md` → "MCP 2.8.0 — deployed").
+OECD excluded from the release (licence unverifiable, dataflow annotated
+`NonProductionDataflow: true`); Eurostat and the World Bank live; manual
+ingestion until the weekly job is approved (cost ≈ $0.001 a month,
+credentials: one NOLOGIN-until-approved role on two tables).
+
+**Milestone 3 is NOT finished** (owner, 2026-11-05): national energy prices
+are context, not local prices. Still required: groceries, packaged
+products, transport fares, fuel, personal services, other regular
+purchases — local and specific.
+
+### Next implementation plan — local prices
+
+Provider facts read from the official pages on 2026-11-05 (costs exact as
+published):
+
+| Provider | Price | Location | Terms that matter | Fit |
+|---|---|---|---|---|
+| OpenAI Responses `web_search` | $10 / 1,000 calls + search content (8,000 input tokens a call for the mini models) ≈ $0.014 a lookup (gpt-4.1-mini) | `user_location: {type: "approximate", country, city, region, timezone}` | `filters.allowed_domains` (≤ 100), `url_citation`, full `sources` | **recommended**: city context without collecting a location, citations, per-country allow-lists |
+| Perplexity Agent `web_search` | $2.50 / 1,000 invocations + model tokens | `user_location` with country, region, city (also lat/long — MITA would send none) | terms not reviewed | alternative |
+| Brave Search API | $5 / 1,000 (Search); $4 / 1,000 + $5 / M tokens (Answers); $5 free a month; 50 qps | not stated | storing results / AI use only "with a plan that includes storage rights" | raw results: needs our own extraction |
+| Tavily | $0.008 a credit (1 basic, 2 advanced); 1,000 free a month | `country` boost only, no city | — | no city |
+| Numbeo API | $260 / $480 / $1,250 a month (200k / 1M / 5M queries) | city item prices (lowest / average / highest) | commercial licence; no republication through other APIs or public feeds without consent | city price ranges (transport pass, basket); licence limits redistribution — owner decision |
+| SerpApi | $25–$150+ a month | Google parameters | scraping a search engine (its "Legal Shield" from $150) | not recommended |
+| Open Prices | free | store-level | data licence unstated; Bulgaria 284 prices | no |
+| EC Weekly Oil Bulletin | free | country, weekly | reuse with source acknowledged; XLSX only | fuel, with a vetted XLSX parser |
+
+City without collecting location (OpenAI: no raw location fields in inputs;
+use the client's side channel): the city is taken per call from
+`_meta["openai/userLocation"].city` only after the user asked for a local
+price in that conversation, or from the user's own words in the request
+("milk in Varna"); never stored, never logged; the country stays the
+confirmed one. Nothing about the user (id, amounts, budget) is sent — only
+the item, package size, country and city.
+
+Steps (each after its approval):
+
+1. **Approve**: OpenAI API key and a hard monthly spend cap for staging
+   (e.g. $20 ≈ 1,400 lookups); optionally Numbeo; the XLSX dependency for
+   the Oil Bulletin.
+2. Migration 0045 `local_price_observations` (shop quotes, separate from
+   statistics): item, merchant, package size and unit, normalized unit
+   price, currency, tax/promotion flags, observed date, source URL on an
+   allowed domain, scope (city/country), confidence, `expires_at`; a shared
+   cache keyed by (country, city, normalized item) — groceries and fuel 7
+   days, fares and services 90 days.
+3. One tool `look_up_local_price(item, package?)`: no location input;
+   `openWorldHint` true; per-user quota (10 a month), global daily cap,
+   20 s timeout, feature flag off by default; failure → `unavailable`, never
+   an estimate, never blocking a budget.
+4. Server side: Responses API + `web_search` with per-country
+   `allowed_domains` (retail chains' own sites, transport operators,
+   fuel-price regulators), structured output, and checks before anything
+   is shown: a citation on an allowed domain, the local currency (or a
+   sourced conversion kept separate), unit normalization (500 g vs 1 kg),
+   promotions never a regular price, freshness; page text treated as data
+   (prompt-injection safe: no instruction from a page is followed).
+5. Results only as suggestions: the user sets their own amount; nothing is
+   saved, no expense or obligation is created.
+6. Tests from recorded REAL responses (after the first approved calls):
+   grocery item, packaged product, transport fare, fuel, service, no result,
+   stale, wrong currency, outage, two users (shared cache, no user data).
+7. Staging release by the established procedure; owner phone acceptance.

@@ -50,11 +50,28 @@ ACCOUNT_ROWS = {
     "daily_plan": "SELECT * FROM daily_plan WHERE user_id = :uid",
     "scheduled_expenses": "SELECT * FROM scheduled_expenses WHERE user_id = :uid",
     "goals": "SELECT * FROM goals WHERE user_id = :uid",
-    "mcp_user_profiles": "SELECT * FROM mcp_user_profiles WHERE user_id = :uid",
+    # The columns that existed before 0043, named, so adding columns in a
+    # migration does not change the digest; the 0043 columns are reported
+    # separately below (they must hold their defaults until the user answers).
+    "mcp_user_profiles": (
+        "SELECT user_id, household_size, income_confirmed_at,"
+        " currency_confirmed_at, timezone_confirmed_at, savings_confirmed_at,"
+        " usage_analytics_enabled, usage_analytics_updated_at, created_at,"
+        " updated_at FROM mcp_user_profiles WHERE user_id = :uid"
+    ),
     "mcp_budget_lines": "SELECT * FROM mcp_budget_lines WHERE user_id = :uid",
     "obligation_payments": "SELECT * FROM obligation_payments WHERE user_id = :uid",
     "spending_patterns": "SELECT * FROM spending_patterns WHERE user_id = :uid",
+    "mcp_setup_answers": "SELECT * FROM mcp_setup_answers WHERE user_id = :uid",
 }
+# 2.8 (0043) columns of mcp_user_profiles: shown as values (no personal data:
+# a timestamp, a country source, a switch, a schedule, the defaults).
+PROFILE_2_8 = (
+    "SELECT country_confirmed_at IS NOT NULL AS country_confirmed, country_source,"
+    " regional_context_enabled, income_regularity, pay_frequency,"
+    " jsonb_array_length(pay_days) AS pay_days, minimum_monthly_income IS NOT NULL"
+    " AS minimum_set FROM mcp_user_profiles WHERE user_id = :uid"
+)
 
 
 class Refused(RuntimeError):
@@ -140,6 +157,22 @@ def fingerprint(conn, email: str) -> dict:
             nov = [r for r in rows if str(r.get("date", ""))[:7] == "2026-11"]
             entry["2026-11"] = {"rows": len(nov), "digest": digest(nov)}
         out[table] = entry
+    columns = {
+        name
+        for (name,) in conn.execute(
+            text(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_schema = 'public' AND table_name = 'mcp_user_profiles'"
+            )
+        )
+    }
+    if "regional_context_enabled" in columns:
+        out["mcp_user_profiles_0043"] = [
+            dict(r._mapping)
+            for r in conn.execute(text(PROFILE_2_8), {"uid": uid}).fetchall()
+        ]
+    else:
+        out["mcp_user_profiles_0043"] = "columns absent"
     return out
 
 

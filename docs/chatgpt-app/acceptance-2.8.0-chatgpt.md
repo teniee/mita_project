@@ -8,8 +8,12 @@ starts empty on purpose.
 ## Before you start
 
 * `https://mita-mcp-staging-staging.up.railway.app/health` says
-  `"version":"2.8.0"` (until then staging runs 2.7.0 and nothing below can
-  pass; `staging.md` → "MCP 2.8.0").
+  `"version":"2.8.0"` — deployed 2026-11-04 23:19 UTC (`601a3d7`,
+  deployment `618cd6d9`; `staging.md` → "MCP 2.8.0 — deployed").
+* Statistics on staging come from Eurostat and the World Bank; the OECD is
+  excluded until its licence is confirmed, so a US account sees World Bank
+  yearly inflation only. Electricity and gas prices exist for EU, EFTA and
+  candidate countries.
 * In ChatGPT: plugin **MITA (staging)** → **Refresh**, then a **new**
   conversation. Parts A–C use a **new fictional account**
   (`ob280-<date>@example.test`); part D is your own staging account and
@@ -57,7 +61,7 @@ starts empty on purpose.
 | # | Do | Pass when | 📸 | Result |
 |---|---|---|---|---|
 | D1 | In your account: "Check my MITA setup." | You are a returning user: no setup questions; at most an offer to update preferences. | — | |
-| D2 | "Show my calendar for November." | Exactly the November you saved under 2.7.0 (bills, lines, figures). | calendar | |
+| D2 | "Show my calendar for November." | Your saved November (bills, lines) with every expense you recorded — including the 6 recorded on 2026-11-05 at 08:11 UTC. | calendar | |
 | D3 | "Preview my November budget" (do **not** save). | The same figures as your saved November, marked preliminary with MITA's suggestions labelled as suggestions. | preview | |
 
 ## After
