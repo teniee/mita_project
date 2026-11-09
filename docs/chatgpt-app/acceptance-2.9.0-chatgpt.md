@@ -9,10 +9,12 @@ changed.
 
 ## Before you start
 
-* **Run this only after the 2.9.0 staging release.** As of 2026-11-09 it is
-  prepared, not deployed (`staging.md` → "MCP 2.9.0"). Then
-  `https://mita-mcp-staging-staging.up.railway.app/health` shows
-  `"version":"2.9.0"`.
+* `https://mita-mcp-staging-staging.up.railway.app/health` shows
+  `"version":"2.9.0"` — deployed 2026-11-09 18:13 UTC (`789bfb6`, deployment
+  `20c1191f`; `staging.md` → "MCP 2.9.0 — deployed").
+* Known, unchanged in 2.9.0, the next task: flexible monthly envelopes still
+  appear as daily amounts in the calendar (€320 groceries shows 10.67 a
+  day). Do not count it as a 2.9.0 failure or as fixed.
 * In ChatGPT, open the plugin **MITA (staging)**, tap **Refresh**, then start
   a **new** conversation.
 * Parts A–C use a **new fictional account** (`rg290-<date>@example.test`).

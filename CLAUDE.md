@@ -1330,10 +1330,11 @@ Rules:
     `app.prices`, and `app.prices` imports no ledger or database code
     (tested). A city comes only from ChatGPT's approximate hint, for one
     call, never stored and never taken as the residence.
-  - Staging: 2.9.0 (`789bfb6`, CI 42613420776 green) is **prepared, not
-    deployed**. Its release needs a temporary SSH key, which the operator
-    tool refused to register without the owner's explicit authorisation for
-    this release (`staging.md` → "MCP 2.9.0"). Staging still runs 2.8.0.
+  - Staging runs 2.9.0 since 2026-11-09 18:13 UTC (`789bfb6`, deployment
+    `20c1191f`, 7,047 observations; `staging.md` → "MCP 2.9.0 — deployed"),
+    by the owner-authorised temporary key `mita-staging-290` (revoked). A
+    temporary key needs the owner's explicit authorisation for each release:
+    the operator tool refuses one without it.
 - **One display name per category** (`app/mcp/categories.py`): every result
   carries `category_label`; budget status and the forecast put an expense
   category on its paired plan bucket's line ("Fuel" = `transport gas` +
@@ -1520,7 +1521,7 @@ Rules:
   2.7.0, alembic 0042, `staging.md` → "MCP 2.7.0"; the earlier fictional
   review accounts were deleted the same day); since 2026-11-04 23:19 UTC
   `601a3d7` (deployment `618cd6d9`, MCP 2.8.0, alembic 0044, OECD excluded,
-  `mita_regional_ingest` NOLOGIN, `staging.md` → "MCP 2.8.0 — deployed"); every staging secret and both database
+  `mita_regional_ingest` NOLOGIN, `staging.md` → "MCP 2.8.0 — deployed"); since 2026-11-09 18:13 UTC `789bfb6` (deployment `20c1191f`, MCP 2.9.0, no migration, 7,047 observations, `staging.md` → "MCP 2.9.0 — deployed"); every staging secret and both database
   passwords were rotated on 2026-10-23 after Railway's 2026-10-21 security
   incident (`staging.md` → "Credential rotation"). It is connected as
   `mita_mcp`, so a missing grant shows up there before production; staging
