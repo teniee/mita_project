@@ -1011,6 +1011,20 @@ because the Flutter model reads them there. The rebalance banner and the
 redistribution-history refresh both work. Do not "fix" this by adding the
 fields to `TxnOut`.
 
+## Concurrency tests: configure shared mocks before the threads start
+
+`unittest.mock.patch.object` swaps an attribute on a shared object and
+restores it on exit; it is not thread-safe. Twenty workers each patching
+`mock_redis_client.get` overlapped, so a worker read another worker's value:
+Backend CI run 42068342358 failed `test_concurrent_progressive_penalties`
+with "Inconsistent penalties for count 14: {1.5, 2.5}" — a race in the test,
+not in `AdvancedRateLimiter` (under forced thread switching, 1,180 of 6,000
+reads got another worker's count). Rule: give a shared mock ONE stable
+behaviour before submitting work (here `get.side_effect` keyed by each
+client's real penalty key), and assert the documented values, not only
+their consistency. Never change thresholds, skip or retry a concurrency test
+to make it pass.
+
 ## ChatGPT app (MCP service) — branch feat/chatgpt-plugin
 
 A read/write ChatGPT app (free v1) is being built as a **separate service in
