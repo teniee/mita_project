@@ -9,8 +9,10 @@ changed.
 
 ## Before you start
 
-* `https://mita-mcp-staging-staging.up.railway.app/health` shows
-  `"version":"2.9.0"` (`staging.md` → "MCP 2.9.0").
+* **Run this only after the 2.9.0 staging release.** As of 2026-11-09 it is
+  prepared, not deployed (`staging.md` → "MCP 2.9.0"). Then
+  `https://mita-mcp-staging-staging.up.railway.app/health` shows
+  `"version":"2.9.0"`.
 * In ChatGPT, open the plugin **MITA (staging)**, tap **Refresh**, then start
   a **new** conversation.
 * Parts A–C use a **new fictional account** (`rg290-<date>@example.test`).

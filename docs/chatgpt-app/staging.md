@@ -112,6 +112,76 @@ Every account the checks created was deleted (5 users, as before); the
 temporary proxy was removed and Postgres no longer answers there. Rollback:
 re-pin `73ff153` (per-IP limits then break again, nothing else changes).
 
+## MCP 2.9.0 — prepared, NOT deployed (2026-11-09; staging still runs 2.8.0)
+
+Code: `789bfb63534acea566ec8e9cebedbf47008ce8f3` (CI run 42613420776 green:
+Backend, MCP including the container end-to-end step, Mobile). There is no
+migration: alembic stays `0044`. The 26 tools are unchanged; the outputs are
+additive (`regional-recommendations.md`).
+
+**Blocked:** this release needs a temporary Railway SSH key, as 2.7.0 and
+2.8.0 did, for the backup, the owner fingerprint, the ingestion and the
+clean-up of the checks' fictional accounts. Registering it on the owner's
+account was refused on 2026-11-09 by the operator tool's permission check
+("access added as a means"), because the owner's earlier authorisation
+covered the 2.8.0 release only. Nothing was generated, registered or
+deployed: `railway ssh keys list` shows no key, and `/health` still reports
+`2.8.0`. The release resumes once the owner explicitly authorises a key for
+it.
+
+Isolation checked on 2026-11-09:
+* project `mita-mcp-staging` holds only the services `mita-mcp-staging` and
+  `Postgres`, in one environment `staging`;
+* there is no TCP proxy on either service and no staged change;
+* the live deployment is `618cd6d9` (`601a3d7`, SUCCESS).
+
+Procedure, the same as for 2.8.0 (see its record below):
+
+1. Access: create the ED25519 key `mita-staging-290` in a dedicated agent
+   (`~/.ssh` untouched), then `railway ssh keys add --name mita-staging-290`.
+   Every command names `--project 497476f2-… --environment staging
+   --service …` (the working directory is linked to production). Tunnels go
+   through the Postgres container and bind to 127.0.0.1 only.
+2. Target: system identifier `7692536193956495422`, alembic `0044`.
+3. Owner fingerprint before (`staging_account_fingerprint.py`). The e-mail
+   is kept in a 0600 file and never printed.
+4. Backup: `pg_dump -Fc` to
+   `/var/lib/postgresql/data/mita-backups/pre-290-<date>.dump`, then a
+   restore test into a temporary database with row counts compared, then
+   drop that database.
+5. Deploy: `connect-service-source` → `789bfb6…`; check `/health`
+   `"version":"2.9.0"`.
+6. Ingestion, in-region, as `mita_regional_ingest`:
+   * `ALTER ROLE … LOGIN PASSWORD` with a SCRAM verifier computed locally (the
+     plaintext never reaches the server's SQL);
+   * `railway ssh` into the MCP container, sending the job's `DATABASE_URL`
+     on stdin: `python -m app.regional.ingest --provider eurostat`;
+   * `ALTER ROLE … NOLOGIN PASSWORD NULL`.
+
+   Expected, from the live dry run on 2026-11-09 (0 rejected): 1,838 new rows
+   — `hbs_str_t211` +119 (`CP045`, `CP0722`), `hbs_exp_t111` 124,
+   `prc_hicp_aind` 1,536, `hbs_exp_t123b` 59 — for 7,047 observations in all.
+   2.8.0 ignores these rows (datasets and codes unknown to its catalog), so
+   ingesting before or after the deploy is equally safe.
+7. Checks with fictional accounts over public HTTPS, at no more than 5
+   sign-ups an hour per IP (the limit stays as it is; a restart resets the
+   in-memory counter):
+   * `smoke_regional_290.py`, expected 56/56;
+   * `smoke_onboarding_280.py --expect-statistics`, expected 77/77;
+   * `smoke_behavioral_270.py`, expected 66/66;
+   * `e2e_v2.py`, expected 85/85;
+   * `e2e_http.py` across a restart;
+   * `staging_failure_modes.py`.
+
+   The local least-privilege run on 2026-11-09 already gave those numbers
+   for the first four and both e2e_http phases.
+8. Logs: no error line, and no e-mail, location, token or amount.
+9. Owner fingerprint after: identical unless they used ChatGPT in between.
+10. Revoke the key, stop the agent and delete the local files.
+
+Rollback: re-pin `601a3d7`. 2.8.0 ignores the new rows; nothing else
+changes.
+
 ## MCP 2.8.0 — deployed 2026-11-04 23:19 UTC (`601a3d7`, deployment `618cd6d9`)
 
 Owner-authorised release (decision of 2026-11-04/05: "a new temporary Railway

@@ -158,7 +158,7 @@ tools), `tests_mcp/test_local_prices.py` (scenario F and the price controls):
 
 | Capability | Status |
 |---|---|
-| National household-spending references (food, clothing, energy, fuel) in the user's currency, with a household range | IMPLEMENTED AND VERIFIED locally (staging: after this release's ingestion) |
+| National household-spending references (food, clothing, energy, fuel) in the user's currency, with a household range | IMPLEMENTED AND VERIFIED locally; **not on staging yet** — the release waits for the owner's authorisation of a temporary SSH key (`staging.md` → "MCP 2.9.0") |
 | Evidence order per preview line, never applied | IMPLEMENTED AND VERIFIED locally |
 | Honest statement that MITA's income bands are not purchasing-power aware | IMPLEMENTED AND VERIFIED locally |
 | Currency- or PPP-aware income tiers / allocation shares | NOT IMPLEMENTED — an app-wide money-model decision for the owner |

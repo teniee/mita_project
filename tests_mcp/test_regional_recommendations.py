@@ -372,6 +372,46 @@ async def test_e_history_comes_before_statistics_and_replaces_nothing(
     )
 
 
+async def test_a_stated_purchase_pattern_comes_before_statistics(mcp, seed, connection):
+    """Groceries every Saturday, usually €50: November 2026 has four
+    Saturdays (7, 14, 21, 28), so the user's own pattern suggests 200.00 —
+    ahead of the national 152.00, and still only a suggestion."""
+    await store(connection)
+    _user, m, token = await person(mcp, seed, country="BG", currency="EUR", income=1500)
+    await call(
+        m,
+        token,
+        "save_spending_patterns",
+        {
+            "patterns": [
+                {
+                    "line": "groceries",
+                    "kind": "planned",
+                    "frequency": "weekly",
+                    "weekdays": ["saturday"],
+                    "typical_amount": 50,
+                }
+            ]
+        },
+    )
+    draft = await call(m, token, "preview_monthly_budget")
+    groceries = lines(draft)["groceries"]
+    rec = groceries["recommendation"]
+    assert (rec["basis"], rec["amount"], rec["confirmed_by_user"]) == (
+        "planned_pattern",
+        "200.00",
+        True,
+    )
+    assert rec["regional_reference"]["per_adult_monthly"] == "152.00"
+    assert groceries["amount"] == "117.00"  # MITA's amount, unchanged
+    assert [p["date"] for p in groceries["purchases"]] == [
+        "2026-11-07",
+        "2026-11-14",
+        "2026-11-21",
+        "2026-11-28",
+    ]
+
+
 async def test_a_household_of_four_gets_a_range_not_four_times(mcp, seed, connection):
     await store(connection)
     _user, m, token = await person(

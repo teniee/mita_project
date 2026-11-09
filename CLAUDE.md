@@ -1330,6 +1330,10 @@ Rules:
     `app.prices`, and `app.prices` imports no ledger or database code
     (tested). A city comes only from ChatGPT's approximate hint, for one
     call, never stored and never taken as the residence.
+  - Staging: 2.9.0 (`789bfb6`, CI 42613420776 green) is **prepared, not
+    deployed**. Its release needs a temporary SSH key, which the operator
+    tool refused to register without the owner's explicit authorisation for
+    this release (`staging.md` → "MCP 2.9.0"). Staging still runs 2.8.0.
 - **One display name per category** (`app/mcp/categories.py`): every result
   carries `category_label`; budget status and the forecast put an expense
   category on its paired plan bucket's line ("Fuel" = `transport gas` +
