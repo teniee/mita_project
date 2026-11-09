@@ -1025,6 +1025,14 @@ client's real penalty key), and assert the documented values, not only
 their consistency. Never change thresholds, skip or retry a concurrency test
 to make it pass.
 
+The same applies to time. JWT `exp` is a whole second (`_create_token`
+stores `int(expire.timestamp())`), so a token asked for N seconds lives
+between N-1 and N seconds. A "1-second" token created at .998 of a second
+is already expired when first checked: `test_token_expiration_handling`
+failed that way in Backend CI run 42597950901, and failed 5/5 when forced to
+that moment. Rule: give a short-lived token at least 2 seconds more than the
+test needs, and wait for its own `exp` claim, never a fixed sleep.
+
 ## ChatGPT app (MCP service) — branch feat/chatgpt-plugin
 
 A read/write ChatGPT app (free v1) is being built as a **separate service in
