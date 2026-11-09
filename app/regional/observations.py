@@ -13,7 +13,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional, Tuple
 
-from app.regional.catalog import Dataset
+from app.regional.catalog import CURRENCY_FROM_UNIT, Dataset
 
 # Provider status flags → MITA's quality flags (Eurostat flags are lower
 # case, OECD's upper case; the World Bank sends none for these series).
@@ -37,6 +37,8 @@ BOUNDS = {
     "price_level_index": (Decimal("0.000001"), Decimal("1000")),
     "per_mille": (Decimal("0"), Decimal("1000")),
     "currency_amount": (Decimal("0.000001"), Decimal("1000000000")),
+    # A share of a population, in the dataset's own unit (a percentage).
+    "ratio": (Decimal("0"), Decimal("100")),
 }
 EXTREME = {"percent_change": Decimal("100")}
 
@@ -121,7 +123,13 @@ def build(
         raise RejectedValue("not a number") from None
     if not number.is_finite():
         raise RejectedValue("not a finite number")
-    if spec.currency is not None and currency != spec.currency:
+    if spec.currency == CURRENCY_FROM_UNIT:
+        # The provider resolved it from the cell's unit; unknown -> rejected.
+        if not (
+            isinstance(currency, str) and len(currency) == 3 and currency.isupper()
+        ):
+            raise RejectedValue("an amount whose currency is not known")
+    elif spec.currency is not None and currency != spec.currency:
         raise RejectedValue("an amount in another currency")
     low, high = spec.value_range or BOUNDS[spec.unit_kind]
     if not low <= number <= high:
@@ -158,7 +166,7 @@ def build(
         published_at=published_at,
         source_url=source_url,
         license=spec.license,
-        currency=spec.currency,
+        currency=(currency if spec.currency == CURRENCY_FROM_UNIT else spec.currency),
         quality_flags=tuple(flags),
     )
 

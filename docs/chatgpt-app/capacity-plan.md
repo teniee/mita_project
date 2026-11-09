@@ -164,3 +164,14 @@ Calendar p95 14.6, budget status 10.6, forecast 9.8, spending profile 6.1 —
 unchanged; month summary p95 19.8 and financial climate 24.9 ms, untouched
 by 2.8 and as before. No index added (`mcp_setup_answers` is read by its
 primary key prefix `user_id`).
+
+**2026-11-09, MCP 2.9.0 (regional recommendations, no migration).** The
+preview reads one more statement, `regional.spending_references`: the
+user's country's reference inputs, in the read-only transaction after the
+draft. It was timed on the local staging-equivalent database `mita_lp_280`
+(7,047 observations, every Eurostat input of this release), because
+`mita_capacity` has no regional tables. Over 200 calls across BG, DE, RO,
+US and PT, including the Python computation: median 1.60 ms, p95 1.87 ms;
+one cold first call took 40.6 ms. `EXPLAIN ANALYZE` shows a bitmap index scan
+on `ix_regional_observations_geo_indicator`: 66 rows for Bulgaria, 0.09 ms
+in the database. No index added.

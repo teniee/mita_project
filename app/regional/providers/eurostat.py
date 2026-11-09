@@ -19,11 +19,15 @@ from app.regional.observations import Observation, RejectedValue, build
 
 BASE = "https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/"
 
-# Fixed filters per dataset, besides geography and categories.
+# Fixed filters per dataset, besides geography and categories (a tuple asks
+# for several values of one dimension).
 FILTERS = {
     "prc_hicp_minr": {"freq": "M", "unit": "RCH_A"},
     "prc_ppp_ind": {"freq": "A", "na_item": "PLI_EU27_2020"},
     "hbs_str_t211": {"freq": "A", "unit": "PM"},
+    "hbs_exp_t111": {"freq": "A", "unit": ("EUR_AE", "NAC_AE")},
+    "prc_hicp_aind": {"freq": "A", "unit": "INX_A_AVG"},
+    "hbs_exp_t123b": {"freq": "A", "unit": "PC_HH"},
     "nrg_pc_204": {
         "freq": "S",
         "nrg_cons": "KWH2500-4999",
@@ -43,8 +47,11 @@ CATEGORY_DIMENSION = {
     "prc_hicp_minr": "coicop18",
     "prc_ppp_ind": "ppp_cat",
     "hbs_str_t211": "coicop",
+    "prc_hicp_aind": "coicop",
+    "hbs_exp_t123b": "coicop",
     "nrg_pc_204": "siec",
     "nrg_pc_202": "siec",
+    # hbs_exp_t111 is one total per household: no category dimension.
 }
 
 
@@ -54,9 +61,12 @@ def request_url(spec: Dataset, countries: Sequence[str], since: str) -> str:
     if not allowed:
         raise ValueError("no country here may use Eurostat data")
     params: List[Tuple[str, str]] = [("format", "JSON"), ("lang", "EN")]
-    params += sorted(FILTERS[spec.dataset].items())
-    dimension = CATEGORY_DIMENSION[spec.dataset]
-    params += [(dimension, code) for code, _label in spec.categories]
+    for name, value in sorted(FILTERS[spec.dataset].items()):
+        values = value if isinstance(value, tuple) else (value,)
+        params += [(name, v) for v in values]
+    dimension = CATEGORY_DIMENSION.get(spec.dataset)
+    if dimension is not None:
+        params += [(dimension, code) for code, _label in spec.categories]
     params += [("geo", catalog.EUROSTAT_GEO.get(c, c)) for c in sorted(allowed)]
     params.append(("sinceTimePeriod", since))
     return BASE + spec.dataset + "?" + urlencode(params)
@@ -97,7 +107,7 @@ def parse(
     strides.reverse()
     status = payload.get("status") or {}
     published = _published(payload)
-    category_dim = CATEGORY_DIMENSION[spec.dataset]
+    category_dim = CATEGORY_DIMENSION.get(spec.dataset)
 
     found: List[Observation] = []
     rejected = 0
@@ -110,8 +120,18 @@ def parse(
         geo = catalog.EUROSTAT_ISO.get(coordinate["geo"], coordinate["geo"])
         if geo not in catalog.EUROSTAT_COUNTRIES:
             continue  # an aggregate (EU27_2020, EA) or a country not allowed
-        category = coordinate[category_dim]
+        category = coordinate[category_dim] if category_dim else None
         series = ".".join(coordinate[d] for d in ids if d != "time")
+        currency = coordinate.get("currency")
+        if spec.currency == catalog.CURRENCY_FROM_UNIT:
+            # EUR_AE -> EUR, NAC_AE -> the national currency of that year;
+            # a unit or country-year MITA does not know is rejected.
+            time = coordinate["time"]
+            currency = (
+                catalog.currency_of_unit(coordinate.get("unit", ""), geo, int(time))
+                if time[:4].isdigit()
+                else None
+            )
         try:
             found.append(
                 build(
@@ -125,7 +145,7 @@ def parse(
                     provider_status=status.get(str(flat)),
                     published_at=published,
                     source_url=source_url,
-                    currency=coordinate.get("currency"),
+                    currency=currency,
                 )
             )
         except RejectedValue:

@@ -32,11 +32,13 @@ from app.mcp.schemas import (
     FreedLineOut,
     FreedMoneyOut,
     HistoryUsedOut,
+    LineRecommendationOut,
     NotIncludedLineOut,
     ObligationOut,
     PersonalizationOut,
     PlanChangeOut,
     PlannedPurchaseOut,
+    RecommendationSummaryOut,
     RegionalComparisonOut,
     RegionalSummaryOut,
     UnconfirmedMoneyOut,
@@ -61,6 +63,7 @@ from app.mcp.tools.inputs import SpendingPatternIn
 from app.mcp.tools.inputs import money as money_input
 from app.mcp.writes import budget as budget_writes
 from app.regional import catalog
+from app.regional import reference as reference_engine
 from app.services.core.engine.spending_schedule import dates_are_stated, describe
 from app.services.core.engine.user_budget_lines import ENGINE_BUCKETS, MAX_LABEL_CHARS
 
@@ -158,8 +161,16 @@ PREVIEW_DESCRIPTION = (
     "expenses on it averaged) and regional_comparison (the official national "
     "price change for that kind of spending in their confirmed country): "
     "context to show with its source and period, never a reason to change an "
-    "amount — the user decides, and their amounts go in budget_lines. Show the "
-    "figures to the user; if "
+    "amount — the user decides, and their amounts go in budget_lines. Each "
+    "line's recommendation says what MITA would suggest and on what evidence, "
+    "first wins: the user's own amount, their recorded history, a purchase "
+    "pattern they stated, then — when nothing of theirs exists — a national "
+    "household-spending reference (per adult, or a range for their household; "
+    "low confidence; never a city or shop price, never the user's cost), then "
+    "MITA's own rules. MITA has no verified local prices "
+    "(recommendations.verified_local_prices). A recommendation changes nothing: "
+    "offer it, and if the user wants it, send it as their amount in budget_lines "
+    "and show the new preview. Show the figures to the user; if "
     "they confirm, call save_monthly_budget with the draft_token. Never present a "
     "preview as saved, never call an amount the user's unless its source is "
     "set_by_you, and never recompute, split or edit the numbers yourself. Needs "
@@ -265,12 +276,123 @@ def regional_comparison_out(item) -> RegionalComparisonOut:
     )
 
 
+# The order evidence for a line is trusted in, first wins (owner brief
+# 2026-11-09). Saved obligations are the user's contracts and are planned as
+# they are (fixed_obligations), never compared with statistics.
+PRECEDENCE = [
+    "obligation",
+    "user_amount",
+    "history",
+    "planned_pattern",
+    "verified_local_price",
+    "regional_statistics",
+    "mita_default",
+]
+NO_VERIFIED_PRICES = (
+    "MITA has no verified shop, fare, fuel or service prices: paid web search is "
+    "not approved and no free authorised source exists. Never present a web "
+    "result or a guess as MITA's price."
+)
+RECOMMENDATION_NOTE = (
+    "Recommendations are suggestions: MITA's plan and the user's own amounts "
+    "are unchanged. To use one, the user sets it as their own amount "
+    "(budget_lines) and confirms a new preview; MITA never saves it by itself."
+)
+INCOME_BANDS_NOTE = (
+    "MITA's income bands and shares are fixed rules: they do not adjust for "
+    "the currency or for prices where the user lives, so MITA's own lines are a "
+    "starting point, not an estimate of local costs."
+)
+
+
+def line_recommendation(
+    *,
+    line: str,
+    amount: Decimal,
+    source: str,
+    replaces,
+    planned: bool,
+    pattern,
+    purchases: int,
+    recorded: Optional[Decimal],
+    references: Optional[regional.SpendingReferences],
+) -> LineRecommendationOut:
+    """The first evidence by PRECEDENCE that gives the line an amount; the
+    regional reference is shown whatever wins. Never changes the line."""
+    regional_on = references is not None and references.status in (
+        regional.STATUS_AVAILABLE,
+        regional.STATUS_UNAVAILABLE,
+    )
+    ref_key, line_reason = regional.line_reference(line, tuple(replaces))
+    ref = references.references.get(ref_key) if regional_on and ref_key else None
+    low = high = None
+    if source == SET_BY_YOU:
+        basis, value = "user_amount", amount
+    elif recorded is not None:
+        basis, value = "history", recorded
+    elif (
+        planned
+        and pattern is not None
+        and pattern.typical_amount is not None
+        and purchases
+    ):
+        basis, value = "planned_pattern", pattern.typical_amount * purchases
+    elif ref is not None and ref.status == reference_engine.AVAILABLE:
+        basis = "regional_statistics"
+        if ref.household_size is not None and ref.household_size > 1:
+            value, low, high = None, ref.household_low, ref.household_high
+        else:
+            value = ref.per_adult
+    else:
+        basis, value = "mita_default", amount
+    if value is not None:
+        differs = value.quantize(CENT, ROUND_HALF_UP) != amount
+    else:
+        differs = not (low <= amount <= high)
+    return LineRecommendationOut(
+        basis=basis,
+        amount=optional_money(value),
+        low=optional_money(low),
+        high=optional_money(high),
+        confirmed_by_user=basis in ("user_amount", "planned_pattern"),
+        differs_from_plan=differs,
+        regional_reference=(regional_tools.reference_out(ref) if ref else None),
+        regional_reason=(line_reason if regional_on and ref_key is None else None),
+    )
+
+
+def recommendation_summary(
+    ctx, references: Optional[regional.SpendingReferences]
+) -> RecommendationSummaryOut:
+    return RecommendationSummaryOut(
+        precedence=list(PRECEDENCE),
+        country=ctx.country,
+        currency=ctx.currency,
+        household_size=ctx.household_size,
+        regional_status=(
+            references.status if references is not None else regional.STATUS_NO_COUNTRY
+        ),
+        verified_local_prices="none",
+        verified_local_prices_note=NO_VERIFIED_PRICES,
+        method=(
+            reference_engine.METHOD
+            + (
+                ""
+                if ctx.household_size is not None
+                else " The user's household size is not known: figures are for one adult."
+            )
+        ),
+        note=RECOMMENDATION_NOTE,
+    )
+
+
 def preview_out(
     ctx,
     draft: budget_draft.BudgetDraft,
     token: str,
     expires: int,
     regional_ctx: Optional[regional.RegionalContext] = None,
+    references: Optional[regional.SpendingReferences] = None,
 ) -> BudgetPreviewOut:
     alloc = draft.allocation
     month_label = f"{draft.year:04d}-{draft.month:02d}"
@@ -279,6 +401,14 @@ def preview_out(
         budget_draft.region_note(ctx.region),
         "Category shares come from MITA's standard allocation rules for this "
         "income; they are a starting plan, not an assessment of the user.",
+    ]
+    if not (
+        (ctx.region or "").upper().startswith("US")
+        and budget_draft.has_region_rules(ctx.region)
+        and ctx.currency == "USD"
+    ):
+        assumptions.append(INCOME_BANDS_NOTE)
+    assumptions += [
         "Each saved bill is planned in full on its due date. A line the user "
         "said they buy on known days is split over those real dates; every other "
         "line is a flexible monthly budget with no purchase dates — MITA shows a "
@@ -429,6 +559,7 @@ def preview_out(
         kind = draft.line_kinds.get(key, "flexible")
         pattern = draft.patterns.get(key)
         planned = kind == "planned"
+        purchase_count = sum(1 for (_day, line) in entries if line == key and planned)
         confirmed = source == SET_BY_YOU or (
             pattern is not None and pattern.kind != "not_applicable"
         )
@@ -478,6 +609,17 @@ def preview_out(
                 if (category := regional.comparison_category(key, tuple(replaces)))
                 in comparisons
                 else None
+            ),
+            recommendation=line_recommendation(
+                line=key,
+                amount=amount,
+                source=source,
+                replaces=replaces,
+                planned=planned,
+                pattern=pattern,
+                purchases=purchase_count,
+                recorded=recorded.get(key) if history.months_used else None,
+                references=references,
             ),
         )
 
@@ -600,6 +742,7 @@ def preview_out(
             if comparisons
             else None
         ),
+        recommendations=recommendation_summary(ctx, references),
         user_set_total=money(draft.user_set_total),
         unallocated=money(alloc.unallocated),
         flexible_total=money(alloc.discretionary_total),
@@ -774,6 +917,7 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
             regional_ctx = regional.regional_context(
                 session, user_ctx, topic="inflation"
             )
+            references = regional.spending_references(session, user_ctx)
             now = runtime.clock()
             expires = int((now + budget_draft.DRAFT_TTL).timestamp())
             token = runtime.data_keys.budget_draft(
@@ -785,7 +929,9 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
                 - (user_ctx.today.year * 12 + user_ctx.today.month),
                 existing_plan=draft.existing_plan,
             )
-            return preview_out(user_ctx, draft, token, expires, regional_ctx)
+            return preview_out(
+                user_ctx, draft, token, expires, regional_ctx, references
+            )
 
         return await runtime.execute(
             "preview_monthly_budget",

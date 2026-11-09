@@ -978,6 +978,205 @@ class RegionalComparisonOut(_Out):
     limitation: str = Field(description="What the figure is not.")
 
 
+ReferenceCategory = Literal["food", "clothing", "household_energy", "fuel"]
+ReferenceReason = Literal[
+    "no_country",
+    "turned_off",
+    "no_currency",
+    "not_covered",
+    "currency_mismatch",
+    "no_survey",
+    "survey_too_old",
+    "share_missing",
+    "low_reliability",
+    "price_index_missing",
+    "prices_too_old",
+    "prices_changed_too_much",
+    "buyers_missing",
+    "too_few_buyers",
+]
+LineReferenceReason = Literal[
+    "participation_varies",
+    "category_mismatch",
+    "personal_circumstances",
+    "no_statistic_for_line",
+]
+RecommendationBasis = Literal[
+    "user_amount",
+    "history",
+    "planned_pattern",
+    "verified_local_price",
+    "regional_statistics",
+    "mita_default",
+]
+
+
+class ReferenceInputsOut(_Out):
+    """The official inputs of a reference, so it can be checked by hand."""
+
+    yearly_per_adult: str = Field(
+        description=(
+            "Average consumption spending per adult equivalent in the survey year "
+            "(Eurostat hbs_exp_t111), in the reference's currency."
+        )
+    )
+    share_per_mille: str = Field(
+        description="This spending's share of it, per mille (hbs_str_t211)."
+    )
+    price_factor: str = Field(
+        description=(
+            "How its consumer prices changed from the survey year to price_year "
+            "(prc_hicp_aind, the same COICOP code): 1.554705 = +55.5 %."
+        )
+    )
+    buying_percent: Optional[str] = Field(
+        default=None,
+        description=(
+            "For fuel: the % of households that bought any in the survey "
+            "(hbs_exp_t123b); the reference is for those households only."
+        ),
+    )
+
+
+class SpendingReferenceOut(_Out):
+    """What households in the user's country spent a month on one kind of
+    spending, on average — official statistics carried to recent prices by a
+    stated method. Context, never a budget input: it sets and changes no
+    amount."""
+
+    category: ReferenceCategory
+    category_label: str = Field(description="Eurostat's name for the spending.")
+    status: Literal["available", "insufficient_data"] = Field(
+        description=(
+            "insufficient_data: MITA has no trustworthy figure (see reason). Say "
+            "so; never estimate one."
+        )
+    )
+    reason: Optional[ReferenceReason] = None
+    reason_text: Optional[str] = None
+    currency: Optional[str] = Field(
+        default=None, description="The user's currency; never converted."
+    )
+    per_adult_monthly: Optional[Money] = Field(
+        default=None,
+        description="A month for one adult, rounded to whole units.",
+        pattern=MONEY_PATTERN,
+    )
+    household_size: Optional[int] = Field(
+        default=None, description="The household size the user stated; null if not."
+    )
+    household_monthly_low: Optional[Money] = Field(
+        default=None,
+        description=(
+            "For the stated household: the low end (the others counted as children "
+            "under 14, 0.3 each on the survey's scale)."
+        ),
+        pattern=MONEY_PATTERN,
+    )
+    household_monthly_high: Optional[Money] = Field(
+        default=None,
+        description="The high end (the others counted as aged 14 or over, 0.5 each).",
+        pattern=MONEY_PATTERN,
+    )
+    households: Optional[Literal["all_households", "households_that_buy_it"]] = Field(
+        default=None,
+        description=(
+            "Whose average it is: every household, or (fuel) only households "
+            "that bought any."
+        ),
+    )
+    survey_year: Optional[int] = Field(
+        default=None, description="The household budget survey wave (e.g. 2020)."
+    )
+    price_year: Optional[int] = Field(
+        default=None, description="The year whose average prices it is at (e.g. 2025)."
+    )
+    inputs: Optional[ReferenceInputsOut] = None
+    confidence: Optional[Literal["low"]] = Field(
+        default=None, description="Always low: a national average of every household."
+    )
+    quality_flags: List[str] = Field(
+        default_factory=list,
+        description="The provider's flags on the inputs (estimated, definition_differs…).",
+    )
+    geographic_scope: Literal["country"] = Field(
+        default="country", description="A whole country, never a city."
+    )
+    source: str
+    method: str
+    limitation: str
+
+
+class LineRecommendationOut(_Out):
+    """What MITA would suggest for the line and on what evidence, by a fixed
+    order: the user's own amount, their recorded history, a stated purchase
+    pattern, a verified local price, official statistics, then MITA's own
+    rules. Never applied: the plan keeps its amount until the user sets
+    another one (budget_lines) and confirms a new preview."""
+
+    basis: RecommendationBasis = Field(
+        description=(
+            "user_amount: the user set this line; history: their recorded average; "
+            "planned_pattern: purchases they described × their usual amount; "
+            "verified_local_price: never at present (MITA has none); "
+            "regional_statistics: the national reference below; mita_default: "
+            "MITA's own share of the income (not a local cost estimate)."
+        )
+    )
+    amount: Optional[Money] = Field(
+        default=None,
+        description="The suggested monthly amount on that basis; null for a range.",
+        pattern=MONEY_PATTERN,
+    )
+    low: Optional[Money] = Field(
+        default=None,
+        description="With regional_statistics for a household: the range's low end.",
+        pattern=MONEY_PATTERN,
+    )
+    high: Optional[Money] = Field(default=None, pattern=MONEY_PATTERN)
+    confirmed_by_user: bool = Field(
+        description="True only when the amount is the user's own statement."
+    )
+    differs_from_plan: bool = Field(
+        description=(
+            "True when the suggestion is not the line's planned amount. Mention it "
+            "as a suggestion; never change the plan without the user's yes."
+        )
+    )
+    regional_reference: Optional[SpendingReferenceOut] = Field(
+        default=None,
+        description=(
+            "The official reference this line is compared with, available or "
+            "insufficient_data; null when no statistic matches the line (see "
+            "regional_reason)."
+        ),
+    )
+    regional_reason: Optional[LineReferenceReason] = Field(
+        default=None,
+        description="Why no statistic matches this line, when none does.",
+    )
+
+
+class RecommendationSummaryOut(_Out):
+    precedence: List[str] = Field(
+        description=(
+            "The order MITA trusts evidence in, first wins: saved obligations, "
+            "the user's own amounts, their recorded history, stated purchase "
+            "patterns, verified local prices, official statistics, MITA's rules."
+        )
+    )
+    country: Optional[str]
+    currency: str
+    household_size: Optional[int]
+    regional_status: Literal["available", "no_country", "turned_off", "unavailable"]
+    verified_local_prices: Literal["none"] = Field(
+        description="MITA has no verified shop prices: never claim one."
+    )
+    verified_local_prices_note: str
+    method: str
+    note: str
+
+
 class RegionalSummaryOut(_Out):
     country: str
     country_name: str
@@ -1062,6 +1261,14 @@ class AllocationOut(_Out):
             "user's confirmed country, from MITA's copy of official statistics. "
             "Comparison only: say so, give source and period; never use it to "
             "change an amount."
+        ),
+    )
+    recommendation: Optional[LineRecommendationOut] = Field(
+        default=None,
+        description=(
+            "What MITA would suggest for this line and why (see "
+            "recommendations.precedence). A suggestion only: the line's amount is "
+            "unchanged."
         ),
     )
 
@@ -1249,6 +1456,14 @@ class BudgetPreviewOut(_Out):
         description=(
             "When the user confirmed a country and kept regional statistics on: "
             "which lines carry an official comparison. None otherwise."
+        ),
+    )
+    recommendations: Optional[RecommendationSummaryOut] = Field(
+        default=None,
+        description=(
+            "How each line's recommendation was chosen: the evidence order, the "
+            "household and country it assumes, and that MITA has no verified "
+            "local prices."
         ),
     )
     user_set_total: Money = money_field(
@@ -1838,7 +2053,9 @@ RegionalCategory = Literal[
     "food",
     "clothing",
     "housing",
+    "household_energy",
     "transport",
+    "fuel",
     "recreation",
     "restaurants",
     "electricity",
@@ -1911,4 +2128,13 @@ class RegionalContextOut(_Out):
     country: Optional[str]
     country_name: Optional[str]
     statistics: List[RegionalStatisticOut]
+    spending_references: List[SpendingReferenceOut] = Field(
+        default_factory=list,
+        description=(
+            "With topic household_spending (or no topic): what households in the "
+            "country spend a month on food, clothing, home energy and fuel, on "
+            "average, carried to recent prices — each available or "
+            "insufficient_data with its reason."
+        ),
+    )
     notes: List[str]

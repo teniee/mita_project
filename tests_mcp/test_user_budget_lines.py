@@ -165,6 +165,18 @@ async def test_fuel_200_is_kept_exactly_and_takes_mitas_fuel_line(
             # No recorded history and no confirmed country (2.8 M4).
             "recorded_average": None,
             "regional_comparison": None,
+            # The user's own amount comes first; with no confirmed country
+            # there is no regional reference to show beside it (2.9).
+            "recommendation": {
+                "basis": "user_amount",
+                "amount": "200.00",
+                "low": None,
+                "high": None,
+                "confirmed_by_user": True,
+                "differs_from_plan": False,
+                "regional_reference": None,
+                "regional_reason": None,
+            },
         }
     ]
     mita = by_source(draft, "calculated_by_mita")

@@ -11,6 +11,14 @@ guessed:
   (EU27_2020 = 100) by COICOP 1999 analytical category (``ppp_cat``).
 * Eurostat ``hbs_str_t211`` — household budget survey, structure of
   consumption expenditure, per mille, COICOP 1999 (latest wave 2020).
+* Eurostat ``hbs_exp_t111`` — household budget survey, mean consumption
+  expenditure per adult equivalent (units ``EUR_AE`` and ``NAC_AE``: euro and
+  national currency; verified 2026-11-09, waves 2015 and 2020).
+* Eurostat ``prc_hicp_aind`` — HICP annual average index (``INX_A_AVG``,
+  2015 = 100), COICOP 1999 (``coicop``); the series ends with 2025 (the
+  COICOP 1999 HICP was replaced by ECOICOP ver.2 in 2026).
+* Eurostat ``hbs_exp_t123b`` — percentage of households with expenditure
+  greater than zero, by COICOP 1999 code (``PC_HH``; waves 2015 and 2020).
 * World Bank ``FP.CPI.TOTL.ZG`` — inflation, consumer prices (annual %), all
   items, every country.
 * OECD ``DSD_PRICES@DF_PRICES_ALL`` — CPI growth over one year (``GY``),
@@ -101,7 +109,9 @@ HBS_CATEGORIES: Tuple[Tuple[str, str], ...] = (
     ("CP01", "Food and non-alcoholic beverages"),
     ("CP03", "Clothing and footwear"),
     ("CP04", "Housing, water, electricity, gas and other fuels"),
+    ("CP045", "Electricity, gas and other fuels"),
     ("CP07", "Transport"),
+    ("CP0722", "Fuels and lubricants for personal transport equipment"),
     ("CP09", "Recreation and culture"),
     ("CP11", "Restaurants and hotels"),
 )
@@ -112,6 +122,16 @@ INFLATION = "consumer_price_inflation"
 INFLATION_ANNUAL = "consumer_price_inflation_annual"
 PRICE_LEVEL = "price_level_index"
 SPENDING_SHARE = "household_spending_share"
+# Inputs of the spending references (app/regional/reference.py), never shown
+# on their own: an amount per adult equivalent and an annual price index.
+HOUSEHOLD_EXPENDITURE = "household_expenditure_per_adult_equivalent"
+PRICE_INDEX_ANNUAL = "consumer_price_index_annual_average"
+HOUSEHOLDS_BUYING = "households_with_expenditure"
+
+# A cell's currency taken from its unit code (Eurostat ``EUR_AE`` → EUR,
+# ``NAC_AE`` → the country's national currency in that year): never guessed —
+# a unit or a country-year not listed here is rejected.
+CURRENCY_FROM_UNIT = "from_unit"
 
 
 @dataclass(frozen=True)
@@ -134,6 +154,9 @@ class Dataset:
     # another currency is rejected, never converted) and plausible range.
     currency: Optional[str] = None
     value_range: Optional[Tuple[Decimal, Decimal]] = None
+    # The first period to ask for, for a dataset whose latest values are
+    # older than a few years (a survey wave, a discontinued index).
+    since: Optional[str] = None
 
 
 HICP = Dataset(
@@ -190,6 +213,74 @@ HBS = Dataset(
         "year, on average: not a recommendation and not the user's own shares."
     ),
     categories=HBS_CATEGORIES,
+    since="2015",
+)
+HBS_EXPENDITURE = Dataset(
+    provider=EUROSTAT,
+    dataset="hbs_exp_t111",
+    indicator=HOUSEHOLD_EXPENDITURE,
+    unit_kind="currency_amount",
+    unit=(
+        "mean consumption expenditure per adult equivalent per year (modified "
+        "OECD scale), all households"
+    ),
+    base_period=None,
+    classification=None,
+    period_type="year",
+    max_age_days=365 * 7,
+    license=LICENSE_EUROSTAT,
+    label="Average household spending per adult equivalent (household budget survey)",
+    limitation=(
+        "A national average over every kind of household in the survey year: "
+        "not a city figure, not today's prices and not the user's own spending."
+    ),
+    currency=CURRENCY_FROM_UNIT,
+    since="2015",
+)
+HICP_ANNUAL_INDEX = Dataset(
+    provider=EUROSTAT,
+    dataset="prc_hicp_aind",
+    indicator=PRICE_INDEX_ANNUAL,
+    unit_kind="index",
+    unit="HICP, annual average index (2015 = 100)",
+    base_period="2015=100",
+    classification=COICOP_1999,
+    period_type="year",
+    max_age_days=900,
+    license=LICENSE_EUROSTAT,
+    label="Consumer prices, annual average index (HICP, COICOP 1999)",
+    limitation=(
+        "How prices of a kind of spending changed between years, nationally: "
+        "not a price and not a city figure."
+    ),
+    categories=(
+        ("CP01", "Food and non-alcoholic beverages"),
+        ("CP03", "Clothing and footwear"),
+        ("CP045", "Electricity, gas and other fuels"),
+        ("CP0722", "Fuels and lubricants for personal transport equipment"),
+    ),
+    since="2015",
+)
+HBS_BUYING = Dataset(
+    provider=EUROSTAT,
+    dataset="hbs_exp_t123b",
+    indicator=HOUSEHOLDS_BUYING,
+    # A percentage of households (0-100): the schema's "ratio" kind.
+    unit_kind="ratio",
+    unit="% of households with expenditure greater than zero (household budget survey)",
+    base_period=None,
+    classification=COICOP_1999,
+    period_type="year",
+    max_age_days=365 * 7,
+    license=LICENSE_EUROSTAT,
+    label="Households that spent anything on it (household budget survey)",
+    limitation=(
+        "Measured over the survey's recording period, so households that buy "
+        "rarely can be missed: not how many own a car or eat out."
+    ),
+    categories=(("CP0722", "Fuels and lubricants for personal transport equipment"),),
+    value_range=(Decimal("0"), Decimal("100")),
+    since="2015",
 )
 WB_INFLATION = Dataset(
     provider=WORLD_BANK,
@@ -283,6 +374,9 @@ DATASETS: Tuple[Dataset, ...] = (
     OECD_CPI,
     ELECTRICITY,
     GAS,
+    HBS_EXPENDITURE,
+    HICP_ANNUAL_INDEX,
+    HBS_BUYING,
 )
 
 # Which provider answers an indicator for a country first: the harmonised
@@ -293,6 +387,9 @@ PROVIDER_PRIORITY: Dict[str, Tuple[str, ...]] = {
     INFLATION_ANNUAL: (WORLD_BANK,),
     PRICE_LEVEL: (EUROSTAT,),
     SPENDING_SHARE: (EUROSTAT,),
+    HOUSEHOLD_EXPENDITURE: (EUROSTAT,),
+    PRICE_INDEX_ANNUAL: (EUROSTAT,),
+    HOUSEHOLDS_BUYING: (EUROSTAT,),
 }
 
 ATTRIBUTION = {
@@ -320,8 +417,10 @@ CATEGORY_KEYS: Dict[Optional[str], str] = {
     "A0103": "clothing",
     "CP04": "housing",
     "A0104": "housing",
+    "CP045": "household_energy",
     "CP07": "transport",
     "A0107": "transport",
+    "CP0722": "fuel",
     "CP09": "recreation",
     "CP11": "restaurants",
     "A0111": "restaurants",
@@ -334,3 +433,51 @@ TOPICS: Dict[str, Tuple[str, ...]] = {
     "household_spending": (SPENDING_SHARE,),
     "prices": (ENERGY_PRICE,),
 }
+# What get_regional_context shows when no topic is asked: every topic's
+# indicators — never the reference inputs (an annual index, a yearly amount
+# per adult equivalent, a share of households buying), which mean little on
+# their own.
+SHOWN_INDICATORS: Tuple[str, ...] = tuple(
+    dict.fromkeys(i for indicators in TOPICS.values() for i in indicators)
+)
+
+# The national currency (ISO 4217) by country and the year it took effect:
+# the euro area with each member's adoption year, and every other country
+# Eurostat data may be used for. A country-year not covered is None.
+EURO_ADOPTION: Dict[str, int] = {
+    "AT": 1999, "BE": 1999, "DE": 1999, "ES": 1999, "FI": 1999, "FR": 1999,
+    "IE": 1999, "IT": 1999, "LU": 1999, "NL": 1999, "PT": 1999, "GR": 2001,
+    "SI": 2007, "CY": 2008, "MT": 2008, "SK": 2009, "EE": 2011, "LV": 2014,
+    "LT": 2015, "HR": 2023, "BG": 2026,
+    # Montenegro uses the euro without being a member.
+    "ME": 2002,
+}  # fmt: skip
+CURRENCY_BEFORE_EURO: Dict[str, str] = {"HR": "HRK", "BG": "BGN"}
+NON_EURO_CURRENCY: Dict[str, str] = {
+    "CZ": "CZK", "DK": "DKK", "HU": "HUF", "PL": "PLN", "RO": "RON",
+    "SE": "SEK", "CH": "CHF", "IS": "ISK", "LI": "CHF", "NO": "NOK",
+    "AL": "ALL", "BA": "BAM", "GE": "GEL", "MD": "MDL", "MK": "MKD",
+    "RS": "RSD", "TR": "TRY", "UA": "UAH",
+}  # fmt: skip
+
+
+def national_currency(country: str, year: int) -> Optional[str]:
+    """The currency a country's statistics were in that year, or None when
+    MITA does not know it (never a guess)."""
+    if country in NON_EURO_CURRENCY:
+        return NON_EURO_CURRENCY[country]
+    adopted = EURO_ADOPTION.get(country)
+    if adopted is None:
+        return None
+    if year >= adopted:
+        return "EUR"
+    return CURRENCY_BEFORE_EURO.get(country)
+
+
+def currency_of_unit(unit_code: str, country: str, year: int) -> Optional[str]:
+    """``EUR_AE`` → EUR; ``NAC_AE`` → the national currency that year."""
+    if unit_code.startswith("EUR_"):
+        return "EUR"
+    if unit_code.startswith("NAC_"):
+        return national_currency(country, year)
+    return None

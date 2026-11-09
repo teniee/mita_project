@@ -515,3 +515,17 @@ Steps (each after its approval):
    grocery item, packaged product, transport fare, fuel, service, no result,
    stale, wrong currency, outage, two users (shared cache, no user data).
 7. Staging release by the established procedure; owner phone acceptance.
+
+## 15. 2.9.0 — regional recommendations and the local-price architecture (2026-11-09)
+
+The owner brief "Fix Backend CI and complete regional budget intelligence"
+followed this plan in part:
+
+* the audit of what geography really does: `regional-capability-audit.md`;
+* national household-spending references beside preview lines, under a fixed
+  evidence order and never applied: `regional-recommendations.md`;
+* the local-price architecture with its controls and no paid provider:
+  `local-prices.md`.
+
+Milestone 3 is **still not finished**: MITA has no verified local price.
+

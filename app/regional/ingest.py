@@ -71,14 +71,15 @@ class RunResult:
 
 def since_period(spec: Dataset, today: date) -> str:
     """How far back to ask: about a year of a monthly series, a few years of
-    an annual one (the latest household survey is older: from 2015)."""
+    an annual one, or the dataset's own start (a survey wave from 2015, a
+    discontinued annual index)."""
+    if spec.since is not None:
+        return spec.since
     if spec.period_type == "month":
         index = today.year * 12 + today.month - 1 - 14
         return f"{index // 12:04d}-{index % 12 + 1:02d}"
     if spec.period_type == "half_year":
         return f"{today.year - 2}-S1"
-    if spec.dataset == "hbs_str_t211":
-        return "2015"
     return str(today.year - 4)
 
 

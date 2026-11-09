@@ -1295,6 +1295,41 @@ Rules:
     read after the draft so neither can enter its digest. No amount is
     derived from a statistic without an owner-approved method.
   - Eurostat data only for EU/EFTA/candidate countries (its licence).
+- **2.9 regional recommendations** (owner brief 2026-11-09, MCP 2.9.0, no
+  migration; rules: `docs/chatgpt-app/regional-recommendations.md`; what
+  geography did before: `regional-capability-audit.md`). Rules:
+  - **Evidence order, first wins, never applied**: obligation → the user's
+    amount → their history → a pattern they stated → a verified local price
+    (none exists) → official statistics → MITA's rules. Each preview line
+    has a `recommendation` and the preview a `recommendations` summary; both
+    are read after the draft, so neither enters the digest. Adopting one goes
+    through `budget_lines`, a new preview and the user's yes.
+  - **A reference is an amount by a stated method, never an index alone**
+    (`app/regional/reference.py`, pure): Eurostat `hbs_exp_t111` per adult
+    equivalent × `hbs_str_t211` share × `prc_hicp_aind` factor ÷ 12 (fuel ÷
+    the share of households buying it, `hbs_exp_t123b`). A household is a
+    range on the survey's modified OECD scale, never ×n. Never multiply a
+    budget by a PPP index and call it a local cost.
+  - **Refuse, never fill in**: wrong or unstated currency, no licensed
+    survey (the US, GB…), a survey older than 8 years, a missing share, low
+    reliability, a price factor outside 0.5–2.0 → `insufficient_data` with a
+    reason. Only the user's currency when it is the country's currency now;
+    nothing is ever converted. Confidence is always `low`.
+  - Lines with no defensible national figure (dining out, public transport,
+    recreation, medical) get a `regional_reason`, never a number. Reference
+    inputs are never listed as statistics (`catalog.SHOWN_INDICATORS`).
+  - `INCOME_BANDS_NOTE`: unless the user is in the US with USD, the preview
+    says MITA's bands and shares do not adjust for currency or local prices
+    (audit §8: DEFAULT bands are stub numbers; MIDDLE is unreachable).
+    Fixing the bands is an app-wide owner decision, not a ChatGPT change.
+  - **Local prices** (`app/prices/`, `docs/chatgpt-app/local-prices.md`):
+    the architecture and controls exist, and no provider is approved. Every
+    lookup is `no_verified_price` until the owner approves the provider,
+    API access, monthly cap, per-user quota and privacy rules
+    (`MITA_PRICE_SEARCH_*`; partial = none). No MCP tool imports
+    `app.prices`, and `app.prices` imports no ledger or database code
+    (tested). A city comes only from ChatGPT's approximate hint, for one
+    call, never stored and never taken as the residence.
 - **One display name per category** (`app/mcp/categories.py`): every result
   carries `category_label`; budget status and the forecast put an expense
   category on its paired plan bucket's line ("Fuel" = `transport gas` +

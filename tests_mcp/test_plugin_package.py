@@ -340,6 +340,8 @@ def test_skill_names_only_published_tools():
         "mita_suggested",  # a line_status value
         "recorded_average",  # a field of a preview line (2.8 M4)
         "regional_comparison",  # a field of a preview line (2.8 M4)
+        "recommendation",  # a field of a preview line (2.9)
+        "verified_local_prices",  # a field of the preview's recommendations
     }
     assert named and named <= set(PUBLISHED_TOOLS), named - set(PUBLISHED_TOOLS)
 

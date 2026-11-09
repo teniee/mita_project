@@ -20,8 +20,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.models.regional import RegionalObservation
+from app.mcp.queries import setup as setup_queries
 from app.mcp.queries.periods import UserContext
 from app.regional import catalog
+from app.regional import reference as reference_engine
 from app.regional.observations import is_stale
 
 STATUS_AVAILABLE = "available"
@@ -57,7 +59,7 @@ def regional_context(
         return RegionalContext(STATUS_NO_COUNTRY, None)
     if not ctx.regional_context_enabled:
         return RegionalContext(STATUS_TURNED_OFF, ctx.country)
-    indicators = catalog.TOPICS.get(topic) if topic else None
+    indicators = catalog.TOPICS.get(topic) if topic else catalog.SHOWN_INDICATORS
     query = (
         select(RegionalObservation)
         .where(RegionalObservation.geo_code == ctx.country)
@@ -73,8 +75,7 @@ def regional_context(
             RegionalObservation.period_start.desc(),
         )
     )
-    if indicators:
-        query = query.where(RegionalObservation.indicator.in_(indicators))
+    query = query.where(RegionalObservation.indicator.in_(indicators))
     day = today or ctx.today
     candidates: Dict[Tuple[str, str], List[Statistic]] = {}
     for row in db.scalars(query):
@@ -142,3 +143,110 @@ def inflation_by_category(result: RegionalContext) -> Dict[str, Statistic]:
         for s in result.statistics
         if s.row.indicator == catalog.INFLATION
     }
+
+
+# Spending references (app/regional/reference.py): what households in the
+# user's country spend a month on average, from three official series and a
+# stated method. Like every statistic here: read after a draft (never its
+# input), national, and never in a currency other than the user's.
+REFERENCE_INDICATORS = (
+    catalog.HOUSEHOLD_EXPENDITURE,
+    catalog.SPENDING_SHARE,
+    catalog.PRICE_INDEX_ANNUAL,
+    catalog.HOUSEHOLDS_BUYING,
+)
+
+
+@dataclass(frozen=True)
+class SpendingReferences:
+    status: str  # available | no_country | turned_off | unavailable
+    country: Optional[str]
+    references: Dict[str, reference_engine.Reference]
+
+
+def spending_references(
+    db: Session, ctx: UserContext, *, today: Optional[date] = None
+) -> SpendingReferences:
+    """One reference per category (food, clothing, household_energy, fuel),
+    available or insufficient_data with its reason. One query on the
+    ``(geo_code, indicator, period_start)`` index."""
+    day = today or ctx.today
+    keys = tuple(reference_engine.CATEGORIES)
+
+    def every(reason: str) -> Dict[str, reference_engine.Reference]:
+        return {k: reference_engine.insufficient(k, reason) for k in keys}
+
+    if ctx.country is None:
+        return SpendingReferences(STATUS_NO_COUNTRY, None, every("no_country"))
+    if not ctx.regional_context_enabled:
+        return SpendingReferences(STATUS_TURNED_OFF, ctx.country, every("turned_off"))
+    if not setup_queries.currency_set(ctx):
+        return SpendingReferences(STATUS_UNAVAILABLE, ctx.country, every("no_currency"))
+    rows = list(
+        db.scalars(
+            select(RegionalObservation).where(
+                RegionalObservation.geo_code == ctx.country,
+                RegionalObservation.indicator.in_(REFERENCE_INDICATORS),
+            )
+        )
+    )
+    found = reference_engine.references(
+        rows,
+        country=ctx.country,
+        currency=ctx.currency,
+        household_size=ctx.household_size,
+        today=day,
+    )
+    status = (
+        STATUS_AVAILABLE
+        if any(r.status == reference_engine.AVAILABLE for r in found.values())
+        else STATUS_UNAVAILABLE
+    )
+    return SpendingReferences(status, ctx.country, found)
+
+
+# Which reference a budget line is compared with — MITA's lines by code, a
+# line of the user's by the MITA line it replaces — and, for every other
+# line, why there is none. Never a guess: an unlisted line has no reference.
+REFERENCE_LINES: Dict[str, str] = {
+    "groceries": "food",
+    "clothing": "clothing",
+    "transport gas": "fuel",
+}
+NO_REFERENCE: Dict[str, str] = {
+    "dining out": "participation_varies",
+    "coffee": "category_mismatch",
+    "transport public": "category_mismatch",
+    "entertainment events": "category_mismatch",
+    "hobbies": "category_mismatch",
+    "flights": "participation_varies",
+    "insurance medical": "category_mismatch",
+    "out of pocket medical": "personal_circumstances",
+}
+LINE_REASONS: Dict[str, str] = {
+    "participation_varies": (
+        "a national average mixes people who spend on this with people who "
+        "never do, so it says nothing about one person's line"
+    ),
+    "category_mismatch": (
+        "the official category is broader or different (public transport is "
+        "inside 'transport services' with flights and taxis)"
+    ),
+    "personal_circumstances": (
+        "it depends on age and health far more than on the country"
+    ),
+    "no_statistic_for_line": "no official statistic matches this line",
+}
+
+
+def line_reference(
+    line: str, replaces: Tuple[str, ...] = ()
+) -> Tuple[Optional[str], Optional[str]]:
+    """``(reference category, None)`` or ``(None, reason)`` for a line."""
+    for code in (line, *replaces):
+        if code in REFERENCE_LINES:
+            return REFERENCE_LINES[code], None
+    for code in (line, *replaces):
+        if code in NO_REFERENCE:
+            return None, NO_REFERENCE[code]
+    return None, "no_statistic_for_line"
