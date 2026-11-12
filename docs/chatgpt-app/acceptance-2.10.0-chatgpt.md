@@ -11,7 +11,8 @@ changed.
 ## Before you start
 
 * `https://mita-mcp-staging-staging.up.railway.app/health` shows
-  `"version":"2.10.0"` (`staging.md` → "MCP 2.10.0").
+  `"version":"2.10.0"` — deployed 2026-11-12 18:28 UTC (`8970756`, deployment
+  `b1b09ac9`; `staging.md` → "MCP 2.10.0 — deployed").
 * In ChatGPT, open the plugin **MITA (staging)**, tap **Refresh** (the tool
   descriptions and the calendar component changed: the calendar is now
   `ui://mita/financial-calendar-v4.html`), then start a **new** conversation.

@@ -1,8 +1,10 @@
 # A budget is not a schedule: flexible budgets in the calendar — 2026-11-11
 
 Owner brief of 2026-11-11, after MITA MCP 2.9.0 on staging. Implemented on
-`feat/chatgpt-auth-ui` as **MCP 2.10.0**, calendar component
-`ui://mita/financial-calendar-v4.html`. No migration, no engine change, no
+`feat/chatgpt-auth-ui` as **MCP 2.10.0** (`8970756`), calendar component
+`ui://mita/financial-calendar-v4.html`; live on staging since 2026-11-12
+18:28 UTC (deployment `b1b09ac9`, `staging.md` → "MCP 2.10.0 — deployed").
+Owner acceptance in real ChatGPT: `acceptance-2.10.0-chatgpt.md`. No migration, no engine change, no
 change to any stored row. This supersedes one sentence of
 `behavioral-budget.md` §6 (the "≈" daily guide drawn on dates) and the
 `planned_flexible` line of `financial-calendar.md`.

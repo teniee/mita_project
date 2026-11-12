@@ -1,4 +1,4 @@
-# MITA MCP — staging (observed 2026-10-03, v2 update 2026-10-13, credentials rotated 2026-10-23, MCP 2.4.0 since 2026-10-28, `0af8435` deployed 2026-11-02, MCP 2.5.0 `fad9110` since 2026-11-02 22:39 UTC, MCP 2.6.0 `c5a317c` since 2026-11-03 17:58 UTC; MCP 2.7.0 `2ab2e0f` since 2026-11-04 07:27 UTC; MCP 2.8.0 `601a3d7` since 2026-11-04 23:19 UTC, alembic 0044; MCP 2.8.0 `601a3d7` since 2026-11-04 23:19 UTC; MCP 2.9.0 `789bfb6` since 2026-11-09 18:13 UTC)
+# MITA MCP — staging (observed 2026-10-03, v2 update 2026-10-13, credentials rotated 2026-10-23, MCP 2.4.0 since 2026-10-28, `0af8435` deployed 2026-11-02, MCP 2.5.0 `fad9110` since 2026-11-02 22:39 UTC, MCP 2.6.0 `c5a317c` since 2026-11-03 17:58 UTC; MCP 2.7.0 `2ab2e0f` since 2026-11-04 07:27 UTC; MCP 2.8.0 `601a3d7` since 2026-11-04 23:19 UTC, alembic 0044; MCP 2.8.0 `601a3d7` since 2026-11-04 23:19 UTC; MCP 2.9.0 `789bfb6` since 2026-11-09 18:13 UTC; MCP 2.10.0 `8970756` since 2026-11-12 18:28 UTC)
 
 ## What exists
 
@@ -6,7 +6,7 @@
 |---|---|---|
 | Railway project | `mita-mcp-staging` (`497476f2-de93-44b7-b170-2b175c8d5621`) — **separate project**, no access to the production project's variables, services or database | STAGING VERIFIED |
 | Environment | `staging` (`0f67cf7a-5ce4-472e-a842-2e5448d64c08`) | STAGING VERIFIED |
-| MCP service | `mita-mcp-staging` (`833466fc-f7f2-4d51-8db1-48edfbb46057`), Dockerfile `deploy/mcp/Dockerfile`, healthcheck `/health`, restart ON_FAILURE ×5, **1 replica** (region `asia-southeast1-eqsg3a`), source `teniee/mita_project` @ `feat/chatgpt-auth-ui` **pinned to commit `789bfb6`** (MCP 2.9.0: regional recommendations) since 2026-11-09 18:13 UTC, deployment `20c1191f-1a0d-45e7-a4a1-90e2289a09be` (before: `601a3d7` / `618cd6d9` 2.8.0 from 2026-11-04 23:19 UTC, `2ab2e0f` / `390805cb` 2.7.0 from 2026-11-04 07:27 UTC, `c5a317c` / `62d3a0d1` 2.6.0 from 2026-11-03 17:58 UTC). Deploy another commit by connecting the source again with it — not "Redeploy", which rebuilds the current one (before: `f59401b` / `148b5467` 2.6.0 from 2026-11-03 17:33 UTC, `fad9110` / `ef108adc` 2.5.0 from 2026-11-02 22:39 UTC, `0af8435` / `ef207e6e` 2.4.0 with V7 from 2026-11-02 18:42 UTC, `73ff153` / `56524faf` 2.4.0 from 2026-10-28 19:10 UTC, `2817bb6` / `724189ec` 2.3.0 from 2026-10-28 02:08 UTC, `dbdc118` / `7fd7783b` 2.2.0 — the financial calendar and the v4 sign-in page — from 2026-10-24 20:10 UTC, `de96251` / `b4f6d2fd` from 2026-10-23 20:13 UTC — the v3 sign-in page, not approved, and `opentelemetry-api` 1.45.1 —, `1e24bf4` / `dd8b4894` from 2026-10-23 18:02 UTC, `ee388c0` / `33783139` from 2026-10-23 12:12 UTC, `79efb1d` / `87d26668` 2.1.0 from 2026-10-18 — the re-pin of 2026-10-21 waited for Railway's build pause —, `461abcf` / `174528cf` 2.0.0 from 2026-10-13, `fcd7ae3` from 2026-10-11, `842d365` on which the v1 real-ChatGPT acceptance ran). Pushes do not redeploy it | STAGING VERIFIED |
+| MCP service | `mita-mcp-staging` (`833466fc-f7f2-4d51-8db1-48edfbb46057`), Dockerfile `deploy/mcp/Dockerfile`, healthcheck `/health`, restart ON_FAILURE ×5, **1 replica** (region `asia-southeast1-eqsg3a`), source `teniee/mita_project` @ `feat/chatgpt-auth-ui` **pinned to commit `8970756`** (MCP 2.10.0: a flexible budget is on no date of the calendar) since 2026-11-12 18:28 UTC, deployment `b1b09ac9-a5b1-4699-8b09-642285af5261` (before: `789bfb6` / `20c1191f` 2.9.0 from 2026-11-09 18:13 UTC, `601a3d7` / `618cd6d9` 2.8.0 from 2026-11-04 23:19 UTC, `2ab2e0f` / `390805cb` 2.7.0 from 2026-11-04 07:27 UTC, `c5a317c` / `62d3a0d1` 2.6.0 from 2026-11-03 17:58 UTC). Deploy another commit by connecting the source again with it — not "Redeploy", which rebuilds the current one (before: `f59401b` / `148b5467` 2.6.0 from 2026-11-03 17:33 UTC, `fad9110` / `ef108adc` 2.5.0 from 2026-11-02 22:39 UTC, `0af8435` / `ef207e6e` 2.4.0 with V7 from 2026-11-02 18:42 UTC, `73ff153` / `56524faf` 2.4.0 from 2026-10-28 19:10 UTC, `2817bb6` / `724189ec` 2.3.0 from 2026-10-28 02:08 UTC, `dbdc118` / `7fd7783b` 2.2.0 — the financial calendar and the v4 sign-in page — from 2026-10-24 20:10 UTC, `de96251` / `b4f6d2fd` from 2026-10-23 20:13 UTC — the v3 sign-in page, not approved, and `opentelemetry-api` 1.45.1 —, `1e24bf4` / `dd8b4894` from 2026-10-23 18:02 UTC, `ee388c0` / `33783139` from 2026-10-23 12:12 UTC, `79efb1d` / `87d26668` 2.1.0 from 2026-10-18 — the re-pin of 2026-10-21 waited for Railway's build pause —, `461abcf` / `174528cf` 2.0.0 from 2026-10-13, `fcd7ae3` from 2026-10-11, `842d365` on which the v1 real-ChatGPT acceptance ran). Pushes do not redeploy it | STAGING VERIFIED |
 | Database | Railway Postgres 18 template (18.6), private network only, alembic `0044` (2.9.0 added no migration, only 1,838 regional observations on 2026-11-09; since 2026-11-04 23:0x UTC: `mcp_setup_answers`, `regional_observations`, `regional_ingestion_runs`; `0042` since 2026-11-04 07:2x; `0040` since 2026-10-28). The MCP service connects as the least-privilege role `mita_mcp` (`scripts/mcp/mcp_service_role.sql`) on `postgres.railway.internal`; the read-only `mita_analytics_reader` exists (password not kept — reset before use). Both stored passwords were rotated on 2026-10-23 (see "Credential rotation"). Temporary TCP proxies used for migrations and checks (2026-10-03, 2026-10-13, 2026-10-18, three times on 2026-10-23, twice on 2026-10-28, once on 2026-11-02) were removed and verified no longer serving Postgres; none was opened on 2026-10-24 (no migration; see "Left on staging") | STAGING VERIFIED |
 | Public URL | `https://mita-mcp-staging-staging.up.railway.app` (Railway-managed TLS) | STAGING VERIFIED |
 | Custom domain | none (not needed for staging) | — |
@@ -112,7 +112,7 @@ Every account the checks created was deleted (5 users, as before); the
 temporary proxy was removed and Postgres no longer answers there. Rollback:
 re-pin `73ff153` (per-IP limits then break again, nothing else changes).
 
-## MCP 2.10.0 — prepared 2026-11-12 (not deployed yet)
+## MCP 2.10.0 — deployed 2026-11-12 18:28 UTC (`8970756`, deployment `b1b09ac9`)
 
 A budget is not a schedule (`flexible-envelopes-calendar.md`): the calendar
 no longer draws a flexible budget's stored daily share on dates; component
@@ -144,6 +144,26 @@ The temporary SSH key of 2.9.0 was for that release only. Without it:
 Rollback: re-pin `789bfb6` (2.9.0). Nothing else changes: 2.9.0 reads the
 same rows. A ChatGPT that cached the v4 component keeps it for the cards it
 already drew; new cards get v3 again.
+
+### What was done (2026-11-12, staging only)
+
+| Step | Result |
+|---|---|
+| CI | `8970756…` green: run 43219206167 (pull request) and 43219218172 (push) — Backend, MCP including the container end-to-end step, Mobile |
+| isolation | Project `mita-mcp-staging`: one environment (`staging`), two services (`mita-mcp-staging`, `Postgres`); **no TCP proxy on either**; the staged patch empty; the service's source `teniee/mita_project` @ `feat/chatgpt-auth-ui`, pinned to `789bfb6`, deployment `20c1191f` SUCCESS — as recorded. All calls named the project, environment and service by id |
+| deploy | `connect-service-source` → `89707565a33973d9951cf720d7f253d5dfa3229a` at 18:27:23 UTC; deployment `b1b09ac9-a5b1-4699-8b09-642285af5261` BUILDING 18:27:45, **SUCCESS 18:28:07**; `/health` 200 `"version":"2.10.0"` |
+| component | `resources/read ui://mita/financial-calendar-v4.html` sha256 `23c004f199bd6e46…` = `app/mcp/ui/financial_calendar.html` at `8970756`; `show_financial_calendar` points at it |
+| checks (public HTTPS, fictional accounts, 5 sign-ups in the hour) | `smoke_envelopes_2100.py` **49/49** (18:28) · `calendar_widget_review.py --axe` **80/80** (18:29; axe: no WCAG 2.2 AA violation inline / fullscreen × light / dark; 81 locally, where its database clean-up check also runs) · `smoke_behavioral_270.py` **66/66** (18:30) · `e2e_v2.py` **78/78** (18:30; 85 with the database audit and clean-up) |
+| not run | `e2e_http.py` and `staging_failure_modes.py` (both need `--database-url`; `e2e_http` ran in CI against the built image), `staging_account_fingerprint.py` (database) |
+| logs | Deployment `b1b09ac9`, 18:27:58–18:30:43: 287 lines, **all info**, no warning or error; events `http_request` 157, `tool_call` 102, `oauth_client_registered` 7, `oauth_code_issued` 7, `oauth_account_created` 5 (the checks' 5). Scan of every field: no e-mail, JWT, authorization code, refresh token, password, database URL or any amount the checks used |
+| owner's account | Not opened, not measured (no database access). The release adds no write path; the calendar tools run `SET TRANSACTION READ ONLY`; the checks used only their own new accounts |
+| production, `main`, PRs | untouched; nothing merged |
+
+Left on staging by these checks: 5 fictional accounts — `cal210-<10 hex>@example.test`,
+`calendar-review-<8 hex>@example.com`, `ab270-<10 hex>@example.test` (×2),
+`v2e2e_<10 hex>@example.test` — with their 7 DCR clients. Delete each with
+`e2e_v2.cleanup` the next time database access is authorised, then the
+token-less OAuth clients registered on 2026-11-12 after 18:28 UTC.
 
 ## MCP 2.9.0 — deployed 2026-11-09 18:13 UTC (`789bfb6`, deployment `20c1191f`)
 

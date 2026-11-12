@@ -1564,7 +1564,7 @@ Rules:
   2.7.0, alembic 0042, `staging.md` → "MCP 2.7.0"; the earlier fictional
   review accounts were deleted the same day); since 2026-11-04 23:19 UTC
   `601a3d7` (deployment `618cd6d9`, MCP 2.8.0, alembic 0044, OECD excluded,
-  `mita_regional_ingest` NOLOGIN, `staging.md` → "MCP 2.8.0 — deployed"); since 2026-11-09 18:13 UTC `789bfb6` (deployment `20c1191f`, MCP 2.9.0, no migration, 7,047 observations, `staging.md` → "MCP 2.9.0 — deployed"); every staging secret and both database
+  `mita_regional_ingest` NOLOGIN, `staging.md` → "MCP 2.8.0 — deployed"); since 2026-11-09 18:13 UTC `789bfb6` (deployment `20c1191f`, MCP 2.9.0, no migration, 7,047 observations, `staging.md` → "MCP 2.9.0 — deployed"); since 2026-11-12 18:28 UTC `8970756` (deployment `b1b09ac9`, MCP 2.10.0, no migration, deployed by the re-pin alone — no database access, so its 5 fictional check accounts await clean-up; `staging.md` → "MCP 2.10.0 — deployed"); every staging secret and both database
   passwords were rotated on 2026-10-23 after Railway's 2026-10-21 security
   incident (`staging.md` → "Credential rotation"). It is connected as
   `mita_mcp`, so a missing grant shows up there before production; staging
