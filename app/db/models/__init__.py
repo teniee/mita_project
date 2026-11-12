@@ -3,6 +3,7 @@ from .ai_analysis_snapshot import AIAnalysisSnapshot
 from .analytics_log import FeatureAccessLog, FeatureUsageLog, PaywallImpressionLog
 from .base import Base
 from .budget_advice import BudgetAdvice
+from .budget_behavior import ObligationPayment, SpendingPattern
 from .challenge import Challenge, ChallengeParticipation
 from .daily_plan import DailyPlan
 from .expense import Expense
@@ -20,6 +21,15 @@ from .installment import (
     RiskLevel,
     UserFinancialProfile,
 )
+from .mcp_app import (
+    AnalyticsIdentity,
+    McpBudgetLine,
+    McpIdempotencyKey,
+    McpSetupAnswer,
+    McpUserProfile,
+    ProductFeedback,
+)
+from .mcp_oauth import McpOAuthAuthorizationCode, McpOAuthClient, McpOAuthRefreshToken
 from .mood import Mood
 from .notification import (
     Notification,
@@ -31,6 +41,7 @@ from .notification_log import NotificationLog
 from .ocr_job import OCRJob
 from .push_token import PushToken
 from .redistribution_event import RedistributionEvent
+from .regional import RegionalIngestionRun, RegionalObservation
 from .scheduled_expense import ScheduledExpense
 from .subscription import Subscription
 from .transaction import Transaction
@@ -42,6 +53,19 @@ from .waitlist import WaitlistEntry
 
 __all__ = [
     "Base",
+    "McpOAuthClient",
+    "McpBudgetLine",
+    "McpIdempotencyKey",
+    "McpSetupAnswer",
+    "McpUserProfile",
+    "ObligationPayment",
+    "RegionalIngestionRun",
+    "RegionalObservation",
+    "SpendingPattern",
+    "ProductFeedback",
+    "AnalyticsIdentity",
+    "McpOAuthAuthorizationCode",
+    "McpOAuthRefreshToken",
     "User",
     "Transaction",
     "DailyPlan",

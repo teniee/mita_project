@@ -185,6 +185,11 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
       );
     }
 
+    // live_status.monthly_budget is the stated monthly INCOME, not the plan
+    // (backend finding F-10): this card shows income and what is left of it.
+    // The month's plan is the calendar's "Total Budget" and, in ChatGPT,
+    // get_budget_status.total_planned — calling income "Total Budget" here
+    // made the two disagree.
     final totalBudget = budgetProvider.totalBudget;
     final totalSpent = budgetProvider.totalSpent;
     final remaining = totalBudget - totalSpent;
@@ -192,16 +197,16 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
 
     String statusDescription;
     if (percentage > 0.8) {
-      statusDescription = 'Warning: Over 80% of budget used';
+      statusDescription = 'Warning: over 80% of monthly income spent';
     } else if (percentage > 0.6) {
-      statusDescription = 'Caution: Over 60% of budget used';
+      statusDescription = 'Caution: over 60% of monthly income spent';
     } else {
-      statusDescription = 'Good: Budget within safe limits';
+      statusDescription = 'Good: under 60% of monthly income spent';
     }
 
     return Semantics(
       label: _accessibilityService.createProgressSemanticLabel(
-        category: 'Total Budget',
+        category: 'Monthly income',
         spent: totalSpent,
         limit: totalBudget,
         status: statusDescription,
@@ -277,7 +282,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                 children: [
                   Semantics(
                     label: _accessibilityService.createFinancialSemanticLabel(
-                      label: 'Total Budget',
+                      label: 'Monthly income',
                       amount: totalBudget,
                       isBalance: true,
                     ),
@@ -285,7 +290,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Total Budget',
+                          'Monthly income',
                           style: TextStyle(color: Colors.white70, fontSize: 14),
                         ),
                         Text(
@@ -353,7 +358,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
               const SizedBox(height: 16),
               Semantics(
                 label:
-                    'Budget progress bar. ${(percentage * 100).toStringAsFixed(1)} percent of budget used',
+                    'Spending progress bar. ${(percentage * 100).toStringAsFixed(1)} percent of monthly income spent',
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: LinearProgressIndicator(
@@ -367,7 +372,7 @@ class _DailyBudgetScreenState extends State<DailyBudgetScreen>
               ),
               const SizedBox(height: 8),
               Text(
-                '${(percentage * 100).toStringAsFixed(1)}% of budget used',
+                '${(percentage * 100).toStringAsFixed(1)}% of monthly income spent',
                 style: const TextStyle(color: Colors.white70, fontSize: 12),
               ),
             ],

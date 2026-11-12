@@ -31,6 +31,20 @@ class _StubBudgetProvider extends BudgetProvider {
   List<Map<String, dynamic>> get redistributionHistory => [];
 }
 
+/// live_status for a user with €2,500 of monthly income and €1,000 spent.
+class _IncomeStubBudgetProvider extends _StubBudgetProvider {
+  _IncomeStubBudgetProvider() : super(const []);
+
+  @override
+  double get totalBudget => 2500.0;
+
+  @override
+  double get totalSpent => 1000.0;
+
+  @override
+  bool get liveStatusFresh => true;
+}
+
 Future<void> _pumpScreen(
   WidgetTester tester,
   List<Map<String, dynamic>> budgets,
@@ -171,6 +185,29 @@ void main() {
       _semanticLabels(tester)
           .where((l) => l.contains('300 percent of budget used')),
       isNotEmpty,
+    );
+  });
+
+  testWidgets(
+      'the live status card names income as income, not as the budget (F-10)',
+      (tester) async {
+    // live_status.monthly_budget is the stated monthly income. The month's
+    // plan is the calendar's "Total Budget" and ChatGPT's total_planned;
+    // this card must not call income a budget.
+    await tester.pumpWidget(
+      ChangeNotifierProvider<BudgetProvider>.value(
+        value: _IncomeStubBudgetProvider(),
+        child: const MaterialApp(home: DailyBudgetScreen()),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Monthly income'), findsOneWidget);
+    expect(find.text('Total Budget'), findsNothing);
+    expect(find.text('40.0% of monthly income spent'), findsOneWidget);
+    expect(
+      _semanticLabels(tester).where((l) => l.contains('Total Budget')),
+      isEmpty,
     );
   });
 }

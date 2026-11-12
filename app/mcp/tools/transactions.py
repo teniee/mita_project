@@ -1,0 +1,907 @@
+from __future__ import annotations
+
+import hashlib
+from datetime import date, datetime, timezone
+from decimal import Decimal
+from typing import Annotated, List, Optional
+
+from mcp.server.mcpserver import Context, MCPServer
+from mcp_types import CallToolResult
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+from app.db.models import ScheduledExpense
+from app.mcp import analytics, idempotency
+from app.mcp.auth.scopes import FINANCE_READ, FINANCE_WRITE
+from app.mcp.categories import label as category_label
+from app.mcp.crypto import CursorPosition
+from app.mcp.errors import ValidationError
+from app.mcp.queries import budget_lines, ledger
+from app.mcp.queries import setup as setup_queries
+from app.mcp.queries.periods import resolve_date_range
+from app.mcp.runtime import McpRuntime
+from app.mcp.schemas import (
+    PaidObligationOut,
+    RecordedTransactionOut,
+    SpendingBreakdownOut,
+    TransactionChangeOut,
+    TransactionsOut,
+    TransactionsRecordedOut,
+)
+from app.mcp.serializers import (
+    money,
+    spending_breakdown_out,
+    transaction_ref,
+    transactions_out,
+)
+from app.mcp.tools.common import (
+    NO_MONEY_MOVEMENT,
+    READ_ONLY_DISCLAIMER,
+    read_only_annotations,
+    tool_meta,
+    write_annotations,
+)
+from app.mcp.tools.inputs import (
+    CATEGORY_HELP,
+    EntryMethod,
+    ExpenseCategory,
+    IdempotencyKey,
+    Merchant,
+    TransactionAmount,
+)
+from app.mcp.ui import component_callable_meta
+from app.mcp.writes import obligation_payments as payments
+from app.mcp.writes import transactions as writes
+from app.services.core.engine.user_budget_lines import MAX_LABEL_CHARS
+
+MAX_BATCH = 25
+
+BUDGET_LINE_HELP = (
+    "One of the user's own budget lines (a line of theirs with source set_by_you "
+    "and category 'my:<label>' in get_budget_status or the budget preview), by "
+    "its id ('my:Cigarettes') or its name: the expense counts against that line. "
+    "Send it instead of category when the expense belongs to such a line."
+)
+
+BudgetLine = Annotated[
+    Optional[str],
+    Field(min_length=1, max_length=MAX_LABEL_CHARS + 3, description=BUDGET_LINE_HELP),
+]
+
+LINE_OR_CATEGORY = "Send either category or budget_line for the expense, not both."
+LINE_AND_OBLIGATION = (
+    "A payment of a saved regular payment (obligation_ref) cannot also count "
+    "against one of the user's own budget lines: send one of them."
+)
+
+OBLIGATION_HELP = (
+    "Only when the user says this expense paid one of their saved regular "
+    "payments (a bill, loan, rent or subscription — its obligation_ref from "
+    "get_recurring_expenses or get_calendar_month bills): MITA then counts that "
+    "bill as paid. Never for a purchase that merely shares the category — a car "
+    "part is not the car loan; when unsure, ask. The expense is recorded under "
+    "the payment's own category (category may be left out)."
+)
+DUE_DATE_HELP = (
+    "With obligation_ref: the due date (YYYY-MM-DD) this expense paid, when the "
+    "user says. Omitted: the earliest due date of the expense's month not yet "
+    "paid, else the next month's (paid early)."
+)
+
+ObligationRef = Annotated[
+    Optional[str],
+    Field(min_length=4, max_length=128, description=OBLIGATION_HELP),
+]
+ObligationDue = Annotated[Optional[date], Field(description=DUE_DATE_HELP)]
+
+StartDate = Annotated[
+    Optional[date],
+    Field(
+        description="First local day to include (YYYY-MM-DD). Defaults to 29 days before end_date."
+    ),
+]
+EndDate = Annotated[
+    Optional[date],
+    Field(
+        description="Last local day to include (YYYY-MM-DD). Defaults to today in the user's timezone."
+    ),
+]
+ExpenseDate = Annotated[
+    Optional[date],
+    Field(
+        description=(
+            "Local calendar day of the expense (YYYY-MM-DD) in the user's timezone. "
+            "Omit for today. Resolve words like 'yesterday' against the user's "
+            "today; never a future date."
+        )
+    ),
+]
+Ref = Annotated[
+    str,
+    Field(
+        min_length=4,
+        max_length=128,
+        description="The expense's `ref` from list_transactions or from the result that recorded it.",
+    ),
+]
+
+LIST_DESCRIPTION = (
+    "List the user's recorded expenses in MITA for a date range, newest first. Each "
+    "item has the local date, amount, currency, category, merchant (when recorded) "
+    "and an opaque `ref` used only to correct or delete that expense; free-text "
+    "notes, receipts and locations are never returned. Optional filters: category "
+    "(exact code, e.g. 'groceries') and merchant (case-insensitive contains). The "
+    "merchant filter searches only THIS user's own expenses by the merchant text they "
+    "recorded: MITA has no access to anyone else's account, so a person's name finds "
+    "only this user's expenses recorded with that name, never that person's data. Dates are "
+    "calendar days in the user's timezone; the range may span at most 366 days. "
+    "Returns at most `limit` items plus the count and total of ALL matching "
+    "expenses; when has_more is true, call again with `cursor` = next_cursor (same "
+    "dates and filters) to get the next page — keep paging when the user asked "
+    "for all of them. Deleted transactions are excluded. MITA records expenses "
+    "only (no income or account balances). " + READ_ONLY_DISCLAIMER
+)
+
+BREAKDOWN_DESCRIPTION = (
+    "Total the user's recorded MITA expenses by category for a date range: per-category "
+    "total, transaction count and share of all spending, largest first, plus the overall "
+    "total. Use it for 'where did my money go' questions. Dates are calendar days in the "
+    "user's timezone (default: the last 30 days, at most 366). Deleted transactions are "
+    "excluded. It reports what was spent, not what was budgeted — use get_budget_status "
+    "for the plan. " + READ_ONLY_DISCLAIMER
+)
+
+ADD_DESCRIPTION = (
+    "Record ONE expense the user made, e.g. 'Spent €36.80 at Lidl on groceries "
+    "today'. Saves it in the user's MITA account (it is part of every future "
+    "conversation) and updates this month's budget plan. Use the "
+    "amount exactly as stated, in the user's MITA currency. If the amount or the "
+    "category is unclear, ask before recording; never invent a merchant. For "
+    "several expenses at once use add_transactions. For an expense read from a "
+    "receipt photo in this chat, set entry_method 'receipt_image'; MITA never "
+    "receives the image. The result includes a `ref` to correct the expense with "
+    "update_transaction. If the user has their own budget line for this spending "
+    "(e.g. their 'Cigarettes' line), record it with budget_line instead of "
+    "category so it counts against that line. If the user says it paid one of "
+    "their saved regular payments ('I paid the car loan'), pass that payment's "
+    "obligation_ref: only then is the bill paid in MITA — spending in the same "
+    "category (a car part) never pays it. " + NO_MONEY_MOVEMENT
+)
+
+ADD_MANY_DESCRIPTION = (
+    "Record SEVERAL expenses in one step (up to 25), e.g. 'Today: €8 coffee, €55 fuel "
+    "and €74 at Lidl', or the lines of a receipt photo the user attached. All are "
+    "saved together or none is: if any item is invalid, nothing is recorded and the "
+    "error names the item. Same rules per item as add_transaction (amounts as "
+    "stated, ask when a category or total is unclear). Every item has its own "
+    "category: give each receipt line the category of what it is, not of the shop — "
+    "a supermarket receipt can mix groceries with household goods (shopping) or "
+    "medicine (healthcare). MITA has no alcohol or tobacco category: drinks bought "
+    "in a shop count as groceries unless the user picks another category; an item "
+    "that belongs to one of the user's own budget lines (e.g. their 'Cigarettes' "
+    "line) takes budget_line instead of category, and an item that paid one of "
+    "their saved regular payments takes its obligation_ref. " + NO_MONEY_MOVEMENT
+)
+
+UPDATE_DESCRIPTION = (
+    "Correct one recorded expense the user says is wrong — amount, category, date or "
+    "merchant — identified by its `ref`. Changes only the fields sent and overwrites "
+    "their previous values; the month's budget plan is recalculated. To move it to "
+    "one of the user's own budget lines, send budget_line instead of category. "
+    "When the user says an expense already recorded paid one of their saved "
+    "regular payments, send that payment's obligation_ref (an empty string "
+    "removes such a link). Confirm which expense the user means first (use "
+    "list_transactions to find it). " + NO_MONEY_MOVEMENT
+)
+
+DELETE_DESCRIPTION = (
+    "Delete one recorded expense the user wants removed (for example a duplicate or "
+    "a mistake), identified by its `ref`. It disappears from all totals and the "
+    "month's plan is recalculated. Confirm the exact expense with the user before "
+    "deleting. Deleting an already deleted expense changes nothing. "
+    + NO_MONEY_MOVEMENT
+)
+
+
+class ExpenseItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    amount: TransactionAmount
+    category: Annotated[Optional[ExpenseCategory], Field(description=CATEGORY_HELP)] = (
+        None
+    )
+    budget_line: BudgetLine = None
+    date: ExpenseDate = None
+    merchant: Merchant = None
+    obligation_ref: ObligationRef = None
+    obligation_due_date: ObligationDue = None
+
+    @model_validator(mode="after")
+    def _one_target(self) -> "ExpenseItem":
+        check_target(
+            self.category,
+            self.budget_line,
+            self.obligation_ref,
+            self.obligation_due_date,
+        )
+        return self
+
+
+def check_target(category, budget_line, obligation_ref, due) -> None:
+    """One target per expense: a category, one of the user's lines, or a
+    saved regular payment (whose category it takes)."""
+    if obligation_ref is not None:
+        if budget_line is not None:
+            raise ValueError(LINE_AND_OBLIGATION)
+        return
+    if due is not None:
+        raise ValueError("obligation_due_date needs obligation_ref.")
+    if (category is None) == (budget_line is None):
+        raise ValueError(LINE_OR_CATEGORY)
+
+
+def _line_key(session, user_ctx, name: str) -> str:
+    """The key of the user's budget line called ``name`` (F-11)."""
+    key = budget_lines.existing_key(session, user_ctx, name)
+    if key is None:
+        raise ValidationError(
+            f"The user has no budget line called '{name}'. Their lines are in "
+            "get_budget_status (source set_by_you); a new one is set with "
+            "preview_monthly_budget."
+        )
+    return key
+
+
+def _filter_digest(start, end, category, merchant) -> bytes:
+    text = f"{start}|{end}|{category or ''}|{(merchant or '').lower()}"
+    return hashlib.sha256(text.encode()).digest()[:8]
+
+
+def _epoch_us(instant: datetime) -> int:
+    if instant.tzinfo is None:
+        instant = instant.replace(tzinfo=timezone.utc)
+    delta = instant - datetime(1970, 1, 1, tzinfo=timezone.utc)
+    return (delta.days * 86400 + delta.seconds) * 1_000_000 + delta.microseconds
+
+
+def _from_epoch_us(value: int) -> datetime:
+    from datetime import timedelta
+
+    return datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(microseconds=value)
+
+
+def _recorded(keys, ctx, row, paid=None) -> RecordedTransactionOut:
+    """``paid``: (saved payment, due date) the expense paid, when it did."""
+    return RecordedTransactionOut(
+        ref=transaction_ref(keys, ctx, row.id),
+        date=writes.local_day(ctx, row),
+        amount=money(Decimal(str(row.amount))),
+        currency=(row.currency or ctx.currency).upper(),
+        category=row.category,
+        category_label=category_label(row.category),
+        merchant=(row.merchant or "").strip() or None,
+        paid_obligation=(
+            PaidObligationOut(
+                obligation_ref=keys.obligation_ref(ctx.user_id, paid[0].id),
+                name=payments.name_of(paid[0]),
+                due_date=paid[1],
+            )
+            if paid is not None
+            else None
+        ),
+    )
+
+
+def _paid_of(session, ctx, row):
+    """(saved payment, due date) an existing expense paid, or None."""
+    link = payments.current_link(session, ctx, row.id)
+    if link is None:
+        return None
+    obligation = session.get(ScheduledExpense, link.scheduled_expense_id)
+    return (obligation, link.due_date) if obligation is not None else None
+
+
+def register(server: MCPServer, runtime: McpRuntime) -> None:
+    keys = runtime.data_keys
+
+    @server.tool(
+        name="list_transactions",
+        title="List MITA transactions",
+        description=LIST_DESCRIPTION,
+        annotations=read_only_annotations("List MITA transactions"),
+        meta=tool_meta(
+            FINANCE_READ,
+            "Reading your transactions…",
+            "Read your transactions",
+            # The calendar component lists a selected date's expenses with it.
+            **component_callable_meta(),
+        ),
+    )
+    async def list_transactions(
+        ctx: Context,
+        start_date: StartDate = None,
+        end_date: EndDate = None,
+        category: Annotated[
+            Optional[str],
+            Field(
+                description="Only this MITA category, e.g. 'groceries', 'dining', 'rent', 'transportation'.",
+                min_length=1,
+                max_length=50,
+                pattern=r"^[A-Za-z][A-Za-z_ &-]*$",
+            ),
+        ] = None,
+        merchant: Annotated[
+            Optional[str],
+            Field(
+                description="Only merchants whose name contains this text (case-insensitive).",
+                min_length=1,
+                max_length=100,
+            ),
+        ] = None,
+        limit: Annotated[
+            int,
+            Field(description="Maximum transactions to return (1-200).", ge=1, le=200),
+        ] = 50,
+        cursor: Annotated[
+            Optional[str],
+            Field(
+                description="next_cursor from the previous page of the same query.",
+                min_length=8,
+                max_length=128,
+            ),
+        ] = None,
+    ) -> Annotated[CallToolResult, TransactionsOut]:
+        def body(session, user_ctx):
+            start, end = resolve_date_range(user_ctx, start_date, end_date)
+            cat = category.strip().lower() if category else None
+            merch = merchant.strip() if merchant else None
+            digest = _filter_digest(start, end, cat, merch)
+            after = None
+            if cursor is not None:
+                position = keys.open_cursor(user_ctx.user_id, cursor)
+                if position is None or position.filter_digest != digest:
+                    raise ValidationError(
+                        "This cursor does not belong to this query. Repeat the "
+                        "same dates and filters, or start again without a cursor."
+                    )
+                after = (_from_epoch_us(position.spent_at_us), position.transaction_id)
+            page = ledger.list_entries(
+                session,
+                user_ctx,
+                start,
+                end,
+                category=cat,
+                merchant=merch,
+                limit=limit,
+                after=after,
+            )
+            next_cursor = None
+            if page.has_more and page.entries:
+                last = page.entries[-1]
+                next_cursor = keys.cursor(
+                    user_ctx.user_id,
+                    CursorPosition(
+                        _epoch_us(last.spent_at), last.transaction_id, digest
+                    ),
+                )
+            return transactions_out(
+                user_ctx,
+                start,
+                end,
+                page,
+                keys=keys,
+                next_cursor=next_cursor,
+                merchant_filter=merch,
+            )
+
+        return await runtime.execute(
+            "list_transactions",
+            FINANCE_READ,
+            body,
+            ctx=ctx,
+            intent="list_transactions",
+        )
+
+    @server.tool(
+        name="get_spending_breakdown",
+        title="Get spending by category",
+        description=BREAKDOWN_DESCRIPTION,
+        annotations=read_only_annotations("Get spending by category"),
+        meta=tool_meta(
+            FINANCE_READ, "Totalling your spending…", "Totalled your spending"
+        ),
+    )
+    async def get_spending_breakdown(
+        ctx: Context,
+        start_date: StartDate = None,
+        end_date: EndDate = None,
+    ) -> Annotated[CallToolResult, SpendingBreakdownOut]:
+        def body(session, user_ctx):
+            start, end = resolve_date_range(user_ctx, start_date, end_date)
+            totals = ledger.totals_by_category(session, user_ctx, start, end)
+            others = ledger.other_currencies_in_range(session, user_ctx, start, end)
+            return spending_breakdown_out(user_ctx, start, end, totals, others)
+
+        return await runtime.execute(
+            "get_spending_breakdown",
+            FINANCE_READ,
+            body,
+            ctx=ctx,
+            intent="category_breakdown",
+        )
+
+    async def _record(
+        session,
+        user_ctx,
+        call,
+        items: List[ExpenseItem],
+        key: str,
+        entry: str,
+        tool: str,
+    ) -> TransactionsRecordedOut:
+        def write(s) -> TransactionsRecordedOut:
+            writes.require_currency(user_ctx, setup_queries.currency_set(user_ctx))
+            # The saved payments named, resolved before anything is written.
+            owed = [
+                (
+                    payments.resolve(s, user_ctx, keys, item.obligation_ref)
+                    if item.obligation_ref is not None
+                    else None
+                )
+                for item in items
+            ]
+            expenses = [
+                writes.Expense(
+                    amount=item.amount,
+                    category=(
+                        payments.require_category(obligation, item.category)
+                        if obligation is not None
+                        else (
+                            _line_key(s, user_ctx, item.budget_line)
+                            if item.budget_line is not None
+                            else item.category
+                        )
+                    ),
+                    day=item.date,
+                    merchant=item.merchant,
+                )
+                for item, obligation in zip(items, owed)
+            ]
+            # The user's own lines, for the note below — read before anything
+            # is written, so a failure here never follows a commit.
+            lines = (
+                budget_lines.stored_lines(s, user_ctx)
+                if any(item.budget_line is None for item in items)
+                else {}
+            )
+            request = {
+                "items": [
+                    [str(e.amount), e.category, str(e.day or ""), e.merchant or ""]
+                    + (
+                        [item.obligation_ref, str(item.obligation_due_date or "")]
+                        if item.obligation_ref is not None
+                        else []
+                    )
+                    for e, item in zip(expenses, items)
+                ],
+                "entry": entry,
+            }
+            claim = idempotency.claim(
+                s,
+                user_id=user_ctx.user_id,
+                operation=tool,
+                session_digest=call.session_digest,
+                key=key,
+                request=request,
+                now=call.now,
+            )
+            paid_by_row = {}
+            if claim.is_replay:
+                analytics.mark_replayed()
+                rows = writes.load_owned(
+                    s, user_ctx, claim.replay_ids, include_deleted=True
+                )
+                for r in rows:
+                    paid = _paid_of(s, user_ctx, r)
+                    if paid is not None:
+                        paid_by_row[r.id] = paid
+                status = "already_recorded"
+                notes = [
+                    "These expenses were already recorded by an earlier identical "
+                    "request; nothing new was written."
+                ]
+                if any(r.deleted_at is not None for r in rows):
+                    notes.append("Some of them were deleted since.")
+            else:
+                rows = writes.build_rows(user_ctx, expenses, call.now)
+                allocator = payments.Allocator(s, user_ctx)
+                planned_links = {}
+                for row, item, obligation in zip(rows, items, owed):
+                    if obligation is not None:
+                        due = allocator.due_date(
+                            obligation,
+                            writes.local_day(user_ctx, row),
+                            Decimal(str(row.amount)),
+                            item.obligation_due_date,
+                        )
+                        planned_links[id(row)] = (obligation, due)
+
+                def link_after_insert(row) -> None:
+                    paid = planned_links.get(id(row))
+                    if paid is not None:
+                        payments.link(s, user_ctx, row.id, *paid)
+                        paid_by_row[row.id] = paid
+
+                writes.insert(s, rows, after_insert=link_after_insert)
+                claim.complete([r.id for r in rows])
+                s.commit()
+                status = "recorded"
+                notes = []
+                # An expense in the category of a saved payment that is not
+                # paid yet may be that payment — or a purchase that merely
+                # shares the category (a car part, not the car loan). Never
+                # assumed: say so, so ChatGPT asks the user.
+                mentioned = set()
+                for row in rows:
+                    if row.id in paid_by_row:
+                        continue
+                    for obligation, due, left in payments.unpaid_in_category(
+                        s, user_ctx, row.category, writes.local_day(user_ctx, row)
+                    ):
+                        if obligation.id in mentioned:
+                            continue
+                        mentioned.add(obligation.id)
+                        notes.append(
+                            f"{payments.name_of(obligation)} ({money(left)} due "
+                            f"{due.isoformat()}) is a saved regular payment in this "
+                            "category and is not paid in MITA. This expense does not "
+                            "pay it. If the user says it was that payment, link it: "
+                            "update_transaction with obligation_ref "
+                            f"{keys.obligation_ref(user_ctx.user_id, obligation.id)}."
+                        )
+                for obligation, due in planned_links.values():
+                    over = allocator.paid(obligation, due) - Decimal(
+                        str(obligation.amount)
+                    )
+                    if over > 0:
+                        notes.append(
+                            f"{payments.name_of(obligation)} due {due.isoformat()} "
+                            f"is {money(Decimal(str(obligation.amount)))}; the "
+                            f"{money(over)} paid beyond it counts as spending "
+                            "beyond the bill."
+                        )
+                if len(rows) == 1:
+                    analytics.emit("transaction_created", entry_method=entry)
+                else:
+                    analytics.emit(
+                        "transaction_batch_created",
+                        entry_method=entry,
+                        item_count=len(rows),
+                    )
+                if entry == "receipt_image":
+                    analytics.emit("receipt_flow_completed", item_count=len(rows))
+                if lines:
+                    names = ", ".join(
+                        f"{category_label(key)} ({key})" for key in sorted(lines)
+                    )
+                    notes.append(
+                        f"The user has their own budget lines: {names}. An expense "
+                        "that belongs to one counts there only when recorded with "
+                        "budget_line; correct it with update_transaction if needed."
+                    )
+            total = sum((Decimal(str(r.amount)) for r in rows), Decimal("0.00"))
+            return TransactionsRecordedOut(
+                status=status,
+                currency=user_ctx.currency,
+                transactions=[
+                    _recorded(keys, user_ctx, r, paid_by_row.get(r.id)) for r in rows
+                ],
+                count=len(rows),
+                total=money(total),
+                month_to_date_spent=money(writes.month_to_date_spent(s, user_ctx)),
+                notes=notes,
+            )
+
+        return await session.run_sync(write)
+
+    @server.tool(
+        name="add_transaction",
+        title="Record an expense in MITA",
+        description=ADD_DESCRIPTION,
+        annotations=write_annotations(
+            "Record an expense in MITA", destructive=False, idempotent=True
+        ),
+        meta=tool_meta(
+            FINANCE_WRITE, "Recording your expense…", "Recorded your expense"
+        ),
+    )
+    async def add_transaction(
+        ctx: Context,
+        amount: TransactionAmount,
+        idempotency_key: IdempotencyKey,
+        category: Annotated[
+            Optional[ExpenseCategory], Field(description=CATEGORY_HELP)
+        ] = None,
+        budget_line: BudgetLine = None,
+        date: ExpenseDate = None,
+        merchant: Merchant = None,
+        entry_method: EntryMethod = "conversation",
+        obligation_ref: ObligationRef = None,
+        obligation_due_date: ObligationDue = None,
+    ) -> Annotated[CallToolResult, TransactionsRecordedOut]:
+        async def body(session, user_ctx, call):
+            try:
+                check_target(category, budget_line, obligation_ref, obligation_due_date)
+            except ValueError as exc:
+                raise ValidationError(str(exc)) from None
+            item = ExpenseItem(
+                amount=amount,
+                category=category,
+                budget_line=budget_line,
+                date=date,
+                merchant=merchant,
+                obligation_ref=obligation_ref,
+                obligation_due_date=obligation_due_date,
+            )
+            return await _record(
+                session,
+                user_ctx,
+                call,
+                [item],
+                idempotency_key,
+                entry_method,
+                "add_transaction",
+            )
+
+        return await runtime.execute_write(
+            "add_transaction",
+            FINANCE_WRITE,
+            body,
+            ctx=ctx,
+            intent="create_transaction",
+        )
+
+    @server.tool(
+        name="add_transactions",
+        title="Record several expenses in MITA",
+        description=ADD_MANY_DESCRIPTION,
+        annotations=write_annotations(
+            "Record several expenses in MITA", destructive=False, idempotent=True
+        ),
+        meta=tool_meta(
+            FINANCE_WRITE, "Recording your expenses…", "Recorded your expenses"
+        ),
+    )
+    async def add_transactions(
+        ctx: Context,
+        expenses: Annotated[
+            List[ExpenseItem],
+            Field(
+                min_length=1,
+                max_length=MAX_BATCH,
+                description="The expenses, one item each, exactly as stated.",
+            ),
+        ],
+        idempotency_key: IdempotencyKey,
+        entry_method: EntryMethod = "conversation",
+    ) -> Annotated[CallToolResult, TransactionsRecordedOut]:
+        async def body(session, user_ctx, call):
+            return await _record(
+                session,
+                user_ctx,
+                call,
+                expenses,
+                idempotency_key,
+                entry_method,
+                "add_transactions",
+            )
+
+        return await runtime.execute_write(
+            "add_transactions",
+            FINANCE_WRITE,
+            body,
+            ctx=ctx,
+            intent="create_batch",
+        )
+
+    @server.tool(
+        name="update_transaction",
+        title="Correct a MITA expense",
+        description=UPDATE_DESCRIPTION,
+        annotations=write_annotations(
+            "Correct a MITA expense", destructive=True, idempotent=True
+        ),
+        meta=tool_meta(
+            FINANCE_WRITE, "Correcting the expense…", "Corrected the expense"
+        ),
+    )
+    async def update_transaction(
+        ctx: Context,
+        ref: Ref,
+        amount: Optional[TransactionAmount] = None,
+        category: Annotated[
+            Optional[ExpenseCategory], Field(description=CATEGORY_HELP)
+        ] = None,
+        budget_line: BudgetLine = None,
+        date: ExpenseDate = None,
+        merchant: Annotated[
+            Optional[str],
+            Field(
+                max_length=200,
+                description="New merchant exactly as the user named it; an empty string removes it.",
+            ),
+        ] = None,
+        obligation_ref: Annotated[
+            Optional[str],
+            Field(
+                max_length=128,
+                description=(
+                    OBLIGATION_HELP
+                    + " An empty string removes the link: the expense no longer "
+                    "pays that bill."
+                ),
+            ),
+        ] = None,
+        obligation_due_date: ObligationDue = None,
+    ) -> Annotated[CallToolResult, TransactionChangeOut]:
+        async def body(session, user_ctx, call):
+            if (
+                amount is None
+                and category is None
+                and budget_line is None
+                and date is None
+                and merchant is None
+                and obligation_ref is None
+            ):
+                raise ValidationError(
+                    "Send at least one field to change: amount, category, date, "
+                    "merchant or obligation_ref."
+                )
+            if category is not None and budget_line is not None:
+                raise ValidationError(LINE_OR_CATEGORY)
+            if obligation_ref and budget_line is not None:
+                raise ValidationError(LINE_AND_OBLIGATION)
+            if obligation_due_date is not None and not obligation_ref:
+                raise ValidationError("obligation_due_date needs obligation_ref.")
+
+            def write(s) -> TransactionChangeOut:
+                txn_id, row = writes.resolve_ref(s, user_ctx, keys, ref)
+                if row is None:
+                    raise ValidationError(
+                        "This expense was deleted; it can no longer be changed."
+                    )
+                before_paid = _paid_of(s, user_ctx, row)
+                before = _recorded(keys, user_ctx, row, before_paid)
+                new_category = (
+                    _line_key(s, user_ctx, budget_line)
+                    if budget_line is not None
+                    else category
+                )
+                paid = before_paid
+                if obligation_ref:
+                    obligation = payments.resolve(s, user_ctx, keys, obligation_ref)
+                    new_category = payments.require_category(obligation, new_category)
+                    if new_category == row.category:
+                        new_category = None  # unchanged
+                    day = (
+                        writes.resolve_day(user_ctx, date)
+                        if date
+                        else (writes.local_day(user_ctx, row))
+                    )
+                    allocator = payments.Allocator(s, user_ctx)
+                    if before_paid is not None:
+                        # this expense's own earlier payment does not count
+                        # toward "already paid" when it is re-linked
+                        allocator.forget(
+                            before_paid[0].id, before_paid[1], Decimal(str(row.amount))
+                        )
+                    due = allocator.due_date(
+                        obligation,
+                        day,
+                        Decimal(str(amount if amount is not None else row.amount)),
+                        obligation_due_date,
+                    )
+                    payments.link(s, user_ctx, txn_id, obligation, due)
+                    paid = (obligation, due)
+                elif obligation_ref == "":
+                    payments.unlink(s, user_ctx, txn_id)
+                    paid = None
+                elif (
+                    before_paid is not None
+                    and (new_category or row.category) != before_paid[0].category
+                ):
+                    raise ValidationError(
+                        f"This expense paid {payments.name_of(before_paid[0])}, which "
+                        "is recorded under its own category. To change the category, "
+                        "first remove the link (obligation_ref '')."
+                    )
+                writes.apply_update(
+                    s,
+                    user_ctx,
+                    txn_id,
+                    amount=amount,
+                    category=new_category,
+                    day=date,
+                    merchant=merchant,
+                    merchant_sent=merchant is not None,
+                )
+                s.refresh(row)  # the committed row, not the updater's local-time copy
+                after = _recorded(keys, user_ctx, row, paid)
+                changed = [
+                    name
+                    for name in (
+                        "amount",
+                        "category",
+                        "date",
+                        "merchant",
+                        "paid_obligation",
+                    )
+                    if getattr(before, name) != getattr(after, name)
+                ]
+                if changed:
+                    analytics.emit("transaction_updated", fields=changed)
+                return TransactionChangeOut(
+                    status="updated" if changed else "unchanged",
+                    changed_fields=changed,
+                    transaction=after,
+                    month_to_date_spent=money(writes.month_to_date_spent(s, user_ctx)),
+                    notes=[],
+                )
+
+            return await session.run_sync(write)
+
+        return await runtime.execute_write(
+            "update_transaction",
+            FINANCE_WRITE,
+            body,
+            ctx=ctx,
+            intent="edit_transaction",
+        )
+
+    @server.tool(
+        name="delete_transaction",
+        title="Delete a MITA expense",
+        description=DELETE_DESCRIPTION,
+        annotations=write_annotations(
+            "Delete a MITA expense", destructive=True, idempotent=True
+        ),
+        meta=tool_meta(FINANCE_WRITE, "Deleting the expense…", "Deleted the expense"),
+    )
+    async def delete_transaction(
+        ctx: Context, ref: Ref
+    ) -> Annotated[CallToolResult, TransactionChangeOut]:
+        async def body(session, user_ctx, call):
+            def write(s) -> TransactionChangeOut:
+                txn_id, row = writes.resolve_ref(s, user_ctx, keys, ref)
+                if row is None:
+                    deleted_row = writes.load_owned(
+                        s, user_ctx, [txn_id], include_deleted=True
+                    )[0]
+                    return TransactionChangeOut(
+                        status="already_deleted",
+                        changed_fields=[],
+                        transaction=_recorded(keys, user_ctx, deleted_row),
+                        month_to_date_spent=money(
+                            writes.month_to_date_spent(s, user_ctx)
+                        ),
+                        notes=["This expense was already deleted; nothing changed."],
+                    )
+                snapshot = _recorded(keys, user_ctx, row)
+                writes.apply_delete(s, user_ctx, txn_id)
+                analytics.emit("transaction_deleted")
+                return TransactionChangeOut(
+                    status="deleted",
+                    changed_fields=[],
+                    transaction=snapshot,
+                    month_to_date_spent=money(writes.month_to_date_spent(s, user_ctx)),
+                    notes=[],
+                )
+
+            return await session.run_sync(write)
+
+        return await runtime.execute_write(
+            "delete_transaction",
+            FINANCE_WRITE,
+            body,
+            ctx=ctx,
+            intent="delete_transaction",
+        )

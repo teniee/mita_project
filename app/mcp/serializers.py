@@ -1,0 +1,764 @@
+"""Query-layer dataclasses → tool output models.
+
+The only place amounts are formatted. Every field a tool returns is listed
+here explicitly; nothing is copied from an ORM object wholesale.
+"""
+
+from __future__ import annotations
+
+import hashlib
+from decimal import ROUND_HALF_UP, Decimal
+from typing import List, Mapping, Optional, Sequence
+
+from app.mcp.categories import goal_label
+from app.mcp.categories import label as category_label
+from app.mcp.crypto import DataKeys
+from app.mcp.queries.calendar import REMINDER_DAYS, CalendarMonth
+from app.mcp.queries.goals import GoalView
+from app.mcp.queries.ledger import CategoryTotal, LedgerPage
+from app.mcp.queries.periods import UserContext, days_elapsed, month_days
+from app.mcp.queries.plan import BudgetStatus, MonthForecast
+from app.mcp.queries.recurring import RecurringView
+from app.mcp.schemas import (
+    BudgetStatusOut,
+    CalendarBillOut,
+    CalendarDayOut,
+    CalendarLineOut,
+    CalendarMonthOut,
+    CalendarPurchaseOut,
+    CalendarSummaryOut,
+    CalendarViewOut,
+    CategoryBudgetOut,
+    CategoryRiskOut,
+    CategorySpendOut,
+    DayBudgetOut,
+    DueThisMonthOut,
+    FinancialSummaryOut,
+    ForecastOut,
+    GoalOut,
+    GoalProjectionOut,
+    GoalsOut,
+    MarkedRecurringOut,
+    ProfileOut,
+    RecurringOut,
+    ScheduledExpenseOut,
+    SpendingBreakdownOut,
+    TransactionOut,
+    TransactionsOut,
+)
+from app.services.obligation_lines import is_bill_key
+
+CENT = Decimal("0.01")
+TENTH = Decimal("0.1")
+ZERO = Decimal("0.00")
+PROFILE_ID_NAMESPACE = "mita-profile-v1:"
+
+NOTE_NO_CONVERSION = (
+    "All totals are in {currency}. MITA does not convert currencies; "
+    "transactions recorded in {others} are added at face value."
+)
+NOTE_PLAN_NOT_GENERATED = (
+    "MITA has no saved budget plan for this month yet. One is created when the "
+    "user reviews and saves a budget (preview_monthly_budget, then "
+    "save_monthly_budget) or in the MITA app. No budget figures are estimated here."
+)
+NOTE_NOT_ONBOARDED = (
+    "This account has not completed MITA onboarding, so it has no budget plan."
+)
+
+
+def money(value: Decimal) -> str:
+    return str(Decimal(value).quantize(CENT, rounding=ROUND_HALF_UP))
+
+
+def optional_money(value: Optional[Decimal]) -> Optional[str]:
+    return None if value is None else money(value)
+
+
+def percent(part: Decimal, whole: Decimal) -> str:
+    return str(
+        (Decimal(part) / Decimal(whole) * 100).quantize(TENTH, rounding=ROUND_HALF_UP)
+    )
+
+
+def profile_id(user_id) -> str:
+    """Stable, opaque, never reassigned: a one-way digest of the account uuid."""
+    digest = hashlib.sha256(f"{PROFILE_ID_NAMESPACE}{user_id}".encode()).hexdigest()
+    return f"prf_{digest[:16]}"
+
+
+def mask_email(email: str) -> str:
+    local, _, domain = (email or "").partition("@")
+    if not domain:
+        return "***"
+    visible = local[:1] if len(local) <= 3 else local[:2]
+    return f"{visible}***@{domain}"
+
+
+def _currency_notes(ctx: UserContext, others: Sequence[str]) -> List[str]:
+    if not others:
+        return []
+    return [NOTE_NO_CONVERSION.format(currency=ctx.currency, others=", ".join(others))]
+
+
+def _plan_notes(ctx: UserContext, plan_generated: bool) -> List[str]:
+    if plan_generated:
+        return []
+    return [NOTE_PLAN_NOT_GENERATED if ctx.has_onboarded else NOTE_NOT_ONBOARDED]
+
+
+def profile_out(ctx: UserContext) -> ProfileOut:
+    return ProfileOut(
+        id=profile_id(ctx.user_id),
+        name=(ctx.name or "").strip() or None,
+        nickname=mask_email(ctx.email),
+    )
+
+
+MERCHANT_FILTER_NOTE = (
+    "Only this user's own recorded expenses were searched, by the merchant text "
+    "they entered. MITA cannot see other people's accounts, so a person's name "
+    "matches only expenses this user recorded with that name."
+)
+
+REDISTRIBUTION_NOTE = (
+    "Planned amounts include {moved} that MITA's automatic redistribution moved "
+    "between categories this month to cover spending above a day's plan; the plan "
+    "total is unchanged."
+)
+
+
+def transaction_ref(keys: DataKeys, ctx: UserContext, transaction_id) -> str:
+    return keys.transaction_ref(ctx.user_id, transaction_id)
+
+
+def transactions_out(
+    ctx: UserContext,
+    start,
+    end,
+    page: LedgerPage,
+    *,
+    keys: DataKeys,
+    next_cursor: Optional[str] = None,
+    merchant_filter: Optional[str] = None,
+) -> TransactionsOut:
+    notes = _currency_notes(ctx, page.other_currencies)
+    if page.matching_count == 0:
+        notes.append("No expenses are recorded in MITA for this range and filter.")
+    if merchant_filter:
+        notes.append(MERCHANT_FILTER_NOTE)
+    return TransactionsOut(
+        start_date=start,
+        end_date=end,
+        currency=ctx.currency,
+        transactions=[
+            TransactionOut(
+                ref=transaction_ref(keys, ctx, e.transaction_id),
+                date=e.day,
+                amount=money(e.amount),
+                currency=e.currency,
+                category=e.category,
+                category_label=category_label(e.category),
+                merchant=e.merchant,
+            )
+            for e in page.entries
+        ],
+        returned_count=len(page.entries),
+        matching_count=page.matching_count,
+        matching_total=money(page.matching_total),
+        has_more=page.has_more,
+        next_cursor=next_cursor if page.has_more else None,
+        timezone=ctx.timezone,
+        notes=notes,
+    )
+
+
+def _category_spend(
+    items: Sequence[CategoryTotal], grand_total: Decimal
+) -> List[CategorySpendOut]:
+    return [
+        CategorySpendOut(
+            category=item.category,
+            category_label=category_label(item.category),
+            total=money(item.total),
+            transaction_count=item.count,
+            share_percent=(
+                percent(item.total, grand_total) if grand_total > 0 else "0.0"
+            ),
+        )
+        for item in items
+    ]
+
+
+def spending_breakdown_out(
+    ctx: UserContext, start, end, totals: Sequence[CategoryTotal], others: Sequence[str]
+) -> SpendingBreakdownOut:
+    grand_total = sum((t.total for t in totals), ZERO)
+    return SpendingBreakdownOut(
+        start_date=start,
+        end_date=end,
+        currency=ctx.currency,
+        total_spent=money(grand_total),
+        transaction_count=sum(t.count for t in totals),
+        categories=_category_spend(totals, grand_total),
+        notes=_currency_notes(ctx, others),
+    )
+
+
+def financial_summary_out(
+    ctx: UserContext, status: BudgetStatus, totals: Sequence[CategoryTotal]
+) -> FinancialSummaryOut:
+    _, last = month_days(status.year, status.month)
+    elapsed = days_elapsed(ctx, status.year, status.month)
+    spent = sum((t.total for t in totals), ZERO)
+    planned = status.total_planned if status.plan_generated else None
+    return FinancialSummaryOut(
+        year=status.year,
+        month=status.month,
+        month_position=status.position,  # type: ignore[arg-type]
+        currency=ctx.currency,
+        stated_monthly_income=optional_money(ctx.stated_monthly_income),
+        plan_status="generated" if status.plan_generated else "not_generated",
+        planned_total=optional_money(planned),
+        spent_total=money(spent),
+        remaining_total=optional_money(
+            planned - spent if planned is not None else None
+        ),
+        transaction_count=sum(t.count for t in totals),
+        top_categories=_category_spend(list(totals)[:3], spent),
+        days_in_month=last.day,
+        days_elapsed=elapsed,
+        notes=_plan_notes(ctx, status.plan_generated)
+        + _currency_notes(ctx, status.other_currencies),
+    )
+
+
+def _category_state(planned: Decimal, spent: Decimal) -> str:
+    if planned > 0:
+        return "over_budget" if spent > planned else "within_budget"
+    return "unplanned_spending" if spent > 0 else "not_started"
+
+
+def budget_status_out(ctx: UserContext, status: BudgetStatus) -> BudgetStatusOut:
+    today = None
+    if status.today is not None:
+        today = DayBudgetOut(
+            date=status.today.day,
+            planned=money(status.today.planned),
+            spent=money(status.today.spent),
+            remaining=money(status.today.planned - status.today.spent),
+            everyday_planned=money(status.today.everyday_planned),
+            everyday_spent=money(status.today.everyday_spent),
+            everyday_remaining=money(
+                status.today.everyday_planned - status.today.everyday_spent
+            ),
+        )
+    return BudgetStatusOut(
+        year=status.year,
+        month=status.month,
+        month_position=status.position,  # type: ignore[arg-type]
+        currency=ctx.currency,
+        plan_status="generated" if status.plan_generated else "not_generated",
+        total_planned=money(status.total_planned),
+        total_spent=money(status.total_spent),
+        total_remaining=money(status.total_planned - status.total_spent),
+        categories=[
+            CategoryBudgetOut(
+                category=c.category,
+                category_label=c.label or category_label(c.category),
+                category_codes=list(c.codes) or [c.category],
+                planned=money(c.planned),
+                spent=money(c.spent),
+                remaining=money(c.remaining),
+                percent_used=percent(c.spent, c.planned) if c.planned > 0 else None,
+                state=_category_state(c.planned, c.spent),  # type: ignore[arg-type]
+                source=c.source,  # type: ignore[arg-type]
+            )
+            for c in status.categories
+        ],
+        today=today,
+        notes=_plan_notes(ctx, status.plan_generated)
+        + _currency_notes(ctx, status.other_currencies)
+        + (
+            [REDISTRIBUTION_NOTE.format(moved=money(status.redistributed))]
+            if status.redistributed > 0
+            else []
+        ),
+    )
+
+
+FORECAST_METHOD = (
+    "Linear projection from MITA's forecast engine: spent so far divided by days "
+    "elapsed (in the user's timezone), extended over the rest of the month, compared "
+    "with the month's plan. The safe daily limit never counts as spendable the money "
+    "the plan sets aside for savings, goals or investments (savings_set_aside) or the "
+    "money the month's bills still need (commitments_reserved: each commitment line's "
+    "reviewed plan, or its saved regular payments due this month when more, minus what "
+    "is recorded on it). A bill counts as paid once it is recorded as an expense."
+)
+
+
+def forecast_out(
+    ctx: UserContext, forecast: MonthForecast, others: Sequence[str]
+) -> ForecastOut:
+    _, last = month_days(forecast.year, forecast.month)
+    result = forecast.result
+    common = dict(
+        year=forecast.year,
+        month=forecast.month,
+        month_position=forecast.position,
+        currency=ctx.currency,
+        method=FORECAST_METHOD,
+        days_in_month=last.day,
+    )
+    if result is None:
+        elapsed = days_elapsed(ctx, forecast.year, forecast.month)
+        return ForecastOut(
+            **common,
+            plan_status="not_generated",
+            status=None,
+            days_elapsed=elapsed,
+            # Same convention as compute_forecast: today counts as elapsed.
+            days_remaining=last.day - elapsed,
+            categories_at_risk=[],
+            notes=_plan_notes(ctx, False) + _currency_notes(ctx, others),
+        )
+    return ForecastOut(
+        **common,
+        plan_status="generated",
+        status=result.status,
+        days_elapsed=result.days_elapsed,
+        days_remaining=result.days_remaining,
+        total_planned=money(result.total_planned),
+        total_spent=money(result.total_spent),
+        remaining_budget=money(result.remaining_budget),
+        savings_set_aside=money(result.savings_set_aside),
+        commitments_reserved=money(result.commitments_reserved),
+        current_daily_pace=money(result.current_daily_pace),
+        safe_daily_limit=money(result.safe_daily_limit),
+        projected_month_end_spend=money(result.projected_month_end_spend),
+        projected_month_end_balance=money(result.projected_month_end_balance),
+        categories_at_risk=[
+            CategoryRiskOut(
+                category=c.category,
+                category_label=category_label(c.category),
+                monthly_planned=money(c.monthly_planned),
+                monthly_spent=money(c.monthly_spent),
+                daily_pace=money(c.daily_pace),
+                planned_per_day=money(c.planned_per_day),
+                pace_ratio=money(c.overspend_ratio),
+                days_until_exhausted=c.days_until_exhausted,
+            )
+            for c in result.categories_at_risk
+            # a bill paid on its due date is not spending fast
+            if not is_bill_key(c.category)
+        ],
+        notes=_currency_notes(ctx, others),
+    )
+
+
+def _goal_projection(goal: GoalView) -> Optional[GoalProjectionOut]:
+    f = goal.forecast
+    if f is None:
+        return None
+    if f.remaining <= 0:
+        basis = "funded"
+        on_track: Optional[bool] = True
+    elif f.target_date is None:
+        # The engine reports on_track=False here; with no deadline there is
+        # nothing to be on or off track against.
+        basis = "no_target_date"
+        on_track = None
+    elif f.months_remaining is not None and f.months_remaining <= 0:
+        basis = "target_date_passed"
+        on_track = False
+    else:
+        basis = "monthly_contribution"
+        on_track = f.on_track
+    return GoalProjectionOut(
+        basis=basis,  # type: ignore[arg-type]
+        on_track=on_track,
+        months_remaining=(
+            None if f.months_remaining is None else money(f.months_remaining)
+        ),
+        required_monthly_contribution=optional_money(f.required_monthly_contribution),
+        projected_saved_by_target_date=optional_money(f.projected_saved),
+        shortfall=optional_money(f.shortfall) if basis != "no_target_date" else None,
+    )
+
+
+def goals_out(ctx: UserContext, goals: Sequence[GoalView]) -> GoalsOut:
+    items = []
+    for g in goals:
+        remaining = max(g.target_amount - g.saved_amount, ZERO)
+        progress = (
+            min(Decimal(g.saved_amount) / g.target_amount * 100, Decimal(100))
+            if g.target_amount > 0
+            else Decimal(0)
+        )
+        items.append(
+            GoalOut(
+                title=g.title,
+                category=g.category,
+                category_label=goal_label(g.category),
+                status=g.status,  # type: ignore[arg-type]
+                priority=g.priority,
+                target_amount=money(g.target_amount),
+                saved_amount=money(g.saved_amount),
+                remaining_amount=money(remaining),
+                progress_percent=str(progress.quantize(TENTH, rounding=ROUND_HALF_UP)),
+                monthly_contribution=optional_money(g.monthly_contribution),
+                target_date=g.target_date,
+                projection=_goal_projection(g),
+            )
+        )
+    notes = []
+    if any(
+        g.status == "active" and g.monthly_contribution is None and g.target_date
+        for g in goals
+    ):
+        notes.append(
+            "Goals without a monthly contribution are projected with a contribution of 0."
+        )
+    return GoalsOut(currency=ctx.currency, goals=items, notes=notes)
+
+
+def recurring_out(ctx: UserContext, view: RecurringView, keys) -> RecurringOut:
+    def scheduled(item) -> ScheduledExpenseOut:
+        return ScheduledExpenseOut(
+            obligation_ref=keys.obligation_ref(ctx.user_id, item.obligation_id),
+            category=item.category,
+            category_label=category_label(item.category),
+            amount=money(item.amount),
+            merchant=item.merchant,
+            due_date=item.next_date,
+            recurrence=item.recurrence,
+            due_this_month=[
+                DueThisMonthOut(
+                    due_date=due.day,
+                    amount=money(due.amount),
+                    paid=money(due.paid),
+                    outstanding=money(max(ZERO, due.amount - due.paid)),
+                )
+                for due in item.due_this_month
+            ],
+        )
+
+    return RecurringOut(
+        currency=ctx.currency,
+        scheduled_recurring=[scheduled(i) for i in view.scheduled_recurring],
+        upcoming_one_time=[scheduled(i) for i in view.upcoming_one_time],
+        marked_recurring=[
+            MarkedRecurringOut(
+                label=(
+                    category_label(m.category) if m.label == m.category else m.label
+                ),
+                category=m.category,
+                category_label=category_label(m.category),
+                last_amount=money(m.last_amount),
+                last_date=m.last_date,
+                occurrences_in_lookback=m.occurrences,
+            )
+            for m in view.marked_recurring
+        ],
+        lookback_start_date=view.lookback_start,
+        inferred=[],
+        notes=[
+            "Only expenses the user scheduled or marked as recurring are listed. "
+            "MITA does not detect subscriptions automatically.",
+            "A saved payment counts as paid only through expenses recorded with "
+            "its obligation_ref; MITA never matches it by category or amount.",
+        ],
+    )
+
+
+# --- the financial calendar ---------------------------------------------------
+
+CALENDAR_METHOD = (
+    "A date holds four different things, never merged: expenses recorded on it "
+    "(in the user's timezone), saved bills due on it, planned purchases the "
+    "user's stated pattern puts on it — bills and planned purchases are what is "
+    "scheduled for the date (planned_scheduled) — and nothing else. A flexible "
+    "budget is a monthly limit with no dates: its amount, spending, remainder and "
+    "daily guidance are on its line in categories, and the share of it the plan "
+    "rows keep on a date (planned_flexible) is bookkeeping, never a plan, a "
+    "purchase or a limit for that date. Plan lines are grouped as in the "
+    "summary: bills (rent, mortgage and utilities lines, and the categories of "
+    "saved regular payments that belong to the month), money set aside (savings, "
+    "goals, investments — never spendable) and everyday spending. A day's state "
+    "compares everyday spending with what is scheduled on that date; spending "
+    "from a flexible budget inside its monthly limit is never over. Future dates "
+    "show what is scheduled, never a forecast. left_to_spend leaves out money set "
+    "aside and what bills not yet recorded still need (commitments_reserved). "
+    "average_per_day is the forecast engine's safe daily figure: an average for "
+    "each remaining day, not a budget for a particular date."
+)
+NOTE_COMMITMENTS_RESERVED = (
+    "{amount} {currency} is held for bills not paid in MITA yet; it is not part of "
+    "left_to_spend or average_per_day. Only an expense recorded as paying a bill "
+    "(obligation_ref) releases it — other spending in the same category does not."
+)
+NOTE_BILLS_OUTSIDE_PLAN = (
+    "{count} saved payment(s) this month fall on a category with no money in this "
+    "month's plan, so the plan does not cover them."
+)
+NOTE_MONTH_ENDED = "The month has ended, so there is no daily average for it."
+
+# The component-only month payload (``_meta["mita/calendar"]``). Version 2
+# (MCP 2.10.0, component v4): ``day_lines`` carry what is scheduled on a date,
+# never a flexible budget's stored share. A component written for another
+# version refuses the payload instead of drawing it with the wrong meaning.
+WIDGET_PAYLOAD_VERSION = 2
+
+
+def calendar_summary_out(cal: CalendarMonth) -> CalendarSummaryOut:
+    planned = cal.plan_generated
+    flexible_day = cal.flexible_per_day if planned else None
+    forecast = cal.forecast
+    month_open = cal.position != "past"
+    left = (
+        cal.total_planned
+        - cal.total_spent
+        - forecast.savings_set_aside
+        - forecast.commitments_reserved
+        if planned and forecast is not None
+        else None
+    )
+    return CalendarSummaryOut(
+        stated_monthly_income=optional_money(cal.stated_income),
+        total_planned=money(cal.total_planned) if planned else None,
+        commitments_planned=money(cal.commitments_planned) if planned else None,
+        set_aside_planned=money(cal.set_aside_planned) if planned else None,
+        everyday_planned=money(cal.everyday_planned) if planned else None,
+        total_spent=money(cal.total_spent),
+        commitments_spent=money(cal.commitments_spent),
+        everyday_spent=money(cal.everyday_spent),
+        total_remaining=(
+            money(cal.total_planned - cal.total_spent) if planned else None
+        ),
+        savings_set_aside=(
+            money(forecast.savings_set_aside) if forecast is not None else None
+        ),
+        left_to_spend=optional_money(left),
+        average_per_day=(
+            money(forecast.safe_daily_limit)
+            if forecast is not None and month_open
+            else None
+        ),
+        days_elapsed=sum(1 for d in cal.days if d.kind != "future"),
+        days_remaining=sum(1 for d in cal.days if d.kind == "future"),
+        commitments_reserved=(
+            money(forecast.commitments_reserved)
+            if planned and forecast is not None
+            else None
+        ),
+        planned_after_today=(
+            money(cal.planned_after_today) if planned and month_open else None
+        ),
+        scheduled_after_today=(
+            money(cal.scheduled_after_today) if planned and month_open else None
+        ),
+        bills_due_after_today=money(cal.bills_due_after_today),
+        flexible_left=(
+            money(cal.flexible_left) if planned and cal.flexible_lines else None
+        ),
+        flexible_per_day=optional_money(flexible_day),
+        flexible_per_day_rounded=(
+            str(flexible_day.quantize(Decimal("1"), ROUND_HALF_UP))
+            if flexible_day is not None
+            else None
+        ),
+    )
+
+
+def _calendar_notes(ctx: UserContext, cal: CalendarMonth) -> List[str]:
+    notes = _plan_notes(ctx, cal.plan_generated)
+    if cal.plan_generated and cal.position != "past":
+        reserved = cal.forecast.commitments_reserved if cal.forecast else ZERO
+        if reserved > ZERO:
+            notes.append(
+                NOTE_COMMITMENTS_RESERVED.format(
+                    amount=money(reserved), currency=ctx.currency
+                )
+            )
+        outside = sum(1 for b in cal.bills if not b.in_plan)
+        if outside:
+            notes.append(NOTE_BILLS_OUTSIDE_PLAN.format(count=outside))
+    if cal.plan_generated and cal.position == "past":
+        notes.append(NOTE_MONTH_ENDED)
+    return notes + _currency_notes(ctx, cal.other_currencies)
+
+
+def _purchase_out(p) -> CalendarPurchaseOut:
+    return CalendarPurchaseOut(
+        category=p.line,
+        date=p.day,
+        planned=money(p.planned),
+        spent=money(p.spent),
+        proposed=p.proposed,
+    )
+
+
+def _day_out(day) -> CalendarDayOut:
+    begun = day.kind != "future"
+    return CalendarDayOut(
+        date=day.day,
+        day_kind=day.kind,  # type: ignore[arg-type]
+        state=day.status,  # type: ignore[arg-type]
+        planned=money(day.planned),
+        planned_everyday=money(day.planned_everyday),
+        set_aside=money(day.set_aside),
+        spent=money(day.spent) if begun else None,
+        spent_everyday=money(day.spent_everyday) if begun else None,
+        everyday_left=optional_money(day.everyday_left),
+        planned_scheduled=money(day.planned_scheduled),
+        planned_scheduled_everyday=money(day.scheduled_everyday),
+        planned_flexible=money(day.planned_flexible),
+        purchases=[_purchase_out(p) for p in day.purchases],
+    )
+
+
+def _line_out(line) -> CalendarLineOut:
+    per_day, per_week = line.guidance()
+    flexible = line.spending_type == "flexible"
+    return CalendarLineOut(
+        category=line.key,
+        category_label=line.label,
+        category_codes=list(line.codes),
+        group=line.group,  # type: ignore[arg-type]
+        planned=money(line.planned),
+        spent=money(line.spent),
+        remaining=money(line.remaining),
+        source=line.source,  # type: ignore[arg-type]
+        replaces=list(line.replaces),
+        spending_type=line.spending_type,  # type: ignore[arg-type]
+        pattern=line.pattern,
+        purchases=[_purchase_out(p) for p in line.purchases],
+        next_purchase=(
+            _purchase_out(line.next_purchase) if line.next_purchase else None
+        ),
+        left_per_day=optional_money(per_day),
+        left_per_day_rounded=(
+            str(per_day.quantize(Decimal("1"), ROUND_HALF_UP))
+            if per_day is not None
+            else None
+        ),
+        left_per_week=optional_money(per_week),
+        purchase_dates_stated=(
+            line.purchase_dates_stated if line.spending_type == "planned" else None
+        ),
+        pace_per_day=optional_money(line.pace_per_day if flexible else None),
+        planned_per_day=optional_money(line.planned_per_day if flexible else None),
+        pace_status=line.pace_status,  # type: ignore[arg-type]
+        days_until_exhausted=line.days_until_exhausted if flexible else None,
+    )
+
+
+def _bill_out(bill, refs: Optional[Mapping] = None) -> CalendarBillOut:
+    occurrence = bill.occurrence
+    return CalendarBillOut(
+        date=occurrence.day,
+        name=occurrence.merchant,
+        obligation_ref=(refs or {}).get(occurrence.obligation_id),
+        category=occurrence.category,
+        category_label=category_label(occurrence.category),
+        amount=money(occurrence.amount),
+        recurrence=occurrence.recurrence,  # type: ignore[arg-type]
+        in_plan=bill.in_plan,
+        state=bill.state,  # type: ignore[arg-type]
+        days_until=bill.days_until,
+        paid=money(bill.paid),
+        outstanding=money(bill.outstanding),
+        paid_dates=list(bill.paid_on),
+        reminder_from=bill.reminder_from,
+    )
+
+
+def obligation_refs(keys, ctx: UserContext, cal: CalendarMonth) -> dict:
+    """``{saved payment id: its ob_ ref}`` for every bill the month shows."""
+    return {
+        bill.occurrence.obligation_id: keys.obligation_ref(
+            ctx.user_id, bill.occurrence.obligation_id
+        )
+        for bill in list(cal.bills) + list(cal.reminders)
+        if bill.occurrence.obligation_id is not None
+    }
+
+
+def calendar_month_out(
+    ctx: UserContext, cal: CalendarMonth, refs: Optional[Mapping] = None
+) -> CalendarMonthOut:
+    return CalendarMonthOut(
+        year=cal.year,
+        month=cal.month,
+        month_position=cal.position,  # type: ignore[arg-type]
+        currency=ctx.currency,
+        timezone=ctx.timezone,
+        today=cal.today,
+        plan_status="generated" if cal.plan_generated else "not_generated",
+        method=CALENDAR_METHOD,
+        summary=calendar_summary_out(cal),
+        categories=[_line_out(line) for line in cal.lines],
+        days=[_day_out(day) for day in cal.days],
+        bills=[_bill_out(bill, refs) for bill in cal.bills],
+        reminders=[_bill_out(bill, refs) for bill in cal.reminders],
+        reminder_days=REMINDER_DAYS,
+        notes=_calendar_notes(ctx, cal),
+    )
+
+
+def calendar_widget_payload(
+    ctx: UserContext, cal: CalendarMonth, refs: Optional[Mapping] = None
+) -> dict:
+    """Everything the calendar component draws, for the tool result's
+    ``_meta`` (delivered to the component only, never to the model): the
+    month as ``get_calendar_month`` returns it plus each date's lines.
+
+    ``day_lines`` (version 2): per date, ``[line, scheduled, spent]`` for the
+    lines with something scheduled on the date (a bill due, a planned
+    purchase, a legacy line's layout, money set aside) or spent on it. A
+    flexible budget has no dates, so its ``scheduled`` is always "0.00" and
+    it is listed on a date only when something was spent from it there: the
+    component is never handed a daily share it could draw as a purchase.
+    Version 1 carried each line's stored plan row instead, flexible budgets
+    included — which the category filter drew as €3.33 on every date."""
+    day_lines = {}
+    for day in cal.days:
+        shown = [
+            [line.line, money(line.scheduled), money(line.spent)]
+            for line in day.lines
+            if line.scheduled != ZERO or line.spent != ZERO
+        ]
+        if shown:
+            day_lines[day.day.isoformat()] = shown
+    return {
+        "version": WIDGET_PAYLOAD_VERSION,
+        "month": calendar_month_out(ctx, cal, refs).model_dump(mode="json"),
+        "day_lines": day_lines,
+        "bill_lines": [bill.line for bill in cal.bills],
+    }
+
+
+def calendar_view_out(
+    ctx: UserContext,
+    cal: CalendarMonth,
+    *,
+    focus_date,
+    category: Optional[str],
+    shown: str,
+    notes: Sequence[str] = (),
+    refs: Optional[Mapping] = None,
+) -> CalendarViewOut:
+    return CalendarViewOut(
+        year=cal.year,
+        month=cal.month,
+        month_position=cal.position,  # type: ignore[arg-type]
+        currency=ctx.currency,
+        plan_status="generated" if cal.plan_generated else "not_generated",
+        focus_date=focus_date,
+        category=category,
+        summary=calendar_summary_out(cal),
+        reminders=[_bill_out(bill, refs) for bill in cal.reminders],
+        shown=shown,
+        notes=list(notes) + _calendar_notes(ctx, cal),
+    )

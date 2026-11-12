@@ -1,0 +1,270 @@
+# MITA's financial calendar in ChatGPT (MCP Apps) — v1, 2026-10-24
+
+> **Update 2026-11-11 (MCP 2.10.0, component `ui://mita/financial-calendar-v4.html`,
+> `flexible-envelopes-calendar.md`).** A budget is not a schedule. A date
+> shows only what was recorded on it and what is scheduled for it — planned
+> purchases and saved bills due (`planned_scheduled`, new
+> `planned_scheduled_everyday`, `summary.scheduled_after_today`). A flexible
+> budget is a monthly limit on no date: `planned_flexible` (and `planned`,
+> `planned_everyday`, `planned_after_today`, which contain it) is the plan
+> rows' bookkeeping, never drawn on a date and never presented as a date's
+> plan. The "≈" daily guide is no longer drawn in date cells; the guidance is
+> shown with the summary and each flexible line. The component payload is
+> `version: 2` (`day_lines = [line, scheduled, spent]`). A date ahead is
+> `planned` only when an everyday purchase is scheduled; a begun date with
+> nothing scheduled is `unplanned` or `quiet`. Where the text below says a
+> date shows "its plan", read "what is scheduled for it".
+
+> **Update 2026-11-03 (MCP 2.7.0, component `ui://mita/financial-calendar-v3.html`,
+> `behavioral-budget.md`).** Bills are `paid` only from linked expenses (fields
+> `paid`, `outstanding`, `paid_dates`, `obligation_ref`). Lines carry
+> `spending_type` (obligation / planned / flexible / set_aside / legacy),
+> `purchases`, `next_purchase` and, for flexible lines, `left_per_day`
+> (+ rounded) and `left_per_week`. Dates split `planned` into
+> `planned_scheduled` (planned purchases + bills — what dates ahead show) and
+> `planned_flexible` (guidance, never a purchase).
+
+The user's month, date by date, rendered inside the ChatGPT conversation as an
+interactive component: "Show my financial calendar for November." Built on the
+open MCP Apps standard (`io.modelcontextprotocol/ui`), which ChatGPT implements
+(developers.openai.com/plugins/build/chatgpt-ui, read 2026-10-24).
+
+## What exists
+
+| Piece | Where | What it is |
+|---|---|---|
+| Data tool `get_calendar_month` | `app/mcp/tools/calendar.py` | Read-only, `finance:read`. The month as data: summary, budget lines with their group, every date (plan, spend, state), saved bills by date. No template. Callable by the model and by the component. |
+| Render tool `show_financial_calendar` | same | Read-only, `finance:read`. The only tool bound to the component (`_meta.ui.resourceUri`, alias `openai/outputTemplate`). Arguments choose the month, an optional date to open on and an optional category filter — never figures. Returns a short view for the model (`structuredContent`, text) and the month for the component (`_meta["mita/calendar"]`, never shown to the model). |
+| Component | `app/mcp/ui/financial_calendar.html`, served by `app/mcp/ui/__init__.py` as `ui://mita/financial-calendar-v2.html` since 2.6.0 (v1 before; a new URI is ChatGPT's cache key) (`text/html;profile=mcp-app`) | One HTML document, vanilla JS, no build step, no dependency. |
+| Query layer | `app/mcp/queries/calendar.py` | `calendar_month` (five indexed reads in the READ ONLY transaction) and the pure `build_calendar` (also used by the sign-in page's fictional example). |
+| Day expenses | existing `list_transactions` | The component lists a selected date's expenses with it (merchant names stay out of the month payload). |
+| Review harness | `scripts/mcp/calendar_widget_review.py` | A local MCP Apps host: real sign-up, real tools, the component in a sandboxed iframe under the spec's restrictive CSP. Not ChatGPT. |
+
+The tool count is 24 (22 + 2); MCP 2.2.0, then 2.3.0 (2026-10-25: bills held out of left to spend and the daily average — `commitments_reserved`).
+
+### Why a render tool that recomputes
+
+OpenAI's decoupled pattern has the render tool take "final data" from the
+model. For money that would let a model-written argument change a figure on
+screen. Here the render tool recomputes from the account (the same function as
+the data tool, ≤ 20 ms) and takes only the month, a date and a category. The
+model may still call `get_calendar_month` first to reason about the data —
+both return the same summary (tested).
+
+## What each figure means (owner decisions 2026-10-24)
+
+Every figure is a sum of stored rows or what `get_budget_forecast` computes
+from the same rows; the component formats, never computes.
+
+**Budget lines** are `get_budget_status`'s lines (`categories.group_lines`;
+"Fuel" = `gas` + `transport gas`). Each line is in exactly one group, so the
+groups add up to the plan:
+
+| Group | Lines |
+|---|---|
+| Protected savings (`set_aside`) | `SET_ASIDE_CATEGORIES`: savings, emergency savings, goal reservations, investments. Never spendable. |
+| Bills & commitments (`commitment`) | the forecast's bills (R3, `r3-bills-reserve.md`): the essential lines MITA can see paid (`is_bill_line`: rent, mortgage, utilities — SACRED, not set aside, recordable) plus the recordable categories of the user's saved regular payments that belong to the month (`counts_in_month`: the reviewed budget's own rule — a repeating payment once running, a one-time payment in its month). |
+| Everyday (`everyday`) | every other line, including spending with no plan behind it. |
+
+**Each date** (user's timezone):
+
+| Field | Meaning |
+|---|---|
+| `planned` | the date's plan: every line except money set aside (as `get_budget_status.today`) |
+| `planned_everyday` | its everyday part |
+| `set_aside` | savings / goal slices planned that date — shown apart, never spendable |
+| `spent`, `spent_everyday` | recorded (non-deleted) expenses; null for future dates |
+| `state` | begun dates: **over** (everyday spending above that date's everyday plan), **within**, **unplanned** (spending on a date with no everyday plan — no verdict, the dashboard rule), **quiet**; future dates: **planned** / **free**. Never a forecast. |
+
+Bills and commitments are kept out of the over/within verdict: rent planned on
+the 1st and paid on the 3rd is a bill paid, not €850 of overspending on the 3rd.
+
+**Summary**: plan, commitments, set aside, everyday (they add up to the plan);
+spent (commitments + everyday); `total_remaining`; `savings_set_aside`;
+`commitments_reserved` — what the month's bills still need (owner decision
+2026-10-25, refined 2026-10-26; the same figure as `get_budget_forecast`): for each bill,
+its **reviewed** plan (in-month rebalancing backed out, so a rebalancing credit
+is never a second bill) or the saved payments due on it this month when more
+(`monthly_obligations.due_in_month`, the reviewed budget's rule), minus what is
+recorded on it, never below 0; `left_to_spend` = remaining − set aside −
+commitments_reserved; `average_per_day` = `get_budget_forecast.safe_daily_limit`
+= left_to_spend ÷ days left (an average for each remaining day — not a budget
+for any date; negative when the bills due exceed what the plan leaves);
+`days_remaining`; `planned_after_today` (the plan on the dates ahead);
+`bills_due_after_today`.
+
+**Saved bills** fall on dates by the rule the user stated: monthly on the
+anchor's day (the month's last day when shorter), weekly on the weekday, one-time
+on its date — never before the date it was first scheduled for. `in_plan` says
+whether the month's plan holds money on that bill's line. A bill's amount is
+never added to any total on top of the plan (no double counting): since
+2026-11-02 (MCP 2.5.0, `bill-due-dates.md`) the plan itself holds each bill in
+full on its due date, so the date's `planned` already includes it
+(`planned − planned_everyday`).
+
+**Bill states and reminders** (2.5.0): every bill carries `state` —
+`recorded` (expenses recorded under its category cover it, matched in date
+order: `bill_timing.settle`), `overdue` (due date passed, not recorded),
+`due_today`, `upcoming` (within `reminder_days` = 5) or `later` — with
+`days_until`, `recorded`, `recorded_dates` and `reminder_from`. "Recorded" is
+never "paid": MITA has no link between an expense and a saved payment.
+`reminders` lists what to mention now: bills due within five days (this month
+or early next month) or today, and the current month's overdue ones. The
+five days are a reminder, never an allocation.
+
+### What the calendar shows that MITA's model does not reconcile (reported, not fixed)
+
+* **The dates ahead can hold less than the daily average.** MITA's automatic
+  rebalancing (`realtime_rebalancer.rebalance_after_overspend`) takes money
+  from later dates to cover a date whose everyday spending went over; money
+  left unspent on a past date stays there. The forecast's average counts both.
+  Review account, 24 Oct: the plan for 25–31 Oct is €61.53 after the month as
+  recorded (€12.16 before bills kept their own money on 2026-11-02), while the
+  average was €117.70 a day. The calendar shows both, labelled; the component
+  explains the gap when it is material (`planned_after_today`). Backend
+  finding F-8.
+* **Bills no longer trigger it** (2026-11-02): a saved bill is planned on its
+  due date, and paying it on another date moves only its own line's money;
+  bill lines are never donors. A plan saved before 2.5.0 keeps its old layout
+  (bills spread or on the 5th) until the month is saved again; the ledger rule
+  already applies to it.
+* **Unrecorded bills** were spendable until recorded (known since
+  2026-10-23); since 2026-10-25 they are held (`commitments_reserved`) and out
+  of left to spend and the daily average, in ChatGPT and in the mobile API's
+  forecast. SACRED lines no expense is recorded under (the engine's medical
+  insurance allowance; school fees, debt repayment, online courses) are
+  everyday lines since 2026-10-26: held, they could never be released.
+* **F-2**: an expense category named differently from its plan line (`gas` vs
+  `transport gas`) is shown on one line here but is unplanned spending to the
+  rebalancer.
+
+None of these is changed here: the owner deferred the forecast/plan model to a
+dedicated task. The calendar never adds a figure that would hide them.
+
+## The component
+
+* **Inline card** (ChatGPT's default): the month, the average a day, left to
+  spend / spent / savings kept, a compact calendar with each date's amount and a
+  bar against its everyday plan, the over days, "Bill reminders" (the first
+  two, "+ N more") or else the next bill; two actions (Open calendar →
+  fullscreen; Save as PNG). No drill-in (OpenAI UI guidelines).
+* **Bills** (2.5.0): each due date carries a bill mark coloured by state (teal
+  recorded, amber upcoming, red overdue, navy/yellow due today — the state is
+  also in words in every label and chip); a live reminder bands the dates from
+  today to its due date; the selected date shows "Bills due on this date"
+  (state, what is recorded, Everyday plan + Bills due = Plan for the date),
+  "Bills recorded on this date" (paid early or late) and "Coming up"; the
+  fullscreen view lists all reminders after the summary and "Bills this month"
+  after the calendar. On a phone's narrow cell the category dots give way so a
+  bill mark is never cut off.
+* **Fullscreen**: month navigation (`get_calendar_month` through the host),
+  the summary and "How is this worked out?", category filters (top lines + More),
+  the calendar grid (keyboard: arrows, Home/End), the selected date's detail
+  (everyday plan vs spent, bills and commitments recorded, savings set aside,
+  saved bills due, lines, the date's expenses), categories by group, the plan's
+  composition and its caveats, the method. Phones: the calendar comes right
+  after the summary; wide: summary, calendar and detail side by side.
+* **States**: loading skeleton, no plan for the month (spending only; for the
+  current or next month a button asks ChatGPT to plan it — `ui/message`), error,
+  tool cancelled, a host that strips `_meta` (the component asks
+  `get_calendar_month`).
+* **Bridge**: `ui/initialize` (appCapabilities.availableDisplayModes
+  inline+fullscreen, protocol 2026-01-26) → `ui/notifications/initialized`;
+  tool input/result/cancelled; `host-context-changed` (theme, display mode);
+  `tools/call` (read tools only: `get_calendar_month`, `list_transactions`);
+  `ui/request-display-mode`; `ui/update-model-context` (the selected date and
+  filter, so a follow-up question is grounded); `ui/message`;
+  `ui/notifications/size-changed` (ResizeObserver); `ui/download-file`;
+  `ui/resource-teardown`, `ping`. ChatGPT's `window.openai` is used only for
+  what the standard lacks (widget state, file upload/download) and is
+  feature-detected; its globals also hydrate the component if the bridge is
+  missing.
+* **2.6.0 redesign** (owner, 2026-11-03): date cells without a repeated
+  "PLAN" label (a caption above the grid: dates so far show what was spent,
+  dates ahead MITA's plan; future cells dashed), larger cells and amounts
+  (whole euros in a phone's grids — inline card and fullscreen — cents
+  wider), each date's largest
+  categories as monochrome outlined family icons (cart, cup, car, bag,
+  ticket, heart, home, tag) — from that date's own lines, money set aside
+  left out — also on the filter chips, category list and the date's rows. A
+  user line takes the icon of the MITA line it replaces (`replaces`, as
+  saved), else the tag. No colour dots.
+* **Look**: the system font stack and the host's CSS variables (OpenAI: no
+  custom fonts, no custom gradients, system colours for text; ChatGPT adds the
+  logo and name). MITA colour only on accents: the primary button (navy/yellow,
+  inverted in dark mode), the Today badge, savings (teal). Category colours by
+  family in a fixed order (validated categorical palette, never by rank); red
+  only for "over", always with an icon and words. Light and dark.
+* **Narrow phones** (a 360 dp Android's chat column is about 320 px): money is
+  never cut off. `fitText` gives a date grid whose amounts do not fit a smaller
+  size, then whole euros with "Amounts rounded to whole euros to fit this
+  screen" under it (a plan under €0.50 shows "<1", never "0"); the exact figure
+  stays in each date's label and detail. Summary tiles go two-up and the two
+  buttons stack. Checked at 320 and 360 px by the harness.
+* **Accessibility**: axe-core WCAG 2.2 AA, 0 violations inline/fullscreen ×
+  light/dark (harness); each date is a button with a full label; selection and
+  filter changes announced; reduced motion honoured.
+
+### Save as PNG
+
+The month drawn on a canvas, 1080 px wide (height from content): plan, spent,
+left to spend, protected savings, the average a day, days left; every date
+(recorded vs dashed plan, over marks, bills due, today); up to six categories;
+legend; "Generated <date, time, timezone>"; "From your MITA account". No
+merchant, expense, bill name or e-mail. Delivery, by what the host supports:
+
+1. `ui/download-file` (MCP Apps; the host asks the user) — tested in the harness.
+2. ChatGPT's `window.openai.uploadFile` (to the user's own ChatGPT files) then
+   `getFileDownloadUrl` opened with `ui/open-link` — not testable outside ChatGPT.
+3. Otherwise the image is shown in the component to keep with a long press or
+   right-click — tested.
+
+No server-side PNG, no URL: the image never leaves the user's own session
+except through the host's own download or file store.
+
+## Security
+
+* No tool takes a user id; identity from the token; `additionalProperties:
+  false` (smuggled `user_id` refused — tested).
+* The component loads nothing and connects nowhere: the resource declares
+  empty `connectDomains`/`resourceDomains`, so the host's restrictive CSP
+  applies; tested that the source has no remote URL, fetch/XHR/WebSocket,
+  `innerHTML`/`outerHTML`/`insertAdjacentHTML`/`document.write`, `eval` or
+  `new Function`, and calls only the two read tools.
+* Every value is set with `textContent`; host CSS variables are applied only
+  when they look like variables (`--name`, no `<>{};`).
+* `ui.domain` is set only when `MCP_WIDGET_DOMAIN` is configured (an https
+  origin; required by OpenAI at submission, unset on staging — ChatGPT's shared
+  sandbox origin).
+* The `_meta` month payload goes to the component only; it contains no e-mail,
+  no internal id; merchants appear only in `bills[].name` (the user's own saved
+  payment names), which the image leaves out.
+
+## Testing
+
+* `tests_mcp/test_calendar.py` (32): exact figures for a hand-built month in
+  Europe/Sofia (incl. a 22:30 UTC expense that is the next local day, a deleted
+  expense, a cancelled payment), parity with `get_budget_status` and
+  `get_budget_forecast`, no plan / past / future months, bill dates, groups,
+  isolation, the render tool's split between model and component, the resource
+  and its CSP, the component source rules, the master logomark in the image.
+* `scripts/mcp/calendar_widget_review.py` (76 checks with axe and clean-up; 320/360 px added 2026-10-25, 390 px and the bills — reminders, bill marks, a bill date's detail, the bills card — 2026-11-03): sign-up through the real
+  page, the month entered through MITA's tools, the component in a sandboxed
+  iframe with the spec's restrictive CSP, phone (WebKit) and desktop
+  (Chromium), light/dark, fullscreen, a date's label and expenses, model
+  context, the filter, keyboard, next/previous month, the PNG through
+  `ui/download-file` and without it, axe-core, read tools only, cleanup
+  (`e2e_v2.cleanup`). Screenshots: `docs/chatgpt-app/review/calendar-v1/`.
+  Against staging on 2026-10-24 (`dbdc118`): 58/58, the same figures; the
+  clean-up step was not run there (`staging.md` → "Left on staging").
+* `scripts/mcp/e2e_http.py` (MCP CI's container step): both tools called with
+  a read-only grant and checked against the ledger.
+* Real ChatGPT: owner-run (`calendar-owner-test.md`).
+
+## Not supported (and not claimed)
+
+* User-defined categories (MITA has none); household members or shared
+  accounts (one account = one user); editing from the calendar (read-only by
+  design); a forecast per date; localisation of the component's labels (English;
+  amounts and dates in the user's currency and timezone); months beyond next
+  year or before 2000 (`resolve_month`).

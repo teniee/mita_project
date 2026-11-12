@@ -1,6 +1,7 @@
 from decimal import ROUND_HALF_UP, Decimal
 
 from app.config.country_profiles_loader import get_profile
+from app.services.core.engine.user_budget_lines import PlanDoesNotFit, check_fits
 from app.services.core.income_classification_service import (
     IncomeTier,
     classify_income,
@@ -49,6 +50,18 @@ def generate_budget_from_answers(answers: dict) -> dict:
     savings_goal = _money(
         (answers.get("goals") or {}).get("savings_goal_amount_per_month") or 0
     )
+    # Budget lines the user set themselves (F-11, user_budget_lines): kept
+    # exactly; MITA allocates only what is left. Never shrunk to fit, and
+    # neither is the savings target — such a plan is refused instead.
+    manual = {
+        str(line): _money(amount)
+        for line, amount in (answers.get("manual_allocations") or {}).items()
+    }
+    if manual:
+        conflict = check_fits(income, fixed_total, savings_goal, manual)
+        if conflict is not None:
+            raise PlanDoesNotFit(conflict)
+        discretionary -= sum(manual.values(), Decimal("0.00"))
     discretionary -= savings_goal
     if discretionary < 0:
         savings_goal = max(Decimal("0.00"), savings_goal + discretionary)
@@ -147,6 +160,10 @@ def generate_budget_from_answers(answers: dict) -> dict:
             Decimal("0.00"), base_allocations["dining out"] - coffee_monthly
         )
 
+    # MITA's own lines that a line of the user's takes the place of.
+    for bucket in answers.get("replaced_buckets") or ():
+        base_allocations.pop(bucket, None)
+
     # Calculate total allocated
     total_allocated = sum(base_allocations.values(), Decimal("0.00"))
 
@@ -165,7 +182,7 @@ def generate_budget_from_answers(answers: dict) -> dict:
         k: float(_money(v)) for k, v in base_allocations.items() if v > 0
     }
 
-    return {
+    result = {
         "savings_goal": float(_money(savings_goal)),
         "user_class": user_class,
         "behavior": behavior,
@@ -176,3 +193,7 @@ def generate_budget_from_answers(answers: dict) -> dict:
         "income_tier": income_tier.value,  # Include tier for reference
         "tier_weights_used": tier_weights,  # Include original tier weights for debugging
     }
+    if manual:
+        # Only with user lines, so every existing consumer sees the same keys.
+        result["manual_allocations"] = {k: float(v) for k, v in manual.items()}
+    return result

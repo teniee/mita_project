@@ -9,7 +9,6 @@ Handles:
 """
 
 import logging
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,6 +28,7 @@ from app.core.standardized_error_handler import (
 )
 from app.db.models import User
 from app.services.auth_jwt_service import create_token_pair
+from app.services.user_registration import build_password_user
 from app.utils.response_wrapper import AuthResponseHelper
 
 logger = logging.getLogger(__name__)
@@ -91,30 +91,14 @@ async def register_user_standardized(
     # Hash password securely
     password_hash = await hash_password_async(registration_data.password)
 
-    # Create new user with all required fields
-    new_user = User(
+    # Create new user with all required fields (shared with the ChatGPT sign-up)
+    new_user = build_password_user(
         email=validated_email,
         password_hash=password_hash,
         country=registration_data.country,
-        annual_income=registration_data.annual_income or 0,
-        timezone=registration_data.timezone or "UTC",
-        # Explicitly set datetime fields
-        created_at=datetime.now(timezone.utc),
-        updated_at=datetime.now(timezone.utc),
-        # Set default boolean fields
-        is_premium=False,
-        email_verified=False,
-        has_onboarded=False,
-        notifications_enabled=True,
-        dark_mode_enabled=False,
-        # Set token version
-        token_version=1,
-        # Set optional profile fields
-        name=registration_data.name or "",
-        monthly_income=0,
-        savings_goal=0,
-        budget_method="50/30/20 Rule",
-        currency="USD",
+        timezone_name=registration_data.timezone,
+        name=registration_data.name,
+        annual_income=registration_data.annual_income,
     )
 
     try:

@@ -25,7 +25,10 @@ existing canonical path:
   ``generate_budget_from_answers`` — the same function onboarding calls;
 * those totals are laid out over the target month's days by
   ``distribute_budget_over_days`` — the same distributor onboarding calls, with
-  the same weekday/weekend and fixed/spread/clustered behavior;
+  the same weekday/weekend and fixed/spread/clustered behavior — except the
+  user's saved bills, which are placed in full on their due dates
+  (``monthly_obligations.dated_obligations``, the rule the reviewed budget
+  uses too; owner decision 2026-11-02, F-8);
 * the rows are written by ``save_calendar_for_user`` — the same upsert
   onboarding calls;
 * spend for the new month is accrued by ``rebuild_month_plan`` — the same ledger
@@ -39,15 +42,17 @@ import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timezone
 from decimal import Decimal
-from typing import Dict, Optional, Tuple
+from typing import Dict, Iterable, Optional, Sequence, Tuple
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.category_priority import is_set_aside
 from app.db.models.daily_plan import DailyPlan
 from app.db.models.user import User
 from app.services.calendar_service_real import save_calendar_for_user
+from app.services.core.engine.bill_timing import bill_timing_of
 from app.services.core.engine.calendar_engine import (
     CATEGORY_BEHAVIOR,
     CalendarDay,
@@ -61,8 +66,22 @@ from app.services.core.engine.expense_tracker import (
     user_timezone_of,
 )
 from app.services.core.engine.realtime_rebalancer import REALTIME_ADJUSTMENT_KEY
+from app.services.core.engine.spending_schedule import (
+    LINE_KIND_KEY,
+    LINE_OBLIGATION,
+    LINE_SET_ASIDE,
+    SpendingPattern,
+    lay_out_line,
+    line_kinds_of,
+)
+from app.services.monthly_obligations import dated_obligations
+from app.services.obligation_lines import bill_key, is_bill_key, month_is_keyed
 
 logger = logging.getLogger(__name__)
+
+# (due date, category, amount): one date a saved bill is due on in a month.
+DatedBill = Tuple[date, str, Decimal]
+
 
 ZERO = Decimal("0.00")
 
@@ -166,22 +185,29 @@ def _base_planned_amount(row: DailyPlan) -> Decimal:
     would make a one-off August overspend permanently shrink the September
     dining budget and permanently inflate whatever category absorbed it — the
     cut would compound every month, and a PROTECTED category shaved as a
-    last-resort donor would never recover. Read through it.
+    last-resort donor would never recover. Read through it — and through the
+    bill-timing delta (``bill_timing``: a bill's money moved to the date it
+    was paid), which is just as derived.
     """
     planned = Decimal(str(row.planned_amount or 0))
     metadata = row.plan_json if isinstance(row.plan_json, dict) else {}
     raw_adjustment = metadata.get(REALTIME_ADJUSTMENT_KEY)
-    if raw_adjustment is None:
-        return planned
     try:
-        return planned - Decimal(str(raw_adjustment))
+        timing = bill_timing_of(metadata)
+    except Exception:  # noqa: BLE001 - a corrupt marker must not lose the row
+        logger.warning("monthly_plan: unreadable bill timing on plan row %s", row.id)
+        timing = ZERO
+    if raw_adjustment is None:
+        return planned - timing
+    try:
+        return planned - Decimal(str(raw_adjustment)) - timing
     except Exception:  # noqa: BLE001 - a corrupt marker must not lose the row
         logger.warning(
             "monthly_plan: unreadable realtime adjustment %r on plan row %s",
             raw_adjustment,
             row.id,
         )
-        return planned
+        return planned - timing
 
 
 def _month_rows(db: Session, user_id: UUID, year: int, month: int):
@@ -207,14 +233,35 @@ def _budget_rows(rows) -> list:
       and re-creates them per month from the goal's own target date. A month
       that has only goal rows has no budget, and copying a goal row forward
       would double-book the contribution once goal sync ran on the new month.
+
+    Judged on the BASE allocation: a bill's due-date row whose money moved to
+    the day the bill was paid early (``bill_timing``) shows 0 and is still
+    the reviewed plan's row.
     """
     return [
         row
         for row in rows
         if row.goal_id is None
         and not _is_transaction_generated(row)
-        and Decimal(str(row.planned_amount or 0)) != 0
+        and _base_planned_amount(row) != 0
     ]
+
+
+# Public names for readers that load a month's rows once and derive the
+# rest themselves (app/mcp/queries/plan.month_plan).
+def month_plan_rows(db: Session, user_id: UUID, year: int, month: int):
+    """Every ``daily_plan`` row of the month, in date and category order."""
+    return _month_rows(db, user_id, year, month)
+
+
+def budget_rows(rows) -> list:
+    """The rows that are a real allocation (``_budget_rows``)."""
+    return _budget_rows(rows)
+
+
+def base_planned_amount(row: DailyPlan) -> Decimal:
+    """A row's allocation with every in-month adjustment backed out."""
+    return _base_planned_amount(row)
 
 
 def month_has_plan(db: Session, user_id: UUID, year: int, month: int) -> bool:
@@ -356,9 +403,126 @@ def _find_template_month(
     return template
 
 
+def latest_plan_month_before(
+    db: Session, user_id: UUID, year: int, month: int
+) -> Optional[Tuple[int, int]]:
+    """The most recent month before ``(year, month)`` with a real budget — the
+    month the rollover would carry forward (``_find_template_month``)."""
+    return _find_template_month(db, user_id, year, month)
+
+
 # ---------------------------------------------------------------------------
 # Reconstructing allocations for a user with no prior month
 # ---------------------------------------------------------------------------
+
+
+SAVINGS_GOAL_CATEGORY = "savings goal based"
+
+
+@dataclass(frozen=True)
+class ProfileAllocation:
+    """One month's allocation from stated facts, through the canonical engine.
+
+    ``allocations`` is what a month lays out: the fixed obligations, the
+    engine's discretionary breakdown and the savings bucket. ``unallocated``
+    is discretionary money the engine left free (it only ever scales DOWN), so
+    the laid-out total can be below income — that is the engine's own rule,
+    not a gap to fill.
+    """
+
+    allocations: Dict[str, Decimal]
+    fixed: Dict[str, Decimal]
+    discretionary: Dict[str, Decimal]
+    savings: Decimal
+    discretionary_total: Decimal
+    unallocated: Decimal
+    region: Optional[str]
+    # Budget lines the user set themselves (F-11), exactly as set.
+    manual: Dict[str, Decimal] = field(default_factory=dict)
+
+
+def allocations_from_profile(
+    *,
+    monthly_income: Decimal,
+    savings_goal: Decimal,
+    region: Optional[str],
+    fixed_expenses: Optional[Dict[str, Decimal]] = None,
+    manual_allocations: Optional[Dict[str, Decimal]] = None,
+    replaced_buckets: Iterable[str] = (),
+) -> ProfileAllocation:
+    """The smallest answers dict ``generate_budget_from_answers`` accepts — the
+    function onboarding calls — and its result as a month's allocation.
+
+    Raises ValueError when fixed expenses exceed income (the engine's rule).
+    Used by the rollover fallback (no fixed expenses, as before) and by the
+    ChatGPT app's reviewed budget (fixed = the user's recurring obligations;
+    ``manual_allocations`` = budget lines the user set, kept exactly, with
+    ``replaced_buckets`` = MITA's own lines they take the place of — F-11).
+    With user lines that do not fit, raises ``PlanDoesNotFit``.
+    """
+    from app.services.core.engine.budget_logic import generate_budget_from_answers
+
+    fixed = {
+        str(category): Decimal(str(amount))
+        for category, amount in (fixed_expenses or {}).items()
+        if Decimal(str(amount)) > ZERO
+    }
+    answers = {
+        "region": region,
+        "income": {
+            "monthly_income": float(monthly_income),
+            "additional_income": 0,
+        },
+        "fixed_expenses": {
+            category: float(amount) for category, amount in fixed.items()
+        },
+        "spending_habits": {},
+        "goals": {"savings_goal_amount_per_month": float(savings_goal)},
+    }
+    manual = {
+        str(line): Decimal(str(amount))
+        for line, amount in (manual_allocations or {}).items()
+        if Decimal(str(amount)) > ZERO
+    }
+    if manual:
+        answers["manual_allocations"] = {
+            line: format(amount, "f") for line, amount in manual.items()
+        }
+    replaced = sorted(set(replaced_buckets))
+    if replaced:
+        answers["replaced_buckets"] = replaced
+
+    budget = generate_budget_from_answers(answers)
+    breakdown = budget.get("discretionary_breakdown") or {}
+    discretionary = {
+        str(category): Decimal(str(amount))
+        for category, amount in breakdown.items()
+        if Decimal(str(amount)) > ZERO
+    }
+    goal_amount = Decimal(str(budget.get("savings_goal") or 0))
+    discretionary_total = Decimal(str(budget.get("discretionary_total") or 0))
+
+    allocations: Dict[str, Decimal] = dict(fixed)
+    for line, amount in manual.items():
+        allocations[line] = allocations.get(line, ZERO) + amount
+    for category, amount in discretionary.items():
+        allocations[category] = allocations.get(category, ZERO) + amount
+    if goal_amount > ZERO:
+        # Same bucket name the planner and the priority registry use, so it is
+        # SACRED to the redistributor from the moment it is written.
+        allocations[SAVINGS_GOAL_CATEGORY] = (
+            allocations.get(SAVINGS_GOAL_CATEGORY, ZERO) + goal_amount
+        )
+    return ProfileAllocation(
+        allocations=allocations,
+        fixed=fixed,
+        discretionary=discretionary,
+        savings=goal_amount,
+        discretionary_total=discretionary_total,
+        unallocated=max(ZERO, discretionary_total - sum(discretionary.values(), ZERO)),
+        region=region,
+        manual=manual,
+    )
 
 
 def _profile_allocations(user: User) -> Dict[str, Decimal]:
@@ -372,8 +536,6 @@ def _profile_allocations(user: User) -> Dict[str, Decimal]:
     at all still gets the same tier-and-region weighted split onboarding would
     have produced, rather than a second, divergent allocation invented here.
     """
-    from app.services.core.engine.budget_logic import generate_budget_from_answers
-
     income = Decimal(str(user.monthly_income or 0))
     if income <= ZERO:
         return {}
@@ -385,32 +547,11 @@ def _profile_allocations(user: User) -> Dict[str, Decimal]:
         # anyway. Clamp here so the intent stays visible.
         savings_goal = ZERO
 
-    answers = {
-        "region": user.region or user.country or "US",
-        "income": {
-            "monthly_income": float(income),
-            "additional_income": 0,
-        },
-        "fixed_expenses": {},
-        "spending_habits": {},
-        "goals": {"savings_goal_amount_per_month": float(savings_goal)},
-    }
-
-    budget = generate_budget_from_answers(answers)
-    breakdown = budget.get("discretionary_breakdown") or {}
-    allocations = {
-        str(category): Decimal(str(amount))
-        for category, amount in breakdown.items()
-        if Decimal(str(amount)) > ZERO
-    }
-
-    goal_amount = Decimal(str(budget.get("savings_goal") or 0))
-    if goal_amount > ZERO:
-        # Same bucket name the planner and the priority registry use, so it is
-        # SACRED to the redistributor from the moment it is written.
-        allocations["savings goal based"] = goal_amount
-
-    return allocations
+    return allocations_from_profile(
+        monthly_income=income,
+        savings_goal=savings_goal,
+        region=user.region or user.country or "US",
+    ).allocations
 
 
 # ---------------------------------------------------------------------------
@@ -418,19 +559,43 @@ def _profile_allocations(user: User) -> Dict[str, Decimal]:
 # ---------------------------------------------------------------------------
 
 
+def bills_on_due_dates(
+    allocations: Dict[str, Decimal], bills: Sequence[DatedBill]
+) -> Dict[date, Dict[str, Decimal]]:
+    """Each saved bill's money, in full, on its due date: ``{day: {category:
+    amount}}``. Bills of one category are placed in date order and never
+    beyond that category's allocation (a plan holds no money a bill line was
+    not given); a bill whose category has no allocation is not placed."""
+    left = {category: amount for category, amount in allocations.items()}
+    placed: Dict[date, Dict[str, Decimal]] = {}
+    for day, category, amount in sorted(bills, key=lambda b: (b[0], b[1], -b[2])):
+        room = left.get(category, ZERO)
+        share = min(Decimal(str(amount)), room)
+        if share <= ZERO:
+            continue
+        left[category] = room - share
+        on_day = placed.setdefault(day, {})
+        on_day[category] = on_day.get(category, ZERO) + share
+    return placed
+
+
 def _build_month_calendar(
     year: int,
     month: int,
     allocations: Dict[str, Decimal],
     frequencies: Optional[Dict[str, int]] = None,
+    bills: Sequence[DatedBill] = (),
 ) -> Dict[str, Dict[str, Decimal]]:
     """``{"YYYY-MM-DD": {category: Decimal}}`` for one month.
 
-    Delegates every placement decision to ``distribute_budget_over_days``: which
-    days a "fixed" category lands on, which weekdays a "spread" one covers, and
-    which deterministic pseudo-random days a "clustered" one clusters into.
-    Amounts stay Decimal end to end; the distributor splits each total into
-    integer cents that re-sum to it exactly.
+    The user's saved bills are placed in full on their due dates
+    (``bills_on_due_dates``; owner decision 2026-11-02, F-8). Every other
+    placement decision — and the rest of a bill's category, if its line holds
+    more than the bills — is ``distribute_budget_over_days``'s: which days a
+    "fixed" category lands on, which weekdays a "spread" one covers, and which
+    deterministic pseudo-random days a "clustered" one clusters into. Amounts
+    stay Decimal end to end; the distributor splits each total into integer
+    cents that re-sum to it exactly.
     """
     frequencies = frequencies or {}
     days_in_month = calendar_module.monthrange(year, month)[1]
@@ -438,11 +603,29 @@ def _build_month_calendar(
         CalendarDay(date(year, month, day_number))
         for day_number in range(1, days_in_month + 1)
     ]
+    dated = bills_on_due_dates(
+        allocations,
+        [
+            (day, category, amount)
+            for day, category, amount in bills
+            if (day.year, day.month) == (year, month)
+        ],
+    )
+    on_dates: Dict[str, Decimal] = {}
+    for by_category in dated.values():
+        for category, amount in by_category.items():
+            on_dates[category] = on_dates.get(category, ZERO) + amount
 
     for category, total in allocations.items():
-        if total <= ZERO:
+        rest = total - on_dates.get(category, ZERO)
+        if rest <= ZERO:
             continue
-        distribute_budget_over_days(days, category, total, frequencies.get(category))
+        distribute_budget_over_days(days, category, rest, frequencies.get(category))
+    for day in days:
+        for category, amount in dated.get(day.date, {}).items():
+            day.planned_budget[category] = (
+                Decimal(str(day.planned_budget.get(category, ZERO))) + amount
+            )
 
     calendar_map: Dict[str, Dict[str, Decimal]] = {}
     for day in days:
@@ -454,6 +637,194 @@ def _build_month_calendar(
         if allocated:
             calendar_map[day.date.isoformat()] = allocated
     return calendar_map
+
+
+def month_calendar(
+    year: int,
+    month: int,
+    allocations: Dict[str, Decimal],
+    bills: Sequence[DatedBill] = (),
+) -> Dict[str, Dict[str, Decimal]]:
+    """Public layout of a month's allocations by the canonical distributor,
+    with ``bills`` — ``(due date, category, amount)`` of the user's saved
+    payments in the month — placed in full on their due dates.
+
+    Refuses (ValueError) a layout that does not re-sum to the allocations to
+    the cent — the same conservation guarantee ``_materialize_month`` applies.
+    """
+    _validate_month(year, month)
+    calendar_map = _build_month_calendar(year, month, allocations, {}, bills)
+    intended = sum((a for a in allocations.values() if a > ZERO), ZERO)
+    laid_out = sum(
+        (
+            Decimal(str(amount))
+            for day in calendar_map.values()
+            for amount in day.values()
+        ),
+        ZERO,
+    )
+    if laid_out != intended:
+        raise ValueError(
+            f"month plan does not conserve money: allocated {laid_out} from {intended}"
+        )
+    return calendar_map
+
+
+def behavioral_month_calendar(
+    year: int,
+    month: int,
+    allocations: Dict[str, Decimal],
+    bills: Sequence[DatedBill] = (),
+    patterns: Optional[Dict[str, SpendingPattern]] = None,
+) -> Tuple[Dict[str, Dict[str, Decimal]], Dict[str, str]]:
+    """A month laid out by how its money is spent (owner decision
+    2026-11-03, docs/chatgpt-app/behavioral-budget.md). Returns
+    ``({"YYYY-MM-DD": {line: amount}}, {line: line kind})``.
+
+    * a saved payment's own line (``"bill:<id>"``): in full on its due dates
+      (``bills_on_due_dates``);
+    * money set aside (savings): as the canonical distributor lays it;
+    * every other line by its stated pattern (``patterns``): its monthly
+      amount split exactly over its real purchase dates, or — flexible, the
+      default without a pattern — evenly over every day of the month as
+      guidance, never as invented purchases (``spending_schedule``).
+
+    Refuses (ValueError) a layout that does not re-sum to the allocations to
+    the cent.
+    """
+    _validate_month(year, month)
+    patterns = patterns or {}
+    in_month = [
+        (day, line, amount)
+        for day, line, amount in bills
+        if (day.year, day.month) == (year, month)
+    ]
+    placed = bills_on_due_dates(allocations, in_month)
+    calendar_map: Dict[str, Dict[str, Decimal]] = {}
+    kinds: Dict[str, str] = {}
+
+    def add(day: date, line: str, amount: Decimal) -> None:
+        if amount == ZERO:
+            return
+        on_day = calendar_map.setdefault(day.isoformat(), {})
+        on_day[line] = Decimal(str(on_day.get(line, ZERO))) + amount
+
+    days_in_month = calendar_module.monthrange(year, month)[1]
+    legacy_days = [
+        CalendarDay(date(year, month, number)) for number in range(1, days_in_month + 1)
+    ]
+    for line, total in sorted(allocations.items()):
+        total = Decimal(str(total))
+        if total <= ZERO:
+            continue
+        if is_bill_key(line):
+            kinds[line] = LINE_OBLIGATION
+            dates = sorted(day for day, by_line in placed.items() if line in by_line)
+            for day in dates:
+                add(day, line, placed[day][line])
+            rest = total - sum((placed[day][line] for day in dates), ZERO)
+            if rest > ZERO:
+                add(dates[-1] if dates else date(year, month, 1), line, rest)
+        elif is_set_aside(line):
+            kinds[line] = LINE_SET_ASIDE
+            distribute_budget_over_days(legacy_days, line, total, None)
+        else:
+            layout = lay_out_line(total, patterns.get(line), year, month)
+            kinds[line] = layout.kind
+            for day, amount in layout.by_date.items():
+                add(day, line, amount)
+    for day in legacy_days:
+        for line, amount in day.planned_budget.items():
+            add(day.date, line, Decimal(str(amount)))
+
+    intended = sum((a for a in allocations.values() if a > ZERO), ZERO)
+    laid_out = sum(
+        (Decimal(str(a)) for day in calendar_map.values() for a in day.values()), ZERO
+    )
+    if laid_out != intended:
+        raise ValueError(
+            f"month plan does not conserve money: allocated {laid_out} from {intended}"
+        )
+    return dict(sorted(calendar_map.items())), kinds
+
+
+def stamp_line_kinds(
+    db: Session, user_id: UUID, year: int, month: int, kinds: Dict[str, str]
+) -> None:
+    """Write each line's kind into the month's plan rows. Does not commit."""
+    if not kinds:
+        return
+    for row in _month_rows(db, user_id, year, month):
+        kind = kinds.get(row.category or "")
+        if kind is None or row.goal_id is not None:
+            continue
+        metadata = dict(row.plan_json) if isinstance(row.plan_json, dict) else {}
+        if metadata.get(LINE_KIND_KEY) != kind:
+            metadata[LINE_KIND_KEY] = kind
+            row.plan_json = metadata
+    db.flush()
+
+
+def month_base_plan(
+    db: Session, user_id: UUID, year: int, month: int
+) -> Dict[Tuple[date, str], Decimal]:
+    """The month's persisted BASE plan: real budget rows only, with any
+    in-month rebalance backed out. ``{(local day, category): amount}``."""
+    plan: Dict[Tuple[date, str], Decimal] = {}
+    for row in _budget_rows(_month_rows(db, user_id, year, month)):
+        day = row.date.date() if hasattr(row.date, "date") else row.date
+        key = (day, row.category or "")
+        plan[key] = plan.get(key, ZERO) + _base_planned_amount(row)
+    return plan
+
+
+def base_totals_by_category(rows) -> Dict[str, Decimal]:
+    """Per category, a month's BASE plan from rows a caller already holds:
+    real budget rows only, in-month rebalancing backed out (``month_base_plan``
+    summed by category). What the forecast's reserve for bills is measured
+    against — a rebalancing credit to a bill's line is not a second bill."""
+    totals: Dict[str, Decimal] = {}
+    for row in _budget_rows(rows):
+        category = row.category or ""
+        totals[category] = totals.get(category, ZERO) + _base_planned_amount(row)
+    return totals
+
+
+def replace_month_plan(
+    db: Session,
+    user_id: UUID,
+    year: int,
+    month: int,
+    calendar_map: Dict[str, Dict[str, Decimal]],
+    line_kinds: Optional[Dict[str, str]] = None,
+) -> None:
+    """Make ``calendar_map`` the month's base plan. Does not commit.
+
+    For a plan the USER chose (the ChatGPT app's reviewed budget), never for a
+    read path: reads only ever call ``ensure_month_plan`` and never overwrite
+    an existing month. Under the per-user ledger lock it deletes the month's
+    rows except goal reservations (``GoalBudgetSyncService`` owns those) —
+    budget rows and transaction-generated ones alike, because an upsert onto a
+    transaction-generated row would keep its marker and hide a real
+    allocation — writes the new rows with ``save_calendar_for_user`` and
+    re-derives spend and redistribution with ``rebuild_month_plan``. The caller
+    commits, or rolls back to keep the old month intact.
+    """
+    _validate_month(year, month)
+    lock_user_ledger(db, user_id)
+    for row in _month_rows(db, user_id, year, month):
+        if row.goal_id is None:
+            db.delete(row)
+    db.flush()  # deletes must land before inserts on the same (day, category)
+    save_calendar_for_user(db, user_id, calendar_map, commit=False)
+    stamp_line_kinds(db, user_id, year, month, line_kinds or {})
+    rebuild_month_plan(
+        db,
+        user_id,
+        date(year, month, 1),
+        tz=user_timezone_of(db, user_id),
+        commit=False,
+    )
 
 
 def _summarize(rows) -> Tuple[int, Decimal, Dict[str, Decimal]]:
@@ -623,12 +994,14 @@ def _materialize_month(
             f"{earliest[0]}-{earliest[1]:02d}; history is not back-filled",
         )
 
+    template_kinds: Dict[str, str] = {}
     if earliest is not None:
         template_month = _find_template_month(db, user_id, year, month)
         if template_month is not None:
             allocations, frequencies = _base_month_allocations(
                 db, user_id, *template_month
             )
+            template_kinds = line_kinds_of(_month_rows(db, user_id, *template_month))
             source = "rollover"
 
     if not allocations:
@@ -661,7 +1034,46 @@ def _materialize_month(
             "nothing to generate",
         )
 
-    calendar_map = _build_month_calendar(year, month, allocations, frequencies)
+    # The user's saved bills go on their due dates in the new month too, as
+    # in a reviewed budget (owner decision 2026-11-02, F-8). A month whose
+    # template keeps each saved payment on its own line ("bill:<id>",
+    # obligation_lines) carries the payments due NOW — amounts and dates of
+    # this month, a cancelled one gone, a new one added — never the
+    # template's copy of them. A legacy template keeps them under their
+    # categories, as before.
+    occurrences = dated_obligations(db, user_id, year, month)
+    if month_is_keyed(allocations):
+        allocations = {c: a for c, a in allocations.items() if not is_bill_key(c)}
+        frequencies = {c: f for c, f in frequencies.items() if not is_bill_key(c)}
+        for occurrence in occurrences:
+            line = bill_key(occurrence.obligation_id)
+            allocations[line] = allocations.get(line, ZERO) + occurrence.amount
+        bills = [
+            (occurrence.day, bill_key(occurrence.obligation_id), occurrence.amount)
+            for occurrence in occurrences
+        ]
+    else:
+        bills = [
+            (occurrence.day, occurrence.category, occurrence.amount)
+            for occurrence in occurrences
+        ]
+    line_kinds: Dict[str, str] = {}
+    if template_kinds and source == "rollover":
+        # A month laid out by how its money is spent rolls forward the same
+        # way: the user's stated patterns (spending_patterns) on THIS month's
+        # real dates — never the number of dates last month happened to have.
+        from app.services.spending_patterns import not_applicable, stored_patterns
+
+        patterns = stored_patterns(db, user_id)
+        dropped = not_applicable(patterns)
+        allocations = {c: a for c, a in allocations.items() if c not in dropped}
+        calendar_map, line_kinds = behavioral_month_calendar(
+            year, month, allocations, bills, patterns
+        )
+    else:
+        calendar_map = _build_month_calendar(
+            year, month, allocations, frequencies, bills
+        )
     if not calendar_map:
         return _not_generated(
             year, month, "allocations produced no positive daily amounts"
@@ -694,6 +1106,7 @@ def _materialize_month(
     # guarantee a property of this function.
     try:
         save_calendar_for_user(db, user_id, calendar_map, commit=False)
+        stamp_line_kinds(db, user_id, year, month, line_kinds)
 
         # Accrue this month's OWN spend. rebuild_month_plan zeroes spent_amount
         # and re-derives it from non-deleted transactions inside this month

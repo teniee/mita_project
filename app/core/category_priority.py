@@ -87,6 +87,33 @@ CATEGORY_PRIORITY: Dict[str, CategoryLevel] = {
 }
 
 
+# Plan lines whose purpose is to stay unspent this month: savings, goal
+# reservations (GoalBudgetSyncService's rows) and investment contributions.
+# Every one is SACRED, but SACRED is wider — rent and utilities are SACRED
+# and get paid. No expense category records against these lines
+# (FinancialConstants.VALID_TRANSACTION_CATEGORIES has none), so the money
+# they hold is never available for everyday spending; the forecast's safe
+# daily limit leaves it out (budget_forecast_engine).
+SET_ASIDE_CATEGORIES = frozenset(
+    {
+        "goal_savings",
+        "savings goal based",
+        "savings_goal",
+        "savings goal",
+        "savings emergency",
+        "savings_emergency",
+        "investment contribution",
+        "investment_contribution",
+    }
+)
+
+
+def is_set_aside(category: str) -> bool:
+    """True for a plan line that holds money back from spending (savings,
+    goal reservations, investments)."""
+    return category.lower().strip() in SET_ASIDE_CATEGORIES
+
+
 def get_category_level(category: str) -> CategoryLevel:
     """Get priority level. Unknown categories default to FLEXIBLE."""
     return CATEGORY_PRIORITY.get(category.lower().strip(), CategoryLevel.FLEXIBLE)

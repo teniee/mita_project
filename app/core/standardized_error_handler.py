@@ -647,8 +647,8 @@ def validate_email(email: str) -> str:
             "Email address is required", ErrorCode.VALIDATION_REQUIRED_FIELD
         )
 
-    # RFC 5322 compliant email regex (simplified)
-    email_pattern = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+    # RFC 5322 compliant email regex (simplified), shared with the MCP sign-up
+    from app.core.email_policy import EMAIL_PATTERN as email_pattern
 
     if not re.match(email_pattern, email):
         raise ValidationError(

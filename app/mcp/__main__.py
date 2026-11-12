@@ -1,0 +1,155 @@
+"""Entrypoint: ``python -m app.mcp``.
+
+Never runs migrations — mita-production's start.sh owns ``alembic upgrade``.
+Readiness (``/health``) requires the database and the MCP tables (0037's
+``mcp_oauth_*``, 0038's profiles and idempotency records), so a deploy that
+lands before the migration reports 503 instead of failing requests one by one.
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+import sys
+import time
+
+import uvicorn
+from sqlalchemy import text
+from starlette.types import ASGIApp, Receive, Scope, Send
+
+from app.mcp.config import McpConfigError, load_settings
+from app.mcp.observability import configure_logging
+
+REQUIRED_TABLES = (
+    "mcp_oauth_clients",
+    "mcp_oauth_authorization_codes",
+    "mcp_oauth_refresh_tokens",
+    "mcp_user_profiles",  # 0038
+    "mcp_idempotency_keys",  # 0038
+    "product_feedback",  # 0039
+    "analytics_identities",  # 0039
+    "mcp_budget_lines",  # 0040
+    "obligation_payments",  # 0041
+    "spending_patterns",  # 0042
+    "mcp_setup_answers",  # 0043
+    "regional_observations",  # 0044 (read only)
+)
+# Connected as mita_mcp, information_schema.tables lists only the tables the
+# role has a privilege on, so this also fails while a grant is missing: a
+# deployment that reaches a database without its migrations or grants never
+# becomes healthy, and Railway keeps the previous one serving.
+
+
+async def database_ready() -> bool:
+    from app.core.async_session import get_async_session_factory
+
+    try:
+        async with get_async_session_factory()() as session:
+            await session.execute(text("SELECT 1"))
+            present = await session.execute(
+                text(
+                    "SELECT count(*) FROM information_schema.tables "
+                    "WHERE table_schema = current_schema() AND table_name = ANY(:names)"
+                ),
+                {"names": list(REQUIRED_TABLES)},
+            )
+            return present.scalar_one() == len(REQUIRED_TABLES)
+    except Exception:  # noqa: BLE001 - readiness reports, it does not raise
+        logging.getLogger("app.mcp").warning(
+            "readiness check failed", extra={"event": "readiness_failed"}
+        )
+        return False
+
+
+def pin_process_timezone() -> None:
+    """Naive datetimes mean UTC across the codebase, and asyncpg encodes a
+    naive value bound to a timestamptz parameter with ``astimezone()`` — i.e.
+    in the PROCESS's local zone. The image sets TZ=UTC; this makes any other
+    way of starting the service (a laptop in Sofia) behave the same instead
+    of shifting every date window by the host's UTC offset."""
+    os.environ["TZ"] = "UTC"
+    time.tzset()
+
+
+class ForwardedProto:
+    """The scheme the client used, from X-Forwarded-Proto - all that uvicorn's
+    ``proxy_headers`` is still needed for. Railway's edge terminates TLS and
+    sets it (always https); Starlette builds redirect URLs from the scheme
+    (``/mcp/`` -> ``https://<host>/mcp``), which would otherwise say http.
+
+    It never touches ``scope["client"]``. ``proxy_headers`` with
+    ``forwarded_allow_ips="*"`` replaced the client with the first
+    X-Forwarded-For entry of any request, i.e. with whatever a direct caller
+    wrote there; a request without Railway's X-Real-IP is limited by the TCP
+    peer (app/mcp/ratelimit.py), so the peer has to stay the real one."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] == "http":
+            proto = ""
+            for name, value in scope.get("headers") or []:
+                if name.lower() == b"x-forwarded-proto":
+                    proto = value.decode("latin-1").strip().lower()
+            if proto in ("http", "https"):
+                scope = dict(scope, scheme=proto)
+        await self.app(scope, receive, send)
+
+
+def serve_options(port: int) -> dict:
+    """uvicorn's options for the container (the tests serve with them too)."""
+    return dict(
+        host="0.0.0.0",  # nosec B104 - container entrypoint behind Railway's proxy
+        port=port,
+        proxy_headers=False,  # scope["client"] is the TCP peer; see ForwardedProto
+        log_config=None,
+        access_log=False,
+        timeout_keep_alive=30,
+    )
+
+
+def import_build_service(level: str):
+    """Import the service with logging already taken over.
+
+    Importing it imports the domain layer, and the sign-in page computes its
+    fictional example through the forecast engine at import time; that engine
+    logs at INFO, which went out as a plain-text line with (fictional) amounts
+    before configure_logging() ran. So: let app.core.logging_config install
+    its handlers, take over, import, and take over again for anything the
+    import added."""
+    import app.core.logging_config  # noqa: F401 - runs its dictConfig now
+
+    configure_logging(level)
+    from app.mcp.server import build_service  # imports the domain layer
+
+    configure_logging(level)
+    return build_service
+
+
+def main() -> None:
+    pin_process_timezone()
+    try:
+        settings = load_settings()
+    except McpConfigError as exc:
+        # Configuration errors are safe to print: they name variables, not values.
+        print(f"mita-mcp: configuration error: {exc}", file=sys.stderr)
+        sys.exit(2)
+
+    build_service = import_build_service(os.environ.get("LOG_LEVEL", "INFO").upper())
+    from app.mcp.analytics import DatabaseSink
+    from app.mcp.db import write_session
+
+    service = build_service(
+        settings,
+        readiness_check=database_ready,
+        analytics_sink=DatabaseSink(write_session),
+    )
+    uvicorn.run(
+        ForwardedProto(service.app),
+        **serve_options(int(os.environ.get("PORT", "8080"))),
+    )
+
+
+if __name__ == "__main__":
+    main()

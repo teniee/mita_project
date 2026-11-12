@@ -45,6 +45,12 @@ All brand files are in `F:/adata/MITA FINANCE/brand/` (26 PNG files).
 - Bottom-left: Teal `#14B8A6` (T)
 - Bottom-right: Yellow `#FFD25F` (A)
 
+> The Figma **Brand Guidelines** (`512WdjnhPJXM8jeHKcg4g8`) are authoritative
+> where they differ from this section: the background variable is `#FFF9F0`
+> (the Flutter theme agrees), and each module of the logomark is a
+> letter-shaped geometric form, not a rounded square. Use the master vectors,
+> never a redraw. Inventory: `docs/brand/AUTH-UI-DESIGN.md`.
+
 ### Background
 The site is **LIGHT** — warm cream `#FFF8F0`. NOT dark. Glass cards use white `rgba(255,255,255,0.72)` with navy borders.
 
@@ -135,16 +141,23 @@ Rules for anyone touching this:
   "if the month is missing, generate it" in a router.
 - **Not a second budget algorithm.** Totals come from the user's own last
   persisted month, or from `generate_budget_from_answers`; layout comes from
-  `distribute_budget_over_days`; rows are written by `save_calendar_for_user`;
-  spend is accrued by `rebuild_month_plan`. All pre-existing, all canonical.
+  `distribute_budget_over_days` — except the user's saved bills, placed in
+  full on their due dates (`monthly_obligations.dated_obligations` →
+  `bills_on_due_dates`, the reviewed budget's rule; owner decision
+  2026-11-02); rows are written by `save_calendar_for_user`; spend is accrued
+  by `rebuild_month_plan`. All canonical.
 - **Never guard on "does the month have rows".** `rebuild_month_plan` creates
   `planned_amount = 0` rows tagged `_mita_transaction_generated_v1` for spend
   with no plan behind it, and the rebalancer can credit one to a non-zero
   amount. `GoalBudgetSyncService` writes `goal_savings` rows too. Guard on a
   real allocation — that is what `month_has_plan` does.
 - **Roll forward the BASE plan.** `_mita_realtime_adjustment_v1` records an
-  in-month rebalance and is backed out before a month is carried forward;
-  otherwise a one-off overspend would permanently reshape every later month.
+  in-month rebalance and `_mita_bill_timing_v1` a bill's money moved to the
+  date it was paid (`bill_timing`); both are backed out before a month is
+  carried forward or rebuilt; otherwise a one-off overspend or an early bill
+  would permanently reshape every later month. A row is a real allocation by
+  its BASE amount (`_budget_rows`): a due-date row emptied by an early payment
+  still is one.
 - **Serialize with `lock_user_ledger`.** The same per-user
   `pg_advisory_xact_lock` every ledger mutation takes — a second lock would
   deadlock. The mobile app fires several budget reads in one `Future.wait` on
@@ -997,3 +1010,753 @@ churning.
 because the Flutter model reads them there. The rebalance banner and the
 redistribution-history refresh both work. Do not "fix" this by adding the
 fields to `TxnOut`.
+
+## Concurrency tests: configure shared mocks before the threads start
+
+`unittest.mock.patch.object` swaps an attribute on a shared object and
+restores it on exit; it is not thread-safe. Twenty workers each patching
+`mock_redis_client.get` overlapped, so a worker read another worker's value:
+Backend CI run 42068342358 failed `test_concurrent_progressive_penalties`
+with "Inconsistent penalties for count 14: {1.5, 2.5}" — a race in the test,
+not in `AdvancedRateLimiter` (under forced thread switching, 1,180 of 6,000
+reads got another worker's count). Rule: give a shared mock ONE stable
+behaviour before submitting work (here `get.side_effect` keyed by each
+client's real penalty key), and assert the documented values, not only
+their consistency. Never change thresholds, skip or retry a concurrency test
+to make it pass.
+
+The same applies to time. JWT `exp` is a whole second (`_create_token`
+stores `int(expire.timestamp())`), so a token asked for N seconds lives
+between N-1 and N seconds. A "1-second" token created at .998 of a second
+is already expired when first checked: `test_token_expiration_handling`
+failed that way in Backend CI run 42597950901, and failed 5/5 when forced to
+that moment. Rule: give a short-lived token at least 2 seconds more than the
+test needs, and wait for its own `exp` claim, never a fixed sleep.
+
+## ChatGPT app (MCP service) — branch feat/chatgpt-plugin
+
+A read/write ChatGPT app (free v1) is being built as a **separate service in
+this repo** (`app/mcp/`, `python -m app.mcp`). Design:
+`docs/adr/ADR-chatgpt-mcp-app.md`; v1 plan of record:
+`docs/chatgpt-app/product-v1-master-plan.md`. Audits: `docs/chatgpt-app/`.
+Rules:
+
+- **No tool takes a user id.** Identity comes from the verified access token
+  only; `tests_mcp/test_tool_contract.py` enforces it on every input schema.
+  Every tool also rejects undeclared arguments (`additionalProperties: false`,
+  `server.forbid_unknown_arguments`): a smuggled `user_id`/`email` is an error.
+- **Read tools are read-only by construction.** They run inside
+  `SET TRANSACTION READ ONLY`; never call `ensure_month_plan*` from a read
+  tool (it writes). An unmaterialized month is `plan_status: "not_generated"`.
+- **Write tools** (`McpRuntime.execute_write`) get a session from
+  `tool_write_session`: the body commits its own unit of work, the scope rolls
+  back anything uncommitted (`update_transaction` mutates `spent_at` after its
+  commit — that must never be flushed). Reuse the domain writers; a batch uses
+  `expense_tracker.add_transactions_to_ledger` (no commit) + one commit.
+- **Annotations are facts.** `test_tool_contract.EXPECTED` lists every tool's
+  read/destructive/idempotent semantics; overwrite, delete or a send that
+  cannot be taken back ⇒ destructive (`submit_feedback` since 2026-10-27:
+  OpenAI counts "sending messages … you can't undo"). Justification text per
+  tool: `docs/chatgpt-app/review/annotation-justifications.md` — keep it in
+  step with `EXPECTED`.
+  Create tools take an `idempotency_key` (scoped by user, operation and the
+  hashed `openai/session`), which is what makes `idempotentHint` true.
+- **The profile tool returns OpenAI's standard profile, nothing else.**
+  `get_profile` carries `_meta["openai/profile"]: true`, so its result must
+  match OpenAI's profile schema (`id`, optional `name`/`email`/`nickname`,
+  `additionalProperties: false`; "an invalid response can prevent account
+  connection"). `ProfileOut` publishes exactly that schema and leaves an
+  unset name out (never null); currency and timezone live in
+  `get_setup_status` and every money result. Never add a field to
+  `ProfileOut`; `test_tool_contract.py` validates real responses against
+  OpenAI's schema.
+- **One account system, one policy.** The ChatGPT sign-up page and mobile
+  `/register` share `app/core/email_policy.py`, `app/core/password_policy.py`,
+  `app/core/financial_constants.py` and `app/services/user_registration.py`
+  (all dependency-free: the MCP image has no fastapi/firebase/bleach/sentry).
+  Change a rule there, never by copying it. ChatGPT-created accounts get
+  `country = "ZZ"` (not stated) and the API defaults (USD/UTC/0); what the user
+  actually stated is tracked in `mcp_user_profiles.*_confirmed_at`.
+- **Analytics is allow-listed, consented and out of band** (`app/mcp/analytics.py`):
+  no amounts, merchants, titles, free text or raw ids; keys only for users who
+  ticked the consent box; written after the call, never able to fail it.
+  `EventRecord.row()` is exactly what may be stored; `user_id` never is.
+  **The box starts unticked** (owner decision 2026-10-25): ticking is the
+  consent; on sign-in an unticked box keeps the account's earlier choice and
+  never deletes anything (`login._record_usage_choice`); only
+  `set_usage_analytics(false)` withdraws, and it deletes the linked events.
+- **Idempotency** (`app/mcp/idempotency.py`): the key record is inserted BEFORE
+  the rows, in the same transaction, so a racing twin blocks on its primary key
+  and replays (`tests_mcp/test_idempotency_concurrency.py` forces the race).
+  Never deduplicate by content — two real €3.50 coffees are two expenses.
+- **Expenses are addressed by opaque refs** (`tx_…`, AES-SIV of the id with the
+  user id as associated data, `app/mcp/crypto.py`): another user's ref does
+  not decrypt, so it is "not found", never their expense. List cursors and
+  budget drafts are HMAC-bound to the user (and the cursor to its query).
+- **MCP writes reuse the API's update/delete** (`app/api/transactions/services.py`)
+  and pass `{id, timezone}` from `UserContext`, not the ORM user (those helpers
+  call `ZoneInfo(user.timezone)` after their commit). Push alerts (budget,
+  velocity, large transaction) need Firebase and are NOT sent for expenses
+  recorded in ChatGPT; the plan itself is updated identically.
+- **Recurring and goal writes** reuse `scheduled_expense_service.create_scheduled_expense`
+  and the API's goal construction (`Goal.update_progress`,
+  `goal_budget_sync.sync_goal_to_daily_plan`). A due date is computed only from
+  what the user said (day of month / weekday / first date) — with none of them
+  the tool refuses so ChatGPT asks. Goals have no Premium gate in ChatGPT (v1 is
+  free); the plan reservation runs in a SAVEPOINT and never fails the goal
+  (F-1: a second dated goal cannot reserve; the result says so).
+- **Offer only what a tool can do.** A goal cannot be changed after creation
+  (no contribution, target date, added money or deletion from ChatGPT); only a
+  target date at creation makes MITA set money aside. `GOAL_LIMITS` states this
+  in both goal descriptions and in the no-date result — real ChatGPT offered
+  "€400 a month toward your Emergency Fund" before it did. Adding such a
+  capability means a real tool plus tests, never softer wording.
+- **Reviewed budget == saved budget.** `preview_monthly_budget` is read-only:
+  it computes a draft (`app/mcp/queries/budget_draft.py`) from stated facts
+  only — income, savings target, saved obligations — through
+  `monthly_plan_service.allocations_from_profile` (the engine onboarding uses)
+  and `month_calendar`, and returns a signed token holding the month and the
+  draft's digest (never the numbers). `save_monthly_budget` rebuilds the draft
+  under the ledger lock and saves it only if the digest is unchanged, via
+  `replace_month_plan` (goal reservations kept, transaction-generated rows
+  re-derived). History only adds warnings. Drafts live `DRAFT_TTL` (2 hours):
+  a freshness bound only — integrity is the digest re-check under the lock,
+  refused changed inputs and refused ended months. Before a first budget the
+  setup step is `ask_about_obligations` (no regular payments saved); a preview
+  without obligations carries a "default draft" warning. Never mandatory. After a save the visible
+  `planned_amount` can differ from the preview by MITA's in-month
+  redistribution; the BASE plan (adjustment backed out) is the reviewed one.
+  Saved obligations are laid out in full on their due dates
+  (`ObligationOut.due_dates`; `month_calendar(…, bills)`), never spread; a
+  preview whose only difference from the saved month is that layout says so
+  (`LAYOUT_ONLY_NOTE`).
+- **The user's own budget lines** (F-11, owner decision 2026-10-28,
+  `docs/chatgpt-app/user-budget-lines.md`). "Fuel €200", "Cigarettes €200":
+  a free-form line `"my:<label>"` stored as a normal plan line and as the
+  category of the expenses recorded against it (`budget_line` on the
+  transaction tools). ChatGPT maps words to lines and says which MITA engine
+  lines a user line `replaces`; MITA never interprets words — never add a
+  category for a user's phrase. `mcp_budget_lines` (0040) keeps only
+  `replaces`. The engine keeps user lines exact and scales only its own;
+  bills + savings + user lines over the income is `PlanDoesNotFit`, never a
+  shrink. The rebalancer never takes from a user line nor covers one from other
+  lines. A user line is never a bill (not a recordable category). Tests:
+  `tests_mcp/test_user_budget_lines.py`, `app/tests/test_user_budget_lines.py`.
+- **Set-aside money is never spendable** (owner decision, 2026-10-23).
+  `SET_ASIDE_CATEGORIES` (`app/core/category_priority.py`: the savings line,
+  emergency savings, `goal_savings`, investment contributions) is narrower
+  than SACRED, whose rent and utilities do get paid. `compute_forecast`
+  returns `savings_set_aside` = Σ per set-aside line max(0, planned −
+  deposited) and `safe_daily_limit = (remaining_budget − savings_set_aside)
+  / days_remaining` (Decimal, half-up); `get_budget_status.today` leaves
+  those lines out. Status / projection still compare with the whole plan and
+  their linear pace counts rent paid on the 1st as daily spending: known,
+  deferred, not to be "fixed" for savings alone (it would read "danger" all
+  month for savers). The mobile `/api/scheduled-expenses` impact still
+  counts savings (debt). Exact figures: `tests_mcp/test_spendable_forecast.py`.
+- **Bills come first** (owner decision, 2026-10-25). `compute_forecast(...,
+  commitments=commitment_expectations(base, saved_due))` returns
+  `commitments_reserved` and `safe_daily_limit = (remaining − savings_set_aside
+  − commitments_reserved) / days_remaining`. A bill (`is_bill_line`: SACRED,
+  not set aside AND recordable — rent, mortgage, utilities — or a recordable
+  saved payment's category due this month) needs its **base**
+  plan (`monthly_plan_service.base_totals_by_category` / `month_base_plan`:
+  rebalancing backed out — a rebalancing credit is never a second bill) or the
+  saved payments due when more (`app/services/monthly_obligations.py`, the one
+  "due this month" rule, also the reviewed budget's); the reserve is that minus
+  what the expenses LINKED to the saved payment paid (capped per due date),
+  never below 0 — since 2026-11-03 never what is recorded in its category
+  (see "Behavioral budget" below); a rent / mortgage / utilities line with no
+  saved payment behind it keeps the category rule. Recordable = an expense can be stored under that category
+  (`VALID_TRANSACTION_CATEGORIES`): the engine's default "insurance medical"
+  allowance (every budget has one; `preview_monthly_budget` lists it as
+  flexible spending) can never be recorded against, so holding it would count
+  a paid bill twice — it is everyday money (refined 2026-10-26,
+  `docs/chatgpt-app/r3-bills-reserve.md`). Needs are computed per STORED
+  category and only then keyed by display line, so a saved `public_transport`
+  pass never takes the "transport public" allowance with it. MCP
+  (`queries/plan.month_commitments`, the calendar) and the mobile `GET
+  /api/budget/forecast` (user's local day since F-9) pass the same
+  commitments; `live_status.daily_budget` leaves set-aside lines out.
+  `queries/plan.bill_line_keys` is the one display-line rule: the calendar's
+  "Bills & commitments" group and `get_budget_status.today.everyday_*` (today
+  without bills). The same bills (`expense_tracker.month_bill_lines`)
+  are never rebalancing donors, and a payment linked to one is matched to
+  its dated rows (its own due date first) and moves only that line's money
+  (`bill_timing.retime_bill_lines`, owner decision 2026-11-02,
+  `docs/chatgpt-app/bill-due-dates.md`): a bill paid early, late or in parts
+  is not overspending; only spending beyond the line's whole month is. The calendar's
+  `left_to_spend` excludes the reserve. Negative averages are allowed (bills
+  due beyond what the plan leaves). Exact figures:
+  `tests_mcp/test_bills_reserve.py` (the scenario matrix),
+  `tests_mcp/test_money_consistency.py`, `test_calendar.py`,
+  `app/tests/test_budget_forecast_local_day.py`.
+- **Behavioral budget** (owner brief 2026-11-03, MCP 2.7.0, migrations 0041
+  and 0042; rules: `docs/chatgpt-app/behavioral-budget.md`). Rules:
+  - **Only a linked expense pays an obligation.** `obligation_payments`
+    (expense → saved payment + due date, one due date per expense, in parts
+    allowed) is the only thing that settles a saved payment; a purchase in
+    the same category is ordinary spending (a car part is not the car loan).
+    A linked expense pays its due date up to that date's amount; more is
+    spending beyond the bill, never another due date's payment. Existing
+    expenses are never linked by MITA. ChatGPT links with `obligation_ref`
+    on `add_transaction(s)` / `update_transaction` (`""` unlinks); an
+    unlinked expense in the category of an unpaid saved payment gets a note
+    so ChatGPT asks.
+  - **An obligation has its own plan line** `bill:<digest>`
+    (`obligation_lines.bill_key`: a one-way SHA-256 of its id — the id never
+    leaves MITA; refs are `ob_…`, AES-SIV bound to the user). One keying rule
+    for the ledger and every MCP read: `obligation_lines.plan_line_of`.
+    Labels come from `queries/obligations.obligation_names` (never the key).
+  - **Line kinds** are stamped on every row of a month laid out since 2.7.0
+    (`plan_json["_mita_line_kind_v1"]`: obligation / planned / flexible /
+    set_aside; `spending_schedule.line_kinds_of`). Planned and flexible lines
+    self-settle in `rebuild_month_plan` (their own money follows their
+    spending; only spending beyond the line's month is redistributed). A
+    month without kinds is legacy: untouched until the user saves it again.
+  - **Never invent purchase dates.** A line without a stated pattern is
+    flexible (even over every day, shown as guidance); planned lines split
+    exactly over real dates (`spending_schedule.purchase_dates`, integer
+    cents, no four-week months). Patterns are stated, never inferred
+    (`spending_patterns.source = user_confirmed` only). A frequency without a
+    day ("about once a week") gets dates MITA PROPOSES, always labelled
+    (`proposed`, `purchase_dates_stated: false`).
+  - **Daily guidance stays, with the month — never on a date.** Flexible
+    lines carry the forecast engine's pace (`pace_per_day` vs
+    `planned_per_day`, `pace_status`, `days_until_exhausted`) and the revised
+    `left_per_day`; `summary.flexible_per_day` is never more than the safe
+    average a day (`safe_daily_limit`, floored at 0). Never a second
+    calculation of pace. Since 2.10.0 it is shown with the summary, each
+    flexible line and the selected date's "Flexible budgets · this month"
+    list, worded as guidance — the "≈" drawn on dates in 2.7.0–2.9.0 is gone
+    (see "A budget is not a schedule" below).
+  - **Freed money is shown** (`preview_monthly_budget.freed_money`, F-12):
+    a `not_applicable` line's money vs the same engine run keeping it;
+    explicit redistribution only through `budget_lines`.
+  - **Preferences never change a saved plan by themselves**:
+    `save_spending_patterns` persists; `preview_monthly_budget
+    (spending_patterns=…)` shows a change unsaved; `save_monthly_budget`
+    saves the plan, its kinds and the preview's patterns together (digest
+    covers kinds and patterns). The rollover of a month with kinds re-lays
+    it from the stored patterns and the obligations due NOW.
+  - **The mobile forecast and ChatGPT share** `obligation_lines.month_commitments`
+    (`commitments_paid` in `compute_forecast`); the MCP role needs the 0041 /
+    0042 grants in `scripts/mcp/mcp_service_role.sql`.
+  - **Not ready without its tables and grants.** A table the service needs
+    goes into `app/mcp/__main__.REQUIRED_TABLES` and the role's grants
+    (`tests_mcp/test_readiness.py`): `/health` stays 503 until every one is
+    visible to `mita_mcp`, so a deployment that outruns its migration never
+    becomes healthy. `scripts/mcp/smoke_behavioral_270.py` drives the 2.7.0
+    writes over HTTP; run it against a server connected as `mita_mcp`.
+  - Exact figures: `tests_mcp/test_obligation_payments.py`,
+    `tests_mcp/test_behavioral_budget.py`; F-8/R3 suites rewritten to identity.
+- **2.8 personalized onboarding and regional context** (owner brief
+  2026-11-04, MCP 2.8.0, migration 0043; rules and decisions:
+  `docs/chatgpt-app/personalization-2.8.md`). Rules:
+  - **Country only** — never a city, address or coordinates as a tool input
+    (OpenAI plugin guidelines; `test_tool_contract` LOCATION_FIELD). ChatGPT's
+    `_meta["openai/userLocation"]` is reduced to its country by the runtime
+    (`app/mcp/location_hint.py`, bound per call) and only suggested
+    (`get_setup_status.region.suggestion`); the user's answer is stored on
+    `users.country` with `mcp_user_profiles.country_source`. Never store,
+    log or emit the hint; a country changes no currency, expense or plan.
+  - **Unknown is not zero, not none, not yes.** `mcp_setup_answers` holds
+    only the user's own `none` / `described` / `skipped`; no row = never
+    asked. The onboarding stage is derived on every call (`SetupState.stage`),
+    never stored; a returning user (any saved plan) is `established` and is
+    never asked again.
+  - **Personalized only on the user's word**: after `everyday_spending =
+    described`, MITA's lines without a stated pattern are `unknown`, left out
+    through the engine's replaced buckets and listed in `not_included` with
+    `would_suggest`; their money stays unallocated (still in the daily
+    figure). Without that answer the engine call is exactly 2.7.0's. Each
+    comparison (`freed_money`, `not_included_money`) is the draft against one
+    engine run keeping one set of lines: conserved to the cent.
+  - `line_status` (`user_confirmed` / `mita_suggested`) on every preview and
+    setup line: a MITA suggestion is never the user's amount or choice.
+  - Variable income is planned on the stated income; `variable_income`
+    shows the stated minimum month by arithmetic only.
+  - **Regional statistics are reference data, never a budget input**
+    (migration 0044, `app/regional/`, `get_regional_context`). Ingested by
+    a batch job (`python -m app.regional.ingest`, staging-only: it refuses
+    `ENVIRONMENT=production`) with its own role
+    (`scripts/mcp/regional_ingest_role.sql`); the MCP role only SELECTs.
+    No tool call reaches a provider; no user data leaves MITA for one.
+    Every value carries `unit_kind`, unit, classification (COICOP 2018 for
+    HICP ver.2, COICOP 1999 for PPP, HBS and the OECD), period and
+    provenance; a missing cell is never a zero; stale is computed at read
+    time. An amount (`currency_amount`, e.g. household electricity EUR per
+    kWh) is asked for in one currency and any other is rejected, never
+    converted. MITA has no shop prices: paid web search, the Oil Bulletin
+    XLSX and Open Prices are owner decisions (`personalization-2.8.md` §13).
+    Verify a dataset code or unit against the provider's live API
+    before using it (`prc_hicp_manr` stopped at 2025; World Bank BG "LCU"
+    is EUR since 2026).
+  - **Beside the plan, never in it** (2.8 M4): preview lines carry
+    `recorded_average` (the user's own history on the line) and
+    `regional_comparison` (official national inflation for that spending),
+    read after the draft so neither can enter its digest. No amount is
+    derived from a statistic without an owner-approved method.
+  - Eurostat data only for EU/EFTA/candidate countries (its licence).
+- **2.9 regional recommendations** (owner brief 2026-11-09, MCP 2.9.0, no
+  migration; rules: `docs/chatgpt-app/regional-recommendations.md`; what
+  geography did before: `regional-capability-audit.md`). Rules:
+  - **Evidence order, first wins, never applied**: obligation → the user's
+    amount → their history → a pattern they stated → a verified local price
+    (none exists) → official statistics → MITA's rules. Each preview line
+    has a `recommendation` and the preview a `recommendations` summary; both
+    are read after the draft, so neither enters the digest. Adopting one goes
+    through `budget_lines`, a new preview and the user's yes.
+  - **A reference is an amount by a stated method, never an index alone**
+    (`app/regional/reference.py`, pure): Eurostat `hbs_exp_t111` per adult
+    equivalent × `hbs_str_t211` share × `prc_hicp_aind` factor ÷ 12 (fuel ÷
+    the share of households buying it, `hbs_exp_t123b`). A household is a
+    range on the survey's modified OECD scale, never ×n. Never multiply a
+    budget by a PPP index and call it a local cost.
+  - **Refuse, never fill in**: wrong or unstated currency, no licensed
+    survey (the US, GB…), a survey older than 8 years, a missing share, low
+    reliability, a price factor outside 0.5–2.0 → `insufficient_data` with a
+    reason. Only the user's currency when it is the country's currency now;
+    nothing is ever converted. Confidence is always `low`.
+  - Lines with no defensible national figure (dining out, public transport,
+    recreation, medical) get a `regional_reason`, never a number. Reference
+    inputs are never listed as statistics (`catalog.SHOWN_INDICATORS`).
+  - `INCOME_BANDS_NOTE`: unless the user is in the US with USD, the preview
+    says MITA's bands and shares do not adjust for currency or local prices
+    (audit §8: DEFAULT bands are stub numbers; MIDDLE is unreachable).
+    Fixing the bands is an app-wide owner decision, not a ChatGPT change.
+  - **Local prices** (`app/prices/`, `docs/chatgpt-app/local-prices.md`):
+    the architecture and controls exist, and no provider is approved. Every
+    lookup is `no_verified_price` until the owner approves the provider,
+    API access, monthly cap, per-user quota and privacy rules
+    (`MITA_PRICE_SEARCH_*`; partial = none). No MCP tool imports
+    `app.prices`, and `app.prices` imports no ledger or database code
+    (tested). A city comes only from ChatGPT's approximate hint, for one
+    call, never stored and never taken as the residence.
+  - Staging runs 2.9.0 since 2026-11-09 18:13 UTC (`789bfb6`, deployment
+    `20c1191f`, 7,047 observations; `staging.md` → "MCP 2.9.0 — deployed"),
+    by the owner-authorised temporary key `mita-staging-290` (revoked). A
+    temporary key needs the owner's explicit authorisation for each release:
+    the operator tool refuses one without it.
+- **A budget is not a schedule** (owner brief 2026-11-11, MCP 2.10.0,
+  component v4, no migration; rules, root cause and limits:
+  `docs/chatgpt-app/flexible-envelopes-calendar.md`). 2.9.0 drew a flexible
+  budget's stored daily share on dates: with a category filter, 3.33 on
+  every date of a 100.00 monthly limit (10.67 for 320.00), and the sum of all
+  shares on every date ahead of the exported image. Rules:
+  - **A date holds four different things, never merged**: recorded spending
+    (its date), a saved bill (its due date), a planned purchase (a date from
+    a pattern the user stated) — bills and planned purchases are what is
+    SCHEDULED (`planned_scheduled`, `DayLine.scheduled`) — and nothing of a
+    flexible budget. A flexible budget is a monthly limit on no date: its
+    figures are the line's (`planned`, `spent`, `remaining`, `left_per_day`).
+  - **The stored rows are bookkeeping.** The engine still keeps a monthly
+    limit evenly over the month (`lay_out_line`) and moves it to the dates it
+    is spent on; `planned`, `planned_everyday`, `planned_flexible` and
+    `planned_after_today` still equal those rows (so `get_budget_status` and
+    the mobile day budget agree) and are described as bookkeeping. Never
+    present one of them as planned, due or allowed on a date, and never
+    change the storage to "fix" the display.
+  - **The component is never handed a share.** `_meta["mita/calendar"]` is
+    `version: 2`: `day_lines = [line, scheduled, spent]`, a flexible line
+    listed only where something was spent from it. A component and a payload
+    of different versions refuse each other
+    (`serializers.WIDGET_PAYLOAD_VERSION`, `PAYLOAD_VERSION` in the HTML):
+    bump both, and the URI, together.
+  - **One rule for "All categories" and every filter** (`cellModel`): spent
+    so far, scheduled ahead; the filters' dates add up to the unfiltered
+    calendar (tested, and drawn). A date with nothing scheduled is empty —
+    never a guide, a share or a placeholder.
+  - **A date's state**: `planned` ahead only with a scheduled everyday
+    purchase; a begun date with nothing scheduled is `unplanned` / `quiet`,
+    never `within`. `over` still pools the date's rows (limit recorded in
+    the doc): do not print a pooled over amount beside flexible budgets.
+  - A line is `planned` only from a pattern the user stated; 45.00 of coffee
+    is 30 × 1.50 on dates only after "every day" — otherwise a monthly limit.
+  - Rendered checks: `tests_mcp/test_calendar_rendering.py` (the real
+    component fed by the real tools, in process; needs `playwright==1.49.1`
+    and Pillow, so MCP CI skips it — run it locally before a component
+    change). A new check of what a cell shows goes there, not only into the
+    data tests: 2.7.0's tests asserted the share as data and were right.
+- **One display name per category** (`app/mcp/categories.py`): every result
+  carries `category_label`; budget status and the forecast put an expense
+  category on its paired plan bucket's line ("Fuel" = `transport gas` +
+  `gas`) when that bucket is in the month's plan. Pairs must be declared in
+  `app/config/category_aliases.py` (tested) — never invent one. Presentation
+  only: stored rows, the ledger and the app are unchanged (F-2 stays open in
+  the backend). New plan buckets or expense categories need a label (tested).
+- **Only this account, worded so.** A name in `list_transactions(merchant=…)`
+  matches only this user's own expenses; the description, a result note and
+  the server instructions say MITA cannot see another account.
+- **No app-level "read-only".** The v2 app writes: `serverInfo.description`
+  equals the listing description, and `test_acceptance_fixes.py` forbids
+  "read-only" on the listing, server text, scopes, consent page and skill.
+  Tool-level read-only statements stay on read tools. ChatGPT's developer-mode
+  app object has its own Description field — the runbook must give v2 text.
+- **A DCR client keeps its registered scopes** (SDK `validate_scope`): adding
+  a scope breaks existing connections with `invalid_scope` until they
+  re-register (backend-findings F-7).
+- **History is aggregated in SQL by LOCAL month** (`app/mcp/queries/history.py`,
+  `date_trunc('month', timezone(user_tz, spent_at))`), never returned as raw
+  rows. A month before the first recorded expense is `before_tracking` (no
+  data — not zero); a complete month with nothing recorded is `recorded` with
+  0; the current month is `in_progress` and never enters an average. Trends
+  and the late-month share need `MIN_MONTHS_FOR_TREND` (3) complete months,
+  else `insufficient_data`. Six months is an analysis window, not retention.
+- **Plugin package** (`plugin/mita`): `onboardingSkill: "./skills/setup/SKILL.md"`;
+  `build_plugin.py` packages `skills/` and validates SKILL.md front matter
+  (name = directory, description), the onboarding path and the starter prompts
+  (<= 3, <= 128 chars, unique, no @mention), plus the current submission
+  rules (`docs/chatgpt-app/openai-compliance-2026-10-27.md`): category list,
+  brand contrast, one-line fields, release notes and demo URL, no reviewer
+  credentials, screenshot format, and `mcp.json` declaring
+  `extensions["com.openai"].auth = {"type": "oauth", "client": {"mode":
+  "dcr"}}` (the portal reads auth from it; the portable schema does not model
+  the extension, so the validator strips it before the schema check). The
+  listing never mentions pricing, trials or Premium, and never promises
+  records "in the MITA app" while the app is not in the stores (tested).
+  `tests_mcp/golden_prompts.json` (en/ru/bg,
+  reviewer-authored, never from real users) must cover every published tool;
+  its `description_mentions` pin trigger phrases in tool descriptions.
+  Conversation rules: `docs/chatgpt-app/dialogue-contract.md`.
+- **Feedback and usage statistics** (migration 0039): `submit_feedback` stores
+  the user's own words in `product_feedback` (user id, cascades) and emits only
+  type/area/rating. `analytics_identities` maps user id -> HMAC key and
+  cascades to `analytics.events`, so account deletion and
+  `set_usage_analytics(false)` delete every linked event (the opt-out call
+  itself is recorded unlinked via `override_consent`). Production writes
+  events through ONE background task (`DatabaseSink`); tests on the shared
+  connection use `background=False`. Metabase/report read `analytics.*` only
+  with `mita_analytics_reader` (`scripts/mcp/analytics_reader_role.sql`).
+  Segment thresholds are rows in `analytics.segment_thresholds`.
+- **Capacity** (`docs/chatgpt-app/capacity-plan.md`): measured with
+  `scripts/mcp/benchmark_capacity.py` on a LOCAL `*capacity*` database
+  (600k transactions, 1.47M plan rows, 500k events): every tool query p95
+  ≤ 20 ms, 1–6 statements, index scans only — no index added (no 0040). Re-run
+  it after any query-layer change; never against staging/production. Re-run
+  2026-11-04 for 2.7.0: a calendar path reading the month's rows five times
+  measured p95 53.4 ms — fixed by one read (`queries/plan.month_plan`):
+  calendar p95 14.4 ms, status 11.1, forecast 10.0, spending profile 6.1.
+  `scripts/mcp/e2e_v2.py` is the public acceptance conversation (sign-up →
+  budget → writes → new connection → history → goal → feedback → negatives →
+  analytics audit → cleanup); it refuses production hosts.
+- **A new read tool goes into `scripts/mcp/e2e_http.py`'s `TOOLS`.** The
+  container end-to-end step of MCP CI (the last one) fails unless every
+  published read tool is called with a read-only grant; the suite alone does
+  not catch it (MCP CI on `dbdc118` went red there).
+- **Deleting a test account is `e2e_v2.cleanup`, not `DELETE FROM users`.**
+  `transactions.user_id` has no foreign key to `users` (several legacy tables
+  neither), so deleting the user alone leaves its expenses behind;
+  `daily_plan`, `scheduled_expenses`, `goals` and the MCP/OAuth tables do
+  cascade.
+- **The MCP database role is least-privilege** (`scripts/mcp/mcp_service_role.sql`,
+  owner-run after the migrations): exactly the tables and `users` columns the
+  domain writers touch, no DDL. A new write path needs its grant there — an
+  ORM insert with `RETURNING` needs `SELECT` as well as `INSERT`. Verify by
+  running `e2e_v2.py` against a local server connected as `mita_mcp`: the
+  redistribution audit is non-blocking, so a missing grant there surfaces
+  only as a logged warning, never as a failed call.
+- **Naive datetimes mean UTC only in a UTC process.** asyncpg encodes a naive
+  value bound to a timestamptz parameter with `astimezone()`, i.e. in the
+  process's local zone. The image sets `TZ=UTC`, `python -m app.mcp` pins it
+  (`pin_process_timezone`), and `tests_mcp/conftest.py` does too — a laptop
+  in Sofia otherwise shifts every date window by 3 hours (found by running
+  `scripts/mcp/e2e_http.py` against a local server). Keep all three.
+- **Spend is the ledger.** Every MCP spend figure is `transactions` with
+  `deleted_at IS NULL`, keyed by `local_day_of(spent_at, user.timezone)`;
+  allocations are `daily_plan.planned_amount`. Do not read
+  `daily_plan.spent_amount` (a cache that can lag).
+- **Only TRUSTED sources** from `docs/chatgpt-app/data-trust-audit.md`. No AI
+  endpoint, recommendation engine or cohort data is reachable from MCP.
+- `mita.finance` is **not registered**; the MCP host is `MCP_PUBLIC_URL`.
+- **Two credential checks, one lockout counter.** The mobile login
+  (`app/api/auth/login.py`, intentionally untouched by the MCP work) and the
+  ChatGPT consent page (`app/services/credential_verification.py`) apply the
+  same rule (5 failures → 30 min) to the same `users` columns. Change both together.
+- **OAuth tables (migration 0037)** `mcp_oauth_clients`,
+  `mcp_oauth_authorization_codes`, `mcp_oauth_refresh_tokens`: additive,
+  codes/refresh tokens stored as SHA-256 digests, rows cascade with the user.
+  Applied by mita-production's `start.sh`; the MCP service never migrates.
+- **Money leaves MCP as strings** (`"1234.50"`, `Decimal` quantized half-up);
+  every payload names its currency; mixed recorded currencies are disclosed in
+  `notes`, never converted. Goals without a target date get `on_track: null`
+  (the forecast engine says `False`, which is a verdict nothing supports).
+- **MCP logging takes over the tree.** `app.core.logging_config` (imported by
+  the domain layer) gives `app` its own handlers with `propagate=False`;
+  `app.mcp.observability.configure_logging` undoes that, emits one JSON line
+  per record to stdout, keeps `app.*` at WARNING (domain code logs amounts at
+  INFO, e.g. `compute_forecast`) and withholds message text from non-MCP
+  loggers. Never log tokens, amounts, merchants, e-mails or tool arguments.
+  `__main__.import_build_service` takes over BEFORE importing the service:
+  the import computes the sign-in example through the forecast engine, whose
+  INFO line otherwise went out in plain text with (fictional) amounts
+  (`tests_mcp/test_startup_logging.py`).
+- **Lint like CI before pushing:** `black --check`, `isort --check` AND `ruff
+  check` (MCP CI on `app/mcp tests_mcp scripts/mcp`, Backend CI on the whole
+  repo). isort rejects a parenthesised import that black accepts.
+- **MCP tests live in `tests_mcp/`** (own env: `pip install -r requirements-mcp-dev.txt`;
+  run `PYTHONPATH=. pytest -c tests_mcp/pytest.ini tests_mcp`). Real PostgreSQL,
+  one rolled-back transaction per test, tools driven through the SDK client
+  over ASGI. Assert exact figures, not status codes. The session manager runs
+  once per service and inside the test task — use the `mcp` harness.
+- **`scheduled_expenses.recurrence` is `once | weekly | monthly | null`.**
+  `"once"` is one-time; only weekly/monthly are recurring.
+- **Deploy/package.** MCP image `deploy/mcp/Dockerfile`, Railway config
+  `deploy/mcp/railway.json` (set as the `mita-mcp` service's config file).
+  Plugin ZIP: `scripts/mcp/build_plugin.py --check` (CI) / `--release`
+  (refuses placeholders, example hosts and `mita.finance`). The review
+  seeder `scripts/mcp/seed_review_account.py` goes through `_target_guard`
+  and never writes to production. CI job `mcp-ci` runs all of it.
+- **`requirements-mcp.lock` is the image's whole closure**, installed with
+  `pip install --no-deps`, and CI's `pip-audit` of it gates every later MCP
+  step (security gate, suite, image, container e2e). A new advisory turns
+  CI red without a code change. Fix by raising the one pin when PyPI shows
+  the fixed version has the same requirements (note it in the header, as
+  for `opentelemetry-api` 1.45.1 on 2026-10-23 and `dnspython` 2.9.0 on
+  2026-10-27), else regenerate with
+  `scripts/mcp/lock_deps.sh`; then redeploy staging so it runs the fix.
+- **Owner-gated items** live in `docs/chatgpt-app/OWNER_ACTIONS.md`; the
+  current OpenAI requirement matrix (official sources, re-read 2026-10-27) in
+  `docs/chatgpt-app/openai-compliance-2026-10-27.md` — re-check OpenAI's
+  pages rather than trusting older notes; readiness
+  table in `docs/chatgpt-app/review/submission-checklist.md`; pre-existing API
+  defects found along the way in `docs/chatgpt-app/backend-findings.md`
+  (second goal → 500, plan vs transaction category names).
+- **ChatGPT grants are bound to the password.** Codes, refresh tokens and
+  access tokens carry `tv` (token_version) and `cfp` (HMAC of
+  `users.password_hash`, keyed ONLY by `MCP_GRANT_FINGERPRINT_SECRET` — never
+  the CSRF secret); any password change, by any path, ends the
+  connection on the next call/refresh. `/reset-password` bumps token_version
+  only best-effort, which is why `cfp` exists. There is no user-facing
+  "sign out of all devices" endpoint in MITA.
+- **Redirect URIs match exactly** (`app/mcp/auth/redirects.py`); DCR accepts
+  only code/refresh grants, `response_types=["code"]`, no jwks, <= 4 KiB
+  metadata; /register, /token, /authorize, /revoke are rate limited per IP.
+  Adversarial regressions: `tests_mcp/test_oauth_adversarial.py`.
+- **"Per IP" means Railway's `X-Real-IP`, never `X-Forwarded-For`**
+  (`ratelimit.client_address`, every per-IP limit incl. sign-in/sign-up).
+  Railway's edge writes `X-Real-IP` over anything the client sent and sends
+  `X-Forwarded-For` as "<client>, <edge address>" with a rotating edge
+  address: counting by its last hop meant a 40-request /authorize burst on
+  staging never got a 429 (2026-10-28, V7 in `oauth-security-audit.md`).
+  No header = the TCP peer,
+  so uvicorn runs with `proxy_headers=False` (`__main__.ForwardedProto`
+  keeps the https scheme); a repeated or malformed header shares one bucket;
+  the service refuses to start with a TCP proxy. Never put
+  `forwarded_allow_ips="*"` back.
+- **OAuth audit:** `docs/chatgpt-app/oauth-security-audit.md` (threat → evidence
+  table). Pre-deploy HTTP e2e: `scripts/mcp/e2e_http.py` (also run against the
+  built image in `mcp-ci`, across a container restart, with a log scan). The
+  image installs `requirements-mcp.lock` (full lock; regenerate with
+  `scripts/mcp/lock_deps.sh`).
+- **AS metadata is MITA's own route** (server.py): it advertises
+  `token_endpoint_auth_methods_supported` incl. `none` (ChatGPT registers as a
+  public PKCE client) and pins `issuer` to the exact configured origin (no
+  trailing slash — issuer comparison is exact). Staging: separate Railway
+  project `mita-mcp-staging` (docs/chatgpt-app/staging.md), pinned commits,
+  one replica.
+- **Staging** runs in its own Railway project `mita-mcp-staging` (private
+  Postgres, fresh secrets, one replica, source pinned to a commit). Verified
+  over public HTTPS with `scripts/mcp/e2e_http.py` and
+  `scripts/mcp/staging_failure_modes.py`; results in
+  `docs/chatgpt-app/staging-acceptance.md`. Real-ChatGPT acceptance is owner-run.
+  Since 2026-11-04 07:27 UTC it runs `2ab2e0f` (deployment `390805cb`, MCP
+  2.7.0, alembic 0042, `staging.md` → "MCP 2.7.0"; the earlier fictional
+  review accounts were deleted the same day); since 2026-11-04 23:19 UTC
+  `601a3d7` (deployment `618cd6d9`, MCP 2.8.0, alembic 0044, OECD excluded,
+  `mita_regional_ingest` NOLOGIN, `staging.md` → "MCP 2.8.0 — deployed"); since 2026-11-09 18:13 UTC `789bfb6` (deployment `20c1191f`, MCP 2.9.0, no migration, 7,047 observations, `staging.md` → "MCP 2.9.0 — deployed"); since 2026-11-12 18:28 UTC `8970756` (deployment `b1b09ac9`, MCP 2.10.0, no migration, deployed by the re-pin alone — no database access, so its 5 fictional check accounts await clean-up; `staging.md` → "MCP 2.10.0 — deployed"); every staging secret and both database
+  passwords were rotated on 2026-10-23 after Railway's 2026-10-21 security
+  incident (`staging.md` → "Credential rotation"). It is connected as
+  `mita_mcp`, so a missing grant shows up there before production; staging
+  acceptance closed 2026-10-19 (`docs/chatgpt-app/HANDOFF.md`);
+  `scripts/mcp/e2e_v2.py` results are in `staging-acceptance-v2.md`, whose §6
+  is the owner's real-ChatGPT script. **Never a TCP proxy to reach the
+  database** (owner brief 2026-11-04: PostgreSQL is never exposed publicly to
+  work around tooling; the proxies of October were the old practice).
+  Migrations and checks reach staging from the operator machine over
+  Railway's private SSH path (`ssh.railway.com`: `railway ssh`, `ssh -L`
+  into the project's private network), which needs an SSH key on the
+  owner's Railway account — registering one is the owner's decision (on
+  2026-11-04 the owner authorised a temporary key, revoked after use). A
+  Railway volume backup needs a Pro workspace: back up with `pg_dump -Fc`
+  onto the Postgres volume over SSH and restore-test it. If no
+  secure path exists, stop and report; never deploy code whose migrations
+  or grants are missing. Prove the owner's account untouched with
+  `scripts/mcp/staging_account_fingerprint.py` (counts and digests only)
+  before and after each step.
+- **Secret values never pass through a chat, a tool argument or a log.**
+  Generate into a 0600 file (`generate_keys.py --out`), set with
+  `railway variable set NAME --stdin --skip-deploys`, and inspect only through
+  `railway run` scripts that print names, booleans or counts; delete the
+  files afterwards. A Railway template database's `postgres` password changes
+  only through Railway's **Regenerate** (owner, dashboard) — never
+  `ALTER USER` or a hand-edited variable; custom roles (`mita_mcp`) change by
+  `ALTER ROLE` with a locally computed SCRAM verifier plus the matching
+  `DATABASE_URL`, in one sequence.
+- **Tool metadata states limits as facts, never steers the model elsewhere.**
+  OpenAI forbids metadata that influences how the model treats other
+  plugins/services, so every description carries `READ_ONLY_DISCLAIMER`
+  ("MITA cannot initiate, execute or facilitate payments or money transfers")
+  and nothing tells ChatGPT what to do outside MITA. Real ChatGPT still offered
+  to "prepare" a transfer through the user's bank after refusing — that is
+  ChatGPT's own help, not a MITA capability; never answer it with a transfer tool.
+- **Budgeting arithmetic, never licensed advice or automated money actions.**
+  OpenAI's Usage Policies (update dated 2026-10-21, effective 2026-11-20,
+  owner-verified on the official page 2026-10-28) forbid tools that give
+  tailored advice requiring a professional licence without a licensed
+  professional, and automating high-stakes actions in financial activities,
+  credit or insurance without human review. MITA passes because it does
+  neither (`docs/chatgpt-app/openai-compliance-2026-10-27.md` → A5): figures
+  are arithmetic from the user's own records, writes are the user's requests
+  (destructive ones approved), rent/loans/insurance are only budget lines.
+  Adding investment, credit, insurance, tax or legal guidance, or any
+  automated action on money, needs a new usage-policy check first.
+- **`get_financial_summary.top_categories` is the top three only.** The rest
+  of `spent_total` is named only by `get_spending_breakdown`. `other` is a real
+  MITA category (`app/config/category_config.py`), so ChatGPT relabelling an
+  unlisted category as "Other expenses" conflates it with real data; the
+  description and the `CategorySpendOut.category` schema text say so. Do not
+  "fix" this by adding a synthetic `other` bucket to the payload.
+- **Production rollout facts (read-only check, 2026-10-11).** Plan:
+  `docs/chatgpt-app/production-readiness.md`.
+  - `mita-production` has **no Railway healthcheck**, so a new deployment goes
+    Active when its container starts and the old one stops. A failed boot
+    migration therefore leaves nothing serving. Enable `/health` (200 even
+    when degraded) before the 0037 merge (O-11a).
+  - Production DB is Railway **Postgres 17 `mita-production-db`** (private
+    host), not Supabase, and has a public TCP proxy (O-4b).
+  - Once production is at 0037, rolling the API back to a pre-merge
+    deployment cannot boot (`Can't locate revision identified by '0037'`).
+    Fix forward, or `alembic downgrade 0036` from merged code first.
+  - `scripts/mcp/check_leaked_secrets.py` compares live variables with all 33
+    committed secret fingerprints and prints names only. It is owner-run,
+    because reading production variables is owner-only.
+- **The financial calendar is an MCP App** (2026-10-24, MCP 2.2.0, 24 tools;
+  `docs/chatgpt-app/financial-calendar.md`). `get_calendar_month` (data, no
+  template) and `show_financial_calendar` (the ONLY tool with
+  `_meta.ui.resourceUri` → `ui://mita/financial-calendar-v4.html` since
+    2.10.0; v3 from 2.7.0); the
+  render tool recomputes from the account and never takes figures as
+  arguments. Rules:
+  - **One query, both tools, the sign-in example**: `queries/calendar.py`
+    (`build_calendar` is pure). Its figures equal `get_budget_status` and
+    `get_budget_forecast` for the same month (tested) — never a second
+    calculation. Lines are grouped once — set aside / commitments (the
+    forecast's bills: `is_bill_line` + recordable saved payments' categories
+    by `counts_in_month`, the budget draft's rule) / everyday — and the groups
+    add up to the plan.
+  - **A date's verdict is everyday-only**: over/within compares everyday
+    spending with that date's everyday plan; a date without one gets no
+    verdict; future dates show the plan, never a forecast. Bills are dated
+    markers, never added to a total.
+  - **The model gets a short view, the component the month**:
+    `ToolOutput(text, component_meta)` in `runtime.py`; `_meta["mita/calendar"]`
+    is delivered to the component only.
+  - **The component loads nothing and writes nothing**: empty CSP allowlist,
+    no remote URL, no fetch/XHR, no `innerHTML`, only `get_calendar_month`
+    and `list_transactions` through `tools/call` (tested on the source).
+    System fonts and host colours (OpenAI UI guidelines); MITA colour only on
+    accents; the exported image uses the master logomark (tested).
+  - Bump the URI's `-vN` for a breaking component change. `ui.domain` comes
+    from `MCP_WIDGET_DOMAIN` (an origin; production refuses to start without
+    it since 2026-10-27; set it on staging for the real-ChatGPT run).
+  - **Bills on their due dates** (owner decision 2026-11-02, MCP 2.5.0,
+    `docs/chatgpt-app/bill-due-dates.md`): R4 adopted, plus a bill line's own
+    money following its payment and bill lines never donors. Each bill has a
+    `state` (paid / overdue / due_today / upcoming / later): since 2.7.0
+    `paid` comes ONLY from expenses the user linked to that due date
+    (`obligation_payments`, the `bill_payments` proposal of 2.5.0, adopted by
+    the owner's brief of 2026-11-03) — never from category spending.
+    `REMINDER_DAYS` = 5 is a
+    reminder in the calendar only — never an allocation, never a push, e-mail
+    or scheduled job. Plans saved before 2.5.0 keep their layout until the
+    user saves the month again (no silent rewrite).
+  - Known model gaps the calendar shows and does not hide: in LEGACY months
+    (no line kinds) everyday overspending still drains later dates per date;
+    months laid out since 2.7.0 settle planned and flexible lines within the
+    line first (R2, owner brief 2026-11-03). F-2 remains. Do not change
+    the rebalancing of legacy months without a new owner decision.
+    Behaviour is pinned with hand-checkable figures in
+    `tests_mcp/test_money_consistency.py` (the review month, the bill cases)
+    and `tests_mcp/test_bill_due_dates.py` (the owner's November); a model
+    change must update those figures deliberately, and every scenario there
+    also checks status / forecast / calendar / stored rows / the mobile API's
+    figures against each other.
+  - **Money is never cut off on a narrow phone**: a phone's date grid shows
+    whole euros (said under it; exact figures in each date's label and
+    detail), `fitText` shrinks what still does not fit, stacks tiles and
+    buttons; the harness checks 320, 360 and 390 px.
+  - **The 2.6.0 redesign** (owner, 2026-11-03): no "PLAN" label in date
+    cells (one caption says plan vs spent), larger cells and amounts,
+    category families as monochrome OUTLINED icons (OpenAI UI guidelines:
+    system fonts, system colours for text and icons, brand colour only on
+    accents, badges and the primary button; no logo in the UI) — a user line
+    takes the icon of the MITA line it `replaces`, as saved
+    (`CalendarLineOut.replaces`). The component holds no account data of its
+    own (`test_the_component_holds_no_account_data_of_its_own`); every figure
+    comes from the tool result for the signed-in user.
+  - Regressions: `tests_mcp/test_calendar.py`; the local MCP Apps host
+    `scripts/mcp/calendar_widget_review.py` (sign-up, tools, sandboxed iframe,
+    axe, PNG) → `docs/chatgpt-app/review/calendar-v1/`.
+- **The sign-in page is presentation over a fixed flow** (branch
+  `feat/chatgpt-auth-ui`, 2026-10). `app/mcp/auth/pages.py` renders
+  `/oauth/login` and its error pages; `login.py` owns the flow and must not
+  change for looks. Rules:
+  - **No JavaScript, nothing third-party** — the audit's XSS control. CSP
+    stays `default-src 'none'` with no `script-src`; `font-src 'self'` and
+    `img-src 'self'` serve the three brand fonts in
+    `app/mcp/auth/static/fonts/` (OFL subsets built by
+    `scripts/mcp/build_auth_fonts.py`) and the hero photograph in
+    `static/images/` (WebP), by exact name from `/oauth/assets/` with a
+    content version. All depth and motion is CSS; under
+    `prefers-reduced-motion` every animation is off, and nothing but the
+    decorative flying expense starts invisible (tested). A show/hide-password
+    toggle would need script: deliberately absent.
+  - **Brand values come from Figma**, not the website section above:
+    `docs/brand/AUTH-UI-DESIGN.md`. The logo is the Figma master vector.
+  - **Copy states facts only** (`data-inventory.md`). Example prompts must map
+    to published tools and demo figures are labelled fictional;
+    `test_auth_ui.py` forbids "bank-grade", "encrypted", "free", "read-only"
+    and the like. Keep the tested security sentences: the forgery warning,
+    "cannot move money, make payments or connect to your bank" and the one
+    generic "Sign-in failed" for every cause.
+  - **The primary button is the first submit button**, so Enter signs in;
+    Cancel keeps `formnovalidate`. Errors mark their field (`aria-invalid`,
+    `aria-describedby="form-error"`); a sign-in failure marks both fields
+    identically whatever the cause.
+  - **Success is an immediate 302 to ChatGPT.** No "connected" interstitial:
+    it would put the code in an HTML body and claim a connection before
+    ChatGPT's token exchange. What to ask next is shown before submitting.
+  - **A refused `/authorize` in a browser is a page**
+    (`app/mcp/auth/browser_errors.py`, `Accept: text/html` only): same status,
+    `Retry-After` and redirects; JSON for everything else; never echoes the
+    request. A database or network failure on the sign-in page is a 503 page
+    with no code issued, logging the exception class only.
+  - **The final connect page** (v5.2, owner-approved 2026-10-26; audience
+    research and decisions in `docs/brand/AUTH-UI-AUDIENCE-AUDIT.md`). The
+    person already chose to connect, so the page is short: the hero (headline
+    "Know what you can safely spend each day." — "each day", never "today";
+    one line of value; the question "How much can I safely spend per day?"
+    and MITA's answer for the fictional month; Connect), four things to ask —
+    each a different ability, never the hero's question again — then the
+    sign-in card, "You stay in control" (four facts, the full wording in a
+    closed `<details>`), the month (an AI-generated photograph — Figma AI,
+    "Illustration" in its alt text, never a customer — and the calendar), the
+    rest of what you can ask, one closing line. Full-colour master logo. Cards
+    only for product UI (the answer, the form, the calendar). **The example is
+    computed, never typed**: `app/mcp/auth/demo.py` runs fictional inputs
+    through `month_calendar`, `build_calendar` and the forecast engine (R3:
+    €59.60 a day, the €30.00 internet bill held), and keeps its expenses inside
+    each date's plan in same-name categories so MITA's rebalancing would not
+    change it (tested). No forecast status. Every sentence a person is told to
+    type maps to a published tool and appears once (tested). Consent shows all
+    five scope titles with the details in a native `<details>`. Claim table:
+    `docs/brand/AUTH-UI-DESIGN.md`.
+  - Regressions: `tests_mcp/test_auth_ui.py` (in the CI security gate).
+    Screenshots: `scripts/mcp/auth_ui_preview.py --shots` (the real
+    `pages.login_page` with the service's headers; no OAuth server or
+    database; `--axe` runs axe-core) → `docs/chatgpt-app/review/auth-ui-v5.2/`;
+    the real flow: `scripts/mcp/auth_ui_screenshots.py` (needs HTTPS: the CSRF
+    cookie is `__Host-`/`Secure` — a self-signed localhost certificate, never
+    a relaxed cookie); owner check on staging:
+    `docs/chatgpt-app/calendar-owner-test.md`.

@@ -82,3 +82,5 @@ dump.rdb
 # Copy .mcp.json.example and fill in your own values.
 .mcp.json
 data/
+.venv-mcp/
+.venv-api/

@@ -29,7 +29,11 @@ import pytest
 from app.api.auth.schemas import RegisterIn
 from app.api.auth.services import register_user_async
 from app.core.error_handler import RateLimitException
-from app.core.security import AdvancedRateLimiter, reset_security_instances
+from app.core.security import (
+    AdvancedRateLimiter,
+    SecurityUtils,
+    reset_security_instances,
+)
 from app.services.auth_jwt_service import (
     blacklist_token,
     create_access_token,
@@ -590,33 +594,44 @@ class TestConcurrentRateLimiting:
             penalty_errors = []
             results_lock = threading.Lock()
 
-            def penalty_worker(violation_count):
-                try:
-                    # Mock Redis to return specific violation count
-                    with patch.object(
-                        mock_redis_client, "get", return_value=str(violation_count)
-                    ):
-                        client_id = f"penalty_test_client_{violation_count}"
-                        penalty = rate_limiter._check_progressive_penalties(
-                            client_id, "login"
-                        )
-
-                        with results_lock:
-                            penalty_results.append(
-                                {
-                                    "violation_count": violation_count,
-                                    "penalty_multiplier": penalty,
-                                }
-                            )
-
-                except Exception as e:
-                    with results_lock:
-                        penalty_errors.append(f"Violation count {violation_count}: {e}")
-
             # Test concurrent penalty calculations
             violation_counts = (
                 list(range(0, 20)) * 10
             )  # Test same counts multiple times
+
+            # One stable Redis view, configured BEFORE the workers start: each
+            # client's penalty key holds its own violation count. Patching the
+            # shared mock's ``get`` inside each worker (as this test once did)
+            # is not thread-safe — overlapping patch contexts replace and
+            # restore the same attribute, so a worker could read another
+            # worker's count (CI run 42068342358: count 14 -> 1.5).
+            stored_violations = {
+                (
+                    "penalties:login:"
+                    + SecurityUtils.hash_sensitive_data(f"penalty_test_client_{count}")
+                ): str(count)
+                for count in set(violation_counts)
+            }
+            mock_redis_client.get.side_effect = stored_violations.get
+
+            def penalty_worker(violation_count):
+                try:
+                    client_id = f"penalty_test_client_{violation_count}"
+                    penalty = rate_limiter._check_progressive_penalties(
+                        client_id, "login"
+                    )
+
+                    with results_lock:
+                        penalty_results.append(
+                            {
+                                "violation_count": violation_count,
+                                "penalty_multiplier": penalty,
+                            }
+                        )
+
+                except Exception as e:
+                    with results_lock:
+                        penalty_errors.append(f"Violation count {violation_count}: {e}")
 
             with ThreadPoolExecutor(max_workers=20) as executor:
                 futures = [
@@ -648,6 +663,22 @@ class TestConcurrentRateLimiting:
                 assert (
                     len(unique_penalties) == 1
                 ), f"Inconsistent penalties for count {count}: {unique_penalties}"
+
+            # ... and the documented multiplier (1x, 1.5x from 3, 2.5x from 8,
+            # 4x from 15 violations), so a consistent but wrong answer fails too.
+            def documented(count):
+                if count >= 15:
+                    return 4.0
+                if count >= 8:
+                    return 2.5
+                if count >= 3:
+                    return 1.5
+                return 1.0
+
+            for count, penalties in penalty_by_count.items():
+                assert set(penalties) == {
+                    documented(count)
+                }, f"count {count}: {set(penalties)}"
 
     @pytest.mark.asyncio
     async def test_concurrent_database_operations(self):
