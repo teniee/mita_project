@@ -580,7 +580,9 @@ async def test_paying_bills_on_their_dates_moves_nothing_and_releases_the_reserv
     assert (day15["spent"], day15["spent_everyday"], day15["state"]) == (
         "270.00",
         "0.00",
-        "within",  # a bill paid is not everyday spending
+        # a bill paid is not everyday spending, and no everyday purchase was
+        # scheduled for the 15th: the flexible budgets are on no date (2.10.0)
+        "quiet",
     )
 
 

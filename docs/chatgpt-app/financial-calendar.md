@@ -1,5 +1,20 @@
 # MITA's financial calendar in ChatGPT (MCP Apps) — v1, 2026-10-24
 
+> **Update 2026-11-11 (MCP 2.10.0, component `ui://mita/financial-calendar-v4.html`,
+> `flexible-envelopes-calendar.md`).** A budget is not a schedule. A date
+> shows only what was recorded on it and what is scheduled for it — planned
+> purchases and saved bills due (`planned_scheduled`, new
+> `planned_scheduled_everyday`, `summary.scheduled_after_today`). A flexible
+> budget is a monthly limit on no date: `planned_flexible` (and `planned`,
+> `planned_everyday`, `planned_after_today`, which contain it) is the plan
+> rows' bookkeeping, never drawn on a date and never presented as a date's
+> plan. The "≈" daily guide is no longer drawn in date cells; the guidance is
+> shown with the summary and each flexible line. The component payload is
+> `version: 2` (`day_lines = [line, scheduled, spent]`). A date ahead is
+> `planned` only when an everyday purchase is scheduled; a begun date with
+> nothing scheduled is `unplanned` or `quiet`. Where the text below says a
+> date shows "its plan", read "what is scheduled for it".
+
 > **Update 2026-11-03 (MCP 2.7.0, component `ui://mita/financial-calendar-v3.html`,
 > `behavioral-budget.md`).** Bills are `paid` only from linked expenses (fields
 > `paid`, `outstanding`, `paid_dates`, `obligation_ref`). Lines carry

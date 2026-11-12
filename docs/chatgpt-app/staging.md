@@ -112,6 +112,39 @@ Every account the checks created was deleted (5 users, as before); the
 temporary proxy was removed and Postgres no longer answers there. Rollback:
 re-pin `73ff153` (per-IP limits then break again, nothing else changes).
 
+## MCP 2.10.0 — prepared 2026-11-12 (not deployed yet)
+
+A budget is not a schedule (`flexible-envelopes-calendar.md`): the calendar
+no longer draws a flexible budget's stored daily share on dates; component
+`ui://mita/financial-calendar-v4.html`, month payload version 2. **No
+migration (alembic stays `0044`), no new table, grant or environment
+variable, no change to any stored row.** The release is the re-pin alone.
+
+| Step | How | Access it needs |
+|---|---|---|
+| 1. CI | Backend, MCP (incl. the container end-to-end step) and Mobile green on the commit | none |
+| 2. Isolation | Name the project `mita-mcp-staging`, environment `staging`, service `mita-mcp-staging` in every command (the working directory is linked to production); confirm no TCP proxy on either service | Railway API (read) |
+| 3. Deploy | `connect-service-source` → the commit; wait for the deployment to succeed; `/health` → `"version":"2.10.0"` | Railway API (write, staging service only) |
+| 4. Component | `resources/read ui://mita/financial-calendar-v4.html` sha256 = `app/mcp/ui/financial_calendar.html` of the commit; `show_financial_calendar` points at it (checked by the smoke) | public HTTPS |
+| 5. Checks (fictional accounts, ≤ 5 sign-ups an hour per IP) | `smoke_envelopes_2100.py` (49 checks), `smoke_behavioral_270.py` (66; its bill checks need a run on or before the 15th), `e2e_v2.py` (85), `calendar_widget_review.py --axe` (81) | public HTTPS |
+| 6. Logs | the deployment's log: no error line; no e-mail, token or amount | Railway API (read) |
+
+**Not part of this release, and not authorised for it:** database access.
+The temporary SSH key of 2.9.0 was for that release only. Without it:
+
+* the fictional accounts the checks create stay on staging until database
+  access is authorised again (they are listed under "Left on staging" once
+  created; delete each with `e2e_v2.cleanup`);
+* `staging_account_fingerprint.py` cannot be run, so "the owner's account is
+  identical" is argued, not measured: the release has no migration and no
+  write path of its own; the calendar tools run inside `SET TRANSACTION READ
+  ONLY`; the checks sign up their own accounts and never hold a token of the
+  owner's. To measure it, authorise a key for a before / after fingerprint.
+
+Rollback: re-pin `789bfb6` (2.9.0). Nothing else changes: 2.9.0 reads the
+same rows. A ChatGPT that cached the v4 component keeps it for the cards it
+already drew; new cards get v3 again.
+
 ## MCP 2.9.0 — deployed 2026-11-09 18:13 UTC (`789bfb6`, deployment `20c1191f`)
 
 Owner-authorised release (owner brief of 2026-11-09: "a temporary ED25519

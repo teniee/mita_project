@@ -29,8 +29,12 @@ from mcp.server.mcpserver.resources import TextResource
 from app.mcp.config import McpSettings
 
 # v2 (2026-11-03): the redesigned calendar — a new cache key, so ChatGPT
-# fetches it instead of a template it cached for v1.
-CALENDAR_URI = "ui://mita/financial-calendar-v3.html"
+# fetches it instead of a template it cached for v1. v3 (2.7.0): bills paid
+# by link, planned purchases, flexible budgets. v4 (2.10.0, 2026-11-11): a
+# flexible budget is on no date — the category filter, the image and the
+# date's detail no longer draw its stored daily share (v3 drew €3.33 on every
+# date of a €100 monthly limit); reads the version 2 month payload only.
+CALENDAR_URI = "ui://mita/financial-calendar-v4.html"
 CALENDAR_FILE = Path(__file__).with_name("financial_calendar.html")
 DISPLAY_MODES = ("inline", "fullscreen")
 
@@ -38,10 +42,11 @@ DISPLAY_MODES = ("inline", "fullscreen")
 # already on screen.
 CALENDAR_DESCRIPTION = (
     "MITA's financial calendar for one month of the signed-in user's own account is "
-    "on screen: each date's plan and recorded spending, saved bills, the categories "
-    "and the month's summary. The user can pick a date, filter by category, change "
-    "month and save an image. Do not repeat every figure; answer the user's questions "
-    "with MITA's tools."
+    "on screen: on each date what was recorded and what is scheduled (planned "
+    "purchases, saved bills due), the categories — flexible budgets as monthly "
+    "limits with daily guidance, on no date — and the month's summary. The user can "
+    "pick a date, filter by category, change month and save an image. Do not repeat "
+    "every figure; answer the user's questions with MITA's tools."
 )
 
 

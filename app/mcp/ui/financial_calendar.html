@@ -7,8 +7,13 @@
 <title>MITA financial calendar</title>
 <!--
   MITA's financial calendar, an MCP Apps component (io.modelcontextprotocol/ui).
-  Served by app/mcp/ui as ui://mita/financial-calendar-v3.html; rules in that
+  Served by app/mcp/ui as ui://mita/financial-calendar-v4.html; rules in that
   module and in docs/chatgpt-app/financial-calendar.md:
+  * a date shows only what belongs to it: what was recorded on it and what is
+    scheduled for it (planned purchases, saved bills due). A flexible budget
+    is a monthly limit with no dates: it is never drawn on a date — not as an
+    amount, not as a daily guide — and its guidance is shown, labelled, with
+    the summary and its own line (docs/chatgpt-app/flexible-envelopes-calendar.md);
   * loads nothing and connects nowhere (empty CSP allowlist); data arrives in
     tool results the host delivers, more is asked for only through the host
     (tools/call to MITA's read tools);
@@ -186,8 +191,6 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 .cell .tday{font-size:9.5px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;padding:2px 4px;border-radius:5px;background:var(--mita-yellow);color:var(--mita-navy);line-height:1}
 .cell .amt{font-size:14px;font-weight:720;line-height:1.1;white-space:nowrap;overflow:hidden;letter-spacing:-.01em}
 .cell.future .amt{font-weight:620;color:var(--color-text-secondary)}
-/* the daily guide: told apart by "≈" and a lighter weight, never by a pale colour (WCAG AA 4.5:1; axe failed tertiary + opacity) */
-.cell .amt.guide,.mcell span.guide{font-weight:500;color:var(--color-text-secondary)}
 .chip-proposed{font-size:11px;font-weight:650;padding:1px 6px;border-radius:6px;border:1px dashed var(--color-border-primary);color:var(--color-text-secondary);margin-left:6px;white-space:nowrap}
 .meta.fast{color:var(--remind)}
 .cell .meter{height:3px;border-radius:2px;background:var(--track);overflow:hidden}
@@ -233,6 +236,8 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 .rows .what{display:block;font-size:12px;color:var(--color-text-secondary);white-space:normal}
 .rows .what.fast{color:var(--remind)}
 .rows .amtc{font-weight:650;white-space:nowrap;text-align:right;flex-shrink:0}
+/* a status in words ("nothing recorded · 1.50 planned") may wrap: on a 320 px screen it pushed the page sideways */
+.rows .amtc.words{white-space:normal;flex-shrink:1;min-width:0;overflow-wrap:anywhere}
 .breakdown{margin-top:14px;padding:16px;border-radius:var(--border-radius-xl);background:var(--color-background-primary);border:1px solid var(--color-border-secondary);box-shadow:var(--shadow-md)}
 .breakdown h2{font-size:17px}
 .group{margin-top:14px}
@@ -333,8 +338,12 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   // ---------------------------------------------------------------------
   // Constants
   // ---------------------------------------------------------------------
-  var APP_INFO = { name: "MITA financial calendar", version: "3.0.0" };
+  var APP_INFO = { name: "MITA financial calendar", version: "4.0.0" };
   var PROTOCOL_VERSION = "2026-01-26";
+  // The month payload this component draws (serializers.WIDGET_PAYLOAD_VERSION):
+  // version 2 day_lines are [line, scheduled, spent] — what is scheduled on a
+  // date, never a flexible budget's stored share. Any other version is refused.
+  var PAYLOAD_VERSION = 2;
   var MODES = ["inline", "fullscreen"];
   var CALENDAR_KEY = "mita/calendar";
   var VIEW_KEY = "mita/view";
@@ -690,7 +699,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   }
 
   function isPayload(payload) {
-    return !!(payload && payload.version === 1 && payload.month && Array.isArray(payload.month.days));
+    return !!(payload && payload.version === PAYLOAD_VERSION && payload.month && Array.isArray(payload.month.days));
   }
 
   function setPayload(payload, view) {
@@ -881,9 +890,13 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   }
 
 
+  // A date's lines: what is scheduled on it for the line (a bill due, a
+  // planned purchase, money set aside) and what was spent on it. A flexible
+  // budget is listed only where something was spent from it; MITA sends
+  // "0.00" scheduled for it on every date.
   function dayLines(iso) {
     var lines = (state.payload.day_lines && state.payload.day_lines[iso]) || [];
-    return lines.map(function (l) { return { key: l[0], planned: l[1], spent: l[2] }; });
+    return lines.map(function (l) { return { key: l[0], scheduled: l[1], spent: l[2] }; });
   }
 
   function billsOn(iso) {
@@ -995,12 +1008,26 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     return base + " due";
   }
 
-  // The flexible budgets' guidance for each day left (summary.flexible_per_day):
-  // shown on dates ahead with nothing scheduled, as "≈", never as a purchase.
+  // The flexible budgets' daily guidance for the month (summary.flexible_per_day):
+  // an average to pace spending by. It belongs to the month — it is shown
+  // with the summary and on each flexible line, labelled as guidance, and is
+  // never drawn on a date: no date holds it.
   function flexGuide(month) {
     var s = month.summary;
     if (month.plan_status !== "generated" || month.month_position === "past") return null;
     return s.flexible_per_day && cents(s.flexible_per_day) > 0 ? s.flexible_per_day : null;
+  }
+
+  // Flexible budgets: monthly limits with no dates (spending_type "flexible").
+  function flexibleLines(month) {
+    return month.categories.filter(function (c) { return c.spending_type === "flexible"; });
+  }
+  function hasFlexible(month) {
+    return flexibleLines(month).length > 0;
+  }
+  // "about 3 a day" in the month's currency, from MITA's rounded figure.
+  function aboutADay(rounded, cur) {
+    return "about " + money(rounded, cur).replace(/[.,]00(?=\D*$)/, "") + " a day";
   }
 
   function lineGroup(key) {
@@ -1008,23 +1035,26 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     return line ? line.group : "everyday";
   }
 
-  // What one date shows, for the whole plan or for the filtered line.
+  // What one date shows, for the whole plan or for the filtered line: what
+  // was spent on it and what is scheduled for it (planned purchases, bills).
+  // The filter and "All categories" read the same two things, so a filter
+  // never changes what an amount means: the dates of all filters add up to
+  // the unfiltered calendar. A flexible budget has nothing scheduled on any
+  // date; a date's spending from it gets no verdict (its monthly limit does).
   function cellModel(day) {
     var begun = day.day_kind !== "future";
     if (state.filter) {
       var match = dayLines(day.date).filter(function (l) { return l.key === state.filter; })[0];
-      var planned = match ? match.planned : "0.00";
+      var scheduled = match ? match.scheduled : "0.00";
       var spent = match ? match.spent : "0.00";
-      var p = cents(planned), s = cents(spent);
+      var p = cents(scheduled), s = cents(spent);
       var stateName = begun ? (p > 0 ? (s > p ? "over" : "within") : (s > 0 ? "unplanned" : "quiet")) : (p > 0 ? "planned" : "free");
-      return { begun: begun, planned: planned, spent: spent, state: stateName, ratio: p > 0 ? Math.min(1, s / p) : 0, empty: !match };
+      return { begun: begun, planned: scheduled, spent: spent, state: stateName, ratio: p > 0 ? Math.min(1, s / p) : 0, empty: !(p > 0 || s > 0) };
     }
     var pe = cents(day.planned_everyday), se = cents(day.spent_everyday);
     return {
       begun: begun,
-      // A flexible budget's daily share is guidance, not a purchase: a date
-      // ahead shows only planned purchases and bills (planned_scheduled).
-      planned: day.day_kind === "future" && day.planned_scheduled !== undefined ? day.planned_scheduled : day.planned,
+      planned: day.planned_scheduled,
       spent: day.spent,
       state: day.state,
       ratio: begun && pe > 0 ? Math.min(1, se / pe) : 0,
@@ -1040,27 +1070,30 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     var model = cellModel(day);
     var line = state.filter ? lineByKey(state.filter) : null;
     var prefix = line ? line.category_label + ": " : "";
+    var flexibleFilter = !!(line && line.spending_type === "flexible");
     if (model.begun) {
       if (state.filter) {
-        parts.push(prefix + "spent " + money(model.spent, cur) + (cents(model.planned) > 0 ? " of " + money(model.planned, cur) + " planned" : ""));
+        parts.push(prefix + "spent " + money(model.spent, cur) + (cents(model.planned) > 0 ? " of " + money(model.planned, cur) + " planned" : (flexibleFilter && cents(model.spent) > 0 ? " from its monthly budget" : "")));
       } else {
         parts.push("spent " + money(day.spent, cur));
-        if (cents(day.planned_everyday) > 0) {
-          parts.push("everyday " + money(day.spent_everyday, cur) + " of a " + money(day.planned_everyday, cur) + " plan");
+        // The date's everyday plan is what was scheduled on it; a flexible
+        // budget's share kept on the date is never read out as its plan.
+        if (cents(day.planned_scheduled_everyday) > 0) {
+          parts.push(cents(day.planned_flexible) > 0
+            ? "everyday " + money(day.spent_everyday, cur) + ", " + money(day.planned_scheduled_everyday, cur) + " was planned for this date"
+            : "everyday " + money(day.spent_everyday, cur) + " of a " + money(day.planned_scheduled_everyday, cur) + " plan");
         }
       }
       if (model.state === "over") parts.push("over the plan");
-      if (model.state === "unplanned") parts.push("no everyday plan for this date");
+      if (model.state === "unplanned") parts.push(flexibleFilter || (!state.filter && hasFlexible(m)) ? "nothing was scheduled for this date" : "no everyday plan for this date");
     } else {
-      parts.push(prefix + (cents(model.planned) > 0 ? "planned " + money(model.planned, cur) : "no purchase or bill planned"));
-      var guideDay = !state.filter ? flexGuide(m) : null;
-      if (guideDay) parts.push("flexible budgets about " + money(guideDay, cur) + " a day, guidance");
+      parts.push(prefix + (cents(model.planned) > 0 ? "planned " + money(model.planned, cur) : (flexibleFilter ? "a monthly budget with no purchase dates, nothing is planned for this date" : "no purchase or bill planned")));
     }
     var cur2 = m.currency;
     if (!state.filter) {
       var named = topLines(day, model.begun).slice(0, 3).map(function (l) {
         var line = lineByKey(l.key);
-        return (line ? line.category_label : l.key) + " " + money(model.begun ? l.spent : l.planned, cur2);
+        return (line ? line.category_label : l.key) + " " + money(model.begun ? l.spent : l.scheduled, cur2);
       });
       if (named.length) parts.push((model.begun ? "by category: " : "planned by category: ") + named.join(", "));
     }
@@ -1221,7 +1254,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       return el("div", { class: "hero" }, [
         el("span", { class: "hero-fig num", text: money(s.average_per_day, cur) }),
         el("span", { class: "hero-cap", text: caption }),
-        flex ? el("span", { class: "hero-cap", style: "display:block;margin-top:2px", text: "Flexible budgets: " + money(s.flexible_left, cur) + " left in their lines · about " + money(s.flexible_per_day_rounded, cur).replace(/[.,]00(?=\D*$)/, "") + " a day as guidance" }) : null
+        flex ? el("span", { class: "hero-cap", id: "flex-guidance", style: "display:block;margin-top:2px", text: "Flexible budgets (monthly limits, no dates): " + money(s.flexible_left, cur) + " left · " + aboutADay(s.flexible_per_day_rounded, cur) + " as guidance, not a daily limit" }) : null
       ]);
     }
     if (month.plan_status === "generated") {
@@ -1346,15 +1379,14 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     month.days.forEach(function (day) {
       var model = cellModel(day);
       var classes = "mcell" + (day.day_kind === "future" ? " future" : "") + (day.day_kind === "today" ? " today" : "") + (model.state === "over" ? " over" : "");
+      // A date shows what was spent on it or what is scheduled for it; a date
+      // with neither is empty (a flexible budget is on no date).
       var raw = null;
-      if (day.day_kind !== "future" && cents(day.spent) > 0) raw = day.spent;
+      if (day.day_kind !== "future" && cents(model.spent) > 0) raw = model.spent;
       if (day.day_kind === "future" && cents(model.planned) > 0) raw = model.planned;
       var amount = raw === null ? "" : fitAmount(raw);
       if (activeWindow(day.date)) classes += " win";
-      var guide = raw === null && day.day_kind === "future" ? flexGuide(month) : null;
-      var amountSpan = guide
-        ? el("span", { class: "num fit guide", text: "≈" + wholeAmount(guide) })
-        : el("span", { class: "num fit", "data-amount": raw, text: amount });
+      var amountSpan = el("span", { class: "num fit", "data-amount": raw, text: amount });
       var cell = el("div", { class: classes }, [el("b", { text: String(parseDate(day.date).getUTCDate()) }), amountSpan]);
       if (model.begun && (model.state === "over" || model.state === "within")) {
         cell.appendChild(el("i", null, el("s", { style: "width:" + (model.ratio * 100).toFixed(1) + "%" })));
@@ -1527,7 +1559,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       if (wide) {
         tiles.appendChild(tile("Bills & commitments", money(s.commitments_planned, cur), "recorded " + money(s.commitments_spent, cur)));
         tiles.appendChild(tile("Everyday budget", money(s.everyday_planned, cur), "spent " + money(s.everyday_spent, cur)));
-        if (s.planned_after_today !== null) tiles.appendChild(tile("Planned on the days left", money(s.planned_after_today, cur), "MITA’s plan for the dates ahead"));
+        if (s.scheduled_after_today !== null) tiles.appendChild(aheadTile(month));
       }
     } else {
       tiles.appendChild(tile("Spent", money(s.total_spent, cur), null));
@@ -1550,12 +1582,19 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     var tiles = el("dl", { class: "tiles", style: "margin-top:10px" });
     tiles.appendChild(tile("Bills & commitments", money(s.commitments_planned, cur), "recorded " + money(s.commitments_spent, cur)));
     tiles.appendChild(tile("Everyday budget", money(s.everyday_planned, cur), "spent " + money(s.everyday_spent, cur)));
-    if (s.planned_after_today !== null) tiles.appendChild(tile("Planned on the days left", money(s.planned_after_today, cur), "MITA’s plan for the dates ahead"));
+    if (s.scheduled_after_today !== null) tiles.appendChild(aheadTile(month));
     if (s.stated_monthly_income !== null) tiles.appendChild(tile("Income stated", money(s.stated_monthly_income, cur), "what you told MITA"));
     box.appendChild(tiles);
     var callouts = calloutList(month);
     if (callouts) box.appendChild(callouts);
     return box;
+  }
+
+  // What is scheduled on the dates ahead: planned purchases and bills. The
+  // flexible budgets are not in it (their money is on no date).
+  function aheadTile(month) {
+    var s = month.summary;
+    return tile("Scheduled on the days left", money(s.scheduled_after_today, month.currency), hasFlexible(month) ? "planned purchases and bills, no flexible budget" : "MITA’s plan for the dates ahead");
   }
 
   function calloutList(month) {
@@ -1568,10 +1607,11 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
         " is held for bills not paid yet, so it is not in Left to spend. Recording a payment as that bill releases it; other spending in the same category does not."
       ])]));
     }
-    // Left to spend is everyday money; compare it with the everyday plan ahead.
+    // Left to spend is everyday money; compare it with the everyday plan ahead
+    // — only where every line has dates (a flexible budget's money is on none).
     var left = cents(s.left_to_spend);
     var ahead = month.days.reduce(function (sum, d) { return d.day_kind === "future" ? sum + cents(d.planned_everyday) : sum; }, 0);
-    if (s.planned_after_today !== null && left !== null && left - ahead >= 100 && month.month_position === "current") {
+    if (!hasFlexible(month) && s.planned_after_today !== null && left !== null && left - ahead >= 100 && month.month_position === "current") {
       items.push(el("p", { class: "callout" }, [icon("spread"), el("span", null, [
         "The dates ahead hold ", el("strong", { text: money((ahead / 100).toFixed(2), cur) }),
         " of everyday money. Left to spend is more: money not spent on earlier dates stays available, and the daily average counts it too."
@@ -1625,11 +1665,17 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     if (!line) return null;
     var cur = month.currency;
     var over = cents(line.remaining) < 0;
-    return el("div", { class: "banner", role: "status" }, [
-      el("span", null, [catIcon(line.category),
-        el("strong", { text: line.category_label }),
-        "spent " + money(line.spent, cur) + " of " + money(line.planned, cur) + " planned · " +
-        (over ? moneyCents(-cents(line.remaining), cur) + " over" : money(line.remaining, cur) + " left")]),
+    var left = over ? moneyCents(-cents(line.remaining), cur) + " over" : money(line.remaining, cur) + " left";
+    var text;
+    if (line.spending_type === "flexible") {
+      // A flexible budget: its month, and its guidance said to be guidance.
+      text = "flexible budget · spent " + money(line.spent, cur) + " of " + money(line.planned, cur) + " this month · " + left +
+        (!over && line.left_per_day_rounded ? " · " + aboutADay(line.left_per_day_rounded, cur) + " as guidance" : "") + " · no purchase dates";
+    } else {
+      text = "spent " + money(line.spent, cur) + " of " + money(line.planned, cur) + " planned · " + left;
+    }
+    return el("div", { class: "banner", role: "status", id: "filter-banner" }, [
+      el("span", null, [catIcon(line.category), el("strong", { text: line.category_label }), text]),
       el("button", { class: "link", type: "button", id: "clear-filter", onclick: function () { setFilter(null); } }, "Show all")
     ]);
   }
@@ -1652,14 +1698,29 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     }
     box.appendChild(grid);
     if (state.width < 560) box.appendChild(el("p", { class: "fit-note", text: "Whole euros on this screen; select a date for the exact figures." }));
+    var flexNote = flexibleNote(month);
+    if (flexNote) box.appendChild(flexNote);
     box.appendChild(legend());
     return box;
   }
 
   function gridCaption(month) {
-    if (month.month_position === "future") return "Each date shows MITA’s plan for it.";
     if (month.month_position === "past") return "Each date shows what you recorded.";
-    return "Dates so far show what you spent; dates ahead show MITA’s plan.";
+    // A month laid out by how you buy: dates hold planned purchases and bills.
+    // A month saved before that keeps MITA's older per-date plan.
+    var scheduled = month.categories.some(function (c) { return c.spending_type !== "legacy"; });
+    if (month.month_position === "future") return scheduled ? "Each date shows what is scheduled for it: planned purchases and bills." : "Each date shows MITA’s plan for it.";
+    return scheduled ? "Dates so far show what you spent; dates ahead show what is scheduled: planned purchases and bills." : "Dates so far show what you spent; dates ahead show MITA’s plan.";
+  }
+
+  // Why the dates of a flexible budget are empty: said once, under the grid.
+  function flexibleNote(month) {
+    if (month.plan_status !== "generated" || !hasFlexible(month)) return null;
+    var line = state.filter ? lineByKey(state.filter) : null;
+    var text = line && line.spending_type === "flexible"
+      ? line.category_label + " is a flexible budget: a monthly limit with no purchase dates. Only what you actually spent appears on a date; nothing is planned for any date."
+      : "Flexible budgets are monthly limits with no purchase dates, so they are not on any date: what they hold and their daily guidance are in the summary and under Categories.";
+    return el("p", { class: "fit-note", id: "flex-note", text: text });
   }
 
   function cellView(day, focusable) {
@@ -1678,11 +1739,9 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       var shown = state.filter ? model.spent : day.spent;
       amountNode = el("span", { class: "amt num fit" }, cents(shown) > 0 ? amountValue(shown) : (cents(model.planned) > 0 ? amountValue("0") : ""));
     } else {
-      var plannedShown = model.planned;
-      var guide = !state.filter && cents(plannedShown) <= 0 ? flexGuide(state.payload.month) : null;
-      amountNode = guide
-        ? el("span", { class: "amt num fit guide" }, "≈" + wholeAmount(guide))
-        : el("span", { class: "amt num fit" }, cents(plannedShown) > 0 ? amountValue(plannedShown) : "");
+      // A date ahead shows what is scheduled for it, or nothing: a flexible
+      // budget's guidance is the month's, never an amount on a date.
+      amountNode = el("span", { class: "amt num fit" }, cents(model.planned) > 0 ? amountValue(model.planned) : "");
     }
     var meter = null;
     if (model.begun && (model.state === "over" || model.state === "within")) {
@@ -1723,15 +1782,14 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       el("span", null, [el("i", { class: "sw overm" }), "Over the everyday plan"]),
       el("span", null, [icon("bill"), "Saved bill due"]),
       el("span", null, [el("i", { class: "sw plan" }), "Dates ahead: planned purchases and bills"]),
-      el("span", null, [el("b", { class: "num", style: "font-weight:500", text: "≈" }), "Flexible budgets' daily guide — not a purchase"]),
       el("span", null, [el("i", { class: "sw win" }), "Bill due within " + reminderDays(state.payload.month) + " days"]),
       el("span", null, [el("i", { class: "sw todaym" }), "Today"])
     ]);
   }
 
   // A date's lines with money, largest first (MITA orders day_lines so),
-  // money set aside left out — and, for dates ahead, flexible budgets too
-  // (their daily share is guidance, never a purchase on that date).
+  // money set aside left out: what was spent so far, what is scheduled ahead
+  // (a flexible budget has nothing scheduled on any date).
   function lineKind(key) {
     var line = lineByKey(key);
     return line && line.spending_type ? line.spending_type : "legacy";
@@ -1739,8 +1797,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   function topLines(day, begun) {
     return dayLines(day.date).filter(function (l) {
       if (lineGroup(l.key) === "set_aside") return false;
-      if (begun) return cents(l.spent) > 0;
-      return cents(l.planned) > 0 && lineKind(l.key) !== "flexible";
+      return cents(begun ? l.spent : l.scheduled) > 0;
     });
   }
 
@@ -1801,54 +1858,52 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     var everyday = el("section");
     if (day.day_kind !== "future") {
       everyday.appendChild(el("h3", { text: "Everyday spending" }));
+      // The date's everyday plan is what was scheduled on it (planned
+      // purchases; a legacy month's layout). A flexible budget's money kept
+      // on the date is never shown as the date's plan or as money "left for
+      // the date": it stays in its monthly budget, listed below.
+      var scheduledHere = cents(day.planned_scheduled_everyday);
+      var envelopeHere = cents(day.planned_flexible) > 0;
       everyday.appendChild(el("div", { class: "big num" }, [
         el("b", { text: money(day.spent_everyday, cur) }),
-        el("span", { class: "muted", text: cents(day.planned_everyday) > 0 ? "of " + money(day.planned_everyday, cur) + " planned" : "no everyday plan for this date" })
+        el("span", { class: "muted", text: scheduledHere > 0 ? "of " + money(day.planned_scheduled_everyday, cur) + " planned" : (hasFlexible(month) ? "nothing was scheduled for this date" : "no everyday plan for this date") })
       ]));
-      var flexPast = cents(day.planned_flexible || "0");
-      if (flexPast > 0 && cents(day.planned_everyday) > 0) {
-        var bought = cents(day.planned_everyday) - flexPast;
-        everyday.appendChild(el("p", { class: "note", style: "margin-top:4px", text: (bought > 0 ? moneyCents(bought, cur) + " for planned purchases · " : "") + moneyCents(flexPast, cur) + " flexible budgets’ daily share (guidance, not a purchase)" }));
-      }
-      if (cents(day.planned_everyday) > 0) {
+      if (day.state === "over") {
+        everyday.appendChild(el("div", { style: "margin-top:8px" }, bar(1, true)));
+        // With flexible budgets on the date the difference pools every line's
+        // money kept there, so it is not one line's overspend: say the
+        // verdict, and leave the amount to the line that is over (Categories).
+        everyday.appendChild(el("p", { class: "state over" }, [icon("alert"), envelopeHere ? "More than your budgets hold for this spending — the line that is over is under Categories" : moneyCents(-cents(day.everyday_left), cur) + " over the everyday plan"]));
+      } else if (day.state === "within") {
         var ratio = Number(day.spent_everyday) / Number(day.planned_everyday);
-        everyday.appendChild(el("div", { style: "margin-top:8px" }, bar(ratio, day.state === "over")));
-        if (day.state === "over") {
-          everyday.appendChild(el("p", { class: "state over" }, [icon("alert"), moneyCents(-cents(day.everyday_left), cur) + " over the everyday plan"]));
-        } else {
-          everyday.appendChild(el("p", { class: "state ok" }, [icon("check"), money(day.everyday_left, cur) + " of the everyday plan left"]));
-        }
+        everyday.appendChild(el("div", { style: "margin-top:8px" }, bar(ratio, false)));
+        everyday.appendChild(el("p", { class: "state ok" }, [icon("check"), envelopeHere ? "Within what was planned and your monthly budgets" : money(day.everyday_left, cur) + " of the everyday plan left"]));
       } else if (day.state === "unplanned") {
-        everyday.appendChild(el("p", { class: "note", style: "margin-top:6px", text: "MITA's plan puts everyday money on other dates, so this date gets no verdict." }));
+        everyday.appendChild(el("p", { class: "note", style: "margin-top:6px", text: hasFlexible(month)
+          ? "No purchase was planned for this date. What you spent counts against your monthly budgets, listed under Categories — a flexible budget has no daily limit."
+          : "MITA's plan puts everyday money on other dates, so this date gets no verdict." }));
       }
       var committed = cents(day.spent) - cents(day.spent_everyday);
       if (committed > 0) {
         everyday.appendChild(el("p", { class: "note", style: "margin-top:6px", text: "Bills and commitments recorded: " + moneyCents(committed, cur) + " · all spending " + money(day.spent, cur) }));
       }
     } else {
-      var scheduled = day.planned_scheduled !== undefined ? day.planned_scheduled : day.planned;
-      var dayGuide = flexGuide(month);
+      // A date ahead: what is scheduled for it (planned purchases, bills) or
+      // nothing. The flexible budgets' guidance is the month's, never this
+      // date's amount; it is listed, labelled, under "Flexible budgets" below.
+      var scheduled = day.planned_scheduled;
+      everyday.appendChild(el("h3", { text: "Planned for this date" }));
       if (cents(scheduled) > 0) {
-        everyday.appendChild(el("h3", { text: "Planned for this date" }));
         everyday.appendChild(el("div", { class: "big num" }, [
           el("b", { text: money(scheduled, cur) }),
           el("span", { class: "muted", text: "planned purchases and bills" })
         ]));
-        everyday.appendChild(el("p", { class: "note", style: "margin-top:6px", text: "No spending yet. MITA’s plan for the date, not a forecast." + (dayGuide ? " Flexible budgets add about " + money(dayGuide, cur) + " a day of guidance." : "") }));
-      } else if (dayGuide) {
-        everyday.appendChild(el("h3", { text: "To spend on flexible budgets" }));
-        everyday.appendChild(el("div", { class: "big num" }, [
-          el("b", { text: "≈" + money(dayGuide, cur) }),
-          el("span", { class: "muted", text: "a day, guidance — not a purchase" })
-        ]));
-        everyday.appendChild(el("p", { class: "note", style: "margin-top:6px", text: "No purchase or bill is planned for this date. This is what your flexible budgets leave for each day from today: spend less one day and more another — it is a pace, not cash set out for this date." }));
-      } else {
-        everyday.appendChild(el("h3", { text: "Planned for this date" }));
-        everyday.appendChild(el("div", { class: "big num" }, [
-          el("b", { text: money(scheduled, cur) }),
-          el("span", { class: "muted", text: "nothing planned" })
-        ]));
         everyday.appendChild(el("p", { class: "note", style: "margin-top:6px", text: "No spending yet. MITA’s plan for the date, not a forecast." }));
+      } else {
+        everyday.appendChild(el("div", { class: "big num" }, [
+          el("b", { text: "Nothing scheduled" })
+        ]));
+        everyday.appendChild(el("p", { class: "note", style: "margin-top:6px", text: "No purchase or bill is planned for this date." + (hasFlexible(month) ? " Your flexible budgets are monthly limits: spend from them on any day." : "") }));
       }
     }
     panel.appendChild(everyday);
@@ -1875,9 +1930,9 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       var section = el("section", null, [el("h3", { text: "Bills due on this date" }), list]);
       if (day.day_kind !== "past") {
         section.appendChild(el("div", { class: "split num" }, [
-          el("div", null, [el("span", { text: "Everyday plan" }), el("span", { text: money(day.planned_everyday, cur) })]),
+          el("div", null, [el("span", { text: hasFlexible(month) ? "Planned purchases" : "Everyday plan" }), el("span", { text: money(day.planned_scheduled_everyday, cur) })]),
           el("div", null, [el("span", { text: "Bills due" }), el("span", { text: moneyCents(dueTotal, cur) })]),
-          el("div", { class: "eq" }, [el("span", { text: "Plan for the date" }), el("span", { text: money(day.planned, cur) })])
+          el("div", { class: "eq" }, [el("span", { text: "Scheduled for the date" }), el("span", { text: money(day.planned_scheduled, cur) })])
         ]));
       }
       panel.appendChild(section);
@@ -1921,7 +1976,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
             el("span", { text: label }),
             p.proposed ? el("span", { class: "chip-proposed", text: "proposed date" }) : null
           ])]),
-          el("span", { class: "amtc num", text: status })
+          el("span", { class: "amtc num words", text: status })
         ]));
       });
       panel.appendChild(el("section", null, [
@@ -1929,31 +1984,10 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
         el("p", { class: "note", style: "margin-top:6px", text: "A planned purchase is money set out for it, not a transaction. Spending less leaves the rest on the line." + (buys.some(function (p) { return p.proposed; }) ? " A proposed date is MITA’s suggestion: you named how often, not the day." : "") })
       ]));
     }
-    var flexible = month.categories.filter(function (c) { return c.spending_type === "flexible" && c.left_per_day; });
-    if (flexible.length && day.day_kind !== "past") {
-      var flexList = el("ul", { class: "rows" });
-      flexible.forEach(function (c) {
-        flexList.appendChild(el("li", { title: money(c.left_per_day, cur) + " a day exactly" }, [
-          el("span", { class: "who" }, [catIcon(c.category), el("span", null, [
-            el("span", { style: "display:block", text: c.category_label }),
-            el("span", { class: "what", text: money(c.remaining, cur) + " left this month" }),
-            c.pace_status === "faster_than_pace" ? el("span", { class: "what fast", text: "spending faster than its pace" }) : null
-          ])]),
-          el("span", { class: "amtc num", text: "about " + money(c.left_per_day_rounded, cur).replace(/[.,]00(?=\D*$)/, "") + " a day" })
-        ]));
-      });
-      panel.appendChild(el("section", null, [
-        el("h3", { text: "Flexible budgets" }), flexList,
-        el("p", { class: "note", style: "margin-top:6px", text: "No purchase dates: spend when you need to. The daily figure is what is left divided by the days left (exact amount on hover)." })
-      ]));
-    }
-
-    // A flexible budget's daily share is guidance, not a purchase on this
-    // date: it is listed above, and here only where something was spent.
-    var lines = dayLines(day.date).filter(function (l) {
-      if (lineKind(l.key) === "flexible") return day.day_kind !== "future" && cents(l.spent) > 0;
-      return cents(l.planned) > 0 || cents(l.spent) > 0;
-    });
+    // What was spent on, or is scheduled for, this date, line by line. A
+    // flexible budget appears only where something was spent from it: it has
+    // nothing scheduled on any date.
+    var lines = dayLines(day.date);
     if (lines.length) {
       var rows = el("ul", { class: "rows" });
       lines.forEach(function (l) {
@@ -1961,14 +1995,41 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
         var label = line ? line.category_label : l.key;
         var setAside = lineGroup(l.key) === "set_aside";
         var flexibleLine = lineKind(l.key) === "flexible";
+        // The amount column holds amounts only (it never wraps, so words
+        // there pushed a 320 px screen sideways); where the money came from
+        // is said under the line's name.
         rows.appendChild(el("li", null, [
-          el("span", { class: "who" }, [setAside ? icon("shield", "shield") : catIcon(l.key), el("span", { text: label })]),
+          el("span", { class: "who" }, [setAside ? icon("shield", "shield") : catIcon(l.key), flexibleLine && !setAside
+            ? el("span", null, [el("span", { style: "display:block", text: label }), el("span", { class: "what", text: "from its monthly budget" })])
+            : el("span", { text: label })]),
           el("span", { class: "amtc num" }, day.day_kind === "future" || setAside
-            ? (setAside ? "set aside " : "plan ") + money(l.planned, cur)
-            : money(l.spent, cur) + (flexibleLine ? " · flexible" : cents(l.planned) > 0 ? " / " + money(l.planned, cur) : ""))
+            ? (setAside ? "set aside " : "plan ") + money(l.scheduled, cur)
+            : money(l.spent, cur) + (!flexibleLine && cents(l.scheduled) > 0 ? " / " + money(l.scheduled, cur) : ""))
         ]));
       });
-      panel.appendChild(el("section", null, [el("h3", { text: day.day_kind === "future" ? "Plan by category" : "Spent / planned by category" }), rows]));
+      panel.appendChild(el("section", null, [el("h3", { text: day.day_kind === "future" ? "Scheduled by category" : "Spent / planned by category" }), rows]));
+    }
+
+    // The flexible budgets: monthly limits, the same on every date — what
+    // each still holds and its daily guidance, said to be guidance. Never an
+    // amount for this date.
+    var flexible = month.categories.filter(function (c) { return c.spending_type === "flexible" && c.left_per_day; });
+    if (flexible.length && day.day_kind !== "past") {
+      var flexList = el("ul", { class: "rows" });
+      flexible.forEach(function (c) {
+        flexList.appendChild(el("li", { title: money(c.left_per_day, cur) + " a day exactly" }, [
+          el("span", { class: "who" }, [catIcon(c.category), el("span", null, [
+            el("span", { style: "display:block", text: c.category_label }),
+            el("span", { class: "what", text: money(c.remaining, cur) + " left of " + money(c.planned, cur) + " this month" }),
+            c.pace_status === "faster_than_pace" ? el("span", { class: "what fast", text: "spending faster than its pace" }) : null
+          ])]),
+          el("span", { class: "amtc num", text: aboutADay(c.left_per_day_rounded, cur) })
+        ]));
+      });
+      panel.appendChild(el("section", { id: "flex-budgets" }, [
+        el("h3", { text: "Flexible budgets · this month" }), flexList,
+        el("p", { class: "note", style: "margin-top:6px", text: "Monthly limits with no purchase dates — nothing here is planned for this date. “About … a day” is guidance: what is left divided by the days left (exact amount on hover). Spend it on one day or spread it; it is not a daily limit." })
+      ]));
     }
 
     if (day.day_kind !== "future") panel.appendChild(transactionsSection(month, day));
@@ -2060,7 +2121,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   }
 
   function methodText(month) {
-    return "Figures come from your MITA account (" + month.currency + ", " + month.timezone + "). Each date shows, once begun, the expenses you recorded; dates ahead show planned purchases and bills — a flexible budget has no purchase dates, only a daily figure that is guidance. A planned purchase is money set out for it, never a transaction. Protected savings, and what bills not yet paid still need, are never counted as spendable. The daily average is left to spend divided by the days left. Saved bills are planned in full on their due dates and announced " + reminderDays(month) + " days before; a bill is paid only when you tell MITA which expense paid it — other spending in the same category never counts.";
+    return "Figures come from your MITA account (" + month.currency + ", " + month.timezone + "). Each date shows, once begun, the expenses you recorded; dates ahead show what is scheduled for them: planned purchases and bills. A flexible budget is a monthly limit with no purchase dates, so it is on no date: its amount, what you spent and what is left are under Categories, and its “about … a day” is guidance — what is left divided by the days left — never a purchase, a bill or a daily limit. A planned purchase is money set out for it, never a transaction. Protected savings, and what bills not yet paid still need, are never counted as spendable. The daily average is left to spend divided by the days left. Saved bills are planned in full on their due dates and announced " + reminderDays(month) + " days before; a bill is paid only when you tell MITA which expense paid it — other spending in the same category never counts.";
   }
 
   // ---------------------------------------------------------------------
@@ -2074,14 +2135,13 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     var day = month.days.filter(function (d) { return d.date === state.selected; })[0];
     if (day) {
       if (day.day_kind === "future") {
-        var scheduled = day.planned_scheduled !== undefined ? day.planned_scheduled : day.planned;
-        parts.push("Selected " + day.date + ": " + scheduled + " " + cur + " of planned purchases and bills" + (day.planned_flexible && cents(day.planned_flexible) > 0 ? " (flexible budgets have no purchase dates; their daily share " + day.planned_flexible + " is guidance)" : "") + ".");
+        parts.push("Selected " + day.date + ": " + (cents(day.planned_scheduled) > 0 ? day.planned_scheduled + " " + cur + " of planned purchases and bills scheduled" : "nothing scheduled") + ".");
         (day.purchases || []).forEach(function (p) {
           var line = lineByKey(p.category);
           parts.push("Planned purchase: " + (line ? line.category_label : p.category) + " " + p.planned + " " + cur + ".");
         });
       } else {
-        parts.push("Selected " + day.date + ": spent " + day.spent + " " + cur + ", everyday " + day.spent_everyday + " of a " + day.planned_everyday + " plan (" + day.state + ").");
+        parts.push("Selected " + day.date + ": spent " + day.spent + " " + cur + ", everyday " + day.spent_everyday + (cents(day.planned_scheduled_everyday) > 0 ? ", " + day.planned_scheduled_everyday + " was scheduled" : ", nothing was scheduled") + " (" + day.state + ").");
       }
     }
     if (day) {
@@ -2094,8 +2154,10 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     });
     if (state.filter) {
       var line = lineByKey(state.filter);
-      if (line) parts.push("Filtered to " + line.category_label + ".");
+      if (line) parts.push("Filtered to " + line.category_label + (line.spending_type === "flexible" ? " (a flexible budget: a monthly limit of " + line.planned + " " + cur + ", " + line.remaining + " left, no purchase dates)." : "."));
     }
+    var guide = flexGuide(month);
+    if (guide) parts.push("Flexible budgets are monthly limits on no date: " + month.summary.flexible_left + " " + cur + " left, about " + guide + " a day as guidance, not a purchase or a daily limit.");
     updateModelContext(parts.join(" "), {
       month: monthKey(month),
       selected_date: day ? day.date : null,
@@ -2276,7 +2338,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     });
     y += tilesH;
     if (planned && s.average_per_day !== null) {
-      text(cents(s.commitments_reserved) > 0 ? "Left to spend is after savings and " + money(s.commitments_reserved, cur) + " held for bills. Average a day = left ÷ days left." : "Average a day = left to spend ÷ days left. Each date shows its own plan.", M, y + 34, "500", 19, INK3, "left", W - 2 * M);
+      text(cents(s.commitments_reserved) > 0 ? "Left to spend is after savings and " + money(s.commitments_reserved, cur) + " held for bills. Average a day = left ÷ days left." : "Average a day = left to spend ÷ days left. Dates ahead show planned purchases and bills.", M, y + 34, "500", 19, INK3, "left", W - 2 * M);
     }
     y += noteH + 22;
 
@@ -2340,8 +2402,9 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
           c.fill();
           text("!", cx + cellW - 20, cy + 30, "800", 16, "#ffffff", "center");
         }
-      } else if (cents(day.planned) > 0) {
-        text(cellAmount(day.planned), cx + 13, cy + 70, "600", 21, INK2, "left", cellW - 26);
+      } else if (cents(day.planned_scheduled) > 0) {
+        // what is scheduled for the date; a flexible budget is on no date
+        text(cellAmount(day.planned_scheduled), cx + 13, cy + 70, "600", 21, INK2, "left", cellW - 26);
       }
       if (billDates[day.date]) {
         c.fillStyle = BILL_DOT[billDates[day.date]] || INK3;
@@ -2394,7 +2457,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     rrect(M + 128, ly2 - 17, 34, 20, 6);
     c.stroke();
     c.setLineDash([]);
-    text("Plan, not a forecast", M + 172, ly2, "500", 19, INK2);
+    text("Scheduled ahead", M + 172, ly2, "500", 19, INK2);
     c.fillStyle = RED;
     rrect(M + 372, ly2 - 14, 34, 14, 7);
     c.fill();

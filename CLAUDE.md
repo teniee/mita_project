@@ -1221,12 +1221,15 @@ Rules:
     (`spending_patterns.source = user_confirmed` only). A frequency without a
     day ("about once a week") gets dates MITA PROPOSES, always labelled
     (`proposed`, `purchase_dates_stated: false`).
-  - **Daily guidance stays the headline.** Flexible lines carry the forecast
-    engine's pace (`pace_per_day` vs `planned_per_day`, `pace_status`,
-    `days_until_exhausted`) and the revised `left_per_day`; the calendar shows
-    `summary.flexible_per_day` as "≈" on dates with nothing scheduled — never
-    more than the safe average a day (`safe_daily_limit`, floored at 0), in
-    an AA-contrast colour. Never a second calculation of pace.
+  - **Daily guidance stays, with the month — never on a date.** Flexible
+    lines carry the forecast engine's pace (`pace_per_day` vs
+    `planned_per_day`, `pace_status`, `days_until_exhausted`) and the revised
+    `left_per_day`; `summary.flexible_per_day` is never more than the safe
+    average a day (`safe_daily_limit`, floored at 0). Never a second
+    calculation of pace. Since 2.10.0 it is shown with the summary, each
+    flexible line and the selected date's "Flexible budgets · this month"
+    list, worded as guidance — the "≈" drawn on dates in 2.7.0–2.9.0 is gone
+    (see "A budget is not a schedule" below).
   - **Freed money is shown** (`preview_monthly_budget.freed_money`, F-12):
     a `not_applicable` line's money vs the same engine run keeping it;
     explicit redistribution only through `budget_lines`.
@@ -1335,6 +1338,46 @@ Rules:
     by the owner-authorised temporary key `mita-staging-290` (revoked). A
     temporary key needs the owner's explicit authorisation for each release:
     the operator tool refuses one without it.
+- **A budget is not a schedule** (owner brief 2026-11-11, MCP 2.10.0,
+  component v4, no migration; rules, root cause and limits:
+  `docs/chatgpt-app/flexible-envelopes-calendar.md`). 2.9.0 drew a flexible
+  budget's stored daily share on dates: with a category filter, 3.33 on
+  every date of a 100.00 monthly limit (10.67 for 320.00), and the sum of all
+  shares on every date ahead of the exported image. Rules:
+  - **A date holds four different things, never merged**: recorded spending
+    (its date), a saved bill (its due date), a planned purchase (a date from
+    a pattern the user stated) — bills and planned purchases are what is
+    SCHEDULED (`planned_scheduled`, `DayLine.scheduled`) — and nothing of a
+    flexible budget. A flexible budget is a monthly limit on no date: its
+    figures are the line's (`planned`, `spent`, `remaining`, `left_per_day`).
+  - **The stored rows are bookkeeping.** The engine still keeps a monthly
+    limit evenly over the month (`lay_out_line`) and moves it to the dates it
+    is spent on; `planned`, `planned_everyday`, `planned_flexible` and
+    `planned_after_today` still equal those rows (so `get_budget_status` and
+    the mobile day budget agree) and are described as bookkeeping. Never
+    present one of them as planned, due or allowed on a date, and never
+    change the storage to "fix" the display.
+  - **The component is never handed a share.** `_meta["mita/calendar"]` is
+    `version: 2`: `day_lines = [line, scheduled, spent]`, a flexible line
+    listed only where something was spent from it. A component and a payload
+    of different versions refuse each other
+    (`serializers.WIDGET_PAYLOAD_VERSION`, `PAYLOAD_VERSION` in the HTML):
+    bump both, and the URI, together.
+  - **One rule for "All categories" and every filter** (`cellModel`): spent
+    so far, scheduled ahead; the filters' dates add up to the unfiltered
+    calendar (tested, and drawn). A date with nothing scheduled is empty —
+    never a guide, a share or a placeholder.
+  - **A date's state**: `planned` ahead only with a scheduled everyday
+    purchase; a begun date with nothing scheduled is `unplanned` / `quiet`,
+    never `within`. `over` still pools the date's rows (limit recorded in
+    the doc): do not print a pooled over amount beside flexible budgets.
+  - A line is `planned` only from a pattern the user stated; 45.00 of coffee
+    is 30 × 1.50 on dates only after "every day" — otherwise a monthly limit.
+  - Rendered checks: `tests_mcp/test_calendar_rendering.py` (the real
+    component fed by the real tools, in process; needs `playwright==1.49.1`
+    and Pillow, so MCP CI skips it — run it locally before a component
+    change). A new check of what a cell shows goes there, not only into the
+    data tests: 2.7.0's tests asserted the share as data and were right.
 - **One display name per category** (`app/mcp/categories.py`): every result
   carries `category_label`; budget status and the forecast put an expense
   category on its paired plan bucket's line ("Fuel" = `transport gas` +
@@ -1591,8 +1634,8 @@ Rules:
 - **The financial calendar is an MCP App** (2026-10-24, MCP 2.2.0, 24 tools;
   `docs/chatgpt-app/financial-calendar.md`). `get_calendar_month` (data, no
   template) and `show_financial_calendar` (the ONLY tool with
-  `_meta.ui.resourceUri` → `ui://mita/financial-calendar-v3.html` since
-    2.7.0); the
+  `_meta.ui.resourceUri` → `ui://mita/financial-calendar-v4.html` since
+    2.10.0; v3 from 2.7.0); the
   render tool recomputes from the account and never takes figures as
   arguments. Rules:
   - **One query, both tools, the sign-in example**: `queries/calendar.py`

@@ -9,7 +9,7 @@ Through the public endpoints, with NEW fictional accounts (never the owner's).
 Run it after the ingestion job filled the target with this release's
 Eurostat inputs:
 
-* ``/health`` reports 2.9.0, the same 26 tools are published, and no tool
+* ``/health`` reports the current version (2.10.0), the same 26 tools are published, and no tool
   takes a city, an address or coordinates;
 * a person in Bulgaria on €1,000 (household of one) gets MITA's own
   groceries line unchanged and, beside it, the national reference: about 152
@@ -49,7 +49,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from _target_guard import ProductionTargetError, assert_writable_target  # noqa: E402
 from e2e_v2 import PASSED, Session, check, cleanup, connect  # noqa: E402
 
-VERSION = "2.9.0"
+VERSION = "2.10.0"  # the 2.9 checks still hold in 2.10
 
 
 def hint(city: str) -> dict:

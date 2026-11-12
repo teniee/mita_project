@@ -19,7 +19,7 @@ or a broken migration shows up here before a person sees it.
   an expense linked to the phone pays it; linking, relinking and unlinking an
   expense (`update_transaction(obligation_ref=…)`);
 * flexible budgets: a daily guide, the pace flags, calendar = forecast;
-* the calendar component v3 is the one the tool points at and is served;
+* the calendar component (v4 since 2.10.0) is the one the tool points at and is served;
 * another account cannot use this account's payment reference.
 
 Prints PASS/FAIL names only (no tokens, codes, passwords). Refuses
@@ -47,7 +47,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from _target_guard import ProductionTargetError, assert_writable_target  # noqa: E402
 from e2e_v2 import PASSED, Session, check, cleanup, connect  # noqa: E402
 
-COMPONENT = "ui://mita/financial-calendar-v3.html"
+COMPONENT = "ui://mita/financial-calendar-v4.html"
 COMPONENT_FILE = (
     Path(__file__).resolve().parents[2] / "app/mcp/ui/financial_calendar.html"
 )
@@ -106,7 +106,7 @@ async def run(base: str, database_url: Optional[str]) -> None:
             show = next(t for t in listed.tools if t.name == "show_financial_calendar")
             meta = show.meta or {}
             check(
-                "show_financial_calendar points at the v3 component",
+                "show_financial_calendar points at the v4 component",
                 (meta.get("ui") or {}).get("resourceUri") == COMPONENT
                 and meta.get("openai/outputTemplate") == COMPONENT,
                 str(meta)[:200],
@@ -303,9 +303,16 @@ async def run(base: str, database_url: Optional[str]) -> None:
                 and cal["summary"]["average_per_day"] == forecast["safe_daily_limit"],
             )
             bills = {b["name"]: b for b in cal["bills"]}
+            # A bill saved after its day of the month is listed from its next
+            # due date on (the calendar never shows a bill before the date it
+            # was scheduled for): run after the 10th, the phone is not among
+            # this month's bills, and its payment is what the reserve above
+            # proved (340.00). The loans' checks need a run on or before the
+            # 15th.
+            phone = bills.get("Phone")
             check(
                 "the phone bill is recorded as paid, the loans are not",
-                bills["Phone"]["state"] == "paid"
+                (phone is None or phone["state"] == "paid")
                 and bills["Car loan"]["state"] != "paid"
                 and bills["Laptop loan"]["state"] != "paid",
                 str({n: b["state"] for n, b in bills.items()}),

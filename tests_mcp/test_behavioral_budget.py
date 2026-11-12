@@ -248,7 +248,10 @@ async def test_cigarettes_are_a_flexible_limit_not_daily_purchases(
         {"amount": "20.00", "budget_line": "Cigarettes", "idempotency_key": key()},
     )
     seen = await look(m7, token, connection, user, month=11, today=date(2026, 11, 7))
-    assert seen.day(7)["state"] == "within"
+    # Not over — and no "within" either: nothing was scheduled for the 7th, so
+    # the date has no plan to be within (2.10.0; the limit is the month's).
+    assert seen.day(7)["state"] == "unplanned"
+    assert seen.day(7)["everyday_left"] is None
     assert seen.line("my:Cigarettes")["remaining"] == "176.50"
     # pacing within the line, not redistribution between lines
     assert all(a == 0 for (_p, _s, a) in seen.rows.values())

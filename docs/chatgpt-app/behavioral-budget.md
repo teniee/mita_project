@@ -154,6 +154,13 @@ once, as a convenience.
 
 ## 6. Calendar (component `ui://mita/financial-calendar-v3.html`)
 
+> **Superseded in part by 2.10.0 (2026-11-11, `flexible-envelopes-calendar.md`,
+> component v4).** The "≈" daily guide is no longer drawn on dates and a date
+> with nothing scheduled IS empty: with a category filter 2.7.0–2.9.0 drew a
+> flexible line's stored daily share as each date's plan. The guidance
+> (`left_per_day`, `summary.flexible_per_day`, the pace) is unchanged and is
+> shown with the summary and each flexible line.
+
 * Bills: `state` `paid` (from links) / overdue / due_today / upcoming / later;
   `paid`, `outstanding`, `paid_dates`, `obligation_ref`.
 * Lines: `spending_type`, `pattern` (only when it describes this plan's own

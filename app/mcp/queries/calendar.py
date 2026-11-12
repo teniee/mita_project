@@ -8,6 +8,22 @@ Nothing is projected per day: a future date shows its plan, never a forecast
 of what will be spent on it. Definitions and limits:
 docs/chatgpt-app/financial-calendar.md.
 
+**A budget is not a schedule** (owner brief 2026-11-11,
+docs/chatgpt-app/flexible-envelopes-calendar.md). What a date holds is one
+of four different things, and this module never merges them:
+
+* recorded spending — on the date it was recorded;
+* a saved bill — on its due date (``bills``);
+* a planned purchase — on the date the user's stated pattern gives
+  (``purchases``); both make up what is SCHEDULED on a date
+  (``planned_scheduled``, each line's ``DayLine.scheduled``);
+* a flexible budget — a monthly limit with **no dates**. The plan rows keep
+  its money evenly over the month only as bookkeeping (and move it to the
+  dates it is spent on); that per-date share (``planned_flexible``) is
+  never a plan, a purchase or a limit for a date. Its figures are the
+  line's: planned, spent, remaining and the daily guidance
+  (``CalendarLine.guidance``) — analysis, said to be guidance.
+
 The month's budget lines are the ones ``get_budget_status`` shows
 (``categories.group_lines``), and each line belongs to exactly one group, so
 the groups always add up to the plan (owner decision 2026-10-24):
@@ -123,8 +139,13 @@ class BillOccurrence:
 @dataclass(frozen=True)
 class DayLine:
     line: str
-    planned: Decimal
+    planned: Decimal  # the stored plan row(s) of the line on the date
     spent: Decimal
+    # What is scheduled on the date for the line: a bill due, a planned
+    # purchase, a legacy line's layout, money set aside. Always 0 for a
+    # flexible budget — a monthly limit has no dates, so the share of it
+    # the plan rows keep on a date is never a plan for that date.
+    scheduled: Decimal = ZERO
 
 
 @dataclass(frozen=True)
@@ -149,13 +170,20 @@ class CalendarDay:
     spent: Decimal
     spent_everyday: Decimal
     lines: Tuple[DayLine, ...]
-    # The flexible budgets' share of ``planned`` on this date (guidance, never
-    # a purchase); the rest is planned purchases, bills and legacy lines.
+    # The share of the flexible budgets' monthly money the plan rows keep on
+    # this date: bookkeeping, never a plan, a purchase or a limit for the
+    # date. The rest of ``planned`` is what is scheduled on it.
     planned_flexible: Decimal = ZERO
     purchases: Tuple[Purchase, ...] = ()
+    # The everyday part of what is scheduled on this date (planned purchases,
+    # a legacy line's layout): ``planned_everyday`` without any flexible
+    # budget's share.
+    scheduled_everyday: Decimal = ZERO
 
     @property
     def planned_scheduled(self) -> Decimal:
+        """What is scheduled on this date: planned purchases and bills due
+        (and a legacy month's layout). The only plan a date has."""
         return self.planned - self.planned_flexible
 
     @property
@@ -169,18 +197,30 @@ class CalendarDay:
     @property
     def status(self) -> str:
         """over | within | unplanned | quiet for a day that has begun;
-        planned | free for a date still ahead."""
+        planned | free for a date still ahead.
+
+        A date's plan is what is scheduled on it (``scheduled_everyday``). A
+        flexible budget is no plan for any date: a date ahead holding only
+        its share is ``free``, and a begun date with only its share gets no
+        within/quiet-against-a-plan verdict (``unplanned`` when something
+        was spent, ``quiet`` when nothing was). ``over`` is unchanged: the
+        everyday spending is more than the plan rows hold on the date, the
+        flexible budgets' own money included — spending inside a monthly
+        limit is never over."""
         if self.kind == "future":
-            return "planned" if self.planned_everyday > ZERO else "free"
-        if self.planned_everyday > ZERO:
-            return "over" if self.spent_everyday > self.planned_everyday else "within"
+            return "planned" if self.scheduled_everyday > ZERO else "free"
+        if self.planned_everyday > ZERO and self.spent_everyday > self.planned_everyday:
+            return "over"
+        if self.scheduled_everyday > ZERO:
+            return "within"
         return "unplanned" if self.spent_everyday > ZERO else "quiet"
 
     @property
     def everyday_left(self) -> Optional[Decimal]:
-        """Everyday plan minus everyday spending, for a day that has begun and
-        had an everyday plan; negative when over."""
-        if self.kind == "future" or self.planned_everyday <= ZERO:
+        """What the plan rows hold on the date minus the everyday spending,
+        for a begun date with a verdict (``over`` or ``within``); negative
+        when over. None for a date with no scheduled everyday plan."""
+        if self.status not in ("over", "within"):
             return None
         return self.planned_everyday - self.spent_everyday
 
@@ -353,6 +393,14 @@ class CalendarMonth:
         day that went over, and money left unspent on a past date stays on
         that date (``realtime_rebalancer.rebalance_after_overspend``)."""
         return sum((d.planned for d in self.days if d.kind == "future"), ZERO)
+
+    @property
+    def scheduled_after_today(self) -> Decimal:
+        """What is scheduled on the dates after today: planned purchases and
+        bills due (a legacy month's layout too). No flexible budget is in
+        it — what those still hold is ``flexible_left``, for the whole
+        month, on no date."""
+        return sum((d.planned_scheduled for d in self.days if d.kind == "future"), ZERO)
 
     @property
     def flexible_lines(self) -> List[CalendarLine]:
@@ -728,15 +776,34 @@ def build_calendar(
                 planned_flexible=sum(
                     (v[0] for k, v in entries.items() if k in flexible_lines), ZERO
                 ),
+                scheduled_everyday=sum(
+                    (
+                        v[0]
+                        for k, v in entries.items()
+                        if k not in flexible_lines
+                        and group_of.get(k, GROUP_EVERYDAY) == GROUP_EVERYDAY
+                    ),
+                    ZERO,
+                ),
                 purchases=tuple(purchases_by_day.get(day, ())),
                 lines=tuple(
                     sorted(
                         (
-                            DayLine(line=key, planned=values[0], spent=values[1])
+                            DayLine(
+                                line=key,
+                                planned=values[0],
+                                spent=values[1],
+                                # a flexible budget has no dates
+                                scheduled=(
+                                    ZERO if key in flexible_lines else values[0]
+                                ),
+                            )
                             for key, values in entries.items()
                             if values[0] != ZERO or values[1] != ZERO
                         ),
-                        key=lambda dl: (-max(dl.planned, dl.spent), dl.line),
+                        # largest first by what the date shows for the line:
+                        # what is scheduled on it, or what was spent
+                        key=lambda dl: (-max(dl.scheduled, dl.spent), dl.line),
                     )
                 ),
             )

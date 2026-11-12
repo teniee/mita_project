@@ -8,7 +8,7 @@ Through the public endpoints, with two NEW fictional accounts (never the
 owner's), so a missing 0043 grant (``mcp_setup_answers``, ``users.country``)
 or a broken migration shows up before a person sees it:
 
-* ``/health`` reports the current version (2.9.0); the published tools are the 25 of 2.7.0, and
+* ``/health`` reports the current version (2.10.0); the published tools are the 25 of 2.7.0, and
   ``update_financial_profile`` takes a country but no city, address or
   coordinates;
 * ChatGPT's approximate location (``openai/userLocation``) is only a
@@ -51,7 +51,7 @@ from _target_guard import ProductionTargetError, assert_writable_target  # noqa:
 from e2e_v2 import PASSED, Session, check, cleanup, connect  # noqa: E402
 
 D = Decimal
-VERSION = "2.9.0"  # the 2.8 checks still hold in 2.9
+VERSION = "2.10.0"  # the 2.8 checks still hold in 2.10
 SOFIA = {
     "city": "Sofia",
     "region": "Sofia City",

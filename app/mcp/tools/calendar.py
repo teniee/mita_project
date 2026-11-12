@@ -58,11 +58,17 @@ Month = Annotated[
 ]
 
 TERMS = (
-    "Each date has its saved plan (planned: every line except money set aside; "
-    "planned_everyday: its everyday part; planned_scheduled: its planned "
-    "purchases and bills; planned_flexible: the flexible budgets' daily share, "
-    "guidance only) and, once begun, recorded spending; a "
-    "day's state compares everyday spending with that date's everyday plan (over, "
+    "A date holds only what belongs to it: recorded spending once it has begun, "
+    "and what is scheduled for it — planned_scheduled: the planned purchases the "
+    "user's stated pattern puts on it (purchases) and the saved bills due on it "
+    "(bills). A flexible budget is a monthly limit with no dates: it is on no "
+    "date, its amount, spending and remainder are on its line in categories, and "
+    "left_per_day / flexible_per_day are daily guidance — an average to pace "
+    "spending by, never a purchase, a bill or a limit for a date. planned and "
+    "planned_everyday are what the stored plan rows hold on a date and include "
+    "planned_flexible, the share of the flexible budgets' money kept there: "
+    "bookkeeping, never to be presented as planned or due on that date. A day's "
+    "state compares everyday spending with what is scheduled on the date (over, "
     "within, unplanned, quiet; future dates planned or free — never a forecast). "
     "The summary splits the plan into commitments (bills: rent, mortgage and "
     "utilities lines and the categories of the user's saved regular payments that "
@@ -80,9 +86,11 @@ TERMS = (
 )
 
 GET_DESCRIPTION = (
-    "The user's month in MITA as data, date by date: each date's planned amount, "
-    "recorded spending and state, the month's budget lines with their group, saved "
-    "bills by date and a summary (plan, commitments, money set aside, everyday "
+    "The user's month in MITA as data, date by date: what is scheduled on each date "
+    "(planned purchases and bills due), its recorded spending and state, the "
+    "month's budget lines with their group and kind (a flexible budget is a "
+    "monthly limit, on no date), saved bills by date and a summary (plan, "
+    "commitments, money set aside, everyday "
     "budget, spent, left, average a day, days left). Use it to answer questions "
     "about particular days ('which days was I over?', 'what is planned for "
     "Friday?') or before show_financial_calendar. "
@@ -181,8 +189,14 @@ def _shown_text(ctx: UserContext, cal, line) -> str:
         if cal.position != "past" and remaining:
             parts.append(
                 f"On average {money(cal.forecast.safe_daily_limit)} a day for the "
-                f"{remaining} days left — each date also has its own plan."
+                f"{remaining} days left — an average, not a plan for any date."
             )
+            if cal.scheduled_after_today > Decimal("0"):
+                parts.append(
+                    f"Scheduled on the dates ahead: "
+                    f"{money(cal.scheduled_after_today)} of planned purchases and "
+                    "bills."
+                )
         over = sum(1 for d in cal.days if d.status == "over")
         if over:
             parts.append(
@@ -191,8 +205,9 @@ def _shown_text(ctx: UserContext, cal, line) -> str:
         per_day = cal.flexible_per_day if cal.position != "past" else None
         if per_day is not None:
             parts.append(
-                f"Flexible budgets: {money(cal.flexible_left)} left, about "
-                f"{money(per_day)} a day as guidance (not purchases on dates)."
+                f"Flexible budgets are monthly limits with no dates: "
+                f"{money(cal.flexible_left)} left, about {money(per_day)} a day as "
+                "guidance — not purchases, and on no date of the calendar."
             )
         fast = [
             line.label

@@ -160,6 +160,8 @@ async def test_the_month_summary_is_exact_and_adds_up_to_the_plan(mcp, seed):
         "commitments_reserved": "210.00",
         # 20 Oct 30.00 + 23 Oct 45.00 + 31 Oct 85.00 (the Savings slices excluded)
         "planned_after_today": "160.00",
+        # a legacy layout has no flexible budget: every row is scheduled
+        "scheduled_after_today": "160.00",
         "bills_due_after_today": "90.00",  # internet 30 (27th) + insurance 60 (30th)
         # a month laid out before 2.7.0 has no flexible budgets (no line kinds)
         "flexible_left": None,

@@ -475,16 +475,23 @@ def recurring_out(ctx: UserContext, view: RecurringView, keys) -> RecurringOut:
 # --- the financial calendar ---------------------------------------------------
 
 CALENDAR_METHOD = (
-    "Each date shows MITA's saved plan for it and, once the day has begun, the "
-    "expenses recorded on it (in the user's timezone). Plan lines are grouped as in "
-    "the summary: bills (rent, mortgage and utilities lines, and the categories of "
+    "A date holds four different things, never merged: expenses recorded on it "
+    "(in the user's timezone), saved bills due on it, planned purchases the "
+    "user's stated pattern puts on it — bills and planned purchases are what is "
+    "scheduled for the date (planned_scheduled) — and nothing else. A flexible "
+    "budget is a monthly limit with no dates: its amount, spending, remainder and "
+    "daily guidance are on its line in categories, and the share of it the plan "
+    "rows keep on a date (planned_flexible) is bookkeeping, never a plan, a "
+    "purchase or a limit for that date. Plan lines are grouped as in the "
+    "summary: bills (rent, mortgage and utilities lines, and the categories of "
     "saved regular payments that belong to the month), money set aside (savings, "
-    "goals, investments — never spendable) and "
-    "everyday spending. A day's state compares everyday spending with that date's "
-    "everyday plan. Future dates show the plan, never a forecast. left_to_spend leaves "
-    "out money set aside and what bills not yet recorded still need "
-    "(commitments_reserved). average_per_day is the forecast engine's safe daily "
-    "figure: an average for each remaining day, not a budget for a particular date."
+    "goals, investments — never spendable) and everyday spending. A day's state "
+    "compares everyday spending with what is scheduled on that date; spending "
+    "from a flexible budget inside its monthly limit is never over. Future dates "
+    "show what is scheduled, never a forecast. left_to_spend leaves out money set "
+    "aside and what bills not yet recorded still need (commitments_reserved). "
+    "average_per_day is the forecast engine's safe daily figure: an average for "
+    "each remaining day, not a budget for a particular date."
 )
 NOTE_COMMITMENTS_RESERVED = (
     "{amount} {currency} is held for bills not paid in MITA yet; it is not part of "
@@ -496,6 +503,12 @@ NOTE_BILLS_OUTSIDE_PLAN = (
     "month's plan, so the plan does not cover them."
 )
 NOTE_MONTH_ENDED = "The month has ended, so there is no daily average for it."
+
+# The component-only month payload (``_meta["mita/calendar"]``). Version 2
+# (MCP 2.10.0, component v4): ``day_lines`` carry what is scheduled on a date,
+# never a flexible budget's stored share. A component written for another
+# version refuses the payload instead of drawing it with the wrong meaning.
+WIDGET_PAYLOAD_VERSION = 2
 
 
 def calendar_summary_out(cal: CalendarMonth) -> CalendarSummaryOut:
@@ -541,6 +554,9 @@ def calendar_summary_out(cal: CalendarMonth) -> CalendarSummaryOut:
         ),
         planned_after_today=(
             money(cal.planned_after_today) if planned and month_open else None
+        ),
+        scheduled_after_today=(
+            money(cal.scheduled_after_today) if planned and month_open else None
         ),
         bills_due_after_today=money(cal.bills_due_after_today),
         flexible_left=(
@@ -596,6 +612,7 @@ def _day_out(day) -> CalendarDayOut:
         spent_everyday=money(day.spent_everyday) if begun else None,
         everyday_left=optional_money(day.everyday_left),
         planned_scheduled=money(day.planned_scheduled),
+        planned_scheduled_everyday=money(day.scheduled_everyday),
         planned_flexible=money(day.planned_flexible),
         purchases=[_purchase_out(p) for p in day.purchases],
     )
@@ -695,18 +712,29 @@ def calendar_widget_payload(
 ) -> dict:
     """Everything the calendar component draws, for the tool result's
     ``_meta`` (delivered to the component only, never to the model): the
-    month as ``get_calendar_month`` returns it plus each date's lines."""
+    month as ``get_calendar_month`` returns it plus each date's lines.
+
+    ``day_lines`` (version 2): per date, ``[line, scheduled, spent]`` for the
+    lines with something scheduled on the date (a bill due, a planned
+    purchase, a legacy line's layout, money set aside) or spent on it. A
+    flexible budget has no dates, so its ``scheduled`` is always "0.00" and
+    it is listed on a date only when something was spent from it there: the
+    component is never handed a daily share it could draw as a purchase.
+    Version 1 carried each line's stored plan row instead, flexible budgets
+    included — which the category filter drew as €3.33 on every date."""
+    day_lines = {}
+    for day in cal.days:
+        shown = [
+            [line.line, money(line.scheduled), money(line.spent)]
+            for line in day.lines
+            if line.scheduled != ZERO or line.spent != ZERO
+        ]
+        if shown:
+            day_lines[day.day.isoformat()] = shown
     return {
-        "version": 1,
+        "version": WIDGET_PAYLOAD_VERSION,
         "month": calendar_month_out(ctx, cal, refs).model_dump(mode="json"),
-        "day_lines": {
-            day.day.isoformat(): [
-                [line.line, money(line.planned), money(line.spent)]
-                for line in day.lines
-            ]
-            for day in cal.days
-            if day.lines
-        },
+        "day_lines": day_lines,
         "bill_lines": [bill.line for bill in cal.bills],
     }
 

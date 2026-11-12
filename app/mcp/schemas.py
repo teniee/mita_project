@@ -248,13 +248,17 @@ class DayBudgetOut(_Out):
         "Sum of today's spending allocations. Money set aside for savings, goals "
         "or investments is not included: it is not for spending. Bills planned "
         "for today (rent, mortgage, utilities, saved regular payments) are "
-        "included and are not free to spend: see everyday_remaining."
+        "included and are not free to spend: see everyday_remaining. In a month "
+        "with flexible budgets it also holds the share of their monthly money "
+        "the plan rows keep on today: bookkeeping, not a purchase planned for "
+        "today and not a limit for today (a flexible budget has no dates)."
     )
     spent: Money = money_field("Recorded spending today.")
     remaining: Money = money_field("planned minus spent for today.")
     everyday_planned: Money = money_field(
         "Today's plan without bills and money set aside: the everyday part, as "
-        "the calendar shows it for today (planned_everyday)."
+        "get_calendar_month has it for today (planned_everyday) — the flexible "
+        "budgets' share kept on today included, which is not a limit for today."
     )
     everyday_spent: Money = money_field("Recorded spending today outside bills.")
     everyday_remaining: Money = money_field(
@@ -1749,8 +1753,9 @@ class CalendarSummaryOut(_Out):
     average_per_day: Optional[Money] = Field(
         description=(
             "get_budget_forecast safe_daily_limit: left_to_spend divided by days_remaining — one "
-            "AVERAGE for each remaining day, not a budget for any particular date (each date's "
-            "plan is in days[].planned). Null for a past month or without a plan."
+            "AVERAGE for each remaining day, not a budget for any particular date (what is "
+            "scheduled on a date is in days[].planned_scheduled). Null for a past month or "
+            "without a plan."
         ),
         pattern=MONEY_PATTERN,
     )
@@ -1767,10 +1772,22 @@ class CalendarSummaryOut(_Out):
     )
     planned_after_today: Optional[Money] = Field(
         description=(
-            "The plan on the dates after today (every line except money set aside), as MITA's "
-            "automatic rebalancing left it. It can be lower than left_to_spend: rebalancing takes "
-            "money from later dates to cover a day that went over, while money left unspent on a "
-            "past date stays on that date."
+            "What the stored plan rows hold on the dates after today (every line except money "
+            "set aside), as MITA's automatic rebalancing left it: scheduled_after_today plus the "
+            "share of the flexible budgets' money the rows keep on those dates. Bookkeeping — "
+            "not an amount of upcoming spending: quote scheduled_after_today for what is "
+            "scheduled ahead and flexible_left for the flexible budgets. It can be lower than "
+            "left_to_spend: rebalancing takes money from later dates to cover a day that went "
+            "over, while money left unspent on a past date stays on that date."
+        ),
+        pattern=MONEY_PATTERN,
+    )
+    scheduled_after_today: Optional[Money] = Field(
+        description=(
+            "What is scheduled on the dates after today: planned purchases and bills due (in a "
+            "month saved before MITA knew how the user buys, its old per-date layout). No "
+            "flexible budget is in it — a monthly limit has no dates; what those still hold is "
+            "flexible_left. Null for a past month or without a plan."
         ),
         pattern=MONEY_PATTERN,
     )
@@ -1780,11 +1797,14 @@ class CalendarSummaryOut(_Out):
     )
     flexible_per_day: Optional[Money] = Field(
         description=(
-            "The flexible budgets' guidance for each day left, today included (the sum "
-            "of each flexible line's left_per_day), never more than average_per_day "
-            "(never below 0): when spending elsewhere used money the envelopes still "
-            "show, the safe average is the guide. Guidance for flexible spending, not "
-            "cash on hand; null for a month without flexible budgets or one that ended."
+            "Daily guidance for the flexible budgets together: what they still hold "
+            "divided by the days left, today included (the sum of each flexible "
+            "line's left_per_day), never more than average_per_day (never below 0): "
+            "when spending elsewhere used money the envelopes still show, the safe "
+            "average is the guide. An average to pace spending by — say 'about X a "
+            "day as guidance'. It is not a purchase, a bill, a limit or a target for "
+            "any date, and no date holds it: the user may spend it all on one day or "
+            "none. Null for a month without flexible budgets or one that ended."
         ),
         pattern=MONEY_PATTERN,
     )
@@ -1841,8 +1861,11 @@ class CalendarLineOut(_Out):
     spending_type: CalendarSpendingType = Field(
         description=(
             "obligation: a saved regular payment, on its due dates; planned: "
-            "purchases on known dates (purchases); flexible: a monthly limit with no "
-            "purchase dates — its daily share is guidance, never a purchase; "
+            "purchases on known dates (purchases), from a pattern the user stated; "
+            "flexible: a monthly limit with no purchase dates — it is on no date of "
+            "the calendar; its figures are this line's planned, spent and remaining, "
+            "and left_per_day is guidance. Never say a flexible budget is planned or "
+            "due on a date, and never turn its monthly amount into daily purchases; "
             "set_aside: savings; legacy: a month saved before MITA knew how the user "
             "buys (laid out by MITA's old pattern), or spending with no plan."
         )
@@ -1859,7 +1882,9 @@ class CalendarLineOut(_Out):
     left_per_day: Optional[Money] = Field(
         description=(
             "For flexible lines of a month not ended: what is left on the line ÷ the "
-            "days left (today included) — exact guidance, not a purchase."
+            "days left (today included). Guidance to pace spending by ('€100 left "
+            "over 20 days is about €5 a day'): not a purchase, not a limit or a "
+            "target for any date — the user may spend the rest on one day or none."
         ),
         pattern=MONEY_PATTERN,
     )
@@ -1882,7 +1907,12 @@ class CalendarLineOut(_Out):
         pattern=MONEY_PATTERN,
     )
     planned_per_day: Optional[Money] = Field(
-        description="For flexible lines: the month's amount ÷ the days of the month (recommended pace).",
+        description=(
+            "For flexible lines: the month's amount ÷ the days of the month — the "
+            "even pace pace_per_day is compared with (the forecast engine's figure). "
+            "Analysis only: nothing is planned, scheduled or due at this amount on "
+            "any date, and it is not a daily limit."
+        ),
         pattern=MONEY_PATTERN,
     )
     pace_status: Optional[PaceStatus] = Field(
@@ -1903,15 +1933,24 @@ class CalendarDayOut(_Out):
     day_kind: DayKind = Field(description="Relative to the user's today.")
     state: DayState = Field(
         description=(
-            "Begun days: over (everyday spending above that date's everyday plan), within, "
-            "unplanned (spending on a date with no everyday plan; no verdict), quiet (nothing "
-            "planned or spent). Future dates: planned or free (no everyday plan). Never a forecast."
+            "Begun days: over (everyday spending above what the plan rows hold on the date — "
+            "spending from a flexible budget inside its monthly limit is never over), within "
+            "(something was scheduled and the spending stayed inside it), unplanned (spending "
+            "on a date with nothing scheduled, e.g. from a flexible budget; no verdict), quiet "
+            "(nothing scheduled or spent). Future dates: planned (an everyday purchase is "
+            "scheduled) or free (none is — a flexible budget never makes a date planned). "
+            "Never a forecast."
         )
     )
     planned: Money = money_field(
-        "The date's spending plan: every line except money set aside."
+        "What the stored plan rows hold on this date, every line except money set "
+        "aside: planned_scheduled + planned_flexible. Bookkeeping of the plan, not "
+        "the date's schedule — present planned_scheduled as what is planned for a date."
     )
-    planned_everyday: Money = money_field("The everyday part of planned.")
+    planned_everyday: Money = money_field(
+        "The everyday part of planned: planned_scheduled_everyday plus the flexible "
+        "budgets' share kept on the date. Bookkeeping, like planned."
+    )
     set_aside: Money = money_field(
         "Savings and goal slices planned on this date (not spendable)."
     )
@@ -1924,19 +1963,37 @@ class CalendarDayOut(_Out):
         pattern=MONEY_PATTERN,
     )
     everyday_left: Optional[Money] = Field(
-        description="planned_everyday minus spent_everyday for a begun date with an everyday plan; negative means over.",
+        description=(
+            "For a begun date whose state is over or within: planned_everyday minus "
+            "spent_everyday; negative means over. It counts the flexible budgets' share kept "
+            "on the date, so it is not money left for that date alone. Null otherwise."
+        ),
         pattern=MONEY_PATTERN,
     )
     planned_scheduled: Money = money_field(
-        "The part of planned that is planned purchases and bills due (what is "
-        "actually scheduled for the date)."
+        "What is scheduled for this date: planned purchases (purchases) and saved "
+        "bills due (bills). The only amount to present as planned for a date. "
+        "0.00 when nothing is scheduled — the date is then empty, whatever the "
+        "month's flexible budgets are."
+    )
+    planned_scheduled_everyday: Money = money_field(
+        "The everyday part of planned_scheduled: planned purchases, without bills."
     )
     planned_flexible: Money = money_field(
-        "The part of planned that is flexible budgets' daily share: guidance, never "
-        "a purchase on this date."
+        "Bookkeeping, not a schedule: the share of the flexible budgets' monthly "
+        "money that the stored plan rows keep on this date (MITA stores a monthly "
+        "limit evenly over the month and moves it to the dates it is spent on). It "
+        "is never a purchase, a bill, a limit or a target for this date — do not "
+        "present it as planned, due or allowed on the date, and do not add it to "
+        "planned_scheduled. A flexible budget's own figures are on its line in "
+        "categories (planned, spent, remaining, left_per_day)."
     )
     purchases: List[CalendarPurchaseOut] = Field(
-        description="Planned purchases on this date."
+        description=(
+            "Planned purchases on this date — only from a pattern the user stated "
+            "(or dates MITA proposed for a stated frequency, marked proposed). "
+            "Empty for every date a flexible budget alone would touch."
+        )
     )
 
 
@@ -2000,7 +2057,13 @@ class CalendarMonthOut(_Out):
     categories: List[CalendarLineOut] = Field(
         description="The month's budget lines, largest plan first."
     )
-    days: List[CalendarDayOut] = Field(description="Every date of the month, in order.")
+    days: List[CalendarDayOut] = Field(
+        description=(
+            "Every date of the month, in order: what was recorded on it and what is "
+            "scheduled for it (planned purchases, bills due). A flexible budget is "
+            "on no date."
+        )
+    )
     bills: List[CalendarBillOut] = Field(
         description="Dates the user's saved payments fall on this month, with their state."
     )
