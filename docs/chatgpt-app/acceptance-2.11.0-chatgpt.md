@@ -16,7 +16,8 @@ where it says "There is no ≈ figure in any date", read this script instead.
 ## Before you start
 
 * `https://mita-mcp-staging-staging.up.railway.app/health` shows
-  `"version":"2.11.0"` (`staging.md` → "MCP 2.11.0").
+  `"version":"2.11.0"` — deployed 2026-11-16 17:22 UTC (`65adcd9`, deployment
+  `da577082`; `staging.md` → "MCP 2.11.0 — deployed").
 * In ChatGPT, open the plugin **MITA (staging)**, tap **Refresh** (the tool
   descriptions and the component changed: the calendar is now
   `ui://mita/financial-calendar-v5.html`), then start a **new** conversation.

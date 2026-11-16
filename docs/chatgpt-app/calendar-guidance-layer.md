@@ -4,9 +4,12 @@ Owner briefs of **2026-11-13** (the owner's acceptance of MCP 2.10.0 in the
 real ChatGPT staging app failed on product grounds) and **2026-11-16** (an
 equal division must not be presented as personalized advice). Implemented on
 `feat/chatgpt-auth-ui` as **MCP 2.11.0**, calendar component
-`ui://mita/financial-calendar-v5.html`. No migration (alembic stays `0044`),
-no engine change, no change to any stored row or approved budget; month
-payload stays `version: 2`.
+`ui://mita/financial-calendar-v5.html` (`13aa51f`; CI fixes `e48a24f`,
+`65adcd9`); live on staging since 2026-11-16 17:22 UTC (deployment
+`da577082`, `staging.md` → "MCP 2.11.0 — deployed"). No migration (alembic
+stays `0044`), no engine change, no change to any stored row or approved
+budget; month payload stays `version: 2`. Owner acceptance in real ChatGPT:
+`acceptance-2.11.0-chatgpt.md` — not yet run.
 
 This refines, and does not undo, `flexible-envelopes-calendar.md` (2.10.0): a
 flexible budget is still on no date — no amount, no share, no purchase. 2.11.0

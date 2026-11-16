@@ -112,7 +112,7 @@ Every account the checks created was deleted (5 users, as before); the
 temporary proxy was removed and Postgres no longer answers there. Rollback:
 re-pin `73ff153` (per-IP limits then break again, nothing else changes).
 
-## MCP 2.11.0 — prepared 2026-11-16 (the average left per day as a layer; cents on a phone)
+## MCP 2.11.0 — deployed 2026-11-16 17:22 UTC (`65adcd9`, deployment `da577082`)
 
 `calendar-guidance-layer.md`: the calendar draws the flexible budgets'
 average left per day on today and the dates ahead as a labelled layer apart
@@ -129,7 +129,7 @@ stored row.** The release is the re-pin alone — the 2.10.0 runbook:
 | 2. Isolation | Name the project `mita-mcp-staging`, environment `staging`, service `mita-mcp-staging` in every command (the working directory is linked to production); confirm no TCP proxy on either service and nothing staged | Railway API (read) |
 | 3. Deploy | `connect-service-source` → the commit; wait for SUCCESS; `/health` → `"version":"2.11.0"` | Railway API (write, staging service only) |
 | 4. Component | `resources/read ui://mita/financial-calendar-v5.html` sha256 = `app/mcp/ui/financial_calendar.html` of the commit; `show_financial_calendar` points at it (checked by the smoke) | public HTTPS |
-| 5. Checks (fictional accounts, ≤ 5 sign-ups an hour per IP) | `smoke_envelopes_2100.py` (now also the average layer and v5), `calendar_widget_review.py --axe` (guide pills and the switch in its narrow-screen check), `smoke_behavioral_270.py` (its bill checks need a run on or before the 15th), `e2e_v2.py` | public HTTPS |
+| 5. Checks (fictional accounts, ≤ 5 sign-ups an hour per IP) | `smoke_envelopes_2100.py` (now also the average layer and v5), `calendar_widget_review.py --axe` (the ≈ pills and the switch in its narrow-screen check), `smoke_behavioral_270.py` (its bill checks need a run on or before the 15th), `e2e_v2.py` | public HTTPS |
 | 6. Logs | the deployment's log: no error line; no e-mail, token or amount | Railway API (read) |
 
 Not part of this release, and not authorised for it: database access (the
@@ -138,6 +138,26 @@ account is argued untouched — read tools run `SET TRANSACTION READ ONLY` and
 the release adds no write path). Rollback: re-pin `8970756` (2.10.0); it
 reads the same rows. A ChatGPT that cached v5 keeps it for cards already
 drawn; new cards get v4 again.
+
+### What was done (2026-11-16, staging only)
+
+| Step | Result |
+|---|---|
+| CI | `65adcd9…` green on the push run 43913684647 — Backend, Mobile, MCP (security gate 253 passed; full suite **866 passed** with the rendered calendar on Chromium and WebKit, axe; both `pip-audit`s clean; image built; container end-to-end and its log scan). Pull-request run 43913700081: Backend and MCP green; its Android build failed on a corrupted NDK download on the runner ("Error on ZipFile unknown archive" — the same commit's push run built it) and was re-run. Two CI fixes on the way: the MCP job pinned to `ubuntu-24.04` (`e48a24f`: `ubuntu-latest` became 26.04, which Playwright 1.50 refuses) and two new advisories fixed by raising the lock pins (`65adcd9`: dnspython 2.9.2, opentelemetry-api 1.45.2) |
+| isolation | Project `mita-mcp-staging`: one environment (`staging`), two services (`mita-mcp-staging`, `Postgres`); **no TCP proxy on either**; nothing staged; the service's source `teniee/mita_project` @ `feat/chatgpt-auth-ui` pinned to `8970756` (deployment `b1b09ac9`) — as recorded. All calls named the project, environment and service by id |
+| deploy | `connect-service-source` → `65adcd9ed314a54e811a157afdf871e95e3e3daa` at 17:21:19 UTC; deployment `da577082-a179-4414-8d7d-a8c0bd791625` BUILDING 17:21:32, **SUCCESS 17:22:15**; `/health` 200 `"version":"2.11.0"` (17:22:14) |
+| component | `ui://mita/financial-calendar-v5.html` served byte for byte = `app/mcp/ui/financial_calendar.html` at `65adcd9` (checked by both the smoke and the harness); `show_financial_calendar` points at it |
+| checks (public HTTPS, fictional accounts, 3 sign-ups) | `smoke_envelopes_2100.py` **50/50** (17:22) · `calendar_widget_review.py --axe` **81/81** (17:23; 320–430 px nothing cut, axe: no WCAG 2.2 AA violation inline / fullscreen × light / dark, read tools only) · `e2e_v2.py` **78/78** (17:24; 85 with the database audit and clean-up) |
+| not run | `smoke_behavioral_270.py`: after the 15th its car-loan check cannot hold by design (a bill saved after its day is listed from its next due date), and it needs two more sign-ups; `e2e_http.py` and `staging_failure_modes.py` (need `--database-url`; `e2e_http` ran in CI against the image); `staging_account_fingerprint.py` (database) |
+| logs | Deployment `da577082`, 17:22:09–17:24:13: 206 lines, **all info**; events `http_request` 112, `tool_call` 72, `oauth_client_registered` 5, `oauth_code_issued` 5, `oauth_account_created` 3 (the checks' 3). Scan of every field: no e-mail, JWT, bearer token, authorization code, password, database URL or any amount the checks used |
+| owner's account | Not opened, not measured (no database access). The release adds no write path; the calendar tools run `SET TRANSACTION READ ONLY`; the checks used only their own new accounts |
+| production, `main`, PRs | untouched; nothing merged |
+
+Left on staging by these checks: 3 fictional accounts — `cal210-<10 hex>@example.test`,
+`calendar-review-<8 hex>@example.com`, `v2e2e_<10 hex>@example.test` — with
+their 5 DCR clients, beside the 5 of 2.10.0. Delete each with
+`e2e_v2.cleanup` the next time database access is authorised, then the
+token-less OAuth clients registered on 2026-11-16 after 17:22 UTC.
 
 ## MCP 2.10.0 — deployed 2026-11-12 18:28 UTC (`8970756`, deployment `b1b09ac9`)
 
