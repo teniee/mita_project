@@ -1215,21 +1215,21 @@ Rules:
     spending; only spending beyond the line's month is redistributed). A
     month without kinds is legacy: untouched until the user saves it again.
   - **Never invent purchase dates.** A line without a stated pattern is
-    flexible (even over every day, shown as guidance); planned lines split
+    flexible (even over every day, shown as an average); planned lines split
     exactly over real dates (`spending_schedule.purchase_dates`, integer
     cents, no four-week months). Patterns are stated, never inferred
     (`spending_patterns.source = user_confirmed` only). A frequency without a
     day ("about once a week") gets dates MITA PROPOSES, always labelled
     (`proposed`, `purchase_dates_stated: false`).
-  - **Daily guidance stays, with the month — never on a date.** Flexible
-    lines carry the forecast engine's pace (`pace_per_day` vs
-    `planned_per_day`, `pace_status`, `days_until_exhausted`) and the revised
-    `left_per_day`; `summary.flexible_per_day` is never more than the safe
-    average a day (`safe_daily_limit`, floored at 0). Never a second
-    calculation of pace. Since 2.10.0 it is shown with the summary, each
-    flexible line and the selected date's "Flexible budgets · this month"
-    list, worded as guidance — the "≈" drawn on dates in 2.7.0–2.9.0 is gone
-    (see "A budget is not a schedule" below).
+  - **The per-day figure is the month's, drawn as a layer — never a date's
+    amount, never advice.** Flexible lines carry the forecast engine's pace
+    (`pace_per_day` vs `planned_per_day`, the even pace, `pace_status`,
+    `days_until_exhausted`) and the revised `left_per_day`;
+    `summary.flexible_per_day` is never more than the safe average a day
+    (`safe_daily_limit`, floored at 0). Never a second calculation of pace.
+    Since 2.11.0 the calendar draws it on today and every date ahead as the
+    "≈" average left per day, beside and never inside the date's amount (see
+    "The average left per day is a layer, never an event" below).
   - **Freed money is shown** (`preview_monthly_budget.freed_money`, F-12):
     a `not_applicable` line's money vs the same engine run keeping it;
     explicit redistribution only through `budget_lines`.
@@ -1374,10 +1374,54 @@ Rules:
   - A line is `planned` only from a pattern the user stated; 45.00 of coffee
     is 30 × 1.50 on dates only after "every day" — otherwise a monthly limit.
   - Rendered checks: `tests_mcp/test_calendar_rendering.py` (the real
-    component fed by the real tools, in process; needs `playwright==1.49.1`
-    and Pillow, so MCP CI skips it — run it locally before a component
-    change). A new check of what a cell shows goes there, not only into the
-    data tests: 2.7.0's tests asserted the share as data and were right.
+    component fed by the real tools, in process). Since 2.11.0 it runs in
+    the required MCP CI job (`requirements-mcp-render.txt`: playwright
+    1.50.0 — 1.49.1 pins `greenlet==3.1.1` against the lock's 3.5.3 — Chromium
+    and WebKit, axe-core 4.10.2, `MITA_RENDERING_REQUIRED=1` so a missing
+    dependency fails instead of skipping). A new check of what a cell shows
+    goes there, not only into the data tests: 2.7.0's tests asserted the
+    share as data and were right.
+- **The average left per day is a layer, never an event — and never a
+  recommendation** (owner briefs 2026-11-13 and 2026-11-16, after the owner's
+  acceptance of 2.10.0 failed: right figures, an almost empty calendar, and
+  a €1.50 coffee drawn as "2"; MCP 2.11.0, component v5, no migration;
+  `docs/chatgpt-app/calendar-guidance-layer.md`). Rules:
+  - **Two layers on a date, never merged.** Activity is the date's amount
+    (`data-amount`, the image's amount): recorded spending, planned
+    purchases, bills — the 2.10.0 rules above. The second layer is the
+    average left per day, on today and every date ahead, in a "≈" pill of
+    its own (`data-guide`), in words in the date's label and its own detail
+    box: never in an amount, `planned_scheduled`, `scheduled_after_today`,
+    `day_lines`, a total or a balance.
+  - **Say what it is: an average.** MITA has no method that personalizes a
+    daily figure — income tiers (stub bands outside the US/GB) shape only
+    MITA's own suggested lines, the 2.9 regional references and the history
+    sit beside preview lines and are never applied, stated pay days are read
+    by no calculation. So every daily figure (`left_per_day`,
+    `flexible_per_day`, `planned_per_day` — "the even pace", `per_day`) is
+    worded as an average, never "guidance", "guide" or "recommended" (the
+    rendered test and the source rule check it). A personalized daily method
+    is a new financial method: owner decision first (doc §8).
+  - **One figure per view, MITA's.** All categories: `summary.flexible_per_day`
+    (never `average_per_day`: planned purchases are on their dates already
+    and would be counted twice). A flexible line's filter: its
+    `left_per_day`. A planned or bill line's filter: none.
+    `summary.flexible_per_day_capped` says when it is the safe average; a
+    branch of the existing `min`, not a figure.
+  - **Two divisors, both named.** The safe average divides by the days after
+    today (forecast engine, app-wide), the per-day average by the days left
+    with today (2.7.0). Unifying them is an owner decision.
+  - **The user can hide it** (switch "Daily average", `role="switch"`, kept in
+    widget state); off is exactly the 2.10.0 drawing. Default on.
+  - **Every cent.** A phone drops ".00" and sets cents smaller; `fitText`
+    shrinks twice, then only an amount of 100 or more may lose its cents
+    (said under the grid). Never round an amount under 100. The ≈ pill may
+    be whole units on a phone (it is "about"); exact everywhere else.
+  - **Tests and suspended machines.** MCP test tokens live 900 s
+    (`MCP_ACCESS_TOKEN_TTL_SECONDS`): a laptop that sleeps mid-test turns the
+    next call into a correct 401 (2026-11-16: 15 "failures" in a 9-hour run,
+    each matching a ≥ 900 s sleep in `pmset -g log`). Run long suites under
+    `caffeinate -dimsu`.
 - **One display name per category** (`app/mcp/categories.py`): every result
   carries `category_label`; budget status and the forecast put an expense
   category on its paired plan bucket's line ("Fuel" = `transport gas` +
@@ -1634,8 +1678,8 @@ Rules:
 - **The financial calendar is an MCP App** (2026-10-24, MCP 2.2.0, 24 tools;
   `docs/chatgpt-app/financial-calendar.md`). `get_calendar_month` (data, no
   template) and `show_financial_calendar` (the ONLY tool with
-  `_meta.ui.resourceUri` → `ui://mita/financial-calendar-v4.html` since
-    2.10.0; v3 from 2.7.0); the
+  `_meta.ui.resourceUri` → `ui://mita/financial-calendar-v5.html` since
+    2.11.0; v4 from 2.10.0, v3 from 2.7.0); the
   render tool recomputes from the account and never takes figures as
   arguments. Rules:
   - **One query, both tools, the sign-in example**: `queries/calendar.py`
@@ -1682,10 +1726,11 @@ Rules:
     change must update those figures deliberately, and every scenario there
     also checks status / forecast / calendar / stored rows / the mobile API's
     figures against each other.
-  - **Money is never cut off on a narrow phone**: a phone's date grid shows
-    whole euros (said under it; exact figures in each date's label and
-    detail), `fitText` shrinks what still does not fit, stacks tiles and
-    buttons; the harness checks 320, 360 and 390 px.
+  - **Money is never cut off on a narrow phone, and keeps its cents**
+    (2.11.0; whole euros in a phone's grid drew a €1.50 coffee as "2"):
+    `fitText` shrinks what does not fit, only then drops the cents of an
+    amount of 100 or more (said under the grid), stacks tiles and buttons;
+    the harness and the rendered test check 320, 360 and 390 px.
   - **The 2.6.0 redesign** (owner, 2026-11-03): no "PLAN" label in date
     cells (one caption says plan vs spent), larger cells and amounts,
     category families as monochrome OUTLINED icons (OpenAI UI guidelines:

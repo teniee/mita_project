@@ -1,5 +1,18 @@
 # MITA's financial calendar in ChatGPT (MCP Apps) — v1, 2026-10-24
 
+> **Update 2026-11-13 (MCP 2.11.0, component `ui://mita/financial-calendar-v5.html`,
+> `calendar-guidance-layer.md`).** Two layers on a date, never merged: the
+> date's **amount** is activity — recorded spending, planned purchases from a
+> stated pattern, bills due (unchanged from 2.10.0) — and, on today and the
+> dates ahead, apart from it, the **average left per day** marked "≈" (all
+> categories: `summary.flexible_per_day`; a flexible line's filter: its
+> `left_per_day`) — an arithmetic average, said to be one, never a
+> recommendation; new `summary.flexible_per_day_capped`. A switch ("Daily
+> average") hides it. Every
+> amount keeps its cents on a phone: the "whole euros" rule of the 2.6.0
+> redesign and of "Narrow phones" below is superseded — only an amount of
+> 100 or more may lose its cents, as a last resort, said under the grid.
+
 > **Update 2026-11-11 (MCP 2.10.0, component `ui://mita/financial-calendar-v4.html`,
 > `flexible-envelopes-calendar.md`).** A budget is not a schedule. A date
 > shows only what was recorded on it and what is scheduled for it — planned

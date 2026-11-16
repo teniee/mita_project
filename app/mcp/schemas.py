@@ -1190,6 +1190,16 @@ class RegionalSummaryOut(_Out):
     note: str
 
 
+# What MITA's daily figures (the preview's per_day, the calendar's
+# left_per_day and flexible_per_day) are — and are not
+# (docs/chatgpt-app/calendar-guidance-layer.md §3).
+NO_MODEL = (
+    "An arithmetic average, not a personalized recommendation: MITA's daily "
+    "figures do not use the user's income level, country, past spending or pay "
+    "days."
+)
+
+
 class AllocationOut(_Out):
     category: str = Field(
         description=(
@@ -1211,7 +1221,7 @@ class AllocationOut(_Out):
         description=(
             "planned: the monthly amount is split exactly over the purchase dates in "
             "purchases; flexible: a monthly limit with no purchase dates (per_day is "
-            "guidance, not a purchase)."
+            "an even split of the month, not a purchase or a recommendation)."
         )
     )
     pattern: str = Field(
@@ -1234,7 +1244,11 @@ class AllocationOut(_Out):
         )
     )
     per_day: Optional[Money] = Field(
-        description="For flexible lines: the monthly amount ÷ the days of the month, exact.",
+        description=(
+            "For flexible lines: the monthly amount ÷ the days of the month, exact — "
+            "an even split of the month, not a purchase, a plan for a date or a "
+            "personalized recommendation."
+        ),
         pattern=MONEY_PATTERN,
     )
     per_day_rounded: Optional[str] = Field(
@@ -1797,20 +1811,34 @@ class CalendarSummaryOut(_Out):
     )
     flexible_per_day: Optional[Money] = Field(
         description=(
-            "Daily guidance for the flexible budgets together: what they still hold "
+            "The flexible budgets' average left per day: what they still hold "
             "divided by the days left, today included (the sum of each flexible "
             "line's left_per_day), never more than average_per_day (never below 0): "
-            "when spending elsewhere used money the envelopes still show, the safe "
-            "average is the guide. An average to pace spending by — say 'about X a "
-            "day as guidance'. It is not a purchase, a bill, a limit or a target for "
-            "any date, and no date holds it: the user may spend it all on one day or "
-            "none. Null for a month without flexible budgets or one that ended."
+            "when spending elsewhere, a bill not paid yet or money set aside leaves "
+            "the month less than the envelopes show, it is the safe average. "
+            + NO_MODEL
+            + " Say 'about X a day on average'. It is not a purchase, a bill, a limit "
+            "or a target for any date, and no date holds it: the user may spend it "
+            "all on one day or none. The calendar shows it on today and each date "
+            "ahead as a separate labelled layer, 'average left per day' — never part "
+            "of planned_scheduled or scheduled_after_today. Null for a month without "
+            "flexible budgets or one that ended."
         ),
         pattern=MONEY_PATTERN,
     )
     flexible_per_day_rounded: Optional[str] = Field(
         description="flexible_per_day in whole currency units, for a short summary.",
         pattern=r"^\d+$",
+    )
+    flexible_per_day_capped: Optional[bool] = Field(
+        description=(
+            "Whether flexible_per_day was limited to the safe average a day "
+            "(average_per_day, never below 0): true when the flexible budgets' own "
+            "left_per_day figures add up to more — bills not paid yet, money set aside "
+            "or spending outside the flexible budgets use money the budgets still show "
+            "— so flexible_per_day is the safe average; false when it is their sum. "
+            "Null when flexible_per_day is null."
+        )
     )
     bills_due_after_today: Money = money_field(
         "Saved regular payments that fall due after today in this month, as scheduled (a bill already paid early is still counted here; see bills[].state)."
@@ -1864,7 +1892,7 @@ class CalendarLineOut(_Out):
             "purchases on known dates (purchases), from a pattern the user stated; "
             "flexible: a monthly limit with no purchase dates — it is on no date of "
             "the calendar; its figures are this line's planned, spent and remaining, "
-            "and left_per_day is guidance. Never say a flexible budget is planned or "
+            "and left_per_day is an average. Never say a flexible budget is planned or "
             "due on a date, and never turn its monthly amount into daily purchases; "
             "set_aside: savings; legacy: a month saved before MITA knew how the user "
             "buys (laid out by MITA's old pattern), or spending with no plan."
@@ -1882,9 +1910,13 @@ class CalendarLineOut(_Out):
     left_per_day: Optional[Money] = Field(
         description=(
             "For flexible lines of a month not ended: what is left on the line ÷ the "
-            "days left (today included). Guidance to pace spending by ('€100 left "
-            "over 20 days is about €5 a day'): not a purchase, not a limit or a "
-            "target for any date — the user may spend the rest on one day or none."
+            "days left (today included) — '€100 left over 20 days is about €5 a day "
+            "on average'. "
+            + NO_MODEL
+            + " Not a purchase, not a limit or a target for any date — the user may "
+            "spend the rest on one day or none. The calendar filtered to the line "
+            "shows it on today and each date ahead as the line's average left per "
+            "day, apart from what the date has recorded or scheduled."
         ),
         pattern=MONEY_PATTERN,
     )
@@ -1902,7 +1934,8 @@ class CalendarLineOut(_Out):
     pace_per_day: Optional[Money] = Field(
         description=(
             "For flexible lines: spent so far ÷ days elapsed (the forecast engine's "
-            "pace). Compare with planned_per_day: the recommended pace, not a limit."
+            "pace). Compare with planned_per_day, the even pace — an average, not a "
+            "recommendation or a limit."
         ),
         pattern=MONEY_PATTERN,
     )
@@ -1918,7 +1951,7 @@ class CalendarLineOut(_Out):
     pace_status: Optional[PaceStatus] = Field(
         description=(
             "For flexible lines: not_started; on_pace; faster_than_pace (spending at "
-            "least 1.2× the recommended pace — the forecast's at-risk rule: still "
+            "least 1.2× the even pace, planned_per_day — the forecast's at-risk rule: still "
             "within the monthly limit, but it would run out early); over_limit "
             "(beyond the month's amount). Spending fast is not overspending."
         )

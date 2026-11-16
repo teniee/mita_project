@@ -63,8 +63,12 @@ TERMS = (
     "user's stated pattern puts on it (purchases) and the saved bills due on it "
     "(bills). A flexible budget is a monthly limit with no dates: it is on no "
     "date, its amount, spending and remainder are on its line in categories, and "
-    "left_per_day / flexible_per_day are daily guidance — an average to pace "
-    "spending by, never a purchase, a bill or a limit for a date. planned and "
+    "left_per_day / flexible_per_day are averages — what is left ÷ the days "
+    "left — not personalized recommendations (MITA's daily figures do not use "
+    "the user's income level, country, past spending or pay days) and never a "
+    "purchase, a bill or a limit for a date; the calendar shows that average on "
+    "today and each date ahead, apart from what is scheduled, and it is never "
+    "added to planned_scheduled. planned and "
     "planned_everyday are what the stored plan rows hold on a date and include "
     "planned_flexible, the share of the flexible budgets' money kept there: "
     "bookkeeping, never to be presented as planned or due on that date. A day's "
@@ -204,10 +208,18 @@ def _shown_text(ctx: UserContext, cal, line) -> str:
             )
         per_day = cal.flexible_per_day if cal.position != "past" else None
         if per_day is not None:
+            capped = (
+                " (limited to the safe average a day)"
+                if cal.flexible_per_day_capped
+                else ""
+            )
             parts.append(
                 f"Flexible budgets are monthly limits with no dates: "
-                f"{money(cal.flexible_left)} left, about {money(per_day)} a day as "
-                "guidance — not purchases, and on no date of the calendar."
+                f"{money(cal.flexible_left)} left, about {money(per_day)} a day on "
+                f"average{capped} — what is left ÷ the days left, an average, not a "
+                "recommendation. The calendar shows that average on today and each "
+                "date ahead, apart from what is scheduled — it is not a purchase or a "
+                "plan for any date."
             )
         fast = [
             line.label

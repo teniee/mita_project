@@ -271,6 +271,21 @@ jobs:
           /tmp/mcp-venv/bin/pip install -q --upgrade pip
           /tmp/mcp-venv/bin/pip install -q -r requirements-mcp-dev.txt pip-audit jsonschema
 
+      # The calendar component, rendered (tests_mcp/test_calendar_rendering.py):
+      # what a date's cell, the date's detail and the exported image actually
+      # show — activity and the daily guide apart, every cent on a phone, no
+      # overflow at 320 px — in Chromium and WebKit, with axe-core's WCAG 2.2 AA
+      # checks. MITA_RENDERING_REQUIRED=1 (below) makes a missing browser or
+      # package a failure, never a skip.
+      - name: Install the rendering checks (Playwright, browsers, axe-core)
+        run: |
+          /tmp/mcp-venv/bin/pip install -q -r requirements-mcp-render.txt
+          /tmp/mcp-venv/bin/playwright install --with-deps chromium webkit
+          mkdir -p /tmp/axe && cd /tmp/axe
+          npm pack --silent axe-core@4.10.2
+          tar -xzf axe-core-4.10.2.tgz package/axe.min.js
+          test -s /tmp/axe/package/axe.min.js
+
       - name: Lint (MCP sources)
         run: |
           /tmp/mcp-venv/bin/black --check app/mcp tests_mcp scripts/mcp
@@ -301,7 +316,11 @@ jobs:
             tests_mcp/test_oauth_adversarial.py tests_mcp/test_oauth_concurrency.py \
             tests_mcp/test_auth_ui.py
 
-      - name: MCP tests (full suite)
+      - name: MCP tests (full suite, the rendered calendar included)
+        env:
+          MITA_RENDERING_REQUIRED: "1"
+          MITA_AXE: /tmp/axe/package/axe.min.js
+          MITA_SETTLE_SCALE: "2"
         run: PYTHONPATH=. /tmp/mcp-venv/bin/pytest -c tests_mcp/pytest.ini tests_mcp -q
 
       - name: Build MCP image

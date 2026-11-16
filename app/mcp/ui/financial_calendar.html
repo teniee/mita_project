@@ -7,13 +7,22 @@
 <title>MITA financial calendar</title>
 <!--
   MITA's financial calendar, an MCP Apps component (io.modelcontextprotocol/ui).
-  Served by app/mcp/ui as ui://mita/financial-calendar-v4.html; rules in that
+  Served by app/mcp/ui as ui://mita/financial-calendar-v5.html; rules in that
   module and in docs/chatgpt-app/financial-calendar.md:
-  * a date shows only what belongs to it: what was recorded on it and what is
-    scheduled for it (planned purchases, saved bills due). A flexible budget
-    is a monthly limit with no dates: it is never drawn on a date — not as an
-    amount, not as a daily guide — and its guidance is shown, labelled, with
-    the summary and its own line (docs/chatgpt-app/flexible-envelopes-calendar.md);
+  * two layers, never merged (docs/chatgpt-app/calendar-guidance-layer.md).
+    Activity: a date's amount is what was recorded on it and what is
+    scheduled for it (planned purchases, saved bills due) — nothing else. A
+    flexible budget is a monthly limit with no dates, so it is never a date's
+    amount (docs/chatgpt-app/flexible-envelopes-calendar.md). Guidance: on
+    today and the dates ahead, apart from the amount and marked "≈", the
+    average left per day — MITA's summary.flexible_per_day, or a flexible
+    line's left_per_day under its filter: what is left divided by the days
+    left, an arithmetic average and said so, never presented as a
+    personalized recommendation. It is never in a date's amount, total,
+    data-amount or any sum, and the user can hide it;
+  * every cent of an amount is shown: a phone drops ".00" and sets cents a
+    little smaller; only an amount of 100 or more that still cannot fit loses
+    its cents, said under the grid (a 1.50 coffee was once drawn as "2");
   * loads nothing and connects nowhere (empty CSP allowlist); data arrives in
     tool results the host delivers, more is asked for only through the host
     (tools/call to MITA's read tools);
@@ -28,6 +37,8 @@
   --mita-navy:#193C57;--mita-navy-2:#2B5876;--mita-yellow:#FFD25F;--mita-teal:#14B8A6;--mita-teal-ink:#0B6E64;
   --over:#d03b3b;--over-bg:rgba(208,59,59,.09);--within:#14B8A6;--track:rgba(13,13,13,.08);
   --remind:#8a5300;--remind-mark:#c27a00;--remind-bg:rgba(237,161,0,.15);--recorded-bg:rgba(20,184,166,.12);
+  /* the daily average (average layer): opaque, so its contrast holds on any cell, the yellow "today" included */
+  --guide-ink:#3D44B0;--guide-bg:#EEF0FF;
   --color-background-primary:#ffffff;--color-background-secondary:#f6f5f2;--color-background-tertiary:#ecebe6;
   --color-text-primary:#0d0d0d;--color-text-secondary:#5c5b57;--color-text-tertiary:#76756f;
   --color-text-danger:#b3261e;--color-border-primary:rgba(13,13,13,.14);--color-border-secondary:rgba(13,13,13,.08);
@@ -42,6 +53,7 @@
   color-scheme:dark;
   --over:#e66767;--over-bg:rgba(230,103,103,.15);--within:#2cc5b4;--track:rgba(255,255,255,.10);--mita-teal-ink:#5EEAD4;
   --remind:#f2b33d;--remind-mark:#f2b33d;--remind-bg:rgba(242,179,61,.16);--recorded-bg:rgba(44,197,180,.14);
+  --guide-ink:#C5C8FF;--guide-bg:#2B2E55;
   --color-background-primary:#212121;--color-background-secondary:#2a2a2a;--color-background-tertiary:#343434;
   --color-text-primary:#f2f2f0;--color-text-secondary:#c3c2b7;--color-text-tertiary:#a3a29b;
   --color-text-danger:#ff8a80;--color-border-primary:rgba(255,255,255,.16);--color-border-secondary:rgba(255,255,255,.08);
@@ -102,13 +114,17 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 .mini .wd{font-size:11px;font-weight:650;color:var(--color-text-tertiary);text-align:center;padding-bottom:1px}
 .mcell{position:relative;height:50px;border-radius:10px;background:var(--color-background-secondary);padding:5px 5px 0;display:flex;flex-direction:column;justify-content:space-between;min-width:0;overflow:hidden}
 .mcell b{font-size:11.5px;font-weight:700;line-height:1;color:var(--color-text-secondary)}
-.mcell span{font-size:13px;font-weight:720;line-height:1;padding-bottom:8px;white-space:nowrap;overflow:hidden;color:var(--color-text-primary);letter-spacing:-.01em}
+.mcell .ma{display:block;min-height:13px;font-size:13px;font-weight:720;line-height:1;padding-bottom:8px;white-space:nowrap;overflow:hidden;color:var(--color-text-primary);letter-spacing:-.01em}
 .mcell.future{background:transparent;border:1px dashed var(--color-border-primary)}
-.mcell.future span{color:var(--color-text-secondary);font-weight:620}
+.mcell.future .ma{color:var(--color-text-secondary);font-weight:620}
 .mcell.blank{background:transparent;border:0}
 .mcell.over{background:var(--over-bg)}
 .mcell.today{background:var(--mita-yellow)}
-.mcell.today b,.mcell.today span{color:var(--mita-navy)}
+.mcell.today b,.mcell.today .ma{color:var(--mita-navy)}
+/* the guide layer in the inline card: the amount stays at the top, the guide sits under it */
+.mini.guided .mcell{height:auto;min-height:64px;justify-content:flex-start;gap:3px}
+.mini.guided .mcell .ma{padding-bottom:0}
+.mcell .guide{margin-top:auto;margin-bottom:8px;font-size:10.5px;padding:0 4px;border-radius:5px}
 .mcell i{position:absolute;left:5px;right:5px;bottom:3px;height:3px;border-radius:2px;background:var(--track)}
 .mcell i>s{display:block;height:100%;border-radius:2px;background:var(--within);text-decoration:none}
 .mcell.over i>s{background:var(--over)}
@@ -125,9 +141,18 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 .inote .ico{width:14px;height:14px}
 .inote .over{color:var(--color-text-danger);font-weight:600}
 .actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+/* an amount's cents, a little smaller on a phone (every cent stays) */
+.v .c{font-size:.8em;letter-spacing:0}
+/* the daily average: guidance, not an amount the date holds — its own pill, marked ≈ */
+.guide{display:inline-flex;align-items:baseline;align-self:flex-start;max-width:100%;padding:1px 5px;border-radius:6px;background:var(--guide-bg);color:var(--guide-ink);font-size:11.5px;font-weight:650;line-height:1.25;white-space:nowrap;overflow:hidden;letter-spacing:-.01em}
+.guide .ap{font-weight:750;margin-right:1px}
 /* fitText(): money is never cut off on a narrow screen */
-.mini.tight .mcell span{font-size:11px;letter-spacing:-.02em}
+.mini.tight .mcell .ma{font-size:11px;letter-spacing:-.02em}
 .grid.tight .cell .amt{font-size:11px;letter-spacing:-.02em}
+.mini.tight .guide,.grid.tight .guide{font-size:10px;padding:0 3px;letter-spacing:-.02em}
+/* a second step before any cents are dropped (a 286 px chat column) */
+.mini.tighter .mcell .ma,.grid.tighter .cell .amt{font-size:10px;letter-spacing:-.03em}
+.tighter .v .c{font-size:.75em}
 .kpis.stack,.tiles.stack{grid-template-columns:repeat(2,minmax(0,1fr))}
 .kpis.stack>:last-child:nth-child(odd),.tiles.stack>:last-child:nth-child(odd){grid-column:1/-1}
 .actions.stack{grid-template-columns:1fr}
@@ -189,7 +214,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 .cell.blank{visibility:hidden;pointer-events:none}
 .cell .d{display:flex;align-items:center;justify-content:space-between;gap:2px;font-size:13px;font-weight:700;line-height:1;color:var(--color-text-primary)}
 .cell .tday{font-size:9.5px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;padding:2px 4px;border-radius:5px;background:var(--mita-yellow);color:var(--mita-navy);line-height:1}
-.cell .amt{font-size:14px;font-weight:720;line-height:1.1;white-space:nowrap;overflow:hidden;letter-spacing:-.01em}
+.cell .amt{display:block;min-height:1.1em;font-size:14px;font-weight:720;line-height:1.1;white-space:nowrap;overflow:hidden;letter-spacing:-.01em}
 .cell.future .amt{font-weight:620;color:var(--color-text-secondary)}
 .chip-proposed{font-size:11px;font-weight:650;padding:1px 6px;border-radius:6px;border:1px dashed var(--color-border-primary);color:var(--color-text-secondary);margin-left:6px;white-space:nowrap}
 .meta.fast{color:var(--remind)}
@@ -201,6 +226,20 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 .cell .marks .ico.cat{width:12px;height:12px}
 .fchip .ico.cat,.line .ico.cat,.rows .ico.cat{width:15px;height:15px}
 .gridcap{margin:0 2px 8px;font-size:12px;color:var(--color-text-secondary)}
+.calhead{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:6px 12px;margin:0 2px 8px}
+.calhead .gridcap{margin:0;flex:1 1 220px;min-width:0}
+/* the guide layer's switch: role=switch, its state also in words */
+.switch{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:4px 12px 4px 6px;border-radius:var(--border-radius-full);border:1px solid var(--color-border-primary);background:var(--color-background-primary);font-size:13px;font-weight:650;cursor:pointer;white-space:nowrap}
+.switch .track{position:relative;flex:none;width:30px;height:18px;border-radius:9px;background:var(--color-text-tertiary);transition:background-color .15s ease}
+.switch .track::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--color-background-primary);transition:transform .15s ease}
+.switch[aria-checked=true] .track{background:var(--guide-ink)}
+.switch[aria-checked=true] .track::after{transform:translateX(12px)}
+.switch .state-word{color:var(--color-text-secondary);font-weight:600}
+.switch:focus-visible{outline:3px solid #6B73FF;outline-offset:2px}
+.guide-box{margin-top:8px;padding:10px 12px;border-radius:var(--border-radius-md);background:var(--guide-bg);color:var(--color-text-primary)}
+.guide-box .big b{color:var(--guide-ink)}
+.guide-box .note{color:var(--color-text-primary)}
+.rows li.mine{font-weight:700}
 .cell .bill{width:12px;height:12px;color:var(--color-text-secondary);margin-left:auto}
 .cell .bill.paid{color:var(--mita-teal-ink)}
 .cell .bill.overdue{color:var(--over);stroke-width:2.6}
@@ -218,6 +257,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 .sw.plan{background:transparent;border:1px dashed var(--color-text-tertiary)}
 .sw.overm{background:var(--over)}
 .sw.todaym{background:var(--mita-yellow)}
+.sw.guidem{width:auto;height:auto;padding:0 4px;border-radius:4px;background:var(--guide-bg);color:var(--guide-ink);font-style:normal;font-size:11px;font-weight:750;line-height:14px}
 .detail{padding:16px;border-radius:var(--border-radius-xl);background:var(--color-background-primary);border:1px solid var(--color-border-secondary);box-shadow:var(--shadow-md);scroll-margin-top:12px}
 .detail h2{font-size:18px;line-height:1.25}
 .detail .kind{margin-top:6px}
@@ -318,14 +358,26 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   .cell .tday{display:none}
 }
 @media (max-width:380px){
+  /* a 320 px screen: narrower gutters, so an amount keeps its cents (271.50) */
+  .app{padding-left:12px;padding-right:12px}
+  .app[data-mode=fullscreen]{padding-left:8px;padding-right:8px}
+  .calendar{padding:6px}
+  .weekdays,.grid,.mini{gap:3px}
   .kpi{padding:8px}
   .kpi dd{font-size:14px}
-  .cell{padding:6px 3px 5px;border-radius:10px}
+  .cell{padding:5px 2px 4px;border-radius:9px}
+  .mcell{padding:5px 3px 0}
   .cell .amt{font-size:12px}
+  .cell .guide{padding:1px 3px}
   .hero-fig{font-size:32px}
 }
+@media (max-width:340px){
+  .app{padding-left:8px;padding-right:8px}
+  .mini{gap:2px}
+  .mcell{padding:4px 2px 0}
+}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.cell[aria-selected=true]{transform:none}}
-@media (forced-colors:active){.cell,.fchip,.btn,.line,.mcell,.bstate,.rem{border:1px solid CanvasText}.bar>i,.cell .meter>i,.mcell i>s,.mcell.win::before,.cell.win::before{background:Highlight}}
+@media (forced-colors:active){.cell,.fchip,.btn,.line,.mcell,.bstate,.rem,.guide,.switch,.switch .track{border:1px solid CanvasText}.bar>i,.cell .meter>i,.mcell i>s,.mcell.win::before,.cell.win::before,.switch[aria-checked=true] .track{background:Highlight}}
 </style>
 </head>
 <body>
@@ -338,7 +390,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   // ---------------------------------------------------------------------
   // Constants
   // ---------------------------------------------------------------------
-  var APP_INFO = { name: "MITA financial calendar", version: "4.0.0" };
+  var APP_INFO = { name: "MITA financial calendar", version: "5.0.0" };
   var PROTOCOL_VERSION = "2026-01-26";
   // The month payload this component draws (serializers.WIDGET_PAYLOAD_VERSION):
   // version 2 day_lines are [line, scheduled, spent] — what is scheduled on a
@@ -408,6 +460,9 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     view: { focus: null, category: null },
     selected: null,
     filter: null,
+    // the average layer (the daily average on today and the dates ahead):
+    // on unless the user hid it
+    guide: true,
     loading: true,
     busy: false,
     error: null,
@@ -571,7 +626,8 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
         privateContent: {
           month: monthKey(state.payload.month),
           selected: state.selected,
-          filter: state.filter
+          filter: state.filter,
+          guide: state.guide
         }
       });
     } catch (e) { /* host refused: nothing to persist */ }
@@ -603,13 +659,18 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   }
   if (typeof ResizeObserver === "function") {
     var observer = new ResizeObserver(function () {
-      // A new width can change what fits (rotation, fullscreen): lay out again.
-      if (window.innerWidth !== state.width) {
-        state.width = window.innerWidth;
-        state.wide = state.width >= WIDE;
-        render();
-      }
-      scheduleSize();
+      // A new width can change what fits (rotation, fullscreen): lay out
+      // again — in the next frame, never inside this callback. A render here
+      // resizes what is observed, and the browser then reports "ResizeObserver
+      // loop completed with undelivered notifications" as a page error.
+      requestAnimationFrame(function () {
+        if (window.innerWidth !== state.width) {
+          state.width = window.innerWidth;
+          state.wide = state.width >= WIDE;
+          render();
+        }
+        scheduleSize();
+      });
     });
     observer.observe(document.documentElement);
     observer.observe(document.body);
@@ -720,6 +781,8 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       state.restored = true;
       var o = openai();
       var saved = o && o.widgetState && o.widgetState.privateContent;
+      // hiding the daily average is the user's choice for every month
+      if (saved && typeof saved.guide === "boolean") state.guide = saved.guide;
       if (saved && saved.month === monthKey(month)) {
         if (saved.selected && month.days.some(function (d) { return d.date === saved.selected; })) state.selected = saved.selected;
         if (saved.filter && lineKeys.indexOf(saved.filter) !== -1) state.filter = saved.filter;
@@ -820,17 +883,31 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
 
   var plainFormat = new Intl.NumberFormat(DATE_LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   var wholeFormat = new Intl.NumberFormat(DATE_LOCALE, { maximumFractionDigits: 0 });
+  // The exported image's dates (1080 px wide): every cent below 1,000.
   function cellAmount(value) {
     var n = Number(value);
     return Math.abs(n) >= 1000 ? wholeFormat.format(n) : plainFormat.format(n);
   }
-  function fitAmount(value) {
-    // Every cent where a cell has room; whole euros in a phone's date grid
-    // (said under it; each date's label and detail keep the exact figure).
-    return window.innerWidth < 560 ? wholeAmount(value) : cellAmount(value);
+  function narrowGrid() {
+    return state.width < 560;
+  }
+  // A date's amount, exact to the cent. A larger screen always shows two
+  // decimals; a phone drops a ".00" (a whole amount is exact without it) and
+  // sets the cents a little smaller, so a 320 px grid holds them. Nothing is
+  // rounded here: only fitText may drop the cents of an amount of 100 or
+  // more that still cannot fit, and it says so under the grid.
+  function amountParts(value) {
+    var c = Math.round(Number(value) * 100);
+    var sign = c < 0 ? "-" : "";
+    var a = Math.abs(c);
+    if (!narrowGrid()) return [sign + plainFormat.format(a / 100)];
+    var whole = sign + wholeFormat.format(Math.floor(a / 100));
+    var cents = a % 100;
+    return cents ? [whole, "." + (cents < 10 ? "0" : "") + cents] : [whole];
   }
   function amountValue(value) {
-    return el("span", { class: "v", "data-amount": value, text: fitAmount(value) });
+    var parts = amountParts(value);
+    return el("span", { class: "v", "data-amount": value }, parts.length > 1 ? [parts[0], el("span", { class: "c", text: parts[1] })] : parts[0]);
   }
   function parseDate(iso) {
     var parts = iso.split("-").map(Number);
@@ -1009,13 +1086,66 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   }
 
   // The flexible budgets' daily guidance for the month (summary.flexible_per_day):
-  // an average to pace spending by. It belongs to the month — it is shown
-  // with the summary and on each flexible line, labelled as guidance, and is
-  // never drawn on a date: no date holds it.
+  // what they have left divided by the days left, today included, never
+  // more than the safe average a day. An average to pace spending by — no
+  // date holds it. Null for a month that ended or has no flexible budget.
   function flexGuide(month) {
     var s = month.summary;
     if (month.plan_status !== "generated" || month.month_position === "past") return null;
-    return s.flexible_per_day && cents(s.flexible_per_day) > 0 ? s.flexible_per_day : null;
+    return s.flexible_per_day === null || s.flexible_per_day === undefined ? null : s.flexible_per_day;
+  }
+
+  // --- the average layer: the daily average (docs/chatgpt-app/calendar-guidance-layer.md) ---
+  // One figure for the view: "All categories" takes MITA's one aggregate
+  // (summary.flexible_per_day); a filter on a flexible budget takes that
+  // budget's own (left_per_day). A planned purchase or a bill has its money
+  // on its dates already, so a filter on one has no guide. The guide is drawn
+  // apart from a date's amount and never enters it, its data-amount or a sum.
+  function guideOf(month) {
+    if (month.plan_status !== "generated" || month.month_position === "past") return null;
+    if (state.filter) {
+      var line = lineByKey(state.filter);
+      if (!line || line.spending_type !== "flexible" || line.left_per_day === null || line.left_per_day === undefined) return null;
+      return { value: line.left_per_day, rounded: line.left_per_day_rounded, line: line };
+    }
+    var value = flexGuide(month);
+    if (value === null) return null;
+    return { value: value, rounded: month.summary.flexible_per_day_rounded, line: null };
+  }
+  // The month has a guide layer to show or hide (whatever the filter).
+  function hasGuide(month) {
+    return flexGuide(month) !== null;
+  }
+  // The guide on one date: today and the dates ahead, while it is on.
+  function guideFor(day) {
+    if (!state.guide || day.day_kind === "past") return null;
+    return guideOf(state.payload.month);
+  }
+  // The days the guide divides by: today and every day after it (all the
+  // days of a month ahead) — the same days as each line's left_per_day.
+  function guideDays(month) {
+    return month.days.filter(function (d) { return d.day_kind !== "past"; }).length;
+  }
+  // "≈" and the figure: every cent on a larger screen; on a phone, whole
+  // units (MITA's rounded figure — the guide is an average, "about"), "<1"
+  // for a guide under one unit that is not zero.
+  function guideText(guide) {
+    if (!narrowGrid()) return plainFormat.format(Number(guide.value));
+    if (cents(guide.value) > 0 && String(guide.rounded) === "0") return "<1";
+    return guide.rounded !== null && guide.rounded !== undefined ? String(guide.rounded) : wholeFormat.format(Number(guide.value));
+  }
+  function guidePill(guide) {
+    return el("span", { class: "guide num", "data-guide": guide.value, "aria-hidden": "true" }, [el("span", { class: "ap", text: "≈" }), guideText(guide)]);
+  }
+  // What the guide is, in words: whose guide, and that it is guidance.
+  function guideOwner(guide) {
+    return guide.line ? guide.line.category_label : "your flexible budgets";
+  }
+  function guideSpoken(guide, cur) {
+    return "average left per day for " + guideOwner(guide) + " about " + money(guide.value, cur) + ", what is left divided by the days left, not a plan or a recommendation";
+  }
+  function guideCapped(month) {
+    return month.summary.flexible_per_day_capped === true;
   }
 
   // Flexible budgets: monthly limits with no dates (spending_type "flexible").
@@ -1024,10 +1154,6 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   }
   function hasFlexible(month) {
     return flexibleLines(month).length > 0;
-  }
-  // "about 3 a day" in the month's currency, from MITA's rounded figure.
-  function aboutADay(rounded, cur) {
-    return "about " + money(rounded, cur).replace(/[.,]00(?=\D*$)/, "") + " a day";
   }
 
   function lineGroup(key) {
@@ -1101,6 +1227,9 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     windowBills(day.date).forEach(function (bill) {
       parts.push("reminder: " + billName(bill) + " " + money(bill.amount, cur2) + " due in " + plural(daysBetween(day.date, bill.date), "day", "days"));
     });
+    // the average layer, last and in words: never read as part of the date
+    var guide = guideFor(day);
+    if (guide) parts.push(guideSpoken(guide, cur2));
     return parts.join(", ");
   }
 
@@ -1183,33 +1312,43 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     scheduleSize();
   }
 
-  // Money is never cut off. A date grid whose amounts do not fit their cells
-  // (a 360 dp phone's chat column) first gets a smaller size, then whole
-  // euros, said under the grid; the exact figure stays in each date's label
-  // and detail. Summary tiles and buttons that do not fit go two-up / stack.
+  // Money is never cut off, and an amount under 100 always keeps its cents.
+  // A date grid whose amounts or guides do not fit their cells first gets a
+  // smaller size; if an amount still does not fit, only amounts of 100 or
+  // more lose their cents, and the grid says so — the exact figure stays in
+  // each date's label and detail. 1.50 is never drawn as "2". Summary tiles
+  // and buttons that do not fit go two-up / stack.
   function fitText(scope) {
     var grids = scope.querySelectorAll(".mini, .grid");
     for (var i = 0; i < grids.length; i++) {
       var grid = grids[i];
-      if (!clipped(grid, ".fit")) continue;
+      if (!clipped(grid, ".fit, .guide")) continue;
       grid.classList.add("tight");
-      if (!clipped(grid, ".fit") || grid.classList.contains("whole")) continue;
+      if (!clipped(grid, ".fit")) continue;
+      grid.classList.add("tighter");
+      if (!clipped(grid, ".fit")) continue;
+      var rounded = false;
       var values = grid.querySelectorAll("[data-amount]");
-      for (var j = 0; j < values.length; j++) values[j].textContent = wholeAmount(values[j].getAttribute("data-amount"));
-      var note = el("p", { class: "fit-note", text: grid.classList.contains("mini") ? "Amounts rounded to whole euros to fit this screen." : "Amounts rounded to whole euros to fit this screen; select a date for the exact figures." });
+      for (var j = 0; j < values.length; j++) {
+        var c = Math.abs(Math.round(Number(values[j].getAttribute("data-amount")) * 100));
+        if (c >= 10000 && c % 100 !== 0) {
+          values[j].textContent = wholeFormat.format(Math.round(Number(values[j].getAttribute("data-amount"))));
+          values[j].setAttribute("data-rounded", "true");
+          rounded = true;
+        }
+      }
+      if (!rounded) continue;
+      var note = el("p", { class: "fit-note", text: grid.classList.contains("mini")
+        ? "Amounts of 100 or more are shown without cents to fit this screen; open the calendar for the exact figures."
+        : "Amounts of 100 or more are shown without cents to fit this screen; select a date for the exact figures." });
       grid.parentNode.insertBefore(note, grid.nextSibling);
     }
     var boxes = scope.querySelectorAll(".kpis, .tiles");
-    for (var k = 0; k < boxes.length; k++) if (clipped(boxes[k], "dd")) boxes[k].classList.add("stack");
+    for (var k = 0; k < boxes.length; k++) if (clipped(boxes[k], "dt, dd")) boxes[k].classList.add("stack");
     var rows = scope.querySelectorAll(".actions");
     for (var r = 0; r < rows.length; r++) {
       if (rows[r].scrollWidth > rows[r].clientWidth + 1 || clipped(rows[r], ".btn")) rows[r].classList.add("stack");
     }
-  }
-  function wholeAmount(value) {
-    // A plan of a few cents is not "0".
-    var n = Number(value);
-    return n > 0 && n < 0.5 ? "<1" : wholeFormat.format(n);
   }
   function clipped(box, selector) {
     var nodes = box.querySelectorAll(selector);
@@ -1249,12 +1388,13 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       var days = s.days_remaining;
       var caption = month.month_position === "future"
         ? "a day on average · " + plural(days, "day", "days") + " in " + monthOnly.format(monthDate(month))
-        : "a day on average · " + plural(days, "day", "days") + " left";
+        : "a day on average · " + plural(days, "day", "days") + " after today";
       var flex = flexGuide(month);
       return el("div", { class: "hero" }, [
         el("span", { class: "hero-fig num", text: money(s.average_per_day, cur) }),
         el("span", { class: "hero-cap", text: caption }),
-        flex ? el("span", { class: "hero-cap", id: "flex-guidance", style: "display:block;margin-top:2px", text: "Flexible budgets (monthly limits, no dates): " + money(s.flexible_left, cur) + " left · " + aboutADay(s.flexible_per_day_rounded, cur) + " as guidance, not a daily limit" }) : null
+        // the average layer's figure, named apart from the safe average above
+        flex !== null ? el("span", { class: "hero-cap", id: "flex-guidance", style: "display:block;margin-top:2px", text: "Flexible budgets (monthly limits, no dates): " + money(s.flexible_left, cur) + " left · ≈ " + money(flex, cur) + " a day on average" + (guideCapped(month) ? " (the safe average)" : "") + " — an average, not a recommendation or a daily limit" }) : null
       ]);
     }
     if (month.plan_status === "generated") {
@@ -1373,21 +1513,24 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     }
     card.appendChild(kpis);
 
-    var grid = el("div", { class: "mini" + (state.width < 560 ? " whole" : ""), "aria-hidden": "true" });
+    var guided = state.guide && guideOf(month) !== null;
+    var grid = el("div", { class: "mini" + (guided ? " guided" : ""), "aria-hidden": "true" });
     weekdayHeaders(weekdayNarrow).forEach(function (name) { grid.appendChild(el("div", { class: "wd", text: name })); });
     for (var b = leadingBlanks(month.days[0].date); b > 0; b--) grid.appendChild(el("div", { class: "mcell blank" }));
     month.days.forEach(function (day) {
       var model = cellModel(day);
       var classes = "mcell" + (day.day_kind === "future" ? " future" : "") + (day.day_kind === "today" ? " today" : "") + (model.state === "over" ? " over" : "");
       // A date shows what was spent on it or what is scheduled for it; a date
-      // with neither is empty (a flexible budget is on no date).
+      // with neither has no amount (a flexible budget is on no date).
       var raw = null;
       if (day.day_kind !== "future" && cents(model.spent) > 0) raw = model.spent;
       if (day.day_kind === "future" && cents(model.planned) > 0) raw = model.planned;
-      var amount = raw === null ? "" : fitAmount(raw);
       if (activeWindow(day.date)) classes += " win";
-      var amountSpan = el("span", { class: "num fit", "data-amount": raw, text: amount });
+      var amountSpan = el("span", { class: "ma num fit" }, raw === null ? null : amountValue(raw));
       var cell = el("div", { class: classes }, [el("b", { text: String(parseDate(day.date).getUTCDate()) }), amountSpan]);
+      // the average layer, under the amount: never part of it
+      var guide = guideFor(day);
+      if (guide) cell.appendChild(guidePill(guide));
       if (model.begun && (model.state === "over" || model.state === "within")) {
         cell.appendChild(el("i", null, el("s", { style: "width:" + (model.ratio * 100).toFixed(1) + "%" })));
       }
@@ -1396,7 +1539,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       grid.appendChild(cell);
     });
     card.appendChild(grid);
-    if (state.width < 560) card.appendChild(el("p", { class: "fit-note", text: "Whole euros here; open the calendar for the exact figures." }));
+    if (guided) card.appendChild(el("p", { class: "fit-note", id: "mini-guide-note" }, [el("i", { class: "sw guidem", "aria-hidden": "true", text: "≈" }), " " + guideLegendText(month)]));
     card.appendChild(el("p", { class: "vh", text: inlineSummaryText(month) }));
 
     var reminders = remindersBlock(month, 2);
@@ -1422,7 +1565,36 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   function inlineSummaryText(month) {
     var over = month.days.filter(function (d) { return d.state === "over"; }).map(function (d) { return shortDate.format(parseDate(d.date)); });
     var reminders = (month.reminders || []).map(function (b) { return billTitle(b, month.currency) + "."; }).join(" ");
-    return monthTitle(month) + " calendar. " + (over.length ? "Over the everyday plan on " + over.join(", ") + "." : "No date over the everyday plan.") + (reminders ? " " + reminders : "") + " Open the calendar for each date.";
+    var guide = state.guide ? guideOf(month) : null;
+    var guideWords = guide ? " From today, the " + guideSpoken(guide, month.currency) + "." : "";
+    return monthTitle(month) + " calendar. " + (over.length ? "Over the everyday plan on " + over.join(", ") + "." : "No date over the everyday plan.") + (reminders ? " " + reminders : "") + guideWords + " Open the calendar for each date.";
+  }
+
+  // The guide in one sentence, wherever it is drawn: what it is, how MITA
+  // works it out, and that it is guidance.
+  function guideLegendText(month) {
+    var guide = guideOf(month);
+    if (!guide) return "";
+    return (guide.line ? lineGuideText(month, guide.line) : aggregateGuideText(month)) + " An average of what is left — not a recommendation, not scheduled, not part of any date’s amount.";
+  }
+  // A flexible budget's own guide (its left_per_day), how it is worked out.
+  function lineGuideText(month, line) {
+    var cur = month.currency;
+    return "Average left per day for " + line.category_label + ": " + money(Math.max(0, Number(line.remaining)).toFixed(2), cur) + " left ÷ " + plural(guideDays(month), "day", "days") + " (today included) = " + money(line.left_per_day, cur) + " a day.";
+  }
+  // MITA's one aggregate (summary.flexible_per_day), how it is worked out.
+  function aggregateGuideText(month) {
+    var cur = month.currency;
+    var value = flexGuide(month);
+    if (value === null) return "";
+    if (guideCapped(month)) {
+      // the guide is the safe average (never below 0): after bills and
+      // savings, the month as a whole has less left than the budgets show
+      return cents(value) > 0
+        ? "Average left per day in your flexible budgets: " + money(value, cur) + " a day — the safe average a day: after bills and savings the month as a whole has less left than the " + money(month.summary.flexible_left, cur) + " they still show."
+        : "Average left per day in your flexible budgets: " + money(value, cur) + " a day: after bills and savings nothing is left in the month as a whole, although they still show " + money(month.summary.flexible_left, cur) + ".";
+    }
+    return "Average left per day in your flexible budgets: " + money(month.summary.flexible_left, cur) + " left ÷ " + plural(guideDays(month), "day", "days") + " (today included) ≈ " + money(value, cur) + " a day.";
   }
 
   function kpi(label, value, cls) {
@@ -1526,15 +1698,24 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       } }, "How is this worked out?");
       lead.appendChild(toggle);
       if (state.showCalc) {
+        var flex = flexGuide(month);
         lead.appendChild(el("div", { class: "calc num", id: "calc" }, [
           calcRow("Plan", money(s.total_planned, cur)),
           calcRow("− Spent", money(s.total_spent, cur)),
           calcRow("− Protected savings", money(s.savings_set_aside, cur)),
           cents(s.commitments_reserved) > 0 ? calcRow("− Held for bills", money(s.commitments_reserved, cur)) : null,
           calcRow("= Left to spend", money(s.left_to_spend, cur), true),
-          calcRow("÷ Days left", String(s.days_remaining)),
-          calcRow("= On average a day", money(s.average_per_day, cur), true)
+          calcRow("÷ Days after today", String(s.days_remaining)),
+          calcRow("= On average a day", money(s.average_per_day, cur), true),
+          // The daily average (the calendar's average layer): the flexible
+          // budgets alone — planned purchases are on their dates, bills held.
+          flex !== null ? calcRow("Flexible budgets left", money(s.flexible_left, cur)) : null,
+          flex !== null ? calcRow("÷ Days left, today included", String(guideDays(month))) : null,
+          flex !== null ? calcRow("= Average left per day", "≈ " + money(flex, cur), true) : null
         ]));
+        if (flex !== null) {
+          lead.appendChild(el("p", { class: "note", id: "calc-guide", style: "margin-top:6px", text: "The average left per day is each flexible budget’s own left ÷ days left, added up" + (guideCapped(month) ? "; it is limited to the average a day (never below 0), because after bills and savings the month as a whole has less left than the budgets show." : ", and never more than the average a day.") + " It is arithmetic, not a recommendation: MITA does not weigh days by your habits, income or country, and it is never part of a date’s amount or of what is scheduled." }));
+        }
       }
     }
     if (!wide) {
@@ -1668,9 +1849,12 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     var left = over ? moneyCents(-cents(line.remaining), cur) + " over" : money(line.remaining, cur) + " left";
     var text;
     if (line.spending_type === "flexible") {
-      // A flexible budget: its month, and its guidance said to be guidance.
+      // A flexible budget: its month, and its average left per day said to
+      // be an average — exact here (MITA's left_per_day); a cell may round it.
+      var hasDay = line.left_per_day !== null && line.left_per_day !== undefined;
       text = "flexible budget · spent " + money(line.spent, cur) + " of " + money(line.planned, cur) + " this month · " + left +
-        (!over && line.left_per_day_rounded ? " · " + aboutADay(line.left_per_day_rounded, cur) + " as guidance" : "") + " · no purchase dates";
+        (hasDay ? " · ≈ " + money(line.left_per_day, cur) + " a day on average" : "") + " · no purchase dates" +
+        (hasDay && guideCapped(month) ? " · all flexible budgets together ≈ " + money(month.summary.flexible_per_day, cur) + " a day (the safe average)" : "");
     } else {
       text = "spent " + money(line.spent, cur) + " of " + money(line.planned, cur) + " planned · " + left;
     }
@@ -1684,9 +1868,9 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     var box = el("div", { class: "calendar", "aria-busy": state.busy ? "true" : "false" });
     var weekdays = el("div", { class: "weekdays", "aria-hidden": "true" });
     weekdayHeaders(weekdayShort).forEach(function (name) { weekdays.appendChild(el("div", { text: name })); });
-    box.insertBefore(el("p", { class: "gridcap", text: gridCaption(month) }), box.firstChild);
+    box.appendChild(el("div", { class: "calhead" }, [el("p", { class: "gridcap", id: "grid-caption", text: gridCaption(month) }), guideSwitch(month)]));
     box.appendChild(weekdays);
-    var grid = el("div", { class: "grid" + (state.width < 560 ? " whole" : ""), role: "grid", "aria-label": monthTitle(month) + " calendar" });
+    var grid = el("div", { class: "grid", role: "grid", "aria-label": monthTitle(month) + " calendar" });
     var cells = [];
     for (var b = leadingBlanks(month.days[0].date); b > 0; b--) cells.push(el("div", { class: "cell blank", "aria-hidden": "true" }));
     var focusable = state.selected || (month.month_position === "current" ? month.today : month.days[0].date);
@@ -1697,7 +1881,6 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       grid.appendChild(row);
     }
     box.appendChild(grid);
-    if (state.width < 560) box.appendChild(el("p", { class: "fit-note", text: "Whole euros on this screen; select a date for the exact figures." }));
     var flexNote = flexibleNote(month);
     if (flexNote) box.appendChild(flexNote);
     box.appendChild(legend());
@@ -1709,18 +1892,46 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     // A month laid out by how you buy: dates hold planned purchases and bills.
     // A month saved before that keeps MITA's older per-date plan.
     var scheduled = month.categories.some(function (c) { return c.spending_type !== "legacy"; });
-    if (month.month_position === "future") return scheduled ? "Each date shows what is scheduled for it: planned purchases and bills." : "Each date shows MITA’s plan for it.";
-    return scheduled ? "Dates so far show what you spent; dates ahead show what is scheduled: planned purchases and bills." : "Dates so far show what you spent; dates ahead show MITA’s plan.";
+    var base;
+    if (month.month_position === "future") base = scheduled ? "Each date shows what is scheduled for it: planned purchases and bills." : "Each date shows MITA’s plan for it.";
+    else base = scheduled ? "Dates so far show what you spent; dates ahead show what is scheduled: planned purchases and bills." : "Dates so far show what you spent; dates ahead show MITA’s plan.";
+    if (!hasGuide(month)) return base;
+    if (!state.guide) return base + " The daily average is hidden.";
+    return guideOf(month) ? base + " ≈ marks the average left per day " + (month.month_position === "future" ? "on each date" : "from today") + ": an average of what is left, not a plan." : base;
   }
 
-  // Why the dates of a flexible budget are empty: said once, under the grid.
+  // Why a flexible budget has no amount on a date, and what its daily average
+  // is: said once, under the grid.
   function flexibleNote(month) {
     if (month.plan_status !== "generated" || !hasFlexible(month)) return null;
     var line = state.filter ? lineByKey(state.filter) : null;
-    var text = line && line.spending_type === "flexible"
-      ? line.category_label + " is a flexible budget: a monthly limit with no purchase dates. Only what you actually spent appears on a date; nothing is planned for any date."
-      : "Flexible budgets are monthly limits with no purchase dates, so they are not on any date: what they hold and their daily guidance are in the summary and under Categories.";
+    var guide = state.guide ? guideOf(month) : null;
+    var text;
+    if (line && line.spending_type === "flexible") {
+      text = line.category_label + " is a flexible budget: a monthly limit with no purchase dates, so nothing is planned for any date. An amount on a date is what you actually spent." + (guide ? " " + guideLegendText(month) : "");
+    } else {
+      text = "Flexible budgets are monthly limits with no purchase dates, so none of them is planned on a date." + (guide && !guide.line ? " " + guideLegendText(month) : " What they hold is in the summary and under Categories.");
+    }
     return el("p", { class: "fit-note", id: "flex-note", text: text });
+  }
+
+  // The average layer's switch: on by default, the user's choice is kept.
+  // Off, the calendar shows activity alone: what was spent and what is scheduled.
+  function guideSwitch(month) {
+    if (!hasGuide(month)) return null;
+    return el("button", {
+      class: "switch", type: "button", role: "switch", id: "guide-toggle",
+      "aria-checked": state.guide ? "true" : "false", "aria-label": "Daily average",
+      onclick: function () { setGuide(!state.guide); }
+    }, [el("span", { class: "track", "aria-hidden": "true" }), "Daily average", el("span", { class: "state-word", "aria-hidden": "true", text: state.guide ? "On" : "Off" })]);
+  }
+
+  function setGuide(on) {
+    state.guide = on;
+    render();
+    saveWidgetState();
+    pushContext();
+    announce(on ? "Daily average shown on today and the dates ahead." : "Daily average hidden. The calendar shows what you spent and what is scheduled.");
   }
 
   function cellView(day, focusable) {
@@ -1743,6 +1954,10 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       // budget's guidance is the month's, never an amount on a date.
       amountNode = el("span", { class: "amt num fit" }, cents(model.planned) > 0 ? amountValue(model.planned) : "");
     }
+    // The average layer: the daily average, in its own pill under the amount
+    // (today and the dates ahead). Not the date's amount, never added to it.
+    var guide = guideFor(day);
+    var guideNode = guide ? guidePill(guide) : null;
     var meter = null;
     if (model.begun && (model.state === "over" || model.state === "within")) {
       meter = el("span", { class: "meter", "aria-hidden": "true" }, el("i", { style: "width:" + (model.ratio * 100).toFixed(1) + "%" }));
@@ -1772,17 +1987,19 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       "aria-label": dayLabel(day), tabindex: day.date === focusable ? "0" : "-1",
       onclick: function () { selectDay(day.date, true); },
       onkeydown: function (event) { onGridKey(event, day.date); }
-    }, [head, amountNode, meter, marks]);
+    }, [head, amountNode, guideNode, meter, marks]);
   }
 
   function legend() {
+    var month = state.payload.month;
+    var scheduled = month.categories.some(function (c) { return c.spending_type !== "legacy"; });
     return el("div", { class: "legend", "aria-label": "Legend" }, [
       el("span", null, [el("i", { class: "sw" }), "Spent"]),
-      el("span", null, [el("i", { class: "sw plan" }), "Plan, not a forecast"]),
+      el("span", null, [el("i", { class: "sw plan" }), scheduled ? "Scheduled: planned purchases and bills, not a forecast" : "Dates ahead: MITA’s plan, not a forecast"]),
+      state.guide && guideOf(month) ? el("span", null, [el("i", { class: "sw guidem", text: "≈" }), "Average left per day: not a plan or a recommendation"]) : null,
       el("span", null, [el("i", { class: "sw overm" }), "Over the everyday plan"]),
       el("span", null, [icon("bill"), "Saved bill due"]),
-      el("span", null, [el("i", { class: "sw plan" }), "Dates ahead: planned purchases and bills"]),
-      el("span", null, [el("i", { class: "sw win" }), "Bill due within " + reminderDays(state.payload.month) + " days"]),
+      el("span", null, [el("i", { class: "sw win" }), "Bill due within " + reminderDays(month) + " days"]),
       el("span", null, [el("i", { class: "sw todaym" }), "Today"])
     ]);
   }
@@ -2010,25 +2227,51 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       panel.appendChild(el("section", null, [el("h3", { text: day.day_kind === "future" ? "Scheduled by category" : "Spent / planned by category" }), rows]));
     }
 
+    // The average layer for this date (today and ahead): the daily average, in
+    // a box of its own after everything the date has recorded or scheduled,
+    // said to be guidance — never added to the date's amount. The same guide
+    // the cells show: a filtered flexible budget's own, then MITA's one
+    // aggregate; otherwise the aggregate.
+    var allGuide = state.guide && day.day_kind !== "past" ? flexGuide(month) : null;
+    if (allGuide !== null) {
+      var shownGuide = guideOf(month);
+      var ownLine = shownGuide && shownGuide.line ? shownGuide.line : null;
+      var scheduledAhead = day.day_kind === "future" && cents(day.planned_scheduled) > 0;
+      var apart = scheduledAhead
+        ? "not part of the " + money(day.planned_scheduled, cur) + " scheduled for this date"
+        : (day.day_kind === "today" ? "not part of what you spent or scheduled today" : "nothing is scheduled for it");
+      panel.appendChild(el("section", { id: "day-guide" }, [
+        el("h3", { text: "Average left per day" }),
+        el("div", { class: "guide-box" }, [
+          el("div", { class: "big num" }, [
+            el("b", { text: "≈ " + money(ownLine ? ownLine.left_per_day : allGuide, cur) }),
+            el("span", { class: "muted", text: ownLine ? "a day on average for " + ownLine.category_label : "a day on average in your flexible budgets" })
+          ]),
+          el("p", { class: "note", style: "margin-top:4px", text: (ownLine ? lineGuideText(month, ownLine) + " All your flexible budgets together: ≈ " + money(allGuide, cur) + " a day." : aggregateGuideText(month)) + " It is an average of what is left, not a recommendation: " + apart + ", and nothing is taken from your balance." })
+        ])
+      ]));
+    }
+
     // The flexible budgets: monthly limits, the same on every date — what
-    // each still holds and its daily guidance, said to be guidance. Never an
-    // amount for this date.
+    // each still holds and, with the guide on, its own daily average (exact).
+    // Never an amount for this date.
     var flexible = month.categories.filter(function (c) { return c.spending_type === "flexible" && c.left_per_day; });
     if (flexible.length && day.day_kind !== "past") {
       var flexList = el("ul", { class: "rows" });
       flexible.forEach(function (c) {
-        flexList.appendChild(el("li", { title: money(c.left_per_day, cur) + " a day exactly" }, [
+        var mine = state.filter === c.category;
+        flexList.appendChild(el("li", { class: mine ? "mine" : null, "aria-current": mine ? "true" : null }, [
           el("span", { class: "who" }, [catIcon(c.category), el("span", null, [
             el("span", { style: "display:block", text: c.category_label }),
             el("span", { class: "what", text: money(c.remaining, cur) + " left of " + money(c.planned, cur) + " this month" }),
             c.pace_status === "faster_than_pace" ? el("span", { class: "what fast", text: "spending faster than its pace" }) : null
           ])]),
-          el("span", { class: "amtc num", text: aboutADay(c.left_per_day_rounded, cur) })
+          el("span", { class: "amtc num", text: state.guide ? "≈ " + money(c.left_per_day, cur) + " a day" : money(c.remaining, cur) + " left" })
         ]));
       });
       panel.appendChild(el("section", { id: "flex-budgets" }, [
         el("h3", { text: "Flexible budgets · this month" }), flexList,
-        el("p", { class: "note", style: "margin-top:6px", text: "Monthly limits with no purchase dates — nothing here is planned for this date. “About … a day” is guidance: what is left divided by the days left (exact amount on hover). Spend it on one day or spread it; it is not a daily limit." })
+        el("p", { class: "note", style: "margin-top:6px", text: "Monthly limits with no purchase dates — nothing here is planned for this date." + (state.guide ? " Each “≈ … a day” is what is left ÷ " + plural(guideDays(month), "day", "days") + ", today included — an average, not a daily limit or a recommendation: spend it on one day or spread it." : "") })
       ]));
     }
 
@@ -2092,8 +2335,8 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
         if (!setAside && p > 0 && !over) {
           if (line.spending_type === "planned" && line.next_purchase) {
             meta += " · next " + dayShort.format(parseDate(line.next_purchase.date)) + " " + money(line.next_purchase.planned, cur) + (line.next_purchase.proposed ? " (proposed)" : "");
-          } else if (line.spending_type === "flexible" && line.left_per_day_rounded) {
-            meta += " · about " + money(line.left_per_day_rounded, cur).replace(/[.,]00(?=\D*$)/, "") + " a day";
+          } else if (line.spending_type === "flexible" && line.left_per_day) {
+            meta += " · ≈ " + money(line.left_per_day, cur) + " a day on average";
             if (line.pace_status === "faster_than_pace") meta += " · faster than its pace";
           }
         }
@@ -2121,7 +2364,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
   }
 
   function methodText(month) {
-    return "Figures come from your MITA account (" + month.currency + ", " + month.timezone + "). Each date shows, once begun, the expenses you recorded; dates ahead show what is scheduled for them: planned purchases and bills. A flexible budget is a monthly limit with no purchase dates, so it is on no date: its amount, what you spent and what is left are under Categories, and its “about … a day” is guidance — what is left divided by the days left — never a purchase, a bill or a daily limit. A planned purchase is money set out for it, never a transaction. Protected savings, and what bills not yet paid still need, are never counted as spendable. The daily average is left to spend divided by the days left. Saved bills are planned in full on their due dates and announced " + reminderDays(month) + " days before; a bill is paid only when you tell MITA which expense paid it — other spending in the same category never counts.";
+    return "Figures come from your MITA account (" + month.currency + ", " + month.timezone + "). Each date shows, once begun, the expenses you recorded; dates ahead show what is scheduled for them: planned purchases and bills. A flexible budget is a monthly limit with no purchase dates, so it is on no date: its amount, what you spent and what is left are under Categories, and its “≈ … a day” is an average — what is left divided by the days left — never a recommendation, a purchase, a bill or a daily limit. A planned purchase is money set out for it, never a transaction. Protected savings, and what bills not yet paid still need, are never counted as spendable. The daily average is left to spend divided by the days left. Saved bills are planned in full on their due dates and announced " + reminderDays(month) + " days before; a bill is paid only when you tell MITA which expense paid it — other spending in the same category never counts.";
   }
 
   // ---------------------------------------------------------------------
@@ -2157,11 +2400,18 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       if (line) parts.push("Filtered to " + line.category_label + (line.spending_type === "flexible" ? " (a flexible budget: a monthly limit of " + line.planned + " " + cur + ", " + line.remaining + " left, no purchase dates)." : "."));
     }
     var guide = flexGuide(month);
-    if (guide) parts.push("Flexible budgets are monthly limits on no date: " + month.summary.flexible_left + " " + cur + " left, about " + guide + " a day as guidance, not a purchase or a daily limit.");
-    updateModelContext(parts.join(" "), {
+    if (guide !== null) {
+      parts.push("Flexible budgets are monthly limits on no date: " + month.summary.flexible_left + " " + cur + " left, about " + guide + " a day on average (what is left divided by the days left), not a recommendation, a purchase or a daily limit.");
+      var shownGuide = guideOf(month);
+      parts.push(state.guide
+        ? (shownGuide ? "The calendar shows the average left per day (" + (shownGuide.line ? shownGuide.line.category_label + ", " : "") + "about " + shownGuide.value + " " + cur + " a day) on today and the dates ahead, apart from what is scheduled; an average, never part of a date's amount." : "")
+        : "The user hid the daily average: the calendar shows only what was spent and what is scheduled.");
+    }
+    updateModelContext(parts.filter(Boolean).join(" "), {
       month: monthKey(month),
       selected_date: day ? day.date : null,
-      category: state.filter
+      category: state.filter,
+      guide_shown: state.guide && guideOf(month) !== null
     });
   }
 
@@ -2254,6 +2504,7 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     var W = 1080, M = 60;
     var FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
     var INK = "#0d0d0d", INK2 = "#55544f", INK3 = "#7e7d77", LINE = "#e6e5df", NAVY = "#193C57", YELLOW = "#FFD25F", TEAL = "#14B8A6", TEALINK = "#0B6E64", RED = "#d03b3b", CARD = "#f5f4f0";
+    var GUIDE_INK = "#3D44B0", GUIDE_BG = "#E6E8FF";
     var FAM = { groceries: "#008300", dining: "#eb6834", transport: "#2a78d6", shopping: "#eda100", fun: "#e87ba4", health: "#1baf7a", home: "#6250d6", other: "#898781" };
     var planned = month.plan_status === "generated";
 
@@ -2266,7 +2517,8 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
       tiles.push(["Left to spend", s.left_to_spend !== null ? money(s.left_to_spend, cur) : "—"]);
       tiles.push(["Protected savings", money(s.savings_set_aside, cur), "teal"]);
       if (s.average_per_day !== null) tiles.push(["Average a day", money(s.average_per_day, cur), "accent"]);
-      tiles.push([month.month_position === "past" ? "Month" : "Days left", month.month_position === "past" ? "Ended" : String(s.days_remaining)]);
+      // the average's divisor, named as such: the daily average counts today too
+      tiles.push([month.month_position === "past" ? "Month" : month.month_position === "future" ? "Days in the month" : "Days after today", month.month_position === "past" ? "Ended" : String(s.days_remaining)]);
     } else {
       tiles.push(["Spent", money(s.total_spent, cur)]);
       tiles.push(["Plan", "Not saved"]);
@@ -2275,16 +2527,20 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     var perRow = 3, tileH = 108, gap = 14;
     var tileRows = Math.ceil(tiles.length / perRow);
     var tilesH = tileRows * tileH + (tileRows - 1) * gap;
-    var noteH = planned && s.average_per_day !== null ? 44 : 14;
+    // The average layer, as on screen: "All categories" (MITA's aggregate),
+    // on today and the dates ahead, unless the user hid it — in its own pill,
+    // never part of a date's amount.
+    var guide = state.guide && month.month_position !== "past" ? flexGuide(month) : null;
+    var noteH = planned && s.average_per_day !== null ? (guide !== null ? 72 : 44) : 14;
     var blanks = leadingBlanks(month.days[0].date);
     var gridRows = Math.ceil((blanks + month.days.length) / 7);
-    var cellGap = 8, cellH = 96;
+    var cellGap = 8, cellH = guide !== null ? 116 : 96;
     var gridH = 34 + gridRows * cellH + (gridRows - 1) * cellGap;
     var lines = month.categories.slice(0, 6);
     var more = month.categories.length - lines.length;
     var catRows = Math.ceil(lines.length / 2);
     var catsH = lines.length ? 56 + catRows * 66 + (more > 0 ? 34 : 0) : 0;
-    var legendH = 64, footerH = 84;
+    var legendH = guide !== null ? 100 : 64, footerH = 84;
     var H = 24 + headerH + tilesH + noteH + 22 + gridH + 34 + catsH + legendH + footerH + 24;
 
     var canvas = document.createElement("canvas");
@@ -2338,7 +2594,12 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     });
     y += tilesH;
     if (planned && s.average_per_day !== null) {
-      text(cents(s.commitments_reserved) > 0 ? "Left to spend is after savings and " + money(s.commitments_reserved, cur) + " held for bills. Average a day = left ÷ days left." : "Average a day = left to spend ÷ days left. Dates ahead show planned purchases and bills.", M, y + 34, "500", 19, INK3, "left", W - 2 * M);
+      text(cents(s.commitments_reserved) > 0 ? "Left to spend is after savings and " + money(s.commitments_reserved, cur) + " held for bills. Average a day = left ÷ days after today." : "Average a day = left to spend ÷ days after today. Dates ahead show planned purchases and bills.", M, y + 34, "500", 19, INK3, "left", W - 2 * M);
+      if (guide !== null) {
+        text(guideCapped(month)
+          ? "≈ average left per day in flexible budgets: " + money(guide, cur) + " a day, the safe average (after bills and savings the month has less left than they show) — an average, not a plan."
+          : "≈ average left per day in flexible budgets: " + money(s.flexible_left, cur) + " left ÷ " + plural(guideDays(month), "day", "days") + " (today incl.) ≈ " + money(guide, cur) + " a day — an average, not a plan.", M, y + 62, "500", 19, GUIDE_INK, "left", W - 2 * M);
+      }
     }
     y += noteH + 22;
 
@@ -2384,8 +2645,9 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
         text("TODAY", cx + cellW - 39, cy + 28, "800", 13, NAVY, "center");
       }
       text(String(parseDate(day.date).getUTCDate()), cx + 13, cy + 30, "700", 22, today ? NAVY : INK);
+      var guided = guide !== null && (future || today);
       if (!future) {
-        if (cents(day.spent) > 0) text(cellAmount(day.spent), cx + 13, cy + 64, "700", 21, INK, "left", cellW - 26);
+        if (cents(day.spent) > 0) text(cellAmount(day.spent), cx + 13, cy + (guided ? 62 : 64), "700", 21, INK, "left", cellW - 26);
         if (day.state === "over" || day.state === "within") {
           var ratio = Math.min(1, Number(day.spent_everyday) / Number(day.planned_everyday));
           c.fillStyle = "#e4e3dc";
@@ -2404,7 +2666,19 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
         }
       } else if (cents(day.planned_scheduled) > 0) {
         // what is scheduled for the date; a flexible budget is on no date
-        text(cellAmount(day.planned_scheduled), cx + 13, cy + 70, "600", 21, INK2, "left", cellW - 26);
+        text(cellAmount(day.planned_scheduled), cx + 13, cy + (guided ? 62 : 70), "600", 21, INK2, "left", cellW - 26);
+      }
+      if (guided) {
+        // the average layer: its own pill under the amount, never added to it
+        // (kept clear of the bill mark on the right)
+        var gText = "≈ " + cellAmount(guide);
+        var gMax = cellW - 26 - 40;
+        font("700", 17);
+        var gWidth = Math.min(c.measureText(gText).width, gMax);
+        c.fillStyle = GUIDE_BG;
+        rrect(cx + 10, cy + 70, gWidth + 14, 24, 8);
+        c.fill();
+        text(gText, cx + 17, cy + 88, "700", 17, GUIDE_INK, "left", gMax);
       }
       if (billDates[day.date]) {
         c.fillStyle = BILL_DOT[billDates[day.date]] || INK3;
@@ -2467,6 +2741,14 @@ h1,h2,h3,p,dl,dd,ul{margin:0}
     c.arc(M + 620, ly2 - 7, 7, 0, Math.PI * 2);
     c.fill();
     text("Saved bill due", M + 634, ly2, "500", 19, INK2);
+    if (guide !== null) {
+      var ly3 = ly2 + 36;
+      c.fillStyle = GUIDE_BG;
+      rrect(M, ly3 - 19, 44, 24, 8);
+      c.fill();
+      text("≈", M + 22, ly3, "800", 19, GUIDE_INK, "center");
+      text("Average left per day: flexible budgets’ left ÷ days left — not a plan or a recommendation", M + 56, ly3, "500", 19, INK2, "left", W - 2 * M - 56);
+    }
     y += legendH;
 
     // footer

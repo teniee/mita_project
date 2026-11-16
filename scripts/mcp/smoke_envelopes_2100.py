@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""MITA 2.10.0 smoke test against a RUNNING MCP service, over real HTTP.
+"""MITA 2.10.0 / 2.11.0 smoke test against a RUNNING MCP service, over real HTTP.
 
     python scripts/mcp/smoke_envelopes_2100.py --base-url https://<staging-host> \\
         [--database-url postgresql://...]   # clean-up of the account it creates
@@ -11,12 +11,18 @@ the 15th, a laptop loan of 70 on the 25th, own lines Groceries 320, Car
 maintenance 200, Entertainment 100, Restaurants 100, Coffee 45, and 380 left
 unallocated:
 
-* ``/health`` reports 2.10.0; ``show_financial_calendar`` points at the v4
-  component and the served component is this checkout's file;
+* ``/health`` reports 2.11.0; ``show_financial_calendar`` points at the v5
+  component and the served component is this checkout's file — it draws the
+  average left per day as a layer of its own, says it is an average (never a
+  recommendation) and has the switch to hide it
+  (docs/chatgpt-app/calendar-guidance-layer.md);
 * with nothing said about when the user buys, every line is a flexible
   budget and is on NO date: no planned purchase, nothing scheduled but the
   loans, every date ahead ``free``, and the component's month payload
   (version 2) carries no flexible line on any date;
+* the average left per day is MITA's own figure: the flexible budgets'
+  left_per_day added up (``flexible_per_day``), under the safe average — and
+  never in what is scheduled;
 * a real 40.00 restaurant expense is on its date only, leaves 60.00 and a
   daily guidance, and is not over;
 * "a coffee every day" then IS a schedule: one purchase a date, adding up to
@@ -51,8 +57,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from _target_guard import ProductionTargetError, assert_writable_target  # noqa: E402
 from e2e_v2 import PASSED, Session, check, cleanup, connect  # noqa: E402
 
-VERSION = "2.10.0"
-COMPONENT = "ui://mita/financial-calendar-v4.html"
+VERSION = "2.11.0"
+COMPONENT = "ui://mita/financial-calendar-v5.html"
 COMPONENT_FILE = (
     Path(__file__).resolve().parents[2] / "app/mcp/ui/financial_calendar.html"
 )
@@ -109,7 +115,7 @@ async def run(base: str, database_url: Optional[str]) -> None:
             tools = {t.name: t for t in listed.tools}
             meta = tools["show_financial_calendar"].meta or {}
             check(
-                "show_financial_calendar points at the v4 component",
+                "show_financial_calendar points at the v5 component",
                 (meta.get("ui") or {}).get("resourceUri") == COMPONENT
                 and meta.get("openai/outputTemplate") == COMPONENT,
                 str(meta)[:200],
@@ -122,8 +128,11 @@ async def run(base: str, database_url: Optional[str]) -> None:
                 == hashlib.sha256(COMPONENT_FILE.read_bytes()).hexdigest(),
             )
             check(
-                "the component draws no daily guide and takes payload version 2",
-                "≈" not in html and "var PAYLOAD_VERSION = 2;" in html,
+                "the component draws the daily average apart, can hide it, takes payload 2",
+                'el("span", { class: "guide num"' in html
+                and 'role: "switch"' in html
+                and '"data-amount": guide' not in html
+                and "var PAYLOAD_VERSION = 2;" in html,
             )
             description = tools["get_calendar_month"].description or ""
             check(
@@ -255,6 +264,16 @@ async def run(base: str, database_url: Optional[str]) -> None:
                 and D(summary["flexible_left"]) == sum(OWN.values(), ZERO),
                 f"{summary['scheduled_after_today']} {summary['flexible_left']}",
             )
+            flexible = [c for c in lines.values() if c["spending_type"] == "flexible"]
+            own_sum = sum((D(c["left_per_day"]) for c in flexible), ZERO)
+            # never more than the safe average a day (0 on a month's last day)
+            cap = max(ZERO, D(summary["average_per_day"]))
+            check(
+                "the daily average is the budgets' left_per_day added up, under the safe average",
+                D(summary["flexible_per_day"]) == min(own_sum, cap)
+                and summary["flexible_per_day_capped"] is (own_sum > cap),
+                f"{summary['flexible_per_day']} {own_sum} {cap}",
+            )
             check(
                 "the plan leaves 380.00 with no line",
                 D("1985.00") - D(summary["total_planned"]) == D("380.00")
@@ -384,6 +403,9 @@ async def run(base: str, database_url: Optional[str]) -> None:
                 not shown.is_error
                 and shown.structured_content["category"] == RESTAURANTS
                 and "monthly limits with no dates" in text
+                and "The calendar shows that average on today and each date ahead"
+                in text
+                and "not a recommendation" in text
                 and (shown.meta or {}).get("mita/calendar") == payload,
                 text[:200],
             )
@@ -399,7 +421,7 @@ def main() -> int:
     parser.add_argument("--database-url", default=None)
     args = parser.parse_args()
     try:
-        base = assert_writable_target(args.base_url, purpose="mcp smoke 2.10.0").rstrip(
+        base = assert_writable_target(args.base_url, purpose="mcp smoke 2.11.0").rstrip(
             "/"
         )
     except ProductionTargetError as exc:

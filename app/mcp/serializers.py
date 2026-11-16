@@ -482,7 +482,13 @@ CALENDAR_METHOD = (
     "budget is a monthly limit with no dates: its amount, spending, remainder and "
     "daily guidance are on its line in categories, and the share of it the plan "
     "rows keep on a date (planned_flexible) is bookkeeping, never a plan, a "
-    "purchase or a limit for that date. Plan lines are grouped as in the "
+    "purchase or a limit for that date. The calendar shows the flexible budgets' "
+    "average left per day (summary.flexible_per_day; a flexible line's "
+    "left_per_day when filtered to it) on today and each date ahead as a "
+    "separate, labelled layer: an arithmetic average of what is left, not a "
+    "personalized recommendation, never added to planned_scheduled or "
+    "scheduled_after_today and never taken from left_to_spend. Plan lines are "
+    "grouped as in the "
     "summary: bills (rent, mortgage and utilities lines, and the categories of "
     "saved regular payments that belong to the month), money set aside (savings, "
     "goals, investments — never spendable) and everyday spending. A day's state "
@@ -568,6 +574,7 @@ def calendar_summary_out(cal: CalendarMonth) -> CalendarSummaryOut:
             if flexible_day is not None
             else None
         ),
+        flexible_per_day_capped=cal.flexible_per_day_capped if planned else None,
     )
 
 

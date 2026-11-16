@@ -354,7 +354,7 @@ async def test_coffee_without_a_stated_pattern_has_no_daily_purchases(mcp, seed)
         assert seen.cell(day, COFFEE) is None
     assert seen.cell(20) is None  # an empty date
     assert seen.day(20)["state"] == "free"
-    # ...and it is still a budget: 45.00 left, about 1.55 a day as guidance
+    # ...and it is still a budget: 45.00 left, about 1.55 a day on average
     # (45.00 over the 29 days from the 2nd).
     assert (coffee["remaining"], coffee["left_per_day"]) == ("45.00", "1.55")
     assert coffee["planned_per_day"] == "1.50"  # an analytical pace, on no date
@@ -395,7 +395,7 @@ async def test_a_real_restaurant_expense_stays_on_its_date_and_invents_nothing(
     mcp, seed, connection
 ):
     """H. 40.00 at a restaurant on 10 Nov against the 100.00 budget: one
-    expense on the 10th, 60.00 left, about 2.86 a day as guidance (60.00 over
+    expense on the 10th, 60.00 left, about 2.86 a day on average (60.00 over
     the 21 days from the 10th) — and still no restaurant on any other date."""
     user, token, _draft = await november(mcp, seed)
     m10 = mcp.at(noon(10))
@@ -708,7 +708,9 @@ async def test_the_contract_keeps_the_four_kinds_apart(mcp, seed, connection):
             assert D(scheduled) > 0 or D(spent) > 0
     # What the model reads says so in words, and names no per-date share.
     assert "monthly limits with no dates" in seen.text
-    assert "as guidance" in seen.text
+    # an average, said to be one (owner brief 2026-11-16: what is left ÷ the
+    # days left is arithmetic, never presented as a recommendation)
+    assert "a day on average" in seen.text and "not a recommendation" in seen.text
     assert "each date also has its own plan" not in seen.text
     assert seen.view["summary"] == summary
 
@@ -738,12 +740,18 @@ async def test_the_published_schema_says_what_each_amount_is(mcp, seed):
         "No flexible budget is in it" in summary["scheduled_after_today"]["description"]
     )
     assert "no date holds it" in summary["flexible_per_day"]["description"]
+    # 2.11.0: the calendar draws the guidance as a layer of its own
+    assert (
+        "never part of planned_scheduled" in summary["flexible_per_day"]["description"]
+    )
+    assert "flexible_per_day_capped" in summary
     assert "A flexible budget is a monthly limit with no dates" in get.description
+    assert "never added to planned_scheduled" in get.description
     assert "planned_flexible: the flexible budgets' daily share" not in get.description
     # the render tool is bound to the corrected component
     show = tools["show_financial_calendar"].meta
     assert show["ui"]["resourceUri"] == CALENDAR_URI
-    assert CALENDAR_URI == "ui://mita/financial-calendar-v4.html"
+    assert CALENDAR_URI == "ui://mita/financial-calendar-v5.html"
 
 
 # --- M: every month length, to the cent -------------------------------------------------------
@@ -1009,19 +1017,19 @@ def test_a_month_saved_before_line_kinds_reads_exactly_as_before():
 
 def test_the_component_cannot_draw_a_flexible_budget_on_a_date():
     """L (source rules; the rendered checks are in
-    scripts/mcp/calendar_widget_review.py). The component reads a date's
-    amounts from what is scheduled and what was spent, takes only the
-    version 2 payload, and has no daily guide left to put in a cell."""
+    tests_mcp/test_calendar_rendering.py). The component reads a date's
+    amount from what is scheduled and what was spent, takes only the version
+    2 payload, and draws the average left per day (2.11.0) only from MITA's
+    figures, apart from the amount and said to be an average — never from a
+    stored share, never called a recommendation."""
     html = calendar_html()
-    assert "ui://mita/financial-calendar-v4.html" in html
+    assert "ui://mita/financial-calendar-v5.html" in html
     assert "var PAYLOAD_VERSION = 2;" in html
     assert "payload.version === PAYLOAD_VERSION" in html
     # day_lines are [line, scheduled, spent]; the stored plan row is gone
     assert "{ key: l[0], scheduled: l[1], spent: l[2] }" in html
     assert not re.search(r"\bl\.planned\b", html) and "match.planned" not in html
-    # no "≈" guide in a cell, and no style for one
-    assert "≈" not in html and ".guide" not in html
-    # a date's plan is planned_scheduled everywhere, the image included
+    # a date's amount is planned_scheduled everywhere, the image included
     assert "planned: day.planned_scheduled," in html
     assert "cellAmount(day.planned_scheduled)" in html
     assert "cellAmount(day.planned)" not in html
@@ -1029,6 +1037,21 @@ def test_the_component_cannot_draw_a_flexible_budget_on_a_date():
     for use in html.split("day.planned_flexible")[1:]:
         assert use.lstrip().startswith(") > 0")
     assert "day.planned_everyday, cur" not in html
-    # guidance stays, with the month, said to be guidance
-    assert "as guidance, not a daily limit" in html
+    # the average left per day: MITA's two figures and nothing else …
+    assert "value: line.left_per_day, rounded: line.left_per_day_rounded" in html
+    assert "s.flexible_per_day === null" in html
+    # … in a pill of its own, never carrying a date's amount
+    assert '"data-guide": guide.value' in html
+    assert re.search(r'el\("span", \{ class: "guide num"', html)
+    assert '"data-amount": guide' not in html and 'data-amount": g' not in html
+    assert "[head, amountNode, guideNode, meter, marks]" in html
+    # an amount below 100 keeps its cents: only fitText rounds, from 100 up
+    assert "c >= 10000 && c % 100 !== 0" in html
+    assert "wholeAmount" not in html and "Whole euros" not in html
+    # the user can hide it; an average is said to be one, never advice
+    assert 'role: "switch"' in html and 'id: "guide-toggle"' in html
+    assert "guide: state.guide" in html
+    assert "an average, not a recommendation or a daily limit" in html
+    assert "as guidance" not in html and "Daily guide" not in html
+    assert not re.search(r"\brecommended\b", html)
     assert "Monthly limits with no purchase dates" in html

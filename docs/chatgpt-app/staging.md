@@ -112,6 +112,33 @@ Every account the checks created was deleted (5 users, as before); the
 temporary proxy was removed and Postgres no longer answers there. Rollback:
 re-pin `73ff153` (per-IP limits then break again, nothing else changes).
 
+## MCP 2.11.0 — prepared 2026-11-16 (the average left per day as a layer; cents on a phone)
+
+`calendar-guidance-layer.md`: the calendar draws the flexible budgets'
+average left per day on today and the dates ahead as a labelled layer apart
+from a date's amount — called an average, never a recommendation — with a
+switch to hide it; a €1.50 coffee keeps its cents on a phone;
+component `ui://mita/financial-calendar-v5.html`, month payload still
+version 2, new `summary.flexible_per_day_capped`. **No migration (alembic
+stays `0044`), no new table, grant or environment variable, no change to any
+stored row.** The release is the re-pin alone — the 2.10.0 runbook:
+
+| Step | How | Access it needs |
+|---|---|---|
+| 1. CI | Backend, MCP (now including the rendered calendar with Chromium, WebKit and axe, and the container end-to-end step) and Mobile green on the commit | none |
+| 2. Isolation | Name the project `mita-mcp-staging`, environment `staging`, service `mita-mcp-staging` in every command (the working directory is linked to production); confirm no TCP proxy on either service and nothing staged | Railway API (read) |
+| 3. Deploy | `connect-service-source` → the commit; wait for SUCCESS; `/health` → `"version":"2.11.0"` | Railway API (write, staging service only) |
+| 4. Component | `resources/read ui://mita/financial-calendar-v5.html` sha256 = `app/mcp/ui/financial_calendar.html` of the commit; `show_financial_calendar` points at it (checked by the smoke) | public HTTPS |
+| 5. Checks (fictional accounts, ≤ 5 sign-ups an hour per IP) | `smoke_envelopes_2100.py` (now also the average layer and v5), `calendar_widget_review.py --axe` (guide pills and the switch in its narrow-screen check), `smoke_behavioral_270.py` (its bill checks need a run on or before the 15th), `e2e_v2.py` | public HTTPS |
+| 6. Logs | the deployment's log: no error line; no e-mail, token or amount | Railway API (read) |
+
+Not part of this release, and not authorised for it: database access (the
+2.10.0 check accounts and these still await `e2e_v2.cleanup`; the owner's
+account is argued untouched — read tools run `SET TRANSACTION READ ONLY` and
+the release adds no write path). Rollback: re-pin `8970756` (2.10.0); it
+reads the same rows. A ChatGPT that cached v5 keeps it for cards already
+drawn; new cards get v4 again.
+
 ## MCP 2.10.0 — deployed 2026-11-12 18:28 UTC (`8970756`, deployment `b1b09ac9`)
 
 A budget is not a schedule (`flexible-envelopes-calendar.md`): the calendar

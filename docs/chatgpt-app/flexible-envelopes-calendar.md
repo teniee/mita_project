@@ -1,5 +1,15 @@
 # A budget is not a schedule: flexible budgets in the calendar — 2026-11-11
 
+> **2.11.0 (2026-11-13, `calendar-guidance-layer.md`).** Everything below
+> about a date's **amount** still holds. The owner's acceptance of 2.10.0
+> failed because the calendar was left almost empty for flexible spending:
+> 2.11.0 draws the figures of §4 (`left_per_day`, `summary.flexible_per_day`)
+> on today and the dates ahead as a separate, labelled layer — a "≈" pill
+> beside the amount, never in it, never in a total, hideable — on component
+> v5, and calls them what they are: the average left per day, not
+> "guidance" (owner brief 2026-11-16: an equal division is not a
+> recommendation). A €1.50 coffee keeps its cents on a phone.
+
 Owner brief of 2026-11-11, after MITA MCP 2.9.0 on staging. Implemented on
 `feat/chatgpt-auth-ui` as **MCP 2.10.0** (`8970756`), calendar component
 `ui://mita/financial-calendar-v4.html`; live on staging since 2026-11-12

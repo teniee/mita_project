@@ -154,6 +154,13 @@ once, as a convenience.
 
 ## 6. Calendar (component `ui://mita/financial-calendar-v3.html`)
 
+> **2.11.0 (2026-11-13/16, `calendar-guidance-layer.md`, component v5):** the
+> per-day figure is back on dates as a labelled layer of its own — on today
+> and every date ahead (not only empty ones), beside the amount and never in
+> it, the filtered flexible line's own `left_per_day` under its filter,
+> hideable — and is called the average left per day: it is arithmetic, not
+> a recommendation (the word "guidance" below is 2.7.0's).
+>
 > **Superseded in part by 2.10.0 (2026-11-11, `flexible-envelopes-calendar.md`,
 > component v4).** The "≈" daily guide is no longer drawn on dates and a date
 > with nothing scheduled IS empty: with a category filter 2.7.0–2.9.0 drew a

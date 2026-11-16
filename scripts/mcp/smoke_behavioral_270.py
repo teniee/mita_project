@@ -18,8 +18,8 @@ or a broken migration shows up here before a person sees it.
 * a purchase in a bill's category is NOT a payment (reserve stays 370.00);
   an expense linked to the phone pays it; linking, relinking and unlinking an
   expense (`update_transaction(obligation_ref=…)`);
-* flexible budgets: a daily guide, the pace flags, calendar = forecast;
-* the calendar component (v4 since 2.10.0) is the one the tool points at and is served;
+* flexible budgets: a daily average, the pace flags, calendar = forecast;
+* the calendar component (v5 since 2.11.0) is the one the tool points at and is served;
 * another account cannot use this account's payment reference.
 
 Prints PASS/FAIL names only (no tokens, codes, passwords). Refuses
@@ -47,7 +47,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from _target_guard import ProductionTargetError, assert_writable_target  # noqa: E402
 from e2e_v2 import PASSED, Session, check, cleanup, connect  # noqa: E402
 
-COMPONENT = "ui://mita/financial-calendar-v4.html"
+COMPONENT = "ui://mita/financial-calendar-v5.html"
 COMPONENT_FILE = (
     Path(__file__).resolve().parents[2] / "app/mcp/ui/financial_calendar.html"
 )
@@ -106,7 +106,7 @@ async def run(base: str, database_url: Optional[str]) -> None:
             show = next(t for t in listed.tools if t.name == "show_financial_calendar")
             meta = show.meta or {}
             check(
-                "show_financial_calendar points at the v4 component",
+                "show_financial_calendar points at the v5 component",
                 (meta.get("ui") or {}).get("resourceUri") == COMPONENT
                 and meta.get("openai/outputTemplate") == COMPONENT,
                 str(meta)[:200],
@@ -289,7 +289,7 @@ async def run(base: str, database_url: Optional[str]) -> None:
             forecast = await s.call("get_budget_forecast")
             cig = by(cal["categories"], "category", "my:Cigarettes")
             check(
-                "flexible budgets: a daily guide, cigarettes flagged by pace",
+                "flexible budgets: a daily average, cigarettes flagged by pace",
                 cal["summary"]["flexible_per_day"] is not None
                 and cig["spending_type"] == "flexible"
                 and cig["pace_status"] in ("faster_than_pace", "on_pace")

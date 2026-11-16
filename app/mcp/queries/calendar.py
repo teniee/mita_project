@@ -24,6 +24,15 @@ of four different things, and this module never merges them:
   line's: planned, spent, remaining and the daily guidance
   (``CalendarLine.guidance``) — analysis, said to be guidance.
 
+Since 2.11.0 the component draws that figure on today and every date ahead
+as a second, labelled layer — the average left per day (``flexible_per_day``
+for all categories, a flexible line's ``left_per_day`` under its filter): an
+arithmetic average, said so, never a personalized recommendation — beside,
+never inside, what the date has recorded or scheduled
+(docs/chatgpt-app/calendar-guidance-layer.md). Nothing here changes for it:
+the guide is never added to ``planned_scheduled``, ``scheduled_after_today``
+or a date's lines.
+
 The month's budget lines are the ones ``get_budget_status`` shows
 (``categories.group_lines``), and each line belongs to exactly one group, so
 the groups always add up to the plan (owner decision 2026-10-24):
@@ -412,6 +421,20 @@ class CalendarMonth:
         per line: an overspent line holds nothing)."""
         return sum((max(ZERO, line.remaining) for line in self.flexible_lines), ZERO)
 
+    def _flexible_guides(self) -> Optional[Decimal]:
+        """The sum of the flexible lines' left per day; None when no line
+        has guidance (no flexible budget, or the month has ended)."""
+        days = [line.guidance()[0] for line in self.flexible_lines]
+        known = [d for d in days if d is not None]
+        return sum(known, ZERO) if known else None
+
+    def _guide_cap(self) -> Optional[Decimal]:
+        """The month's safe average a day (never below 0): the most the
+        flexible budgets' guidance may say, for a month not ended."""
+        if self.forecast is not None and self.position != "past":
+            return max(ZERO, self.forecast.safe_daily_limit)
+        return None
+
     @property
     def flexible_per_day(self) -> Optional[Decimal]:
         """The flexible budgets' guidance for each day left, today included:
@@ -419,15 +442,32 @@ class CalendarMonth:
         safe average a day (the forecast's safe_daily_limit, never below 0).
         Envelopes can still hold money that is no longer safe to spend (an
         overspend nothing could cover, a bill paid without its link); then
-        the safe average is the guide. Guidance, not cash on hand."""
-        days = [line.guidance()[0] for line in self.flexible_lines]
-        known = [d for d in days if d is not None]
-        if not known:
+        the safe average is the guide. Guidance, not cash on hand.
+
+        An arithmetic average, not a personalized recommendation: nothing
+        here weighs days by the user's habits, income level, country or pay
+        days. The calendar draws it (since 2.11.0) as the average left per day
+        on today and every date ahead — a layer of its own, never part of what
+        a date has scheduled (docs/chatgpt-app/calendar-guidance-layer.md)."""
+        guide = self._flexible_guides()
+        if guide is None:
             return None
-        guide = sum(known, ZERO)
-        if self.forecast is not None and self.position != "past":
-            guide = min(guide, max(ZERO, self.forecast.safe_daily_limit))
-        return guide
+        cap = self._guide_cap()
+        return guide if cap is None else min(guide, cap)
+
+    @property
+    def flexible_per_day_capped(self) -> Optional[bool]:
+        """Which branch of ``flexible_per_day``'s ``min`` applied: True when
+        the flexible lines' own guidance adds up to more than the safe
+        average a day, so the guide is that average; False when the guide is
+        their sum; None without a guide. No new figure — the reason the two
+        can differ (a bill not paid yet, spending outside the flexible
+        budgets) is the forecast's."""
+        guide = self._flexible_guides()
+        if guide is None:
+            return None
+        cap = self._guide_cap()
+        return cap is not None and guide > cap
 
     @property
     def bills_due_after_today(self) -> Decimal:

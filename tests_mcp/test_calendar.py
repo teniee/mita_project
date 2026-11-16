@@ -167,6 +167,7 @@ async def test_the_month_summary_is_exact_and_adds_up_to_the_plan(mcp, seed):
         "flexible_left": None,
         "flexible_per_day": None,
         "flexible_per_day_rounded": None,
+        "flexible_per_day_capped": None,
     }
     s = out["summary"]
     assert D(s["commitments_planned"]) + D(s["set_aside_planned"]) + D(

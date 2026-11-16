@@ -33,8 +33,12 @@ from app.mcp.config import McpSettings
 # by link, planned purchases, flexible budgets. v4 (2.10.0, 2026-11-11): a
 # flexible budget is on no date — the category filter, the image and the
 # date's detail no longer draw its stored daily share (v3 drew €3.33 on every
-# date of a €100 monthly limit); reads the version 2 month payload only.
-CALENDAR_URI = "ui://mita/financial-calendar-v4.html"
+# date of a €100 monthly limit); reads the version 2 month payload only. v5
+# (2.11.0, 2026-11-13): the average left per day back on today and the dates
+# ahead as a labelled layer of its own (never an amount a date holds, never
+# called a recommendation), a switch to hide it, cents kept on a phone (€1.50
+# was drawn as "2").
+CALENDAR_URI = "ui://mita/financial-calendar-v5.html"
 CALENDAR_FILE = Path(__file__).with_name("financial_calendar.html")
 DISPLAY_MODES = ("inline", "fullscreen")
 
@@ -43,10 +47,12 @@ DISPLAY_MODES = ("inline", "fullscreen")
 CALENDAR_DESCRIPTION = (
     "MITA's financial calendar for one month of the signed-in user's own account is "
     "on screen: on each date what was recorded and what is scheduled (planned "
-    "purchases, saved bills due), the categories — flexible budgets as monthly "
-    "limits with daily guidance, on no date — and the month's summary. The user can "
-    "pick a date, filter by category, change month and save an image. Do not repeat "
-    "every figure; answer the user's questions with MITA's tools."
+    "purchases, saved bills due); on today and the dates ahead, apart from that, the "
+    "flexible budgets' average left per day (an average of what is left, not a "
+    "recommendation, a purchase or a plan for the date, and never part of what is "
+    "scheduled); the categories and the month's summary. The user can pick a date, "
+    "filter by category, hide the daily average, change month and save an image. "
+    "Do not repeat every figure; answer the user's questions with MITA's tools."
 )
 
 

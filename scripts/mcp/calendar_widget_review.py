@@ -27,8 +27,9 @@ With --database-url the account and its data are deleted at the end
 deleting the user alone would leave its expenses behind).
 Never prints the token, password or e-mail. Refuses production hosts.
 
-Dev-only dependencies (not in requirements-mcp*): playwright==1.49.1 with
-``playwright install chromium webkit``, Pillow.
+Dev-only dependencies (``requirements-mcp-render.txt``, also installed by MCP
+CI): playwright 1.50.0 (1.49.1 pinned greenlet==3.1.1, which the MCP lock's
+greenlet 3.5.3 rules out) with ``playwright install chromium webkit``, Pillow.
 """
 
 from __future__ import annotations
@@ -39,6 +40,7 @@ import base64
 import hashlib
 import io
 import json
+import os
 import secrets
 import sys
 import threading
@@ -72,6 +74,9 @@ VIEW_CSP = (
     "frame-src 'none'; base-uri 'none'; form-action 'none'"
 )
 CHECKS: List[str] = []
+# Every fixed wait (HostPage.settle) times this: 1 on a laptop, more on a
+# slower CI runner (MITA_SETTLE_SCALE).
+SETTLE_SCALE = float(os.environ.get("MITA_SETTLE_SCALE") or "1")
 
 
 def check(name: str, ok: bool, detail: str = "") -> None:
@@ -439,7 +444,7 @@ def view_html(widget: str) -> str:
 
 NARROW_FIT = """() => {
   const cut = [];
-  for (const node of document.querySelectorAll('.fit, .kpi dd, .tile dd, .btn, .cell .marks, .rem .a, .bstate, .billrows .amtc, .split span')) {
+  for (const node of document.querySelectorAll('.fit, .guide, .switch, .kpi dd, .tile dd, .btn, .cell .marks, .rem .a, .bstate, .billrows .amtc, .split span')) {
     if (node.offsetParent && node.scrollWidth > node.clientWidth + 1) cut.push(node.textContent.trim().slice(0, 24));
   }
   const doc = document.documentElement;
@@ -462,6 +467,7 @@ class HostPage:
         mobile: bool = False,
         locale: str = "en-GB",
         reduced_motion: str = "no-preference",
+        init_script: Optional[str] = None,
     ):
         options = dict(
             viewport=viewport,
@@ -472,6 +478,9 @@ class HostPage:
         if mobile:
             options.update(is_mobile=True, has_touch=True)
         self.context = browser.new_context(**options)
+        if init_script:
+            # runs in every frame before its scripts, the component's included
+            self.context.add_init_script(init_script)
         self.page = self.context.new_page()
         self.mcp = mcp
         self.downloads: List[bytes] = []
@@ -537,7 +546,8 @@ class HostPage:
         self.frame.wait_for_selector(selector, timeout=timeout)
 
     def settle(self, ms: int = 350):
-        self.page.wait_for_timeout(ms)
+        # MITA_SETTLE_SCALE stretches every wait on a slower machine (CI)
+        self.page.wait_for_timeout(int(ms * SETTLE_SCALE))
 
     def shot(self, out: Path, name: str, *, full: bool = False):
         path = out / f"{name}.png"

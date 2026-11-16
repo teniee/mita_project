@@ -1,0 +1,9 @@
+# The rendered calendar checks (tests_mcp/test_calendar_rendering.py) and the
+# review harness (scripts/mcp/calendar_widget_review.py): test-only, never in
+# the MCP image. Installed on top of requirements-mcp-dev.txt by MCP CI, then
+# `playwright install --with-deps chromium webkit`.
+#
+# playwright 1.50.0, not 1.49.1: 1.49.1 pins greenlet==3.1.1, which the MCP
+# lock's greenlet==3.5.3 rules out; 1.50.0 accepts it (checked 2026-11-15).
+playwright==1.50.0
+Pillow==13.0.0
