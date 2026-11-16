@@ -1378,7 +1378,9 @@ Rules:
     the required MCP CI job (`requirements-mcp-render.txt`: playwright
     1.50.0 — 1.49.1 pins `greenlet==3.1.1` against the lock's 3.5.3 — Chromium
     and WebKit, axe-core 4.10.2, `MITA_RENDERING_REQUIRED=1` so a missing
-    dependency fails instead of skipping). A new check of what a cell shows
+    dependency fails instead of skipping). The MCP job runs on `ubuntu-24.04`:
+    Playwright 1.50 refuses Ubuntu 26.04, which `ubuntu-latest` became in
+    November 2026. A new check of what a cell shows
     goes there, not only into the data tests: 2.7.0's tests asserted the
     share as data and were right.
 - **The average left per day is a layer, never an event — and never a

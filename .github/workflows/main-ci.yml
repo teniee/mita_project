@@ -226,7 +226,12 @@ jobs:
   # and the MCP suite from requirements-mcp-dev.txt.
   mcp-ci:
     name: MCP CI
-    runs-on: ubuntu-latest
+    # Pinned: the rendered calendar checks need Playwright's browsers, and
+    # Playwright 1.50 (requirements-mcp-render.txt) refuses ubuntu-latest
+    # since it became Ubuntu 26.04 (runner image ubuntu26/20261111:
+    # "Playwright does not support chromium on ubuntu26.04-x64"). Move this
+    # together with the Playwright pin — never by skipping the checks.
+    runs-on: ubuntu-24.04
 
     services:
       postgres:
