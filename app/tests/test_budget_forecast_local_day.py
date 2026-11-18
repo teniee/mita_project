@@ -187,6 +187,121 @@ def test_a_bill_paid_in_the_app_is_not_held_twice(
     assert data["safe_daily_limit"] == pytest.approx(10.34)
 
 
+NOV_20 = datetime(2026, 11, 20, 10, 0, tzinfo=timezone.utc)  # 12:00, 20 Nov, Sofia
+
+
+def _at_nov_20(monkeypatch):
+    import app.api.budget.routes as routes
+
+    class Frozen(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return NOV_20 if tz else NOV_20.replace(tzinfo=None)
+
+    monkeypatch.setattr(routes, "datetime", Frozen)
+
+
+def _spent(db_session, user, category: str, amount: str, day: int) -> None:
+    db_session.add(
+        Transaction(
+            id=uuid4(),
+            user_id=user.id,
+            category=category,
+            amount=Decimal(amount),
+            currency="USD",
+            spent_at=datetime(2026, 11, day, 10, tzinfo=timezone.utc),
+        )
+    )
+
+
+def test_fuel_never_releases_a_car_loan_scheduled_in_the_app(
+    authed, db_session, user, monkeypatch
+):
+    """Independent review, finding 1 (P0), through the real routes.
+
+    November: groceries 10.00 a day and transport 5.00 a day (450.00). The
+    user schedules a 270.00 car loan for 25 November in the app and buys
+    150.00 of fuel. The loan is unpaid, so it stays held in full:
+    (450.00 − 150.00 − 270.00) / 10 days after today = 3.00 a day. Before
+    the fix, the fuel released 150.00 of it: 120.00 held, 18.00 a day."""
+    from app.services.core.engine.expense_tracker import rebuild_month_plan
+
+    _at_nov_20(monkeypatch)
+    for day in range(1, 31):
+        db_session.add(_row(user, date(2026, 11, day), "groceries", "10.00"))
+        db_session.add(_row(user, date(2026, 11, day), "transportation", "5.00"))
+    db_session.commit()
+    created = authed.post(
+        "/api/scheduled-expenses/",
+        json={
+            "category": "transportation",
+            "amount": "270.00",
+            "scheduled_date": "2026-11-25",
+            "merchant": "Car loan",
+            "recurrence": "monthly",
+        },
+    )
+    assert created.status_code == 200, created.text
+    for day in range(1, 11):
+        _spent(db_session, user, "transportation", "15.00", day)
+    db_session.commit()
+    rebuild_month_plan(db_session, user.id, date(2026, 11, 1), tz=user.timezone)
+
+    data = authed.get("/api/budget/forecast").json()["data"]
+    assert data["total_spent"] == pytest.approx(150.00)
+    assert data["commitments_reserved"] == pytest.approx(270.00)
+    assert data["safe_daily_limit"] == pytest.approx(3.00)
+
+
+def test_a_lamp_never_releases_a_laptop_loan(authed, db_session, user, monkeypatch):
+    """Finding 1, second case: groceries 10.00 a day, a 70.00 laptop loan for
+    25 November scheduled in the app under 'other' (no other 'other' money),
+    a 70.00 lamp also recorded as 'other'. The loan stays held:
+    (300.00 − 70.00 − 70.00) / 10 = 16.00 a day."""
+    from app.services.core.engine.expense_tracker import rebuild_month_plan
+
+    _at_nov_20(monkeypatch)
+    for day in range(1, 31):
+        db_session.add(_row(user, date(2026, 11, day), "groceries", "10.00"))
+    db_session.commit()
+    created = authed.post(
+        "/api/scheduled-expenses/",
+        json={
+            "category": "other",
+            "amount": "70.00",
+            "scheduled_date": "2026-11-25",
+            "merchant": "Laptop loan",
+            "recurrence": "monthly",
+        },
+    )
+    assert created.status_code == 200, created.text
+    _spent(db_session, user, "other", "70.00", 12)
+    db_session.commit()
+    rebuild_month_plan(db_session, user.id, date(2026, 11, 1), tz=user.timezone)
+
+    data = authed.get("/api/budget/forecast").json()["data"]
+    assert data["commitments_reserved"] == pytest.approx(70.00)
+    assert data["safe_daily_limit"] == pytest.approx(16.00)
+
+
+def test_the_app_s_create_route_writes_origin_app(authed, db_session, user):
+    """The one writer of "app", the only origin the legacy processor acts on
+    (migration 0045)."""
+    created = authed.post(
+        "/api/scheduled-expenses/",
+        json={
+            "category": "rent",
+            "amount": "500.00",
+            "scheduled_date": "2099-01-31",
+            "recurrence": "monthly",
+        },
+    )
+    assert created.status_code == 200, created.text
+    db_session.expire_all()
+    row = db_session.query(ScheduledExpense).filter_by(user_id=user.id).one()
+    assert (row.origin, row.day_of_month) == ("app", None)
+
+
 def test_live_status_leaves_today_s_money_set_aside_out(authed, db_session, user):
     """Today: groceries 10.00, Savings 10.00, a goal reservation 5.00. The
     day's spending budget is the groceries' 10.00."""

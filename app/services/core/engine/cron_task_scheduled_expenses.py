@@ -8,11 +8,18 @@ Runs daily at 06:00 UTC:
   3. For recurring expenses: schedule next occurrence after processing.
 
 Only rows created in the mobile app (``origin = "app"``). An obligation saved
-in ChatGPT (``origin = "chatgpt"``) is a bill to remind of in the calendar,
-paid only by an expense the user links to it (``obligation_payments``): this
-processor never turns it into an expense and never pushes about it (PR #288
-review P1). And when the user already recorded an app row's payment by
-linking an expense to that due date, no second transaction is created.
+in ChatGPT (``origin = "chatgpt"``), or a row of unknown origin, is a bill to
+remind of in the calendar, paid only by an expense the user links to it
+(``obligation_payments``): this processor never turns it into an expense and
+never pushes about it (PR #288 review P1).
+
+And an app row the user pays through links — any expense ever linked to any
+of its due dates — is theirs from then on, like a ChatGPT obligation: never
+recorded, marked processed, rolled forward or reminded of. Every surface
+shows its due dates paid or unpaid from the links, so a deleted, partial or
+early payment can neither lose the bill nor record it twice (independent
+review of the Gate 1 commit, findings 3-5 and 8). Each row is re-read under
+the user's ledger lock, so two runs never record it twice (finding 6).
 
 Integrates with the sync cron infrastructure (same pattern as velocity alerts):
   • run_scheduled_expenses_daily() — no-arg wrapper for rq_scheduler
@@ -49,7 +56,7 @@ def run_scheduled_expenses_batch(
 
     summary = {
         "processed": 0,
-        "already_paid": 0,
+        "paid_through_links": 0,
         "reminders_sent": 0,
         "recurrences_scheduled": 0,
         "errors": 0,
@@ -112,29 +119,17 @@ def _process_due_expenses(db: Session, today: date, summary: dict) -> None:
     for expense in due:
         try:
             lock_user_ledger(db, expense.user_id)
-            # 0. Already paid: the user recorded this payment by linking an
-            #    expense to this due date — never record it a second time.
-            linked = _linked_payment(db, expense, today)
-            if linked is not None:
-                expense.status = "processed"
-                expense.processed_at = datetime.now(timezone.utc)
-                expense.transaction_id = linked
-                db.commit()
-                summary["already_paid"] += 1
-                if expense.recurrence:
-                    try:
-                        _schedule_next_recurrence(db, expense, today)
-                        db.commit()
-                        summary["recurrences_scheduled"] += 1
-                    except Exception as exc:
-                        db.rollback()
-                        logger.error(
-                            "scheduled_expense cron: recurrence failed id=%s err=%s",
-                            expense.id,
-                            exc,
-                        )
+            # 0a. Re-read under the lock: another run may have handled it.
+            db.refresh(expense)
+            if expense.status != "pending" or expense.deleted_at is not None:
+                db.rollback()
+                continue
+            # 0b. The user pays this row through links: theirs, never ours.
+            if _paid_through_links(db, expense):
+                db.rollback()
+                summary["paid_through_links"] += 1
                 logger.info(
-                    "scheduled_expense cron: id=%s already paid by a linked expense",
+                    "scheduled_expense cron: id=%s is paid through links; left alone",
                     expense.id,
                 )
                 continue
@@ -240,6 +235,8 @@ def _send_reminders(db: Session, today: date, summary: dict) -> None:
     notif = NotificationIntegration(db)
 
     for expense in upcoming:
+        if _paid_through_links(db, expense):
+            continue  # the user pays it through links: no "due in N days" push
         days_until = (expense.scheduled_date - today).days
         try:
             notif.notify_scheduled_expense_reminder(
@@ -271,21 +268,21 @@ def _send_reminders(db: Session, today: date, summary: dict) -> None:
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 
-def _linked_payment(db: Session, expense, due: date):
-    """The transaction the user linked to this scheduled expense's due date
-    (``obligation_payments``, recorded through ChatGPT with its
-    obligation_ref), or None. Its first one is enough: the payment exists."""
+def _paid_through_links(db: Session, expense) -> bool:
+    """Whether this user ever linked an expense to any due date of this row
+    (``obligation_payments``, from ChatGPT's obligation_ref) — deleted or
+    not, partial or not. Such a row follows the links, never this processor:
+    what is paid shows as paid on every surface, what is not stays held."""
     from app.db.models import ObligationPayment
 
     return (
         db.query(ObligationPayment.transaction_id)
         .filter(
             ObligationPayment.scheduled_expense_id == expense.id,
-            ObligationPayment.due_date == due,
+            ObligationPayment.user_id == expense.user_id,
         )
-        .order_by(ObligationPayment.created_at)
-        .limit(1)
-        .scalar()
+        .first()
+        is not None
     )
 
 
@@ -341,7 +338,14 @@ def _schedule_next_recurrence(db: Session, expense, fired_date: date) -> None:
         merchant=expense.merchant,
         scheduled_date=next_date,
         recurrence=expense.recurrence,
-        day_of_month=expense.day_of_month,
+        # The requested day travels with the row. An app row's own date is the
+        # day the user chose (the app takes an explicit date), so "the 31st"
+        # recorded on 28 February is next due on 31 March, not the 28th.
+        day_of_month=(
+            expense.day_of_month or expense.scheduled_date.day
+            if expense.recurrence == "monthly"
+            else None
+        ),
         origin=expense.origin,
         status="pending",
     )

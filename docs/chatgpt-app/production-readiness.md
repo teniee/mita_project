@@ -112,9 +112,16 @@ behaviour-preserving extractions.
 
 **P1 — merge (owner, low traffic)**
 
-9. Optional: for this boot only, set `MIGRATION_DATABASE_URL` to the database
-   URL plus `options=-c lock_timeout=5000`. A blocked lock then aborts
-   cleanly, and DDL rolls back to 0036. Remove the variable afterwards.
+9. **Required:** for this boot only, set `MIGRATION_DATABASE_URL` to the
+   database URL plus `options=-c lock_timeout=5000`.
+   * The single 0037 → 0045 transaction takes foreign-key locks on `users`
+     and `transactions`, then `ACCESS EXCLUSIVE` on `scheduled_expenses`.
+   * Without a timeout, one open transaction of the old deployment makes the
+     boot wait indefinitely while requests queue behind it (independent
+     review, finding 9).
+   * With it, a blocked lock aborts cleanly, DDL rolls back to 0036, and the
+     healthcheck keeps the old deployment serving. Retry later.
+   * Remove the variable afterwards.
 10. Merge PR #288. **Check that a deployment of the merge commit appears.**
     `27ed25d` never got one, so if none appears, start it by hand.
 

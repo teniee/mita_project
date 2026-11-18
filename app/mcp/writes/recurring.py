@@ -91,14 +91,14 @@ def requested_day_of_month(
     recurrence: str, *, day_of_month: Optional[int], first_date: Optional[date]
 ) -> Optional[int]:
     """The day of the month a MONTHLY payment is due, as the user gave it —
-    kept apart from its first, clamped date (``scheduled_date``). A first
-    date the user named is a real date and fixes the day; otherwise the day
-    they said ("the 31st"). None for weekly and one-time payments."""
+    kept apart from its first, clamped date (``scheduled_date``): the day they
+    said ("the 31st", even with a first date of 30 November), else the day of
+    the first date they named. None for weekly and one-time payments."""
     if recurrence != "monthly":
         return None
-    if first_date is not None:
-        return first_date.day
-    return day_of_month
+    if day_of_month is not None:
+        return day_of_month
+    return first_date.day if first_date is not None else None
 
 
 def similar_pending(

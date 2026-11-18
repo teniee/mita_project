@@ -1395,23 +1395,42 @@ Rules:
     backfill `app`: 0045 marks only rows that ChatGPT's own idempotency
     records name (same user) as `chatgpt`, and everything else `unknown`
     (tested).
-  - **A row the user already paid is never recorded again**: the processor
-    marks an `app` row paid by a linked expense `processed` with that
-    transaction.
+  - **An `app` row the user pays through links is theirs.** Once any
+    expense is linked to any of its due dates, deleted or not, partial or
+    not, the processor never records it, marks it processed, rolls it
+    forward or reminds of it. Every surface shows its due dates paid or
+    unpaid from the links, so a deleted or partial payment stays held and an
+    early one is never recorded again. Each row is re-read under the user's
+    ledger lock, so two runs never record it twice. (Independent review of
+    the first Gate 1 commit, findings 3–6 and 8: marking such a row
+    processed lost deleted and partial payments and recorded payments
+    linked ahead a second time.)
   - **The requested monthly day is kept** (`day_of_month`) apart from the
     clamped `scheduled_date`, threaded through every caller of
     `monthly_obligations.due_dates_in_month` (calendar, draft, recurring,
     payment links, commitments, rollover). NULL = the date's own day; never
     guess one.
+    - ChatGPT stores the stated day even when a first date is also given.
+      A reused idempotency key asking for another day is refused: the digest
+      includes the day when it differs from the next date's.
+    - An `app` row's next row keeps its own date's day, which is the date
+      the user picked in the app: 31 Jan → 28 Feb → 31 Mar.
   - **An `app` row is one occurrence**: it never counts before its own date,
     so the row the processor schedules next can never put a recorded bill
     back into the month it was recorded in. `chatgpt` and `unknown` rows keep
     2.5.0's rule.
-  - **The mobile forecast cannot link**: `obligation_lines.paid_without_linking`
-    (linked or recorded on the line, whichever is more; R3's rule). Never use
-    it in ChatGPT. In a legacy month a line's `need` is its whole base, so
-    unrelated category spending cannot release a bill
-    (`app/tests/test_paid_without_linking.py`).
+  - **The mobile forecast cannot link, and ordinary spending never
+    releases a saved bill** (`obligation_lines.paid_without_linking`, mobile
+    route only):
+    - rent, mortgage and utilities (`is_bill_line`) in a month the app laid
+      out: what is recorded on the line pays it (R3);
+    - every other saved payment: only a link pays it, and spending on its
+      line uses only the line's everyday money (`need − due`);
+    - a `bill:` line laid out in ChatGPT: exactly ChatGPT's linked figure.
+    - Never credit category spending to a loan. That once let 150.00 of fuel
+      release an unpaid 270.00 car loan (independent review, P0;
+      `app/tests/test_paid_without_linking.py`,
+      `test_budget_forecast_local_day.py`).
   - Regressions: `tests_mcp/test_scheduled_obligations_safety.py` (the real
     processor on the reference profile),
     `app/tests/test_budget_forecast_local_day.py`.

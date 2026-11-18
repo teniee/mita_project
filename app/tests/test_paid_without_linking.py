@@ -1,19 +1,20 @@
 """What the mobile forecast holds for bills it cannot link (PR #288 review G0-01).
 
-``obligation_lines.paid_without_linking``: on a surface whose user cannot link
-an expense to a saved payment (the mobile app), each identified line counts
-what linked expenses paid or what is recorded on the line, whichever is more.
-The forecast then holds ``need − paid`` per line (``_still_reserved``).
+``obligation_lines.paid_without_linking``, then the forecast holds
+``need − paid`` per bill line (``_still_reserved``). The rule:
+ordinary spending never releases a saved bill.
 
-* In a month that keeps obligations under their categories (legacy, every
-  month the app laid out), ``need`` is the line's whole base: the bill plus the
-  category's other money. Unrelated spending in that category therefore uses
-  the category's own money first and cannot release the bill until it
-  exceeds it.
-* In a month laid out in ChatGPT (keyed), a bill's own line holds only linked
-  payments, so category spending never settles it.
+* **Rent, mortgage, utilities in a month the app laid out.** The category is
+  the bill (R3): what is recorded on it pays it. A rent paid in the app is
+  spent once, never also held.
+* **Any other saved payment** (a loan, a subscription, insurance) is paid only
+  by a link. Spending on its line uses only the line's everyday money.
+* **A line laid out in ChatGPT** holds exactly ChatGPT's linked figure.
 
-Exact, hand-checkable figures; no database.
+The independent review of the first version (crediting all spending on the
+line) found an unpaid 270.00 car loan released by 150.00 of fuel. Its exact
+cases are pinned here and through the real route in
+``test_budget_forecast_local_day.py``. No database.
 """
 
 from datetime import date
@@ -50,72 +51,122 @@ def held(occurrences, base, recorded, linked=None, keyed=False) -> Decimal:
     return _still_reserved([], commitments.needs, paid)
 
 
-def test_a_bill_paid_in_the_app_is_released_once():
+# --- rent, mortgage, utilities: the category is the bill ------------------------
+
+
+def test_a_rent_paid_in_the_app_is_released_once():
     rent = [due("rent", "800.00", 1)]
     base = {"rent": D("800.00")}
-    assert held(rent, base, {}) == D("800.00")  # not paid yet
-    assert held(rent, base, {"rent": D("800.00")}) == D("0.00")  # paid in the app
-    assert held(rent, base, {"rent": D("900.00")}) == D("0.00")  # more is spending
+    assert held(rent, base, {}) == D("800.00")
+    assert held(rent, base, {"rent": D("800.00")}) == D("0.00")
+    assert held(rent, base, {"rent": D("900.00")}) == D("0.00")
+    assert held(rent, base, {"rent": D("400.00")}) == D("400.00")  # part payment
+    # a rent the plan has no line for (saved after the month was laid out)
+    assert held(rent, {}, {"rent": D("800.00")}) == D("0.00")
 
 
-def test_a_partial_payment_releases_only_what_was_paid():
-    rent = [due("rent", "800.00", 1)]
-    assert held(rent, {"rent": D("800.00")}, {"rent": D("400.00")}) == D("400.00")
-
-
-def test_unrelated_spending_in_the_same_category_never_releases_the_bill():
-    """Transportation: 100.00 of everyday money and a 270.00 car loan on the
-    15th on the same legacy line (370.00). A 60.00 car part leaves 310.00
-    held — the whole loan and the 40.00 of everyday money not yet spent."""
-    loan = [due("transportation", "270.00", 15)]
-    base = {"transportation": D("370.00")}
-    assert held(loan, base, {"transportation": D("60.00")}) == D("310.00")
-    assert held(loan, base, {"transportation": D("100.00")}) == D("270.00")
-    # only spending beyond the category's own money reaches the bill
-    assert held(loan, base, {"transportation": D("130.00")}) == D("240.00")
-
-
-def test_several_obligations_in_one_category_stay_held_until_paid():
-    """Car loan 270.00 and scooter 50.00, both transportation, with 100.00 of
-    everyday money (420.00). The loan paid in the app: the scooter and the
-    unspent everyday money stay held (150.00); never less than the scooter."""
-    bills = [due("transportation", "270.00", 15), due("transportation", "50.00", 20)]
-    base = {"transportation": D("420.00")}
-    assert held(bills, base, {"transportation": D("270.00")}) == D("150.00")
-    assert held(bills, base, {"transportation": D("370.00")}) == D("50.00")
-    assert held(bills, base, {"transportation": D("420.00")}) == D("0.00")
-
-
-def test_a_month_laid_out_in_chatgpt_settles_a_bill_only_by_its_link():
-    """Keyed month: the loan's own line holds only linked payments. Spending
-    on the category line (60.00, even 270.00) never settles it; a linked
-    270.00 does, recorded on its line or paid early in October."""
-    loan_id = uuid4()
-    line = bill_key(loan_id)
-    loan = [due("transportation", "270.00", 15, loan_id)]
-    base = {line: D("270.00"), "transportation": D("100.00")}
-    assert held(loan, base, {"transportation": D("270.00")}, keyed=True) == D("270.00")
-    assert held(loan, base, {line: D("270.00")}, keyed=True) == D("0.00")
-    early = {(loan_id, date(2026, 11, 15)): D("270.00")}  # recorded in October
-    assert held(loan, base, {}, linked=early, keyed=True) == D("0.00")
-
-
-def test_never_more_held_than_chatgpt_holds():
-    """The mobile figure counts linked payments too: a payment linked in
-    ChatGPT but recorded in another month still settles its due date."""
-    rent_id = uuid4()
-    rent = [due("rent", "800.00", 1, rent_id)]
-    linked = {(rent_id, date(2026, 11, 1)): D("800.00")}
-    assert held(rent, {"rent": D("800.00")}, {}, linked=linked) == D("0.00")
-
-
-def test_known_limit_a_bill_only_category_takes_any_purchase_in_it():
-    """Pinned limit, not a goal. A category whose line holds nothing but the
-    bill (utilities 45.00) cannot tell a 20.00 lamp from a part payment on a
-    surface without links: 25.00 stays held. It is bounded by the unrelated
-    amount, it is R3's rule from before 2.7.0, and linking in ChatGPT is
-    exact (scheduled-obligations-safety.md → Limits)."""
+def test_known_limit_a_bill_category_takes_any_purchase_in_it():
+    """Pinned limit, not a goal: on a surface without links a 20.00 lamp
+    recorded as utilities is part of the utilities bill (R3). Bounded by the
+    amount; linking in ChatGPT is exact."""
     bill = [due("utilities", "45.00", 5)]
     assert held(bill, {"utilities": D("45.00")}, {"utilities": D("20.00")}) == D(
         "25.00"
     )
+
+
+# --- any other saved payment: only a link releases it ---------------------------
+
+
+def test_fuel_never_releases_a_car_loan_saved_after_the_month_was_laid_out():
+    """The review's case: transport 5.00 a day (150.00), a 270.00 car loan
+    scheduled in the app afterwards (base < due), 150.00 of fuel. The loan
+    stays held in full; the fuel came from transport's own money."""
+    loan = [due("transportation", "270.00", 25)]
+    base = {"transportation": D("150.00")}
+    assert held(loan, base, {"transportation": D("150.00")}) == D("270.00")
+    assert held(loan, base, {"transportation": D("420.00")}) == D("270.00")
+
+
+def test_a_lamp_never_releases_a_laptop_loan():
+    """The review's second case: a 70.00 laptop loan under 'other', with no
+    other 'other' money, and a 70.00 lamp."""
+    loan = [due("other", "70.00", 25)]
+    assert held(loan, {}, {"other": D("70.00")}) == D("70.00")
+    assert held(loan, {"other": D("100.00")}, {"other": D("70.00")}) == D("70.00")
+
+
+def test_a_line_holding_a_loan_and_everyday_money():
+    """Transportation laid out with 100.00 of everyday money and the 270.00
+    loan (370.00). Spending uses the everyday money only — never the loan —
+    and is never held twice."""
+    loan_id = uuid4()
+    loan = [due("transportation", "270.00", 15, loan_id)]
+    base = {"transportation": D("370.00")}
+    assert held(loan, base, {"transportation": D("60.00")}) == D("310.00")
+    assert held(loan, base, {"transportation": D("130.00")}) == D("270.00")
+    linked = {(loan_id, date(2026, 11, 15)): D("270.00")}
+    # the loan linked in ChatGPT (it sits on the same line in this month)
+    assert held(loan, base, {"transportation": D("270.00")}, linked) == D("100.00")
+    assert held(loan, base, {"transportation": D("330.00")}, linked) == D("40.00")
+
+
+def test_several_bills_in_one_category_are_held_until_each_is_linked():
+    """Car loan 270.00 and scooter 50.00, both transportation, plus 100.00 of
+    everyday money (420.00)."""
+    car, scooter = uuid4(), uuid4()
+    bills = [
+        due("transportation", "270.00", 15, car),
+        due("transportation", "50.00", 20, scooter),
+    ]
+    base = {"transportation": D("420.00")}
+    assert held(bills, base, {"transportation": D("100.00")}) == D("320.00")
+    linked = {(car, date(2026, 11, 15)): D("270.00")}
+    assert held(bills, base, {"transportation": D("370.00")}, linked) == D("50.00")
+
+
+# --- a month laid out in ChatGPT: exactly ChatGPT's figure ---------------------
+
+
+def test_a_bill_line_is_settled_only_by_its_own_links():
+    """Review finding 2. November's loan paid late on 3 December and linked to
+    15 November lands on December's bill line; December's loan is still
+    unpaid and stays held. Category spending never settles it either."""
+    loan_id = uuid4()
+    line = bill_key(loan_id)
+    december = [
+        DueOccurrence(
+            obligation_id=loan_id,
+            day=date(2026, 12, 15),
+            category="transportation",
+            amount=D("270.00"),
+            merchant=None,
+            recurrence="monthly",
+            scheduled_from=date(2026, 12, 15),
+        )
+    ]
+    base = {line: D("270.00"), "transportation": D("100.00")}
+    assert held(december, base, {line: D("270.00")}, keyed=True) == D("270.00")
+    assert held(december, base, {"transportation": D("270.00")}, keyed=True) == D(
+        "270.00"
+    )
+    paid_december = {(loan_id, date(2026, 12, 15)): D("270.00")}
+    assert held(december, base, {line: D("270.00")}, paid_december, keyed=True) == D(
+        "0.00"
+    )
+
+
+def test_the_app_never_holds_more_than_chatgpt():
+    """A payment linked in ChatGPT, recorded in another month, settles its due
+    date here too."""
+    rent_id, loan_id = uuid4(), uuid4()
+    bills = [
+        due("rent", "800.00", 1, rent_id),
+        due("transportation", "270.00", 15, loan_id),
+    ]
+    linked = {
+        (rent_id, date(2026, 11, 1)): D("800.00"),
+        (loan_id, date(2026, 11, 15)): D("270.00"),
+    }
+    base = {"rent": D("800.00"), "transportation": D("270.00")}
+    assert held(bills, base, {}, linked) == D("0.00")

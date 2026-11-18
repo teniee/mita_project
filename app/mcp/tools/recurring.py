@@ -143,7 +143,15 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
                 weekday=weekday,
                 first_date=first_date,
             )
+            requested_day = writes.requested_day_of_month(
+                recurrence, day_of_month=day_of_month, first_date=first_date
+            )
             request = [label, str(amount), category, recurrence, str(due.day)]
+            if requested_day is not None and requested_day != due.day.day:
+                # "the 31st" and "the 30th" share November's date but are not
+                # the same request: a reused key asking for the other day is
+                # refused, never replayed (unchanged digest otherwise).
+                request.append(f"day:{requested_day}")
             claim = await session.run_sync(
                 lambda s: idempotency.claim(
                     s,
@@ -180,9 +188,7 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
                     # The day asked for, apart from the clamped date: "the
                     # 31st" is due on the 30th in November and on the 31st in
                     # December (PR #288 review P2, migration 0045).
-                    day_of_month=writes.requested_day_of_month(
-                        recurrence, day_of_month=day_of_month, first_date=first_date
-                    ),
+                    day_of_month=requested_day,
                     # An obligation to remind of, paid only when the user
                     # links an expense — never turned into an expense by the
                     # daily processor (PR #288 review P1).

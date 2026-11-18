@@ -316,7 +316,7 @@ async def test_a_scheduled_expense_from_the_app_still_fires_once_and_rolls_forwa
     assert [(r[0], r[1], r[3], r[4]) for r in app_rows] == [
         ("Music", "processed", None, date(2026, 11, 30)),
         ("Water", "processed", 31, date(2026, 11, 30)),
-        ("Music", "pending", None, date(2026, 12, 30)),  # as before: the 30th
+        ("Music", "pending", 30, date(2026, 12, 30)),  # its own day, kept
         ("Water", "pending", 31, date(2026, 12, 31)),  # the 31st asked for
     ]
     assert all(r[5] is not None for r in app_rows if r[1] == "processed")
@@ -360,20 +360,18 @@ async def test_a_payment_linked_in_chatgpt_is_never_recorded_twice(
     assert paid["status"] == "recorded"
     assert await ledger(connection, user) == (1, D("850.00"))
     summary, pushed = await run_scheduler(connection, monkeypatch, date(2026, 11, 28))
-    assert summary["processed"] == 0 and summary["already_paid"] == 1
+    assert summary["processed"] == 0 and summary["paid_through_links"] == 1
     assert pushed == []
     assert await ledger(connection, user) == (1, D("850.00"))  # never twice
+    # the user pays this row through links now: it stays theirs, pending,
+    # with its own date, and the processor never takes it up again
     flat_rows = [r for r in await saved(connection, user) if r[0] == "Flat"]
-    assert [(r[1], r[4]) for r in flat_rows] == [
-        ("processed", date(2026, 11, 28)),
-        ("pending", date(2026, 12, 28)),
-    ]
-    user_txn = (
-        await connection.execute(
-            text("SELECT id FROM transactions WHERE user_id = :u"), {"u": user.id}
-        )
-    ).scalar_one()
-    assert flat_rows[0][5] == user_txn  # the user's own payment, linked
+    assert [(r[1], r[4]) for r in flat_rows] == [("pending", date(2026, 11, 28))]
+    november = await call(m28, token, "get_budget_forecast")
+    assert november["commitments_reserved"] == "505.00"  # the rent is paid
+    summary, pushed = await run_scheduler(connection, monkeypatch, date(2026, 12, 28))
+    assert summary["processed"] == 0 and pushed == []
+    assert await ledger(connection, user) == (1, D("850.00"))
 
 
 async def test_a_row_of_unknown_origin_is_never_processed(
@@ -603,6 +601,13 @@ def test_a_row_made_in_the_app_never_counts_before_its_own_date():
 
 def test_the_requested_day_is_what_the_user_gave():
     assert requested_day_of_month("monthly", day_of_month=31, first_date=None) == 31
+    # "the 31st", with its first date given as 30 November: still the 31st
+    assert (
+        requested_day_of_month(
+            "monthly", day_of_month=31, first_date=date(2026, 11, 30)
+        )
+        == 31
+    )
     assert (
         requested_day_of_month(
             "monthly", day_of_month=None, first_date=date(2027, 1, 31)
@@ -611,6 +616,266 @@ def test_the_requested_day_is_what_the_user_gave():
     )
     assert requested_day_of_month("weekly", day_of_month=None, first_date=None) is None
     assert requested_day_of_month("once", day_of_month=None, first_date=None) is None
+
+
+# --- independent review of the Gate 1 commit: every finding, pinned ---------
+
+
+async def _app_row(seed, user, **values):
+    row = dict(
+        category="rent",
+        amount=D("850.00"),
+        scheduled_date=date(2026, 11, 28),
+        recurrence="monthly",
+        merchant="Flat",
+        origin=APP_ORIGIN,
+    )
+    row.update(values)
+    return await seed.scheduled(user, **row)
+
+
+async def _ref(m, token, merchant):
+    recurring = await call(m, token, "get_recurring_expenses")
+    return next(
+        i for i in recurring["scheduled_recurring"] if i["merchant"] == merchant
+    )
+
+
+async def _pay(m, token, ref, amount, day, category="rent"):
+    return await call(
+        m,
+        token,
+        "add_transaction",
+        {
+            "amount": amount,
+            "category": category,
+            "obligation_ref": ref,
+            "date": day,
+            "idempotency_key": key(),
+        },
+    )
+
+
+async def test_payments_linked_ahead_are_never_recorded_again(
+    mcp, seed, connection, monkeypatch
+):
+    """Finding 5. November's and December's rent paid on 27 November in
+    ChatGPT (MITA links the second to 28 December). Neither date is ever
+    recorded by the processor: 2 rents paid, 2 recorded."""
+    user, token = await reference_profile(mcp, seed)
+    await _app_row(seed, user)
+    m27 = mcp.at(noon(27))
+    flat = await _ref(m27, token, "Flat")
+    dues = [
+        (await _pay(m27, token, flat["obligation_ref"], "850.00", "2026-11-27"))[
+            "transactions"
+        ][0]["paid_obligation"]["due_date"]
+        for _ in range(2)
+    ]
+    assert dues == ["2026-11-28", "2026-12-28"]
+    for day in (date(2026, 11, 28), date(2026, 12, 28)):
+        summary, pushed = await run_scheduler(connection, monkeypatch, day)
+        assert summary["processed"] == 0 and pushed == [], day
+    assert await ledger(connection, user) == (2, D("1700.00"))
+    december = await call(
+        mcp.at(datetime(2026, 12, 29, 10, 0, tzinfo=timezone.utc)),
+        token,
+        "get_recurring_expenses",
+    )
+    flat = next(i for i in december["scheduled_recurring"] if i["merchant"] == "Flat")
+    assert flat["due_this_month"] == [
+        {
+            "due_date": "2026-12-28",
+            "amount": "850.00",
+            "paid": "850.00",
+            "outstanding": "0.00",
+        }
+    ]
+
+
+async def test_weekly_payments_linked_ahead_are_never_recorded_again(
+    mcp, seed, connection, monkeypatch
+):
+    """Finding 5, weekly: two sessions paid on 3 November (linked to the 4th
+    and the 11th); the processor records neither."""
+    user, token = await reference_profile(mcp, seed)
+    await _app_row(
+        seed,
+        user,
+        category="entertainment",
+        amount=D("12.00"),
+        scheduled_date=date(2026, 11, 4),
+        recurrence="weekly",
+        merchant="Climbing",
+    )
+    m3 = mcp.at(noon(3))
+    climb = await _ref(m3, token, "Climbing")
+    for _ in range(2):
+        await _pay(
+            m3, token, climb["obligation_ref"], "12.00", "2026-11-03", "entertainment"
+        )
+    for day in (date(2026, 11, 4), date(2026, 11, 11)):
+        summary, _ = await run_scheduler(connection, monkeypatch, day)
+        assert summary["processed"] == 0, day
+    assert await ledger(connection, user) == (2, D("24.00"))
+
+
+async def test_a_deleted_linked_payment_leaves_the_bill_unpaid_and_held(
+    mcp, seed, connection, monkeypatch
+):
+    """Findings 3 and its variant. The linked payment is deleted before or
+    after the run: the bill is unpaid again, still held, never lost, and the
+    processor records nothing on the user's behalf."""
+    user, token = await reference_profile(mcp, seed)
+    await _app_row(seed, user)
+    m20 = mcp.at(noon(20))
+    flat = await _ref(m20, token, "Flat")
+    first = await _pay(m20, token, flat["obligation_ref"], "850.00", "2026-11-20")
+    await call(
+        m20, token, "delete_transaction", {"ref": first["transactions"][0]["ref"]}
+    )
+    held = await call(mcp.at(noon(27)), token, "get_budget_forecast")
+    assert held["commitments_reserved"] == "1355.00"  # 505 + the unpaid 850
+    summary, _ = await run_scheduler(connection, monkeypatch, date(2026, 11, 28))
+    assert summary["processed"] == 0
+    assert await ledger(connection, user) == (0, D("0.00"))
+    after = await call(mcp.at(noon(28)), token, "get_budget_forecast")
+    assert after["commitments_reserved"] == "1355.00"  # still held, not lost
+    # paid and linked on the due date, deleted after the run: unpaid again
+    second = await _pay(
+        mcp.at(noon(28)), token, flat["obligation_ref"], "850.00", "2026-11-28"
+    )
+    paid = await call(mcp.at(noon(28)), token, "get_budget_forecast")
+    assert paid["commitments_reserved"] == "505.00"
+    await call(
+        mcp.at(noon(28)),
+        token,
+        "delete_transaction",
+        {"ref": second["transactions"][0]["ref"]},
+    )
+    again = await call(mcp.at(noon(28)), token, "get_budget_forecast")
+    assert again["commitments_reserved"] == "1355.00"
+
+
+async def test_a_partial_linked_payment_keeps_the_rest_held(
+    mcp, seed, connection, monkeypatch
+):
+    """Finding 4. 400.00 of 850.00 paid: the 450.00 still owed stays held
+    before and after the run, and nothing is recorded for it."""
+    user, token = await reference_profile(mcp, seed)
+    await _app_row(seed, user)
+    m20 = mcp.at(noon(20))
+    flat = await _ref(m20, token, "Flat")
+    await _pay(m20, token, flat["obligation_ref"], "400.00", "2026-11-20")
+    before = await call(mcp.at(noon(27)), token, "get_budget_forecast")
+    assert before["commitments_reserved"] == "955.00"  # 505 + 450
+    summary, _ = await run_scheduler(connection, monkeypatch, date(2026, 11, 28))
+    assert summary["processed"] == 0 and summary["paid_through_links"] == 1
+    assert await ledger(connection, user) == (1, D("400.00"))
+    after = await call(mcp.at(noon(28)), token, "get_budget_forecast")
+    assert after["commitments_reserved"] == "955.00"
+
+
+async def test_no_reminder_for_a_bill_paid_through_links(
+    mcp, seed, connection, monkeypatch
+):
+    """Finding 8: rent paid and linked on the 20th; no "due in 3 days" push
+    on the 25th (it could prompt a second real payment)."""
+    user, token = await reference_profile(mcp, seed)
+    await _app_row(seed, user)
+    m20 = mcp.at(noon(20))
+    flat = await _ref(m20, token, "Flat")
+    await _pay(m20, token, flat["obligation_ref"], "850.00", "2026-11-20")
+    summary, pushed = await run_scheduler(connection, monkeypatch, date(2026, 11, 25))
+    assert pushed == [] and summary["reminders_sent"] == 0
+
+
+async def test_a_row_another_run_already_handled_is_never_recorded_again(
+    seed, connection, monkeypatch
+):
+    """Finding 6: two runs. The second still holds the row it selected before
+    the first committed; under the ledger lock it re-reads the row, sees it
+    processed, and records nothing."""
+    from app.services.core.engine import expense_tracker
+
+    user = await seed.user(income="2500")
+    row = await _app_row(
+        seed, user, category="utilities", amount=D("60.00"), merchant="Water"
+    )
+    real_lock = expense_tracker.lock_user_ledger
+
+    def lock_after_the_other_run(db, user_id):
+        # the other run commits first: the row is processed by the time this
+        # run gets the lock
+        db.execute(
+            text("UPDATE scheduled_expenses SET status = 'processed' WHERE id = :id"),
+            {"id": row.id},
+        )
+        db.commit()
+        real_lock(db, user_id)
+
+    monkeypatch.setattr(expense_tracker, "lock_user_ledger", lock_after_the_other_run)
+    summary, pushed = await run_scheduler(connection, monkeypatch, date(2026, 11, 28))
+    assert summary["processed"] == 0 and pushed == []
+    assert await ledger(connection, user) == (0, D("0.00"))
+    assert [r[1] for r in await saved(connection, user)] == ["processed"]
+
+
+async def test_an_app_row_keeps_its_requested_day_as_it_rolls_forward(
+    seed, connection, monkeypatch
+):
+    """Finding 7: an app row made for 31 January is recorded on 31 January,
+    28 February and 31 March 2027, never drifting to the 28th."""
+    user = await seed.user(income="2500")
+    await _app_row(
+        seed,
+        user,
+        category="utilities",
+        amount=D("60.00"),
+        scheduled_date=date(2027, 1, 31),
+        merchant="Water",
+    )
+    for day in (date(2027, 1, 31), date(2027, 2, 28), date(2027, 3, 31)):
+        summary, _ = await run_scheduler(connection, monkeypatch, day)
+        assert summary["processed"] == 1, day
+    rows = await saved(connection, user)
+    assert [(r[1], r[3], r[4]) for r in rows] == [
+        ("processed", None, date(2027, 1, 31)),
+        ("processed", 31, date(2027, 2, 28)),
+        ("processed", 31, date(2027, 3, 31)),
+        ("pending", 31, date(2027, 4, 30)),
+    ]
+    assert await ledger(connection, user) == (3, D("180.00"))
+
+
+async def test_a_reused_key_asking_for_another_day_is_refused(mcp, seed, connection):
+    """Finding 9: "the 31st" and "the 30th" share November's date; the same
+    idempotency key reused for the other day is refused, never replayed."""
+    m10 = mcp.at(noon(10))
+    user = await seed.user(income="0", onboarded=False, name=None, country="ZZ")
+    token = m10.token(user)
+    await call(
+        m10,
+        token,
+        "update_financial_profile",
+        {"monthly_net_income": 2500, "currency": "EUR", "timezone": "Europe/Sofia"},
+    )
+    request = {
+        "name": "Rent",
+        "amount": 600,
+        "category": "rent",
+        "recurrence": "monthly",
+        "day_of_month": 31,
+        "idempotency_key": key(),
+    }
+    first = await call(m10, token, "add_recurring_expense", request)
+    assert first["status"] == "created"
+    refused = await m10.call(
+        token, "add_recurring_expense", {**request, "day_of_month": 30}
+    )
+    assert refused.is_error and "different" in refused.content[0].text.lower()
+    rows = await saved(connection, user)
+    assert [(r[3], r[4]) for r in rows] == [(31, date(2026, 11, 30))]
 
 
 async def test_the_service_is_not_ready_without_the_0045_columns(connection):
