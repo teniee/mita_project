@@ -9,7 +9,7 @@ Ledger (Europe/Sofia, today 2026-10-11):
 First recorded expense: June → May is before tracking.
 """
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from decimal import ROUND_HALF_UP, Decimal
 
 import pytest
@@ -209,7 +209,10 @@ async def test_financial_climate_states_exact_facts(m, ana, seed):
     await seed.plan(ana, date(2026, 7, 1), {"groceries": "500.00"})
     await seed.plan(ana, date(2026, 9, 1), {"groceries": "300.00"})
     await seed.goal(ana)  # target 1000, saved 250
-    await seed.scheduled(ana)  # rent 1200 monthly, due in 5 days
+    # rent 1200 monthly, due in 5 days — of the test's clock (NOW), never of
+    # the machine's date: the seeder's default (date.today() + 5) put it in
+    # late November for this October and broke once that left the month.
+    await seed.scheduled(ana, scheduled_date=NOW.date() + timedelta(days=5))
     data = structured(await m.call(m.token(ana), "get_financial_climate", {}))
     assert (data["period_start"], data["period_end"]) == ("2026-05-01", "2026-10-11")
     assert data["months_with_data"] == 4 and data["total_transactions"] == 6

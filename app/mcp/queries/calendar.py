@@ -133,6 +133,12 @@ class SavedPayment:
     anchor: date  # scheduled_date: the next date the user scheduled it for
     recurrence: Optional[str]
     obligation_id: Optional[UUID] = None  # scheduled_expenses.id
+    # the monthly day the user asked for, apart from the clamped anchor
+    # (scheduled_expenses.day_of_month, migration 0045); None = the anchor's
+    day_of_month: Optional[int] = None
+    # where it was made (scheduled_expenses.origin, 0045): a row made in the
+    # mobile app is one occurrence and never counts before its anchor
+    origin: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -491,7 +497,14 @@ def occurrences_in_month(
     Monthly: the anchor's day of the month, on the month's last day when the
     month is shorter. Weekly: every matching weekday. One-time: the anchor.
     """
-    days = due_dates_in_month(payment.anchor, payment.recurrence, year, month)
+    days = due_dates_in_month(
+        payment.anchor,
+        payment.recurrence,
+        year,
+        month,
+        payment.day_of_month,
+        payment.origin,
+    )
     return [
         BillOccurrence(
             day=day,
@@ -516,7 +529,15 @@ def counts_in_month(payment: SavedPayment, year: int, month: int) -> bool:
     one-time payment only in its own month. A monthly bill saved after this
     month's date has passed (next date next month) is still this month's."""
     return (
-        due_in_month(payment.amount, payment.anchor, payment.recurrence, year, month)
+        due_in_month(
+            payment.amount,
+            payment.anchor,
+            payment.recurrence,
+            year,
+            month,
+            payment.day_of_month,
+            payment.origin,
+        )
         > ZERO
     )
 
@@ -895,6 +916,8 @@ def saved_payments(db: Session, ctx: UserContext) -> List[SavedPayment]:
             ScheduledExpense.merchant,
             ScheduledExpense.scheduled_date,
             ScheduledExpense.recurrence,
+            ScheduledExpense.day_of_month,
+            ScheduledExpense.origin,
         )
         .filter(
             ScheduledExpense.user_id == ctx.user_id,
@@ -916,8 +939,19 @@ def saved_payments(db: Session, ctx: UserContext) -> List[SavedPayment]:
             anchor=anchor,
             recurrence=recurrence,
             obligation_id=obligation_id,
+            day_of_month=day_of_month,
+            origin=origin,
         )
-        for obligation_id, category, amount, merchant, anchor, recurrence in rows
+        for (
+            obligation_id,
+            category,
+            amount,
+            merchant,
+            anchor,
+            recurrence,
+            day_of_month,
+            origin,
+        ) in rows
     ]
 
 

@@ -1383,6 +1383,38 @@ Rules:
     November 2026. A new check of what a cell shows
     goes there, not only into the data tests: 2.7.0's tests asserted the
     share as data and were right.
+- **Saved payments are never paid by a scheduler** (2.11.0 release, Gate 1;
+  PR #288 review P1/P2, G0-01; migration 0045;
+  `docs/chatgpt-app/scheduled-obligations-safety.md`). Rules:
+  - **Only `origin = 'app'` rows are ever processed or pushed** by
+    `cron_task_scheduled_expenses` (both phases). `app` is written by exactly
+    one place, the app's `POST /api/scheduled-expenses` (explicit), and kept
+    by the processor's next row. ChatGPT writes `chatgpt`. The database,
+    model and service default is `unknown` (never processed), so a writer
+    that does not say is safe. Never default a writer to `app` and never
+    backfill `app`: 0045 marks only rows that ChatGPT's own idempotency
+    records name (same user) as `chatgpt`, and everything else `unknown`
+    (tested).
+  - **A row the user already paid is never recorded again**: the processor
+    marks an `app` row paid by a linked expense `processed` with that
+    transaction.
+  - **The requested monthly day is kept** (`day_of_month`) apart from the
+    clamped `scheduled_date`, threaded through every caller of
+    `monthly_obligations.due_dates_in_month` (calendar, draft, recurring,
+    payment links, commitments, rollover). NULL = the date's own day; never
+    guess one.
+  - **An `app` row is one occurrence**: it never counts before its own date,
+    so the row the processor schedules next can never put a recorded bill
+    back into the month it was recorded in. `chatgpt` and `unknown` rows keep
+    2.5.0's rule.
+  - **The mobile forecast cannot link**: `obligation_lines.paid_without_linking`
+    (linked or recorded on the line, whichever is more; R3's rule). Never use
+    it in ChatGPT. In a legacy month a line's `need` is its whole base, so
+    unrelated category spending cannot release a bill
+    (`app/tests/test_paid_without_linking.py`).
+  - Regressions: `tests_mcp/test_scheduled_obligations_safety.py` (the real
+    processor on the reference profile),
+    `app/tests/test_budget_forecast_local_day.py`.
 - **The average left per day is a layer, never an event — and never a
   recommendation** (owner briefs 2026-11-13 and 2026-11-16, after the owner's
   acceptance of 2.10.0 failed: right figures, an almost empty calendar, and

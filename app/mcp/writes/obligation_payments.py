@@ -76,7 +76,12 @@ def due_dates_near(obligation: ScheduledExpense, day: date) -> List[date]:
     for year, month in ((day.year, day.month), _next_month(day.year, day.month)):
         found.extend(
             due_dates_in_month(
-                obligation.scheduled_date, obligation.recurrence, year, month
+                obligation.scheduled_date,
+                obligation.recurrence,
+                year,
+                month,
+                obligation.day_of_month,
+                obligation.origin,
             )
         )
     return found
@@ -84,7 +89,12 @@ def due_dates_near(obligation: ScheduledExpense, day: date) -> List[date]:
 
 def is_due_date(obligation: ScheduledExpense, due: date) -> bool:
     return due in due_dates_in_month(
-        obligation.scheduled_date, obligation.recurrence, due.year, due.month
+        obligation.scheduled_date,
+        obligation.recurrence,
+        due.year,
+        due.month,
+        obligation.day_of_month,
+        obligation.origin,
     )
 
 
@@ -252,7 +262,12 @@ def unpaid_in_category(
     for obligation in rows:
         amount = Decimal(str(obligation.amount))
         for due in due_dates_in_month(
-            obligation.scheduled_date, obligation.recurrence, day.year, day.month
+            obligation.scheduled_date,
+            obligation.recurrence,
+            day.year,
+            day.month,
+            obligation.day_of_month,
+            obligation.origin,
         ):
             left = amount - paid.get((obligation.id, due), ZERO)
             if left > ZERO:

@@ -27,6 +27,7 @@ from app.mcp.tools.inputs import CATEGORY_HELP, ExpenseCategory, IdempotencyKey
 from app.mcp.tools.inputs import money as money_input
 from app.mcp.writes import recurring as writes
 from app.mcp.writes.transactions import clean_merchant, require_currency
+from app.services.monthly_obligations import CHATGPT_ORIGIN
 from app.services.scheduled_expense_service import create_scheduled_expense
 
 DESCRIPTION = (
@@ -176,6 +177,16 @@ def register(server: MCPServer, runtime: McpRuntime) -> None:
                     scheduled_date=due.day,
                     merchant=label,
                     recurrence=recurrence,
+                    # The day asked for, apart from the clamped date: "the
+                    # 31st" is due on the 30th in November and on the 31st in
+                    # December (PR #288 review P2, migration 0045).
+                    day_of_month=writes.requested_day_of_month(
+                        recurrence, day_of_month=day_of_month, first_date=first_date
+                    ),
+                    # An obligation to remind of, paid only when the user
+                    # links an expense — never turned into an expense by the
+                    # daily processor (PR #288 review P1).
+                    origin=CHATGPT_ORIGIN,
                 )
                 claim.complete([expense.id])
                 await session.commit()

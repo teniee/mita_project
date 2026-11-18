@@ -36,7 +36,11 @@ from app.services.monthly_plan_service import (
     base_totals_by_category,
     ensure_month_plan_async,
 )
-from app.services.obligation_lines import month_commitments, month_is_keyed
+from app.services.obligation_lines import (
+    month_commitments,
+    month_is_keyed,
+    paid_without_linking,
+)
 from app.utils.response_wrapper import success_response
 
 from app.api.budget.services import fetch_remaining_budget  # isort:skip
@@ -444,11 +448,13 @@ async def get_budget_forecast(
     ]
 
     # ── What the month's bills still need (owner decision 2026-10-25) ────────
-    # The same rule as ChatGPT's get_budget_forecast (obligation_lines): each
-    # saved payment's due dates this month, minus what the expenses the user
-    # linked to it paid — never what happens to share its category — and
-    # rent / utilities lines without a saved payment by category. Unpaid
-    # bills are kept out of the safe daily limit.
+    # ChatGPT's get_budget_forecast rule (obligation_lines): each saved
+    # payment's due dates this month and what the expenses linked to it paid,
+    # and rent / utilities lines without a saved payment by category. Unpaid
+    # bills are kept out of the safe daily limit. This app cannot link an
+    # expense to a saved payment, so here a bill also counts what is recorded
+    # on its line (paid_without_linking): a rent paid in the app is never
+    # spent and held again (PR #288 review G0-01).
     keyed = month_is_keyed(p.category for p in plans)
     commitments = await db.run_sync(
         lambda sync_session: month_commitments(
@@ -469,7 +475,16 @@ async def get_budget_forecast(
         month=target_month,
         today=today_local,
         commitments=commitments.needs,
-        commitments_paid=commitments.paid,
+        commitments_paid=paid_without_linking(
+            commitments,
+            {
+                line: sum(
+                    (p.spent_amount for p in plan_data if p.category == line),
+                    Decimal("0"),
+                )
+                for line in commitments.paid
+            },
+        ),
     )
 
     return success_response(forecast.to_dict())

@@ -87,6 +87,20 @@ def next_due_date(
     return DueDate(today + timedelta(days=ahead))
 
 
+def requested_day_of_month(
+    recurrence: str, *, day_of_month: Optional[int], first_date: Optional[date]
+) -> Optional[int]:
+    """The day of the month a MONTHLY payment is due, as the user gave it —
+    kept apart from its first, clamped date (``scheduled_date``). A first
+    date the user named is a real date and fixes the day; otherwise the day
+    they said ("the 31st"). None for weekly and one-time payments."""
+    if recurrence != "monthly":
+        return None
+    if first_date is not None:
+        return first_date.day
+    return day_of_month
+
+
 def similar_pending(
     db: Session, ctx: UserContext, category: str, amount: Decimal, recurrence: str
 ) -> List[Tuple[Optional[str], date]]:

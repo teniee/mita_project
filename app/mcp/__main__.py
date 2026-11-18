@@ -34,6 +34,11 @@ REQUIRED_TABLES = (
     "mcp_setup_answers",  # 0043
     "regional_observations",  # 0044 (read only)
 )
+# Columns the service writes that older tables lack: (table, column).
+REQUIRED_COLUMNS = (
+    ("scheduled_expenses", "origin"),  # 0045
+    ("scheduled_expenses", "day_of_month"),  # 0045
+)
 # Connected as mita_mcp, information_schema.tables lists only the tables the
 # role has a privilege on, so this also fails while a grant is missing: a
 # deployment that reaches a database without its migrations or grants never
@@ -53,7 +58,17 @@ async def database_ready() -> bool:
                 ),
                 {"names": list(REQUIRED_TABLES)},
             )
-            return present.scalar_one() == len(REQUIRED_TABLES)
+            if present.scalar_one() != len(REQUIRED_TABLES):
+                return False
+            columns = await session.execute(
+                text(
+                    "SELECT count(*) FROM information_schema.columns "
+                    "WHERE table_schema = current_schema() "
+                    "AND table_name || '.' || column_name = ANY(:names)"
+                ),
+                {"names": [f"{t}.{c}" for t, c in REQUIRED_COLUMNS]},
+            )
+            return columns.scalar_one() == len(REQUIRED_COLUMNS)
     except Exception:  # noqa: BLE001 - readiness reports, it does not raise
         logging.getLogger("app.mcp").warning(
             "readiness check failed", extra={"event": "readiness_failed"}

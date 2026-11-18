@@ -98,7 +98,12 @@ def recurring_expenses(db: Session, ctx: UserContext) -> RecurringView:
                     ),
                 )
                 for day in due_dates_in_month(
-                    row.scheduled_date, row.recurrence, year, month
+                    row.scheduled_date,
+                    row.recurrence,
+                    year,
+                    month,
+                    row.day_of_month,
+                    row.origin,
                 )
             ),
         )

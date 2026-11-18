@@ -7,6 +7,13 @@ Runs daily at 06:00 UTC:
   2. Find expenses due within 3 days → send push reminder if not already sent.
   3. For recurring expenses: schedule next occurrence after processing.
 
+Only rows created in the mobile app (``origin = "app"``). An obligation saved
+in ChatGPT (``origin = "chatgpt"``) is a bill to remind of in the calendar,
+paid only by an expense the user links to it (``obligation_payments``): this
+processor never turns it into an expense and never pushes about it (PR #288
+review P1). And when the user already recorded an app row's payment by
+linking an expense to that due date, no second transaction is created.
+
 Integrates with the sync cron infrastructure (same pattern as velocity alerts):
   • run_scheduled_expenses_daily() — no-arg wrapper for rq_scheduler
   • run_scheduled_expenses_batch(db, today) — testable core, accepts injected session
@@ -20,6 +27,8 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy.orm import Session
+
+from app.services.monthly_obligations import APP_ORIGIN
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +49,7 @@ def run_scheduled_expenses_batch(
 
     summary = {
         "processed": 0,
+        "already_paid": 0,
         "reminders_sent": 0,
         "recurrences_scheduled": 0,
         "errors": 0,
@@ -91,6 +101,8 @@ def _process_due_expenses(db: Session, today: date, summary: dict) -> None:
             ScheduledExpense.scheduled_date == today,
             ScheduledExpense.status == "pending",
             ScheduledExpense.deleted_at.is_(None),
+            # never an obligation saved in ChatGPT (see the module docstring)
+            ScheduledExpense.origin == APP_ORIGIN,
         )
         .all()
     )
@@ -99,8 +111,35 @@ def _process_due_expenses(db: Session, today: date, summary: dict) -> None:
 
     for expense in due:
         try:
-            # 1. Create the real Transaction
             lock_user_ledger(db, expense.user_id)
+            # 0. Already paid: the user recorded this payment by linking an
+            #    expense to this due date — never record it a second time.
+            linked = _linked_payment(db, expense, today)
+            if linked is not None:
+                expense.status = "processed"
+                expense.processed_at = datetime.now(timezone.utc)
+                expense.transaction_id = linked
+                db.commit()
+                summary["already_paid"] += 1
+                if expense.recurrence:
+                    try:
+                        _schedule_next_recurrence(db, expense, today)
+                        db.commit()
+                        summary["recurrences_scheduled"] += 1
+                    except Exception as exc:
+                        db.rollback()
+                        logger.error(
+                            "scheduled_expense cron: recurrence failed id=%s err=%s",
+                            expense.id,
+                            exc,
+                        )
+                logger.info(
+                    "scheduled_expense cron: id=%s already paid by a linked expense",
+                    expense.id,
+                )
+                continue
+
+            # 1. Create the real Transaction
             txn = Transaction(
                 user_id=expense.user_id,
                 category=expense.category,
@@ -190,6 +229,8 @@ def _send_reminders(db: Session, today: date, summary: dict) -> None:
             ScheduledExpense.status == "pending",
             ScheduledExpense.reminder_sent_at.is_(None),
             ScheduledExpense.deleted_at.is_(None),
+            # ChatGPT's obligations are reminded of in the calendar only
+            ScheduledExpense.origin == APP_ORIGIN,
         )
         .all()
     )
@@ -230,6 +271,24 @@ def _send_reminders(db: Session, today: date, summary: dict) -> None:
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 
+def _linked_payment(db: Session, expense, due: date):
+    """The transaction the user linked to this scheduled expense's due date
+    (``obligation_payments``, recorded through ChatGPT with its
+    obligation_ref), or None. Its first one is enough: the payment exists."""
+    from app.db.models import ObligationPayment
+
+    return (
+        db.query(ObligationPayment.transaction_id)
+        .filter(
+            ObligationPayment.scheduled_expense_id == expense.id,
+            ObligationPayment.due_date == due,
+        )
+        .order_by(ObligationPayment.created_at)
+        .limit(1)
+        .scalar()
+    )
+
+
 def _notify_processed(db: Session, expense, txn) -> None:
     """Non-blocking: send 'your scheduled expense fired' push notification."""
     try:
@@ -258,14 +317,18 @@ def _schedule_next_recurrence(db: Session, expense, fired_date: date) -> None:
     if expense.recurrence == "weekly":
         next_date = fired_date + timedelta(weeks=1)
     elif expense.recurrence == "monthly":
-        # Same day-of-month next month; clamp to last day of that month.
+        # The day of the month asked for (kept apart from the clamped date
+        # since migration 0045: "the 31st" fired on 30 November is next due
+        # on 31 December), else the fired date's own day; clamped to the last
+        # day of a shorter month.
         year = fired_date.year
         month = fired_date.month + 1
         if month > 12:
             month = 1
             year += 1
         last_day = calendar.monthrange(year, month)[1]
-        day = min(fired_date.day, last_day)
+        wanted = expense.day_of_month or fired_date.day
+        day = min(wanted, last_day)
         next_date = date(year, month, day)
     else:
         return  # "once" or unknown — no recurrence
@@ -278,6 +341,8 @@ def _schedule_next_recurrence(db: Session, expense, fired_date: date) -> None:
         merchant=expense.merchant,
         scheduled_date=next_date,
         recurrence=expense.recurrence,
+        day_of_month=expense.day_of_month,
+        origin=expense.origin,
         status="pending",
     )
     db.add(next_expense)

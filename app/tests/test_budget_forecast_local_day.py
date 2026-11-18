@@ -132,6 +132,61 @@ def test_forecast_reads_the_user_s_month_and_holds_the_unpaid_rent(
     assert data["safe_daily_limit"] == pytest.approx(10.34)
 
 
+def test_a_bill_paid_in_the_app_is_not_held_twice(
+    authed, db_session, user, monkeypatch
+):
+    """The same November, the rent paid in the app on 1 November (800.00,
+    recorded through the ledger). The app cannot link an expense to a saved
+    payment (only ChatGPT can, ``obligation_payments``), so here what is
+    recorded on the rent line settles it (R3's rule): nothing is held, and
+    (1,100.00 - 800.00 spent) / 29 days = 10.34 — the payment is counted
+    once. Holding the 800.00 again, as 2.7.0's linked-only rule did on this
+    surface, gave (1,100.00 - 800.00 - 800.00) / 29 = -17.24 (PR #288 review
+    G0-01)."""
+    import app.api.budget.routes as routes
+    from app.services.core.engine.expense_tracker import rebuild_month_plan
+
+    class Frozen(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return LATE if tz else LATE.replace(tzinfo=None)
+
+    monkeypatch.setattr(routes, "datetime", Frozen)
+    for day in range(1, 31):
+        db_session.add(_row(user, date(2026, 11, day), "groceries", "10.00"))
+    db_session.add(_row(user, date(2026, 11, 1), "rent", "800.00"))
+    db_session.add(
+        ScheduledExpense(
+            id=uuid4(),
+            user_id=user.id,
+            category="rent",
+            amount=Decimal("800.00"),
+            scheduled_date=date(2026, 11, 1),
+            recurrence="monthly",
+            status="pending",
+        )
+    )
+    db_session.add(
+        Transaction(
+            id=uuid4(),
+            user_id=user.id,
+            category="rent",
+            amount=Decimal("800.00"),
+            currency="USD",
+            spent_at=datetime(2026, 10, 31, 22, 10, tzinfo=timezone.utc),
+        )
+    )
+    db_session.commit()
+    rebuild_month_plan(db_session, user.id, date(2026, 11, 1), tz=user.timezone)
+
+    resp = authed.get("/api/budget/forecast")
+    assert resp.status_code == 200, resp.text
+    data = resp.json()["data"]
+    assert data["total_spent"] == pytest.approx(800.00)
+    assert data["commitments_reserved"] == pytest.approx(0.00)
+    assert data["safe_daily_limit"] == pytest.approx(10.34)
+
+
 def test_live_status_leaves_today_s_money_set_aside_out(authed, db_session, user):
     """Today: groceries 10.00, Savings 10.00, a goal reservation 5.00. The
     day's spending budget is the groceries' 10.00."""

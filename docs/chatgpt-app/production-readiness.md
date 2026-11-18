@@ -18,6 +18,172 @@ under the same step numbers.
 **B** = owner action (credentials, DNS, legal, billing, verification or
 production access).
 
+## State on 2026-11-17 and the 2.11.0 deploy plan (supersedes everything below)
+
+Gate 1 (financial safety, migration 0045): `scheduled-obligations-safety.md`.
+Every step in this section needs the owner's explicit go-ahead. Nothing here
+has been executed.
+
+### Production as observed on 2026-11-17 (read-only: Railway, public `/health`)
+
+| Fact | Evidence |
+|---|---|
+| Project `Mita Finance` holds exactly two services, `mita-production` and `mita-production-db`. There is **no MCP service**. | Railway `list-services` |
+| **No TCP proxy** on `mita-production-db` or on `mita-production`. The public database proxy recorded on 2026-10-27 is gone. | Railway `list-tcp-proxies`: `[]` for both |
+| `mita-production` builds from `main` with `checkSuites: false` and starts with `bash start.sh` (1 replica, us-east4). It still has **no healthcheck**. | Railway `get-service-config`: no healthcheck in `deploy` |
+| The active deployment is `d4c2547c` (2026-09-29) of `3aa52b7`, and it can be rolled back. `main` HEAD `27ed25d` (#286, merged 2026-09-29 18:00 UTC, mobile files only) **was never deployed**. | Railway `list-deployments`; `git diff --stat 3aa52b7 27ed25d` touches only `mobile_app/` |
+| `/health`: HTTP 200, `"status":"degraded"` (Sentry not configured; database, Redis and Firebase connected), commit `3aa52b78a0e1`, `alembic_revision` `0036` | `GET https://mita-production-production.up.railway.app/health` |
+| `mita-production-db`: image `postgres-ssl:17`, one replica, one volume. Railway applies **automatic vulnerability image updates** on Saturdays 10–24 and Sundays 0–18 UTC. | Railway `get-service-config` |
+| API image (`requirements.txt`, unchanged by PR #288 since 2026-07-15): `pip-audit` finds **214** entries (143 distinct advisories) in 9 pinned packages. MCP lock: 0. | `pip-audit` 2.10.1, 2026-11-17 (review G4-02/G4-03) |
+
+### What merging PR #288 does to production
+
+`main` auto-deploys and `start.sh` runs `alembic upgrade head` before uvicorn,
+aborting in production if that fails. The merge therefore applies **0037 → 0045
+in one transaction** (`alembic/env.py`: no `transaction_per_migration`).
+
+* **0037–0044** add 14 tables and the `analytics` schema with 14 views.
+* **0045** adds two columns and two CHECKs to `scheduled_expenses`
+  (`scheduled-obligations-safety.md`).
+
+The merge also changes the mobile ledger, forecast and rebalancing code:
+F-8, F-9/F-10, R3, 2.7.0, and G0-01's mobile rule. It is not only a set of
+behaviour-preserving extractions.
+
+### Plan (each step: owner go-ahead; E = engineering, O = owner)
+
+**P0 — before the merge**
+
+1. **E:** CI is green on the final PR head.
+2. **E + O:** Staging runs the final head with 0045 applied, through an
+   owner-authorised temporary SSH key (`staging.md`).
+   * The MCP image of this head is not ready without 0045's columns.
+   * Then: `smoke_envelopes_2100`, `calendar_widget_review --axe`, `e2e_v2`,
+     `smoke_behavioral_270`, and the log scan.
+   * Then the owner's real-ChatGPT acceptance (`acceptance-2.11.0-chatgpt.md`
+     and the release script).
+   * On staging, after 0045: `UPDATE scheduled_expenses SET origin =
+     'chatgpt'`. Every staging row was written by the MCP service or its
+     scripts.
+3. **O:** Rotate the production secrets (O-1…O-4).
+   * `scripts/mcp/check_leaked_secrets.py` prints names only.
+   * The `postgres` password changes only through Railway **Regenerate**.
+   * The TCP proxy is already removed: keep it that way.
+4. **O:** Healthcheck on `mita-production`: path `/health`, timeout 300 s.
+   * Applying the setting deploys `main` HEAD `27ed25d`, whose backend is
+     identical to `3aa52b7`. That also closes the undeployed-commit gap.
+   * Verify that `/health` shows commit `27ed25d…` and `alembic_revision`
+     `0036`.
+   * Optional: **Wait for CI** (`checkSuites`).
+5. **O + E — an independently restorable backup. Required, no merge
+   without it.** Over an owner-authorised temporary SSH key (no TCP proxy):
+   * Stream `pg_dump -Fc` of `mita-production-db` **off the production
+     volume**: to the operator machine, or to storage the owner controls
+     outside the production project. A dump on the database's own volume is
+     not independent: it dies with that volume.
+   * Restore it into a **separate** scratch database (local PostgreSQL 17, or
+     a throwaway Railway service). Compare row counts of every table and the
+     money totals (`SUM(amount)` of `transactions`, `daily_plan.planned_amount`,
+     `scheduled_expenses`) with production at dump time. Record the sha256 and
+     the `alembic_version` (0036).
+   * The dump holds users' financial data. Keep it encrypted, readable by
+     the owner only, and delete it when the owner closes the release window.
+   * Revoke the key.
+6. **O + E:** Run a read-only pre-flight over the same path:
+   * `alembic_version = '0036'`;
+   * no schema `analytics`;
+   * none of the 14 new tables exist;
+   * `users.id`, `transactions.id` and `scheduled_expenses.id` are uuid
+     primary keys;
+   * `scheduled_expenses` has no `origin` or `day_of_month` column;
+   * no long-running transaction (`pg_stat_activity`);
+   * the migrating role can `CREATE`;
+   * the count of pending `scheduled_expenses` (context for G0-01).
+7. **O decision:** The API's dependency advisories. They are not introduced
+   by this PR. Either:
+   * an upgrade change before the merge, starlette/FastAPI,
+     python-multipart and Pillow first, then the rest (G4-03 lists the
+     reachable paths: unauthenticated `FileResponse` Range on
+     `/privacy-policy` and `/terms-of-service`, multipart parsing on auth
+     and OCR, Pillow on authenticated OCR uploads), with full Backend and
+     Mobile CI; or
+   * a written risk acceptance.
+8. **O decision:** The rollback policy is fix-forward (below).
+
+**P1 — merge (owner, low traffic)**
+
+9. Optional: for this boot only, set `MIGRATION_DATABASE_URL` to the database
+   URL plus `options=-c lock_timeout=5000`. A blocked lock then aborts
+   cleanly, and DDL rolls back to 0036. Remove the variable afterwards.
+10. Merge PR #288. **Check that a deployment of the merge commit appears.**
+    `27ed25d` never got one, so if none appears, start it by hand.
+
+**P2 — verify (owner, read-only)**
+
+11. `/health`: the merge commit, `alembic_revision` `0045`, database
+    connected.
+12. With one dedicated production test account: mobile register, log in,
+    add an expense, `GET /api/budget/forecast`, the calendar and the
+    dashboard. Then delete the account.
+13. Boot logs: no error-level line.
+
+**P3 — the production MCP service (owner, only after P2)**
+
+14. Run `scripts/mcp/mcp_service_role.sql` inside `mita-production-db` over
+    SSH: password from a 0600 file, `log_statement = 'none'`. Verify that DDL
+    is refused and that the granted tables are readable. 0045 needs no new
+    grant.
+15. Create service `mita-mcp` (`deploy/mcp/railway.json`, 1 replica, us-east4,
+    **source pinned to the reviewed commit**, never auto-deploy, G3-72).
+    * Variables, generated into 0600 files and set with `--stdin`:
+      `DATABASE_URL` (role `mita_mcp`), `MCP_PUBLIC_URL` (the final origin,
+      never `*.up.railway.app`), `MCP_WIDGET_DOMAIN`, `MCP_DATA_SECRET`,
+      `MCP_ANALYTICS_SECRET`, the OAuth key and the CSRF and fingerprint
+      secrets, `MCP_SUPPORT_URL`, `OPENAI_APPS_CHALLENGE_TOKEN`,
+      `ENVIRONMENT=production`.
+    * No TCP proxy: the service refuses to start with one.
+16. DNS: CNAME to Railway, the custom domain on the service, TLS.
+17. Verify:
+    * `/health` 200, and only after the grants;
+    * protected-resource `resource` = `<origin>/mcp`;
+    * `POST /mcp` without a token → 401;
+    * an `/authorize` burst → 429.
+
+    Then domain verification in the OpenAI portal.
+
+**Rollback**
+
+0037–0045 only add things, so moving forward never deletes data. Their
+reverse does.
+
+* **The boot migration fails.** Transactional DDL leaves the database at 0036,
+  and nothing was written. With the healthcheck, the previous deployment keeps
+  serving. Without it, redeploy `d4c2547c` (`3aa52b7`), which boots on 0036.
+  This is the only routine rollback.
+* **The migrations succeeded but the API misbehaves.** Fix forward. Never
+  redeploy pre-merge code: it cannot boot on 0045 ("Can't locate revision").
+* **`alembic downgrade` is not a rollback.** It is a destructive operation:
+  the owner's explicit decision, after the P0.5 backup has been verified,
+  and never as a reflex. From 0045 to 0036 it permanently deletes:
+  * every ChatGPT connection (OAuth clients, codes, refresh tokens);
+  * ChatGPT profiles and setup answers;
+  * idempotency records;
+  * feedback and usage events (the whole `analytics` schema);
+  * users' own budget lines, payment links, spending patterns and regional
+    data;
+  * which saved payments were made in the app or in ChatGPT, and each kept
+    monthly day.
+
+  Expenses, plans and goals live in tables that stay, but a plan saved with
+  bill lines or user lines loses what those lines meant. Anything written
+  after the dump is lost if the dump is restored instead.
+* **Data damaged.** Restore the independently stored P0.5 dump into a fresh
+  database and switch to it. That is the owner's decision; writes made after
+  the dump are lost.
+* **The MCP service misbehaves.** Pin the previous reviewed commit. Every
+  schema change stays backward compatible while a published version is
+  live.
+
 ## State on 2026-10-27 (read-only re-check + compliance audit; supersedes below)
 
 Requirements and their status: `openai-compliance-2026-10-27.md` (current

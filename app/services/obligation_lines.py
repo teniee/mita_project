@@ -238,6 +238,28 @@ def commitments_for(
     )
 
 
+def paid_without_linking(
+    commitments: MonthCommitments, recorded_by_line: Mapping[str, Decimal]
+) -> Dict[str, Decimal]:
+    """What settles each identified line on a surface whose user CANNOT link
+    an expense to a saved payment — the mobile app (only ChatGPT links,
+    ``obligation_payments``): what linked expenses paid or what is recorded
+    on the line, whichever is more (R3's rule, as before 2.7.0).
+
+    Without it, a rent paid in the app is spent AND still held, so the
+    payment is counted twice for the rest of the month (PR #288 review
+    G0-01). In a month that keeps obligations on their own lines (laid out
+    in ChatGPT), a line holds only linked payments, so nothing changes there;
+    in a legacy month the line is the obligation's category, so what is
+    recorded there — the payment entered in the app, the scheduled-expense
+    processor's transaction — settles it. Never less than ChatGPT's figure.
+    """
+    return {
+        line: max(paid, recorded_by_line.get(line, ZERO))
+        for line, paid in commitments.paid.items()
+    }
+
+
 def month_commitments(
     db: Session,
     user_id: UUID,

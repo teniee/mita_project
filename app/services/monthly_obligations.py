@@ -11,7 +11,15 @@ ledger rebuild that keeps a bill's money on its own line
   is before the end of the following month: a monthly one once, on its day of
   the month (the month's last day when the month is shorter), a weekly one
   on every matching weekday of the month;
-* a one-time payment counts only in its own month, on its date.
+* a one-time payment counts only in its own month, on its date;
+* a payment scheduled in the mobile app (``origin = "app"``) never counts
+  before its own date: each such row is ONE occurrence — the legacy
+  scheduled-expense processor records it as an expense on that date and
+  schedules the next row — so the month before it, and the month whose
+  occurrence the processor already recorded, hold nothing for it. A payment
+  saved in ChatGPT (``"chatgpt"``) is the obligation itself, never processed,
+  and keeps the rule above; so does a row of unknown origin (``"unknown"``:
+  saved before 0045 and not proven to be ChatGPT's) — PR #288 review P1.
 
 ``due_dates_in_month`` is that rule; ``due_in_month`` is its amount, so the
 money a month holds for a payment and the dates it is laid out on can never
@@ -38,6 +46,13 @@ ZERO = Decimal("0.00")
 MONTHLY = "monthly"
 WEEKLY = "weekly"
 ONE_TIME = (None, "once")
+# Where a saved payment was made (scheduled_expenses.origin, migration 0045).
+APP_ORIGIN = "app"  # the mobile app: one row per occurrence, processable
+CHATGPT_ORIGIN = "chatgpt"  # ChatGPT: the row is the obligation itself
+# No source recorded: rows saved before 0045 not proven to be ChatGPT's, and
+# any writer that does not say. Never processed; due dates as before 0045.
+UNKNOWN_ORIGIN = "unknown"
+ORIGINS = (APP_ORIGIN, CHATGPT_ORIGIN, UNKNOWN_ORIGIN)
 
 
 def _first_of_month_after_next(year: int, month: int) -> date:
@@ -53,20 +68,37 @@ def weekday_count(year: int, month: int, weekday: int) -> int:
 
 
 def due_dates_in_month(
-    next_date: date, recurrence: Optional[str], year: int, month: int
+    next_date: date,
+    recurrence: Optional[str],
+    year: int,
+    month: int,
+    day_of_month: Optional[int] = None,
+    origin: Optional[str] = None,
 ) -> List[date]:
     """The dates one saved payment is due in ``(year, month)``, in order;
     empty when it does not count there. ``next_date`` is the payment's stored
-    next due date (``scheduled_date``)."""
+    next due date (``scheduled_date``); ``day_of_month`` the day the user
+    asked for a monthly payment (``scheduled_expenses.day_of_month``), kept
+    because ``next_date`` is clamped to its month — "the 31st" saved in
+    November is due on 30 November and on 31 December, never on the 30th of
+    every month. Without it (rows saved before migration 0045) the date's own
+    day is used, as before: an original day is never guessed. ``origin``
+    "app" (a row made in the mobile app, one occurrence) drops every date
+    before ``next_date``."""
     last = calendar.monthrange(year, month)[1]
     if recurrence in (MONTHLY, WEEKLY):
         if next_date >= _first_of_month_after_next(year, month):
             return []  # not running yet
         if recurrence == MONTHLY:
-            return [date(year, month, min(next_date.day, last))]
-        first = date(year, month, 1)
-        offset = (next_date.weekday() - first.weekday()) % 7
-        return [first + timedelta(days=day) for day in range(offset, last, 7)]
+            day = day_of_month if day_of_month is not None else next_date.day
+            dates = [date(year, month, min(day, last))]
+        else:
+            first = date(year, month, 1)
+            offset = (next_date.weekday() - first.weekday()) % 7
+            dates = [first + timedelta(days=day) for day in range(offset, last, 7)]
+        if origin == APP_ORIGIN:
+            dates = [day for day in dates if day >= next_date]
+        return dates
     if recurrence in ONE_TIME:
         if date(year, month, 1) <= next_date <= date(year, month, last):
             return [next_date]
@@ -79,10 +111,14 @@ def due_in_month(
     recurrence: Optional[str],
     year: int,
     month: int,
+    day_of_month: Optional[int] = None,
+    origin: Optional[str] = None,
 ) -> Decimal:
     """What one saved payment asks of ``(year, month)``; 0 when it does not
     count there. ``next_date`` is the payment's stored next due date."""
-    return amount * len(due_dates_in_month(next_date, recurrence, year, month))
+    return amount * len(
+        due_dates_in_month(next_date, recurrence, year, month, day_of_month, origin)
+    )
 
 
 @dataclass(frozen=True)
@@ -96,6 +132,7 @@ class DueOccurrence:
     merchant: Optional[str]
     recurrence: Optional[str]  # "monthly" | "weekly" | None (one-time)
     scheduled_from: date  # the payment's stored next due date
+    day_of_month: Optional[int] = None  # the monthly day asked for (0045)
 
 
 def _pending_payments(db: Session, user_id: UUID):
@@ -107,6 +144,8 @@ def _pending_payments(db: Session, user_id: UUID):
             ScheduledExpense.merchant,
             ScheduledExpense.scheduled_date,
             ScheduledExpense.recurrence,
+            ScheduledExpense.day_of_month,
+            ScheduledExpense.origin,
         )
         .where(
             ScheduledExpense.user_id == user_id,
@@ -135,9 +174,13 @@ def dated_obligations(
         merchant,
         next_date,
         recurrence,
+        day_of_month,
+        origin,
     ) in _pending_payments(db, user_id):
         value = Decimal(str(amount))
-        for day in due_dates_in_month(next_date, recurrence, year, month):
+        for day in due_dates_in_month(
+            next_date, recurrence, year, month, day_of_month, origin
+        ):
             found.append(
                 DueOccurrence(
                     obligation_id=obligation_id,
@@ -149,6 +192,7 @@ def dated_obligations(
                         recurrence if recurrence in (MONTHLY, WEEKLY) else None
                     ),
                     scheduled_from=next_date,
+                    day_of_month=day_of_month,
                 )
             )
     found.sort(key=lambda o: (o.day, o.category, -o.amount, str(o.obligation_id)))

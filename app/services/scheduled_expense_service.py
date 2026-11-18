@@ -30,6 +30,7 @@ from app.services.core.engine.scheduled_expense_engine import (
     ScheduledImpactResult,
     compute_scheduled_impact,
 )
+from app.services.monthly_obligations import UNKNOWN_ORIGIN
 
 logger = logging.getLogger(__name__)
 
@@ -120,8 +121,16 @@ async def create_scheduled_expense(
     description: Optional[str] = None,
     merchant: Optional[str] = None,
     recurrence: Optional[str] = None,
+    day_of_month: Optional[int] = None,
+    origin: str = UNKNOWN_ORIGIN,
 ) -> ScheduledExpense:
-    """Create a new scheduled expense row.  Caller commits the session."""
+    """Create a new scheduled expense row.  Caller commits the session.
+
+    ``day_of_month``: for a monthly payment, the day asked for, kept apart
+    from the clamped ``scheduled_date``. ``origin`` (migration 0045): "app"
+    only from the app's own create route — the daily processor turns such a
+    row into a transaction on its date; "chatgpt" for an obligation saved in
+    ChatGPT; anything not stated is "unknown" and never processed."""
     expense = ScheduledExpense(
         user_id=user_id,
         category=category,
@@ -130,6 +139,8 @@ async def create_scheduled_expense(
         description=description,
         merchant=merchant,
         recurrence=recurrence,
+        day_of_month=day_of_month,
+        origin=origin,
         status="pending",
     )
     db.add(expense)

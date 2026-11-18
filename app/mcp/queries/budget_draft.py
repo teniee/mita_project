@@ -320,6 +320,8 @@ def obligations_for_month(
             ScheduledExpense.amount,
             ScheduledExpense.scheduled_date,
             ScheduledExpense.recurrence,
+            ScheduledExpense.day_of_month,
+            ScheduledExpense.origin,
         )
         .where(
             ScheduledExpense.user_id == ctx.user_id,
@@ -333,10 +335,19 @@ def obligations_for_month(
         )
     ).all()
     found: List[Obligation] = []
-    for obligation_id, merchant, category, amount, due, recurrence in rows:
+    for (
+        obligation_id,
+        merchant,
+        category,
+        amount,
+        due,
+        recurrence,
+        day,
+        origin,
+    ) in rows:
         amount = Decimal(str(amount))
         name = (merchant or "").strip() or None
-        dates = tuple(due_dates_in_month(due, recurrence, year, month))
+        dates = tuple(due_dates_in_month(due, recurrence, year, month, day, origin))
         counted = amount * len(dates)
         if counted <= ZERO:
             continue

@@ -29,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.dependencies import get_current_user
 from app.core.async_session import get_async_db
 from app.db.models.user import User
+from app.services.monthly_obligations import APP_ORIGIN
 from app.services.scheduled_expense_service import (
     cancel_scheduled_expense,
     create_scheduled_expense,
@@ -101,6 +102,9 @@ async def create_expense(
         description=body.description,
         merchant=body.merchant,
         recurrence=body.recurrence,
+        # Made in the app: the daily processor records it on its date
+        # (the only writer of "app", migration 0045).
+        origin=APP_ORIGIN,
     )
     await db.commit()
 
