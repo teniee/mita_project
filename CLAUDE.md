@@ -1419,18 +1419,21 @@ Rules:
     so the row the processor schedules next can never put a recorded bill
     back into the month it was recorded in. `chatgpt` and `unknown` rows keep
     2.5.0's rule.
-  - **The mobile forecast cannot link, and ordinary spending never
-    releases a saved bill** (`obligation_lines.paid_without_linking`, mobile
-    route only):
-    - rent, mortgage and utilities (`is_bill_line`) in a month the app laid
-      out: what is recorded on the line pays it (R3);
-    - every other saved payment: only a link pays it, and spending on its
-      line uses only the line's everyday money (`need − due`);
-    - a `bill:` line laid out in ChatGPT: exactly ChatGPT's linked figure.
-    - Never credit category spending to a loan. That once let 150.00 of fuel
-      release an unpaid 270.00 car loan (independent review, P0;
-      `app/tests/test_paid_without_linking.py`,
+  - **The mobile forecast cannot link, so only a link pays a saved bill, on
+    every line** (`obligation_lines.paid_without_linking`, mobile route
+    only).
+    - Spending recorded on a bill's line beyond its links uses only the
+      line's own money that is not a bill due this month (`need − due`). It
+      is never held twice and never releases a bill.
+    - Never credit recorded spending to a bill, by category or otherwise.
+      Every version that did released unpaid bills: fuel a car loan,
+      electricity an internet bill, last month's late rent this month's (two
+      independent reviews; `app/tests/test_paid_without_linking.py`,
       `test_budget_forecast_local_day.py`).
+    - A saved bill paid in the app without a link stays held. How the app may
+      recognise such a payment is an **open owner decision**
+      (`scheduled-obligations-safety.md`); the test pinning it changes only
+      with that decision.
   - Regressions: `tests_mcp/test_scheduled_obligations_safety.py` (the real
     processor on the reference profile),
     `app/tests/test_budget_forecast_local_day.py`.

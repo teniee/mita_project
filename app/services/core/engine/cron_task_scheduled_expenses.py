@@ -116,11 +116,18 @@ def _process_due_expenses(db: Session, today: date, summary: dict) -> None:
 
     logger.info("scheduled_expense cron: %d expenses due on %s", len(due), today)
 
-    for expense in due:
+    # ids taken while the rows are fresh: a later rollback expires them, and
+    # a row deleted meanwhile could not be read again (not even for a log)
+    for expense_id, expense in [(e.id, e) for e in due]:
         try:
             lock_user_ledger(db, expense.user_id)
-            # 0a. Re-read under the lock: another run may have handled it.
-            db.refresh(expense)
+            # 0a. Re-read under the lock: another run may have handled it, or
+            #     the row may be gone — either way, not ours to record.
+            try:
+                db.refresh(expense)
+            except Exception:
+                db.rollback()
+                continue
             if expense.status != "pending" or expense.deleted_at is not None:
                 db.rollback()
                 continue
@@ -195,7 +202,7 @@ def _process_due_expenses(db: Session, today: date, summary: dict) -> None:
             summary["errors"] += 1
             logger.error(
                 "scheduled_expense cron: failed to process id=%s err=%s",
-                expense.id,
+                expense_id,
                 exc,
             )
             # Mark as failed so we don't retry indefinitely

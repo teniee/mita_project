@@ -66,6 +66,18 @@ def next_due_date(
             )
         if first_date > today + timedelta(days=366):
             raise ValidationError("first_date must be within the next year.")
+        if (
+            recurrence == "monthly"
+            and day_of_month is not None
+            and first_date
+            != _clamped(first_date.year, first_date.month, day_of_month).day
+        ):
+            # "on the 1st" and "next due 15 December" cannot both be true:
+            # ask, never pick one (independent review N5).
+            raise ValidationError(
+                f"The next due date {first_date.isoformat()} is not day "
+                f"{day_of_month} of its month; ask the user which is right."
+            )
         return DueDate(first_date)
     if recurrence == "monthly":
         if day_of_month is None:

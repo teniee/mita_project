@@ -51,28 +51,37 @@ def held(occurrences, base, recorded, linked=None, keyed=False) -> Decimal:
     return _still_reserved([], commitments.needs, paid)
 
 
-# --- rent, mortgage, utilities: the category is the bill ------------------------
+# --- rent, mortgage, utilities: only a link pays a saved bill there too -----------
 
 
-def test_a_rent_paid_in_the_app_is_released_once():
-    rent = [due("rent", "800.00", 1)]
+def test_a_saved_rent_is_paid_only_by_a_link():
+    """Pinned open owner decision (G0-01): a saved rent paid in the app without
+    a link stays held — the app shows less to spend, never more. A link pays
+    it; a part link pays a part."""
+    rent_id = uuid4()
+    rent = [due("rent", "800.00", 1, rent_id)]
     base = {"rent": D("800.00")}
     assert held(rent, base, {}) == D("800.00")
-    assert held(rent, base, {"rent": D("800.00")}) == D("0.00")
-    assert held(rent, base, {"rent": D("900.00")}) == D("0.00")
-    assert held(rent, base, {"rent": D("400.00")}) == D("400.00")  # part payment
-    # a rent the plan has no line for (saved after the month was laid out)
-    assert held(rent, {}, {"rent": D("800.00")}) == D("0.00")
+    assert held(rent, base, {"rent": D("800.00")}) == D("800.00")  # owner decision
+    full = {(rent_id, date(2026, 11, 1)): D("800.00")}
+    part = {(rent_id, date(2026, 11, 1)): D("400.00")}
+    assert held(rent, base, {"rent": D("800.00")}, full) == D("0.00")
+    assert held(rent, base, {"rent": D("400.00")}, part) == D("400.00")
 
 
-def test_known_limit_a_bill_category_takes_any_purchase_in_it():
-    """Pinned limit, not a goal: on a surface without links a 20.00 lamp
-    recorded as utilities is part of the utilities bill (R3). Bounded by the
-    amount; linking in ChatGPT is exact."""
-    bill = [due("utilities", "45.00", 5)]
-    assert held(bill, {"utilities": D("45.00")}, {"utilities": D("20.00")}) == D(
-        "25.00"
-    )
+def test_electricity_never_releases_a_saved_internet_bill():
+    """Second review, N2: utilities 150.00 of other money, internet 45.00
+    saved in the app and unpaid, 150.00 of electricity paid: 45.00 held."""
+    internet = [due("utilities", "45.00", 5)]
+    base = {"utilities": D("150.00")}
+    assert held(internet, base, {"utilities": D("150.00")}) == D("45.00")
+
+
+def test_last_month_s_late_rent_never_pays_this_month_s():
+    """Second review, N3: November's rent paid on 2 December (linked to
+    November) is on December's line; December's 800.00 stays held."""
+    rent = [due("rent", "800.00", 1)]
+    assert held(rent, {"rent": D("800.00")}, {"rent": D("800.00")}) == D("800.00")
 
 
 # --- any other saved payment: only a link releases it ---------------------------

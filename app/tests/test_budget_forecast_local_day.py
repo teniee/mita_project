@@ -132,17 +132,25 @@ def test_forecast_reads_the_user_s_month_and_holds_the_unpaid_rent(
     assert data["safe_daily_limit"] == pytest.approx(10.34)
 
 
-def test_a_bill_paid_in_the_app_is_not_held_twice(
+def test_a_saved_bill_paid_in_the_app_stays_held_pending_the_owner_decision(
     authed, db_session, user, monkeypatch
 ):
-    """The same November, the rent paid in the app on 1 November (800.00,
-    recorded through the ledger). The app cannot link an expense to a saved
-    payment (only ChatGPT can, ``obligation_payments``), so here what is
-    recorded on the rent line settles it (R3's rule): nothing is held, and
-    (1,100.00 - 800.00 spent) / 29 days = 10.34 — the payment is counted
-    once. Holding the 800.00 again, as 2.7.0's linked-only rule did on this
-    surface, gave (1,100.00 - 800.00 - 800.00) / 29 = -17.24 (PR #288 review
-    G0-01)."""
+    """Pinned OPEN OWNER DECISION (PR #288 review G0-01), not a goal.
+
+    The same November, the rent paid in the app on 1 November (800.00,
+    recorded through the ledger). Only ChatGPT can link an expense to a
+    saved payment, and on a line the app laid out nothing tells the bill's
+    money from other money. So the one rule that never releases an unpaid
+    bill — only a link pays it — keeps this one held as well:
+    (1,100.00 − 800.00 − 800.00) / 29 = −17.24 a day. It errs on showing
+    less to spend, never more.
+
+    Crediting recorded spending to the bill (10.34 here) also released
+    unpaid bills: fuel an unpaid car loan, electricity an unpaid internet
+    bill. The two independent reviews of the Gate 1 commits reproduced
+    both. How the app may recognise a payment is the owner's decision
+    (docs/chatgpt-app/scheduled-obligations-safety.md, "Open owner
+    decision"). Change this test only with that decision."""
     import app.api.budget.routes as routes
     from app.services.core.engine.expense_tracker import rebuild_month_plan
 
@@ -183,8 +191,8 @@ def test_a_bill_paid_in_the_app_is_not_held_twice(
     assert resp.status_code == 200, resp.text
     data = resp.json()["data"]
     assert data["total_spent"] == pytest.approx(800.00)
-    assert data["commitments_reserved"] == pytest.approx(0.00)
-    assert data["safe_daily_limit"] == pytest.approx(10.34)
+    assert data["commitments_reserved"] == pytest.approx(800.00)
+    assert data["safe_daily_limit"] == pytest.approx(-17.24)
 
 
 NOV_20 = datetime(2026, 11, 20, 10, 0, tzinfo=timezone.utc)  # 12:00, 20 Nov, Sofia
@@ -282,6 +290,42 @@ def test_a_lamp_never_releases_a_laptop_loan(authed, db_session, user, monkeypat
     data = authed.get("/api/budget/forecast").json()["data"]
     assert data["commitments_reserved"] == pytest.approx(70.00)
     assert data["safe_daily_limit"] == pytest.approx(16.00)
+
+
+def test_electricity_never_releases_an_internet_bill_saved_in_the_app(
+    authed, db_session, user, monkeypatch
+):
+    """Second independent review, N2, through the real routes. November:
+    groceries 10.00 a day and utilities 150.00 (450.00). An internet bill of
+    45.00 saved in the app for 25 November, unpaid; 150.00 of electricity
+    paid in the app. The internet bill stays held:
+    (450.00 − 150.00 − 45.00) / 10 = 25.50 a day. Crediting the category's
+    spending to it released it: 0.00 held, 30.00 a day."""
+    from app.services.core.engine.expense_tracker import rebuild_month_plan
+
+    _at_nov_20(monkeypatch)
+    for day in range(1, 31):
+        db_session.add(_row(user, date(2026, 11, day), "groceries", "10.00"))
+    db_session.add(_row(user, date(2026, 11, 5), "utilities", "150.00"))
+    db_session.commit()
+    created = authed.post(
+        "/api/scheduled-expenses/",
+        json={
+            "category": "utilities",
+            "amount": "45.00",
+            "scheduled_date": "2026-11-25",
+            "merchant": "Internet",
+            "recurrence": "monthly",
+        },
+    )
+    assert created.status_code == 200, created.text
+    _spent(db_session, user, "utilities", "150.00", 10)
+    db_session.commit()
+    rebuild_month_plan(db_session, user.id, date(2026, 11, 1), tz=user.timezone)
+
+    data = authed.get("/api/budget/forecast").json()["data"]
+    assert data["commitments_reserved"] == pytest.approx(45.00)
+    assert data["safe_daily_limit"] == pytest.approx(25.50)
 
 
 def test_the_app_s_create_route_writes_origin_app(authed, db_session, user):

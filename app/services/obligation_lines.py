@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import hashlib
 from collections import defaultdict
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 from typing import Dict, FrozenSet, Iterable, List, Mapping, Optional, Sequence, Tuple
@@ -191,8 +191,9 @@ class MonthCommitments:
     # lines whose money only a linked payment may use (the identified ones)
     linked_only: FrozenSet[str]
     # per identified line, what its due dates this month ask for (the part
-    # of ``needs`` that is bills; the rest is the line's everyday money)
-    due: Dict[str, Decimal] = field(default_factory=dict)
+    # of ``needs`` that is bills; the rest is the line's other money).
+    # Required: a missing entry must never read as "no bill here".
+    due: Dict[str, Decimal]
 
     @property
     def lines(self) -> FrozenSet[str]:
@@ -249,37 +250,29 @@ def paid_without_linking(
     an expense to a saved payment — the mobile app (only ChatGPT links,
     ``obligation_payments``). The forecast then holds ``need − paid``.
 
-    The rule: ordinary spending never releases a saved bill.
+    The rule, on every line: only a link pays a saved bill. What is recorded
+    on the line beyond the linked payments is ordinary spending; it uses
+    only the line's own money that is not a bill due this month (``need −
+    due``), so it is never held twice and can never release a bill.
 
-    * A line laid out in ChatGPT (``bill:…``) holds only its own bill: the
-      linked payments, exactly ChatGPT's figure.
-    * Rent, mortgage and utilities (``is_bill_line``) in a month the app
-      laid out: the category IS the bill, so what is recorded on it pays it
-      (R3's rule). A rent paid in the app is spent once, never also held
-      (PR #288 review G0-01).
-    * Any other saved payment — a loan, a subscription, insurance — is paid
-      only by a link. What is recorded on its category line, beyond the
-      linked payments, uses only that line's own everyday money (the part of
-      ``need`` beyond the bills due). So fuel never releases a car loan,
-      whatever the line holds, and everyday spending is not held twice
-      either. Review finding: crediting such spending to the bill once let a
-      150.00 of fuel release an unpaid 270.00 loan.
+    Why uniform. On a line the app laid out, nothing tells a bill's money
+    from the line's other money: ``bills_on_due_dates`` never places a bill
+    beyond its category's allocation, and a bill scheduled later is not in it
+    at all. Crediting recorded spending to the bill released unpaid bills:
+    150.00 of fuel an unpaid 270.00 car loan, 150.00 of electricity an unpaid
+    45.00 internet bill, last month's late rent this month's (independent
+    review of the Gate 1 commits). The cost, until the owner decides how the
+    app may recognise a payment: a saved bill paid in the app without a link
+    stays held — the app shows less to spend, never more
+    (docs/chatgpt-app/scheduled-obligations-safety.md, "Open owner decision").
 
     Never less paid than ChatGPT's figure, never more than the line's need.
     """
     settled: Dict[str, Decimal] = {}
     for line, linked in commitments.paid.items():
+        everyday = max(ZERO, commitments.needs.get(line, ZERO) - commitments.due[line])
         recorded = recorded_by_line.get(line, ZERO)
-        if is_bill_key(line):
-            settled[line] = linked
-        elif is_bill_line(line):
-            settled[line] = max(linked, recorded)
-        else:
-            everyday = max(
-                ZERO,
-                commitments.needs.get(line, ZERO) - commitments.due.get(line, ZERO),
-            )
-            settled[line] = linked + min(max(ZERO, recorded - linked), everyday)
+        settled[line] = linked + min(max(ZERO, recorded - linked), everyday)
     return settled
 
 

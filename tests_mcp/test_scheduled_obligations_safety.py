@@ -878,6 +878,98 @@ async def test_a_reused_key_asking_for_another_day_is_refused(mcp, seed, connect
     assert [(r[3], r[4]) for r in rows] == [(31, date(2026, 11, 30))]
 
 
+async def test_a_first_date_that_contradicts_the_stated_day_is_refused(
+    mcp, seed, connection
+):
+    """Second review, N5: "on the 1st" with "next due 15 December" cannot
+    both be true. MITA asks instead of picking one, and saves nothing. A
+    first date that is the stated day clamped to a short month is consistent."""
+    m10 = mcp.at(noon(10))
+    user = await seed.user(income="0", onboarded=False, name=None, country="ZZ")
+    token = m10.token(user)
+    await call(
+        m10,
+        token,
+        "update_financial_profile",
+        {"monthly_net_income": 2500, "currency": "EUR", "timezone": "Europe/Sofia"},
+    )
+    base = {
+        "name": "Rent",
+        "amount": 600,
+        "category": "rent",
+        "recurrence": "monthly",
+    }
+    refused = await m10.call(
+        token,
+        "add_recurring_expense",
+        {
+            **base,
+            "day_of_month": 1,
+            "first_date": "2026-12-15",
+            "idempotency_key": key(),
+        },
+    )
+    assert refused.is_error and "not day 1" in refused.content[0].text
+    assert await saved(connection, user) == []
+    fine = await call(
+        m10,
+        token,
+        "add_recurring_expense",
+        {
+            **base,
+            "day_of_month": 31,
+            "first_date": "2026-11-30",
+            "idempotency_key": key(),
+        },
+    )
+    assert fine["next_due_date"] == "2026-11-30"
+    assert [(r[3], r[4]) for r in await saved(connection, user)] == [
+        (31, date(2026, 11, 30))
+    ]
+
+
+async def test_a_row_deleted_mid_run_is_skipped_and_the_batch_goes_on(
+    seed, connection, monkeypatch
+):
+    """Second review, N7: one user's due row is deleted while the processor
+    runs. That row is skipped; the next user's row is still recorded, and the
+    reminder phase still runs."""
+    from app.services.core.engine import expense_tracker
+
+    gone_user = await seed.user(income="2500")
+    kept_user = await seed.user(income="2500")
+    gone = await _app_row(
+        seed, gone_user, category="utilities", amount=D("60.00"), merchant="Gone"
+    )
+    await _app_row(
+        seed, kept_user, category="utilities", amount=D("60.00"), merchant="Water"
+    )
+    await _app_row(
+        seed,
+        kept_user,
+        category="subscriptions",
+        amount=D("9.99"),
+        scheduled_date=date(2026, 11, 30),
+        merchant="Music",
+    )
+    real_lock = expense_tracker.lock_user_ledger
+
+    def delete_first(db, user_id):
+        if user_id == gone_user.id:
+            db.execute(
+                text("DELETE FROM scheduled_expenses WHERE id = :id"), {"id": gone.id}
+            )
+            db.commit()
+        real_lock(db, user_id)
+
+    monkeypatch.setattr(expense_tracker, "lock_user_ledger", delete_first)
+    summary, pushed = await run_scheduler(connection, monkeypatch, date(2026, 11, 28))
+    assert summary["processed"] == 1 and summary["errors"] == 0
+    assert await ledger(connection, kept_user) == (1, D("60.00"))
+    assert await ledger(connection, gone_user) == (0, D("0.00"))
+    assert ("reminder", "subscriptions", "9.99") in pushed
+
+
 async def test_the_service_is_not_ready_without_the_0045_columns(connection):
     """A deployment that reaches a database without migration 0045 never
     becomes healthy (``__main__.database_ready``): the columns it writes are

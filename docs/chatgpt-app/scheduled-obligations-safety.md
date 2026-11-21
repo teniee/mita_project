@@ -28,7 +28,10 @@ never paid by a scheduler").
 * Every reader took the day from that date, so the rent fell on the 30th of
   every month and December's 31st was lost.
 
-**G0-01: the mobile forecast counted a bill paid in the app twice.**
+**G0-01: the mobile forecast counted a bill paid in the app twice.** Only
+partly closed: everyday spending on a bill's line is no longer held twice. A
+saved bill paid in the app without a link is still held, and that is the
+open owner decision below.
 * `GET /api/budget/forecast` holds unpaid bills out of the safe daily limit
   (R3). Since 2.7.0 a saved payment's line is released only by a linked
   payment, and the app cannot link.
@@ -78,20 +81,17 @@ recorded.**
    * A **ChatGPT** or **unknown** row keeps the rule from before 0045 exactly.
      It is the obligation itself: a bill saved after this month's date has
      passed is still this month's.
-5. **The mobile forecast cannot link, and ordinary spending never releases a
-   saved bill** (G0-01; `obligation_lines.paid_without_linking`, mobile route
-   only):
-   * **rent, mortgage, utilities** (`is_bill_line`) in a month the app laid
-     out: the category is the bill, and what is recorded on it pays it (R3).
-     A rent paid in the app is counted once.
-   * **any other saved payment** (a loan, a subscription, insurance): only a
-     link pays it. Spending on its line uses only the line's everyday money
-     (`need − due`), so it is never held twice either.
-   * **a `bill:` line laid out in ChatGPT:** exactly ChatGPT's linked figure.
+5. **The mobile forecast cannot link, so only a link pays a saved bill — on
+   every line** (G0-01; `obligation_lines.paid_without_linking`, mobile route
+   only). What is recorded on a bill's line beyond its linked payments is
+   ordinary spending. It uses only the line's own money that is not a bill
+   due this month (`need − due`), so it is never held twice and can never
+   release a bill. ChatGPT's figures do not change.
 
-   ChatGPT's figures do not change. The first version credited all spending
-   on the line, which let fuel release an unpaid car loan (independent
-   review, below).
+   Two earlier versions credited recorded spending to the bill. Both
+   released unpaid bills (independent reviews, below). So a saved bill paid
+   in the app without a link now stays held: the **open owner decision**
+   below.
 6. **Readiness.** The MCP `/health` answers 503 until 0045's columns are
    visible (`__main__.REQUIRED_COLUMNS`).
 
@@ -157,32 +157,31 @@ edited date.
 
 ## `paid_without_linking()` audit (mobile forecast only)
 
-The forecast holds `need − paid` per bill line (`_still_reserved`). The
-figures below are pinned in `app/tests/test_paid_without_linking.py`, and the
-review's two cases also through the real routes
-(`app/tests/test_budget_forecast_local_day.py`).
+The forecast holds `need − paid` per bill line (`_still_reserved`), with
+`paid = linked + min(recorded − linked, need − due)`. The figures are pinned
+in `app/tests/test_paid_without_linking.py`, and the reviews' cases also run
+through the real routes (`app/tests/test_budget_forecast_local_day.py`).
 
-* **Bill money and everyday money look the same.** In a month the app laid
-  out, a bill's line is its category, and nothing records which part of it
-  is the bill. `bills_on_due_dates` never places a bill beyond its
-  category's allocation, and a bill scheduled after the month was laid out
-  is not in it at all.
-* **So only the category tells.** Rent, mortgage and utilities are bills by
-  nature. Any other category is ordinary money plus, perhaps, a bill.
+* **Nothing tells bill money from other money.** On a line the app laid out,
+  `bills_on_due_dates` never places a bill beyond its category's allocation,
+  and a bill scheduled after the month was laid out is not in it at all.
+* **So recorded spending is never credited to a bill.** Every rule that did
+  so released unpaid bills: 150 of fuel released a 270 car loan, 150 of
+  electricity a 45 internet bill, and last month's late rent this month's.
 
 | Case | Held | Verdict |
 |---|---|---|
-| Rent 800: paid in the app / not paid / 900 paid / 400 paid | 0 / 800 / 0 / 400 | correct |
-| Rent saved after the month was laid out (no rent line), paid in the app | 0 | correct |
-| Transport 150 (5 a day), car loan 270 scheduled in the app later, 150 of fuel (**the review's P0**) | 270 | the loan stays held; it was 120 in the first version |
-| Same, and the loan also paid in the app (420 recorded) | 270 | **known limit**: link it in ChatGPT; it errs on holding |
-| 'other' laptop loan 70 and a 70 lamp (no 'other' money, or 100 of it) | 70 | the loan stays held |
-| Transport 370 = 100 everyday + 270 loan; 60 or 130 spent | 310 / 270 | spending uses the everyday money only, never the loan |
-| Same, the loan linked (270 on the line); then 60 of fuel too | 100 / 40 | the unspent everyday money held, never twice |
-| Two loans (270 + 50) + 100 everyday; 100 spent; then the 270 linked | 320 / 50 | each held until linked |
-| Month laid out in ChatGPT: last month's loan paid late, linked to last month, lands on this month's line (**review finding 2**) | 270 | this month's loan stays held |
-| Same line, this month's payment linked | 0 | the same figure as ChatGPT |
-| Utilities line = the 45 bill; a 20 lamp recorded as utilities | 25 | **known limit** (R3): bounded by the amount |
+| Rent 800 not paid / linked / part-linked 400 | 800 / 0 / 400 | correct |
+| Rent 800 paid in the app, **not linked** | 800 | **open owner decision** (G0-01): errs on holding |
+| Utilities 150 of other money; internet 45 saved and unpaid; 150 of electricity paid (**review 2, N2**) | 45 | correct (was 0) |
+| Last month's rent paid late this month, linked to last month (**review 2, N3**) | 800 | correct (was 0) |
+| Transport 150; car loan 270 saved later; 150 of fuel (**review 1, P0**) | 270 | correct (was 120) |
+| 'other' laptop loan 70 and a 70 lamp | 70 | correct (was 0) |
+| Transport 370 = 100 + 270 loan; 60 / 130 spent | 310 / 270 | spending uses the line's own money only |
+| Same, the loan linked; then 60 of fuel | 100 / 40 | the unspent money held, never twice |
+| Two loans (270 + 50) + 100; 100 spent; then the 270 linked | 320 / 50 | each held until linked |
+| Month laid out in ChatGPT: another month's linked payment on this month's line (**review 1, finding 2**) | 270 | correct |
+| ChatGPT-linked payments recorded in another month | 0 | never more held than ChatGPT |
 
 ## Recurrence never brings a recorded app bill back
 
@@ -203,7 +202,7 @@ The tests check every surface:
 
 ## Tests
 
-* **`tests_mcp/test_scheduled_obligations_safety.py`** (20 tests): the real
+* **`tests_mcp/test_scheduled_obligations_safety.py`** (22 tests): the real
   processor, real tools and the real database, on the owner's reference
   profile: income 2,500; savings 500; bills 505; flexible budgets 1,115; 380
   unallocated. Since the review it also covers:
@@ -230,9 +229,15 @@ The tests check every surface:
 * **`app/tests/test_budget_forecast_local_day.py::test_a_bill_paid_in_the_app_is_not_held_twice`**
   goes through the real mobile route and the real ledger rebuild. It fails on
   the old code (800.00 held).
-* **`app/tests/test_paid_without_linking.py`** (8 tests), plus three
-  route-level tests: the review's fuel / car loan and lamp / laptop loan
-  cases, and the create route writing `app`.
+* **`app/tests/test_paid_without_linking.py`** (9 tests), plus route-level
+  tests through the real mobile routes:
+  * the fuel / car loan, lamp / laptop loan and electricity / internet
+    cases;
+  * the pinned owner decision (a saved rent paid in the app stays held);
+  * the create route writing `app`.
+* Since the second review, also: a first date contradicting the stated day
+  is refused (N5), and a row deleted mid-run is skipped while the batch goes
+  on (N7).
 * **Mutation checks** (files restored byte for byte afterwards). Each of
   these fails its test:
   * removing the origin filter;
@@ -247,7 +252,9 @@ The tests check every surface:
     * crediting all spending to a loan;
     * keyed lines taking recorded spending;
     * the first date beating the stated day;
-    * the digest ignoring the day.
+    * the digest ignoring the day;
+    * and, since the second review, a contradicting first date accepted,
+      and a deleted row not skipped.
 
 ## Independent review of the first Gate 1 commit (`ae18579`, 2026-11-18)
 
@@ -282,12 +289,64 @@ What the review verified as correct:
 * ChatGPT's figures unchanged;
 * Decimal throughout.
 
+## Second independent review (fix commit `e808df4`, 2026-11-18)
+
+The same reviewer re-ran every reproduction and tried to break the new
+design (disposable databases only).
+
+* **Fixed:** all nine first-round findings, for the cases reported.
+* **Partly closed:** two were still open on rent, mortgage and utilities
+  lines.
+* **New:** 3 P1 and 5 P2 findings.
+
+| # | Severity | Finding | Disposition |
+|---|---|---|---|
+| N1 | P1, errs on holding | A loan, subscription or insurance saved and paid in the app is held twice, permanently for a mobile-only user | **Open owner decision** (below). Since the uniform rule it also covers rent, mortgage and utilities. |
+| N2 | P1, unsafe | Rent / mortgage / utilities: any spending in the category released a saved bill there (electricity released internet: 0.00 held, 30.00 a day instead of 25.50) | **Fixed**: one rule on every line |
+| N3 | P1, unsafe | Same lines: a payment linked to last month released this month's bill | **Fixed** (same) |
+| N4 | P2 | The processor records an app bill; the user then also records it in ChatGPT, which links it to the next due date: two records for one payment | **Limit**, processor only (below) |
+| N5 | P2 | A stated day contradicting the first date ("the 1st", next due 15 Dec) was stored as the 1st | **Fixed**: refused, ChatGPT asks |
+| N6 | P2 | A retry of a pre-deploy request with a clamped day is refused, not replayed (new digest) | **Limit**: staging only (production has no MCP records) |
+| N7 | P2, existed before | A due row deleted mid-run aborted the whole batch | **Fixed**: ids taken while fresh, the row skipped |
+| N8 | P2 | `MonthCommitments.due` defaulted to `{}` (all of `need` read as other money) | **Fixed**: required |
+| — | P2, errs on holding | A loan paid early (last month) and linked: this month's other spending on its line is not credited | **Limit** (below) |
+
+What the review verified:
+* no spending pattern releases an unpaid saved payment;
+* the app never holds more than ChatGPT;
+* on ChatGPT, no sequence of link, unlink, delete, partial, early or late
+  payments loses a bill, with or without the processor;
+* `db.refresh` and the rollback inside the loop are safe;
+* the reminder phase survives a failed row;
+* `lock_timeout` works through `env.py` (0044 → 0045 aborted after 2 s and
+  left 0044 intact).
+
+## Open owner decision: how may the app recognise a saved bill paid in it?
+
+The mobile app cannot link an expense to a saved payment. So a bill
+scheduled in the app and paid in the app stays held on the app's forecast: a
+rent of 800 shows −17.24 a day instead of 10.34. That errs on showing less to
+spend, never more, and it repeats every month for a mobile-only user.
+ChatGPT is exact. Options:
+
+1. **Accept it for this release.** The app is not in the stores; cancelling
+   the scheduled expense after paying removes the hold.
+2. **Recognise a payment by amount:** one expense of exactly the amount still
+   due, in the bill's category, within a few days of its due date. This is a
+   new inference rule and needs your approval. A same-amount purchase in
+   that window would be taken as the payment.
+3. **Run the processor in production** (a worker for `rq_scheduler`). It
+   records app bills on their dates, so users do not pay them by hand.
+4. **A "paid" action in the app** that creates the link. That needs app work
+   and is later.
+
+`app/tests/test_budget_forecast_local_day.py::test_a_saved_bill_paid_in_the_app_stays_held_pending_the_owner_decision`
+pins option 1 until you decide.
+
 ## Limits (known, not closed)
 
-* **A loan, subscription or insurance paid in the app** (not linked) stays
-  held on the app's forecast until it is linked in ChatGPT. This errs on
-  holding: the app shows less to spend, never more. Rent, mortgage and
-  utilities paid in the app are recognised.
+* **A saved bill paid in the app without a link** stays held on the app's
+  forecast: the open owner decision above. This errs on holding.
 * **The processor records at its run time** (06:00 UTC). For users west of
   UTC that is the previous local day, so a bill due on the 1st lands on the
   last day of the previous month. This existed before 0045 and matters only
@@ -304,8 +363,14 @@ What the review verified as correct:
 * **Months laid out in ChatGPT, viewed in the app.** A bill's own line holds
   only linked payments, so a payment entered in the app stays held there
   until it is linked in ChatGPT. That errs on the cautious side.
-* **Rent, mortgage and utilities** take any purchase recorded under them as
-  part payment in the app (the utilities case above; R3's rule).
+* **A loan paid early and linked** (recorded last month): this month's other
+  spending on its line is not credited, so up to that line's own money stays
+  held. This errs on holding.
+* **The processor records an app bill, then the user also records it in
+  ChatGPT:** two records for one payment (N4). Processor only; ChatGPT may
+  ask.
+* **A retry across the 0045 deploy** of a request with a clamped day is
+  refused instead of replayed (N6). Staging only.
 * **Months the app laid out before 0045** keep their processing semantics,
   minus processing itself. A row the app created before 0045 is `unknown`,
   so an environment that runs the processor no longer records those old
