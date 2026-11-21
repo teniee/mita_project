@@ -321,6 +321,29 @@ What the review verified:
 * `lock_timeout` works through `env.py` (0044 → 0045 aborted after 2 s and
   left 0044 intact).
 
+## Third independent review (final commit `d4f0b7c`, 2026-11-21)
+
+* **Fixed:** N2, N3, N5, N7 and N8. The first-round fixes (fuel, lamp,
+  findings 3–8) hold on the final commit.
+* **No release, no over-hold.** No case made the mobile forecast release
+  an unpaid saved bill or hold more than ChatGPT. That includes a randomised
+  check of 52,747 saved-bill lines across 20,000 random months (legacy and
+  keyed; partial, oversized and wrong-date links; any spending): none held
+  less than its links leave unpaid, and none more than ChatGPT. The bound is
+  `held ≥ due − linked` and `held ≤ need − linked` per line.
+* **The N5 refusal never blocks a consistent input.** Tested: the 31st with
+  30 Nov, 28 Feb or 29 Feb in a leap year; a first date with no stated day;
+  weekly rows.
+
+| Finding | Disposition |
+|---|---|
+| The owner decision below, now covering rent too | **Open owner decision** (unchanged) |
+| The document suggested cancelling the scheduled expense as a workaround: that ends the whole series | **Fixed**: removed, with a warning (option 1 below) |
+| A row whose re-read fails for another reason (e.g. a dropped connection) was skipped silently | **Fixed**: logged and counted as an error. It stays pending, and held. |
+| A `failed` row (an error on its due date) is pending nowhere: neither recorded nor held, and no next row is created (existed before) | **Limit**, processor only (below) |
+| A stated weekday contradicting a weekly first date is accepted silently (existed before) | **Limit** (below) |
+| N5's message could name the clamped date | Not changed (wording) |
+
 ## Open owner decision: how may the app recognise a saved bill paid in it?
 
 The mobile app cannot link an expense to a saved payment. So a bill
@@ -329,8 +352,10 @@ rent of 800 shows −17.24 a day instead of 10.34. That errs on showing less to
 spend, never more, and it repeats every month for a mobile-only user.
 ChatGPT is exact. Options:
 
-1. **Accept it for this release.** The app is not in the stores; cancelling
-   the scheduled expense after paying removes the hold.
+1. **Accept it for this release:** the app holds the paid bill until the
+   month ends. Do **not** tell users to cancel the scheduled expense after
+   paying. Cancelling ends the whole series, so every later month's bill
+   would stop being held, which is the unsafe direction (third review).
 2. **Recognise a payment by amount:** one expense of exactly the amount still
    due, in the bill's category, within a few days of its due date. This is a
    new inference rule and needs your approval. A same-amount purchase in
@@ -371,6 +396,12 @@ pins option 1 until you decide.
   ask.
 * **A retry across the 0045 deploy** of a request with a clamped day is
   refused instead of replayed (N6). Staging only.
+* **A row the processor marks `failed`** (an error on its due date) is pending
+  nowhere: it is neither recorded nor held, and no next row is created. This
+  existed before, and matters only where the processor runs. Errors are
+  counted and logged.
+* **A weekly payment's stated weekday that contradicts its first date** is
+  accepted, and the first date's weekday is used. This existed before.
 * **Months the app laid out before 0045** keep their processing semantics,
   minus processing itself. A row the app created before 0045 is `unknown`,
   so an environment that runs the processor no longer records those old

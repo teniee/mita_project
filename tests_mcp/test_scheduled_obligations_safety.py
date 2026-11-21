@@ -970,6 +970,37 @@ async def test_a_row_deleted_mid_run_is_skipped_and_the_batch_goes_on(
     assert ("reminder", "subscriptions", "9.99") in pushed
 
 
+async def test_a_row_that_cannot_be_re_read_is_left_held_and_reported(
+    seed, connection, monkeypatch
+):
+    """Third review: a re-read that fails for any reason but deletion (say a
+    dropped connection) leaves the row pending — still held — and counts and
+    logs an error; the next user's row is still recorded."""
+    from sqlalchemy.orm import Session as OrmSession
+
+    stuck_user = await seed.user(income="2500")
+    kept_user = await seed.user(income="2500")
+    stuck = await _app_row(
+        seed, stuck_user, category="utilities", amount=D("60.00"), merchant="Stuck"
+    )
+    await _app_row(
+        seed, kept_user, category="utilities", amount=D("60.00"), merchant="Water"
+    )
+    real_refresh = OrmSession.refresh
+
+    def flaky_refresh(self, instance, *args, **kwargs):
+        if getattr(instance, "id", None) == stuck.id:
+            raise RuntimeError("connection dropped")
+        return real_refresh(self, instance, *args, **kwargs)
+
+    monkeypatch.setattr(OrmSession, "refresh", flaky_refresh)
+    summary, _ = await run_scheduler(connection, monkeypatch, date(2026, 11, 28))
+    assert summary["processed"] == 1 and summary["errors"] == 1
+    assert await ledger(connection, stuck_user) == (0, D("0.00"))
+    assert [r[1] for r in await saved(connection, stuck_user)] == ["pending"]
+    assert await ledger(connection, kept_user) == (1, D("60.00"))
+
+
 async def test_the_service_is_not_ready_without_the_0045_columns(connection):
     """A deployment that reaches a database without migration 0045 never
     becomes healthy (``__main__.database_ready``): the columns it writes are

@@ -125,8 +125,19 @@ def _process_due_expenses(db: Session, today: date, summary: dict) -> None:
             #     the row may be gone — either way, not ours to record.
             try:
                 db.refresh(expense)
-            except Exception:
+            except Exception as exc:
                 db.rollback()
+                if _row_is_gone(db, expense_id):
+                    continue  # deleted meanwhile: nothing to record
+                # Could not re-read it (e.g. a dropped connection): left
+                # pending — still held on every surface — and said so.
+                summary["errors"] += 1
+                logger.error(
+                    "scheduled_expense cron: could not re-read id=%s err=%s; "
+                    "left pending",
+                    expense_id,
+                    exc,
+                )
                 continue
             if expense.status != "pending" or expense.deleted_at is not None:
                 db.rollback()
@@ -273,6 +284,23 @@ def _send_reminders(db: Session, today: date, summary: dict) -> None:
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────────
+
+
+def _row_is_gone(db: Session, expense_id) -> bool:
+    """True only when the row provably no longer exists; when MITA cannot
+    tell (the database is unreachable), False, so the caller reports it."""
+    from app.db.models.scheduled_expense import ScheduledExpense
+
+    try:
+        return (
+            db.query(ScheduledExpense.id)
+            .filter(ScheduledExpense.id == expense_id)
+            .first()
+            is None
+        )
+    except Exception:
+        db.rollback()
+        return False
 
 
 def _paid_through_links(db: Session, expense) -> bool:
