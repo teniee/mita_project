@@ -1,0 +1,177 @@
+# MITA in ChatGPT — capacity plan (measured 2026-10-12, local)
+
+Reproduce: `scripts/mcp/benchmark_capacity.py --generate` against a local
+database named `*capacity*` (the script refuses anything else). Never load-test
+staging or production.
+
+## Dataset
+
+Deterministic (hash-based) synthetic data, local PostgreSQL 15, laptop
+(Apple silicon, shared with other work — absolute timings are conservative):
+
+| Table | Rows | Table | Indexes |
+|---|---|---|---|
+| `transactions` (1,000 users × 600; 1% soft-deleted; May → 11 Oct) | 600,000 | 77.6 MB | 96.3 MB |
+| `daily_plan` (1,000 users × 184 days × 8 categories) | 1,472,000 | 178.3 MB | 291.5 MB |
+| `analytics.events` (1,000 users × 500; 600 linked) | 500,000 | 89.3 MB | 82.0 MB |
+| `goals` (2/user), `scheduled_expenses` (3/user), `users` | 2,000 / 3,000 / 1,000 | < 1 MB each | |
+| **Database** | | **827 MB** | |
+
+Generation: transactions 16.6 s, plan 36.4 s, events 14.8 s.
+
+## Tool query latency (query layer, READ ONLY transaction, 100 samples each)
+
+Measured on the functions the tools call, for 50 users × 2 runs, user
+context loaded separately (2 statements, not counted below).
+
+| Operation (tool) | p50 ms | p95 ms | p99 ms | SQL statements |
+|---|---|---|---|---|
+| current-month summary (`get_financial_summary`) | 7.4 | 9.7 | 30.9 | 5 |
+| list transactions, 30 days (`list_transactions`) | 2.3 | 3.1 | 3.7 | 3 |
+| category breakdown, 30 days (`get_spending_breakdown`) | 0.8 | 1.3 | 1.4 | 1 |
+| budget status (`get_budget_status`) | 7.8 | 8.8 | 26.7 | 4 |
+| forecast (`get_budget_forecast`) | 7.5 | 8.3 | 32.5 | 3 |
+| six-month history (`get_spending_history`) | 5.2 | 7.4 | 10.0 | 2 |
+| category history, 6 months | 3.2 | 4.9 | 5.5 | 2 |
+| financial climate (`get_financial_climate`) | 15.3 | 19.4 | 27.7 | 6 |
+| recurring (`get_recurring_expenses`) | 1.0 | 1.3 | 2.1 | 2 |
+| goals (`get_goals`) | 0.8 | 0.9 | 1.0 | 1 |
+| setup status (`get_setup_status`) | 9.4 | 12.3 | 34.6 | 5 |
+| budget preview (`preview_monthly_budget`) | 8.5 | 9.4 | 34.8 | 4 |
+
+No N+1 pattern: every tool is 1–6 statements regardless of data size. The
+p99 tail (25–35 ms) is cold cache on the first sample per user.
+
+**Re-run 2026-10-18 (MCP 2.1.0, same dataset, `--runs 2`).** Budget status
+gained one statement (5: the redistribution note reads `plan_json` on the
+same `(user_id, date)` index; the summary skips it and stays at 5); the
+forecast regroups lines in Python. p95: budget status 11.1 ms, forecast 10.0,
+summary 11.7, climate 22.2, every other tool ≤ 14.2 ms — within run-to-run
+noise of the table above on a shared laptop.
+
+**Re-run 2026-10-24 (MCP 2.2.0, same dataset, `--runs 2`).** The new
+`calendar_month` (`get_calendar_month` / `show_financial_calendar`): p50
+9.9 ms, p95 10.8 ms, p99 38.0 ms (cold first sample), 5 statements, heaviest
+1.0 ms on Bitmap Index Scan `uq_daily_plan_user_date_category` — the same
+reads as budget status plus the user's pending scheduled payments. Budget
+status p95 13.0 ms, forecast 8.2 ms. No index added.
+
+**Re-run 2026-10-25 (MCP 2.3.0, bills held out of the safe daily amount, same
+dataset, `--runs 3`).** The reserve adds two indexed reads (the month's base
+plan and the user's pending saved payments): forecast p50 13.0 ms, p95 15.1 ms,
+5 statements (was 3); `calendar_month` p50 15.4 ms, p95 16.7 ms, 7 statements
+(was 5); budget status p95 9.9 ms. All within the 20 ms target. Financial
+climate p95 59.3 ms and the month summary vary run to run on this laptop
+(61.7 / 43.6 ms on 2026-10-24, before this change); not touched here. No index
+added.
+
+**Re-run 2026-10-27 (R3 final: bills = recordable saved payments + stated
+rent/mortgage/utilities; `get_budget_status.today` reads the saved payments
+for its bill-free figures; same dataset, `--runs 3`).** budget status p50
+9.1 ms, p95 10.4 ms; forecast p50 13.0 ms, p95 13.8 ms; `calendar_month` p50
+15.2 ms, p95 16.4 ms; budget preview p95 9.5 ms. Within the 20 ms target.
+Unchanged and still above it on this laptop: financial climate p95 58.0 ms,
+month summary p95 34.3 ms. No index added.
+
+## EXPLAIN (ANALYZE, BUFFERS) — heaviest statement per operation
+
+| Operation | Execution | Plan |
+|---|---|---|
+| summary / status / preview | 0.6–1.3 ms | Bitmap Index Scan `uq_daily_plan_user_date_category` |
+| forecast | 1.2 ms | same |
+| list / breakdown | 0.2–0.6 ms | Bitmap Index Scan `ix_transactions_user_id_spent_at` |
+| six-month / category history | 1.7–1.8 ms | Bitmap Index Scan `ix_transactions_user_id` (the window covers most of a user's rows, so the planner prefers the single-column index) |
+| climate | 4.2 ms | Bitmap Index Scan `ix_daily_plan_user_id` (plan totals per month) |
+| setup status | 1.4 ms | Bitmap Index Scan `ix_transactions_user_id` |
+| recurring / goals | < 0.1 ms | user_id indexes |
+
+**Indexes: none added.** Every candidate from the plan already exists and is
+used — `transactions (user_id, spent_at)`, `daily_plan (user_id, date,
+category)` (unique), `goals (user_id)`, `scheduled_expenses (user_id)`, and
+the three `analytics.events` indexes from 0039. `(user_id, category,
+spent_at)` would save under 1 ms on category history; not worth the write
+cost. No migration 0040.
+
+## Analytics
+
+| Query | Time on 500k events |
+|---|---|
+| full report (`analytics_report.py`, ~12 queries) | 3.5 s |
+| `activity_daily` (90 days of DAU/WAU/MAU/WFAU) | 0.84 s |
+| `feature_daily` / `reliability_daily` / `retention_weekly` | 0.17–0.27 s |
+| `feature_adoption` | 0.12 s |
+| `user_segments` / `retention_days` / `activation` | ~0.03 s |
+
+Plain views are fine at this size and far beyond early-stage volume (500k
+events ≈ 1,000 active users for ~5 months). Next steps when `analytics.events`
+passes ~5M rows: (1) Metabase result caching (no code); (2) a materialized
+`user_daily` refreshed by a scheduled job — MITA runs no scheduler today, so
+that job must be added deliberately; (3) partition `analytics.events` by month.
+
+## Writes
+
+**Re-run 2026-11-04 (behavioral budget, MCP 2.7.0, migrations to 0042 on the
+local `mita_capacity` database; `behavioral-budget.md`).** The first version
+of the new calendar path read the month's plan rows five times and computed
+the commitments twice: `calendar_month` p95 53.4 ms, budget status 19.8 ms.
+Fixed before commit by one read of the month's rows
+(`queries/plan.month_plan`: plan, base plan, line kinds and redistribution
+from the same rows) and one commitments computation: `calendar_month` p50
+13.5 ms, p95 14.4 ms; budget status p95 11.1 ms; forecast p95 10.0 ms; setup
+status p95 13.3 ms; the new spending profile (`get_setup_status.spending`)
+p95 6.1 ms; budget preview p95 11.1 ms; recurring p95 3.7 ms. All within the
+20 ms target; no index added (the link table is read by its unique
+`transaction_id` and `(user_id, due_date)` indexes). Financial climate and
+the month summary still vary run to run on this laptop, as before.
+
+**Re-run 2026-11-04, after the 2.7.0 continuation** (pace from the forecast,
+proposed dates, freed money: one more engine run in the preview, no new
+SQL), 5 runs: `calendar_month` p50 13.4 / p95 14.1 ms, budget preview p95
+10.5, budget status 10.4, forecast 9.6, setup status 12.1, spending profile
+6.0 — unchanged. The month summary measured p95 34.7 ms in one 3-run pass and
+12.5 ms in the 5-run pass (noise on this laptop); financial climate p95
+≈ 27 ms in both, as in the earlier run — above the 20 ms target, untouched
+by 2.7.0, worth a look before load grows.
+
+Write tools run the canonical ledger path (advisory lock + month rebuild):
+`add_transaction` p50 was 30–45 ms in the test suite against a month with
+~250 plan rows. Batches apply items sequentially under one lock, so a
+25-item batch costs ~25 rebuilds of one month (≈ 0.5–1 s). Acceptable for
+v1; if batches become common, rebuild once per affected month after all
+inserts (a change to `expense_tracker`, not to MCP).
+
+## Growth and sizing
+
+Per active user (≈ 100 expenses/month, a daily plan of 8 categories, ~3 tool
+calls/day): ≈ 0.29 MB transactions + 0.47 MB plan + 0.17 MB events per six
+months, indexes included → **≈ 1.9 MB per user per year**, dominated by
+`daily_plan` (6 indexes; index size exceeds table size). 10,000 active users
+≈ 19 GB/year. Watch `analytics.storage`.
+
+## Limits that matter before scale
+
+* One MCP replica: rate limits are in-process (`app/mcp/ratelimit.py`).
+* DB pool: 5 + 10 overflow per process; the analytics writer uses at most one.
+* Statement timeouts: 5 s reads, 10 s writes.
+
+**Re-run 2026-11-04, MCP 2.8.0 (personalized onboarding, migration 0043 on
+the local `mita_capacity` database), 5 runs.** `get_setup_status` reads the
+user's setup answers and own-line count (2 more statements: 8; the
+earlier-plan lookup runs only when the current month has none): p50 10.3 /
+p95 13.4 ms (2.7.0: 12.1). The preview reads the answers (6 statements) and
+runs the engine once more only when lines are left out: p95 11.1 ms (10.5).
+Calendar p95 14.6, budget status 10.6, forecast 9.8, spending profile 6.1 —
+unchanged; month summary p95 19.8 and financial climate 24.9 ms, untouched
+by 2.8 and as before. No index added (`mcp_setup_answers` is read by its
+primary key prefix `user_id`).
+
+**2026-11-09, MCP 2.9.0 (regional recommendations, no migration).** The
+preview reads one more statement, `regional.spending_references`: the
+user's country's reference inputs, in the read-only transaction after the
+draft. It was timed on the local staging-equivalent database `mita_lp_280`
+(7,047 observations, every Eurostat input of this release), because
+`mita_capacity` has no regional tables. Over 200 calls across BG, DE, RO,
+US and PT, including the Python computation: median 1.60 ms, p95 1.87 ms;
+one cold first call took 40.6 ms. `EXPLAIN ANALYZE` shows a bitmap index scan
+on `ix_regional_observations_geo_indicator`: 66 rows for Bulgaria, 0.09 ms
+in the database. No index added.

@@ -7,6 +7,20 @@ Runs daily at 06:00 UTC:
   2. Find expenses due within 3 days → send push reminder if not already sent.
   3. For recurring expenses: schedule next occurrence after processing.
 
+Only rows created in the mobile app (``origin = "app"``). An obligation saved
+in ChatGPT (``origin = "chatgpt"``), or a row of unknown origin, is a bill to
+remind of in the calendar, paid only by an expense the user links to it
+(``obligation_payments``): this processor never turns it into an expense and
+never pushes about it (PR #288 review P1).
+
+And an app row the user pays through links — any expense ever linked to any
+of its due dates — is theirs from then on, like a ChatGPT obligation: never
+recorded, marked processed, rolled forward or reminded of. Every surface
+shows its due dates paid or unpaid from the links, so a deleted, partial or
+early payment can neither lose the bill nor record it twice (independent
+review of the Gate 1 commit, findings 3-5 and 8). Each row is re-read under
+the user's ledger lock, so two runs never record it twice (finding 6).
+
 Integrates with the sync cron infrastructure (same pattern as velocity alerts):
   • run_scheduled_expenses_daily() — no-arg wrapper for rq_scheduler
   • run_scheduled_expenses_batch(db, today) — testable core, accepts injected session
@@ -20,6 +34,8 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy.orm import Session
+
+from app.services.monthly_obligations import APP_ORIGIN
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +56,7 @@ def run_scheduled_expenses_batch(
 
     summary = {
         "processed": 0,
+        "paid_through_links": 0,
         "reminders_sent": 0,
         "recurrences_scheduled": 0,
         "errors": 0,
@@ -91,16 +108,51 @@ def _process_due_expenses(db: Session, today: date, summary: dict) -> None:
             ScheduledExpense.scheduled_date == today,
             ScheduledExpense.status == "pending",
             ScheduledExpense.deleted_at.is_(None),
+            # never an obligation saved in ChatGPT (see the module docstring)
+            ScheduledExpense.origin == APP_ORIGIN,
         )
         .all()
     )
 
     logger.info("scheduled_expense cron: %d expenses due on %s", len(due), today)
 
-    for expense in due:
+    # ids taken while the rows are fresh: a later rollback expires them, and
+    # a row deleted meanwhile could not be read again (not even for a log)
+    for expense_id, expense in [(e.id, e) for e in due]:
         try:
-            # 1. Create the real Transaction
             lock_user_ledger(db, expense.user_id)
+            # 0a. Re-read under the lock: another run may have handled it, or
+            #     the row may be gone — either way, not ours to record.
+            try:
+                db.refresh(expense)
+            except Exception as exc:
+                db.rollback()
+                if _row_is_gone(db, expense_id):
+                    continue  # deleted meanwhile: nothing to record
+                # Could not re-read it (e.g. a dropped connection): left
+                # pending — still held on every surface — and said so.
+                summary["errors"] += 1
+                logger.error(
+                    "scheduled_expense cron: could not re-read id=%s err=%s; "
+                    "left pending",
+                    expense_id,
+                    exc,
+                )
+                continue
+            if expense.status != "pending" or expense.deleted_at is not None:
+                db.rollback()
+                continue
+            # 0b. The user pays this row through links: theirs, never ours.
+            if _paid_through_links(db, expense):
+                db.rollback()
+                summary["paid_through_links"] += 1
+                logger.info(
+                    "scheduled_expense cron: id=%s is paid through links; left alone",
+                    expense.id,
+                )
+                continue
+
+            # 1. Create the real Transaction
             txn = Transaction(
                 user_id=expense.user_id,
                 category=expense.category,
@@ -161,7 +213,7 @@ def _process_due_expenses(db: Session, today: date, summary: dict) -> None:
             summary["errors"] += 1
             logger.error(
                 "scheduled_expense cron: failed to process id=%s err=%s",
-                expense.id,
+                expense_id,
                 exc,
             )
             # Mark as failed so we don't retry indefinitely
@@ -190,6 +242,8 @@ def _send_reminders(db: Session, today: date, summary: dict) -> None:
             ScheduledExpense.status == "pending",
             ScheduledExpense.reminder_sent_at.is_(None),
             ScheduledExpense.deleted_at.is_(None),
+            # ChatGPT's obligations are reminded of in the calendar only
+            ScheduledExpense.origin == APP_ORIGIN,
         )
         .all()
     )
@@ -199,6 +253,8 @@ def _send_reminders(db: Session, today: date, summary: dict) -> None:
     notif = NotificationIntegration(db)
 
     for expense in upcoming:
+        if _paid_through_links(db, expense):
+            continue  # the user pays it through links: no "due in N days" push
         days_until = (expense.scheduled_date - today).days
         try:
             notif.notify_scheduled_expense_reminder(
@@ -230,6 +286,41 @@ def _send_reminders(db: Session, today: date, summary: dict) -> None:
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 
+def _row_is_gone(db: Session, expense_id) -> bool:
+    """True only when the row provably no longer exists; when MITA cannot
+    tell (the database is unreachable), False, so the caller reports it."""
+    from app.db.models.scheduled_expense import ScheduledExpense
+
+    try:
+        return (
+            db.query(ScheduledExpense.id)
+            .filter(ScheduledExpense.id == expense_id)
+            .first()
+            is None
+        )
+    except Exception:
+        db.rollback()
+        return False
+
+
+def _paid_through_links(db: Session, expense) -> bool:
+    """Whether this user ever linked an expense to any due date of this row
+    (``obligation_payments``, from ChatGPT's obligation_ref) — deleted or
+    not, partial or not. Such a row follows the links, never this processor:
+    what is paid shows as paid on every surface, what is not stays held."""
+    from app.db.models import ObligationPayment
+
+    return (
+        db.query(ObligationPayment.transaction_id)
+        .filter(
+            ObligationPayment.scheduled_expense_id == expense.id,
+            ObligationPayment.user_id == expense.user_id,
+        )
+        .first()
+        is not None
+    )
+
+
 def _notify_processed(db: Session, expense, txn) -> None:
     """Non-blocking: send 'your scheduled expense fired' push notification."""
     try:
@@ -258,14 +349,18 @@ def _schedule_next_recurrence(db: Session, expense, fired_date: date) -> None:
     if expense.recurrence == "weekly":
         next_date = fired_date + timedelta(weeks=1)
     elif expense.recurrence == "monthly":
-        # Same day-of-month next month; clamp to last day of that month.
+        # The day of the month asked for (kept apart from the clamped date
+        # since migration 0045: "the 31st" fired on 30 November is next due
+        # on 31 December), else the fired date's own day; clamped to the last
+        # day of a shorter month.
         year = fired_date.year
         month = fired_date.month + 1
         if month > 12:
             month = 1
             year += 1
         last_day = calendar.monthrange(year, month)[1]
-        day = min(fired_date.day, last_day)
+        wanted = expense.day_of_month or fired_date.day
+        day = min(wanted, last_day)
         next_date = date(year, month, day)
     else:
         return  # "once" or unknown — no recurrence
@@ -278,6 +373,15 @@ def _schedule_next_recurrence(db: Session, expense, fired_date: date) -> None:
         merchant=expense.merchant,
         scheduled_date=next_date,
         recurrence=expense.recurrence,
+        # The requested day travels with the row. An app row's own date is the
+        # day the user chose (the app takes an explicit date), so "the 31st"
+        # recorded on 28 February is next due on 31 March, not the 28th.
+        day_of_month=(
+            expense.day_of_month or expense.scheduled_date.day
+            if expense.recurrence == "monthly"
+            else None
+        ),
+        origin=expense.origin,
         status="pending",
     )
     db.add(next_expense)

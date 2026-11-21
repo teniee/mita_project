@@ -52,6 +52,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from unittest.mock import AsyncMock, Mock, patch
 
+import jwt
 import pytest
 import redis
 from fastapi import HTTPException, Request
@@ -307,12 +308,18 @@ class TestTokenManagement:
         Test token expiration handling with precise timing validation.
         Critical for financial applications with strict session timeouts.
         """
-        # Test 1: Create tokens with specific expiration times
-        short_exp = timedelta(seconds=1)
+        # Test 1: Create tokens with specific expiration times. ``exp`` is a
+        # whole second (``_create_token`` truncates now + delta), so a token
+        # asked for N seconds lives between N-1 and N seconds: one asked for
+        # 1 second could expire before its first check (CI run 42597950901,
+        # "Signature has expired"). 3 seconds is surely valid at first.
+        short_exp = timedelta(seconds=3)
         long_exp = timedelta(hours=1)
 
         short_token = create_access_token(test_user_data, short_exp)
         long_token = create_access_token(test_user_data, long_exp)
+        claims = jwt.decode(short_token, options={"verify_signature": False})
+        short_expires_at = claims["exp"]
 
         # Test 2: Tokens should be valid initially
         short_payload = await verify_token(short_token)
@@ -321,8 +328,8 @@ class TestTokenManagement:
         assert short_payload is not None
         assert long_payload is not None
 
-        # Test 3: Wait for short token to expire
-        time.sleep(1.1)  # Wait slightly longer than expiration
+        # Test 3: Wait until the short token's own exp has passed
+        time.sleep(max(0.0, short_expires_at - time.time()) + 0.1)
 
         # Test 4: Short token should be expired, long token still valid
         short_payload_after = await verify_token(short_token)
